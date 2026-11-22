@@ -11,8 +11,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,7 +22,7 @@ import (
 // 個々の操作は一つの SQL で状態を変更するため、トランザクションの開始は要求しない。
 type JobRepository struct{ Pool DBTX }
 
-var _ ports.JobRepository = (*JobRepository)(nil)
+var _ jobsports.JobRepository = (*JobRepository)(nil)
 
 func textOrNil(s *string) pgtype.Text {
 	if s == nil {
@@ -46,13 +46,13 @@ func timePtrOrNil(t pgtype.Timestamptz) *time.Time {
 	return &tt
 }
 
-func jobFromRow(row *Job) *domain.Job {
-	return &domain.Job{
+func jobFromRow(row *Job) *jobsdomain.Job {
+	return &jobsdomain.Job{
 		ID:             row.ID,
 		TenantID:       row.TenantID,
-		Kind:           domain.JobKind(row.Kind),
-		Lane:           domain.ExecutionLane(row.Lane),
-		Status:         domain.JobStatus(row.Status),
+		Kind:           jobsdomain.JobKind(row.Kind),
+		Lane:           jobsdomain.ExecutionLane(row.Lane),
+		Status:         jobsdomain.JobStatus(row.Status),
 		Params:         json.RawMessage(row.Params),
 		Result:         json.RawMessage(row.Result),
 		Error:          nilIfEmpty(row.Error),
@@ -67,7 +67,7 @@ func jobFromRow(row *Job) *domain.Job {
 	}
 }
 
-func (r *JobRepository) Enqueue(ctx context.Context, input ports.EnqueueInput) (*domain.Job, bool, error) {
+func (r *JobRepository) Enqueue(ctx context.Context, input jobsports.EnqueueInput) (*jobsdomain.Job, bool, error) {
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return nil, false, err
@@ -109,7 +109,7 @@ func (r *JobRepository) Enqueue(ctx context.Context, input ports.EnqueueInput) (
 	return jobFromRow(row), true, nil
 }
 
-func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, lane domain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error) {
+func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, lane jobsdomain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*jobsdomain.Job, error) {
 	if batchSize <= 0 {
 		return nil, nil
 	}
@@ -123,7 +123,7 @@ func (r *JobRepository) ClaimBatch(ctx context.Context, workerID string, lane do
 	if err != nil {
 		return nil, err
 	}
-	claimed := make([]*domain.Job, 0, len(rows))
+	claimed := make([]*jobsdomain.Job, 0, len(rows))
 	for _, row := range rows {
 		claimed = append(claimed, jobFromRow(row))
 	}
@@ -146,7 +146,7 @@ func (r *JobRepository) Heartbeat(ctx context.Context, jobID, workerID string, l
 	return expiresAt.Time, nil
 }
 
-func (r *JobRepository) Complete(ctx context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*domain.Job, error) {
+func (r *JobRepository) Complete(ctx context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*jobsdomain.Job, error) {
 	row, err := New(r.Pool).CompleteJob(ctx, CompleteJobParams{
 		ID:         jobID,
 		LeaseOwner: pgtype.Text{String: workerID, Valid: true},
@@ -162,7 +162,7 @@ func (r *JobRepository) Complete(ctx context.Context, jobID, workerID string, re
 	return jobFromRow(row), nil
 }
 
-func (r *JobRepository) Fail(ctx context.Context, jobID, workerID string, outcome ports.FailOutcome, now time.Time) (*domain.Job, error) {
+func (r *JobRepository) Fail(ctx context.Context, jobID, workerID string, outcome jobsports.FailOutcome, now time.Time) (*jobsdomain.Job, error) {
 	row, err := New(r.Pool).FailJob(ctx, FailJobParams{
 		ID:         jobID,
 		LeaseOwner: pgtype.Text{String: workerID, Valid: true},
@@ -180,13 +180,13 @@ func (r *JobRepository) Fail(ctx context.Context, jobID, workerID string, outcom
 	return jobFromRow(row), nil
 }
 
-func (r *JobRepository) Cancel(ctx context.Context, jobID string, now time.Time) (*domain.Job, error) {
+func (r *JobRepository) Cancel(ctx context.Context, jobID string, now time.Time) (*jobsdomain.Job, error) {
 	row, err := New(r.Pool).CancelJob(ctx, CancelJobParams{ID: jobID, UpdatedAt: now})
 	if errors.Is(err, pgx.ErrNoRows) {
 		if _, getErr := New(r.Pool).GetJob(ctx, jobID); errors.Is(getErr, pgx.ErrNoRows) {
-			return nil, ports.ErrJobNotFound
+			return nil, jobsports.ErrJobNotFound
 		}
-		return nil, ports.ErrJobAlreadyTerminal
+		return nil, jobsports.ErrJobAlreadyTerminal
 	}
 	if err != nil {
 		return nil, err
@@ -194,19 +194,19 @@ func (r *JobRepository) Cancel(ctx context.Context, jobID string, now time.Time)
 	return jobFromRow(row), nil
 }
 
-func (r *JobRepository) LaneDepths(ctx context.Context) ([]ports.LaneDepth, error) {
+func (r *JobRepository) LaneDepths(ctx context.Context) ([]jobsports.LaneDepth, error) {
 	rows, err := New(r.Pool).LaneDepths(ctx)
 	if err != nil {
 		return nil, err
 	}
-	depths := make([]ports.LaneDepth, 0, len(rows))
+	depths := make([]jobsports.LaneDepth, 0, len(rows))
 	for _, row := range rows {
-		depths = append(depths, ports.LaneDepth{Lane: domain.ExecutionLane(row.Lane), Queued: int(row.Queued), Running: int(row.Running)})
+		depths = append(depths, jobsports.LaneDepth{Lane: jobsdomain.ExecutionLane(row.Lane), Queued: int(row.Queued), Running: int(row.Running)})
 	}
 	return depths, nil
 }
 
-func (r *JobRepository) ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error) {
+func (r *JobRepository) ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []jobsdomain.JobKind, limit int) ([]*jobsdomain.Job, error) {
 	if len(kinds) == 0 {
 		return nil, nil
 	}
@@ -228,7 +228,7 @@ func (r *JobRepository) ListByTenantAndKinds(ctx context.Context, tenantID strin
 	if err != nil {
 		return nil, err
 	}
-	jobs := make([]*domain.Job, len(rows))
+	jobs := make([]*jobsdomain.Job, len(rows))
 	for i, row := range rows {
 		jobs[i] = jobFromRow(row)
 	}
@@ -236,9 +236,9 @@ func (r *JobRepository) ListByTenantAndKinds(ctx context.Context, tenantID strin
 }
 
 // ListForAdmin は管理コンソールの一覧を 1 ページ返す (wi-157)。
-func (r *JobRepository) ListForAdmin(ctx context.Context, filter ports.AdminJobFilter) ([]*domain.Job, error) {
+func (r *JobRepository) ListForAdmin(ctx context.Context, filter jobsports.AdminJobFilter) ([]*jobsdomain.Job, error) {
 	if filter.TenantID == "" && !filter.AllTenants {
-		return nil, ports.ErrAdminJobFilterUnscoped
+		return nil, jobsports.ErrAdminJobFilterUnscoped
 	}
 	limit := filter.Limit
 	if limit <= 0 || limit > math.MaxInt32 {
@@ -266,7 +266,7 @@ func (r *JobRepository) ListForAdmin(ctx context.Context, filter ports.AdminJobF
 	if err != nil {
 		return nil, err
 	}
-	var jobs []*domain.Job
+	var jobs []*jobsdomain.Job
 	for _, row := range rows {
 		jobs = append(jobs, jobFromRow(row))
 	}
@@ -277,10 +277,10 @@ func (r *JobRepository) ListForAdmin(ctx context.Context, filter ports.AdminJobF
 // 決めるので通常は使われないが、無制限に読むより閉じた値へ倒す。
 const defaultAdminJobPageSize = 50
 
-func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, error) {
+func (r *JobRepository) Get(ctx context.Context, jobID string) (*jobsdomain.Job, error) {
 	row, err := New(r.Pool).GetJob(ctx, jobID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ports.ErrJobNotFound
+		return nil, jobsports.ErrJobNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -294,10 +294,10 @@ func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, err
 func (r *JobRepository) leaseLostOrNotFound(ctx context.Context, jobID string) error {
 	_, err := New(r.Pool).GetJob(ctx, jobID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ports.ErrJobNotFound
+		return jobsports.ErrJobNotFound
 	}
 	if err != nil {
 		return err
 	}
-	return ports.ErrJobLeaseLost
+	return jobsports.ErrJobLeaseLost
 }

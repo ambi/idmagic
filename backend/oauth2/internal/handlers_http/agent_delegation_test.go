@@ -20,7 +20,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
@@ -93,16 +93,16 @@ func newDelegationFixture(t *testing.T) *delegationFixture {
 	}
 	credential := testing_clientauth.NewPrivateKeyJWT(t, delegationClientID)
 	clients := oauth2memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: delegationClientID,
 		ClientType: spec.ClientConfidential,
-		GrantTypes: []spec.GrantType{spec.GrantTokenExchange}, TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
-		JWKS: credential.JWKS(), Scope: "read write", FapiProfile: domain.FapiNone, CreatedAt: now,
+		GrantTypes: []spec.GrantType{spec.GrantTokenExchange}, TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
+		JWKS: credential.JWKS(), Scope: "read write", FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
 	resources := oauth2memory.NewMcpResourceServerRepository()
-	resources.Seed(&domain.McpResourceServer{
+	resources.Seed(&oauthdomain.McpResourceServer{
 		ID: "rs-orders", Resource: delegationResource, Name: "Orders API", TenantID: tenancydomain.DefaultTenantID,
-		Scopes: []string{"read", "write"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"read", "write"}, State: oauthdomain.McpResourceServerActive,
 	})
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
 	if err != nil {
@@ -147,7 +147,7 @@ func (f *delegationFixture) subjectToken(t *testing.T, sub, scope string) string
 		&tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm},
 		delegationIssuer+delegationBase, delegationBase)
 	token, _, err := f.signer.SignAccessToken(ctx, oauthports.AccessTokenInput{
-		Client: &domain.OAuth2Client{ClientID: "portal"}, Sub: sub,
+		Client: &oauthdomain.OAuth2Client{ClientID: "portal"}, Sub: sub,
 		Scopes: strings.Fields(scope), AuthTime: time.Now().UTC().Unix(),
 	})
 	if err != nil {
@@ -247,9 +247,9 @@ func TestExchangeRequiresTheUsersDelegationGrant(t *testing.T) {
 func TestExchangeRejectsAnExpiredDelegationGrant(t *testing.T) {
 	f := newDelegationFixture(t)
 	now := time.Now().UTC()
-	if err := f.consents.SaveAgentDelegation(context.Background(), tenancydomain.DefaultTenantID, &domain.Consent{
+	if err := f.consents.SaveAgentDelegation(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice", AgentID: delegationAgentID, Scopes: []string{"read"},
-		State: domain.ConsentGranted, GrantedAt: now.Add(-2 * time.Hour), ExpiresAt: now.Add(-time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now.Add(-2 * time.Hour), ExpiresAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -305,9 +305,9 @@ func TestRegrantDoesNotReviveEarlierTokens(t *testing.T) {
 
 	// 撤回と再付与を、発行より後の秒に起きたことにする。
 	now := time.Now().UTC()
-	if err := f.consents.SaveAgentDelegation(context.Background(), tenancydomain.DefaultTenantID, &domain.Consent{
+	if err := f.consents.SaveAgentDelegation(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice", AgentID: delegationAgentID, Scopes: []string{"read"},
-		State: domain.ConsentGranted, GrantedAt: now.Add(2 * time.Second), ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now.Add(2 * time.Second), ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -430,9 +430,9 @@ func TestAdminReadsTenantDelegationsOnly(t *testing.T) {
 	if response := f.session(t, http.MethodPost, "/api/account/v1/agent-delegations/"+delegationAgentID+"/revoke", "bob", ""); response.Code != http.StatusNoContent {
 		t.Fatalf("revoke status=%d", response.Code)
 	}
-	if err := f.consents.SaveAgentDelegation(ctx, "acme", &domain.Consent{
+	if err := f.consents.SaveAgentDelegation(ctx, "acme", &oauthdomain.Consent{
 		UserID: "carol", AgentID: "agent-acme", Scopes: []string{"read"},
-		State: domain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -447,16 +447,16 @@ func TestAdminReadsTenantDelegationsOnly(t *testing.T) {
 	}
 	var body struct {
 		Delegations []struct {
-			UserID    string              `json:"user_id"`
-			AgentName string              `json:"agent_name"`
-			State     domain.ConsentState `json:"state"`
+			UserID    string                   `json:"user_id"`
+			AgentName string                   `json:"agent_name"`
+			State     oauthdomain.ConsentState `json:"state"`
 		} `json:"delegations"`
 	}
 	if err := json.Unmarshal(listed.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if len(body.Delegations) != 2 || body.Delegations[0].UserID != "alice" || body.Delegations[0].State != domain.ConsentGranted ||
-		body.Delegations[1].UserID != "bob" || body.Delegations[1].State != domain.ConsentRevoked ||
+	if len(body.Delegations) != 2 || body.Delegations[0].UserID != "alice" || body.Delegations[0].State != oauthdomain.ConsentGranted ||
+		body.Delegations[1].UserID != "bob" || body.Delegations[1].State != oauthdomain.ConsentRevoked ||
 		body.Delegations[0].AgentName != "Order bot" {
 		t.Fatalf("delegations=%+v", body.Delegations)
 	}

@@ -49,7 +49,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
@@ -171,8 +171,8 @@ func (m Module) SessionAuthentications() support.SessionAuthenticator {
 // SecurityNotificationDeps は、アカウントのセキュリティ通知がほかのモジュールと共通基盤から受け取る依存である。
 type SecurityNotificationDeps struct {
 	UserRepo            userports.UserRepository
-	Notifier            sharednotification.Notifier
-	TenantSource        sharednotification.TenantNotificationSource
+	Notifier            notificationports.Notifier
+	TenantSource        notificationports.TenantNotificationSource
 	SaltStore           auditports.TenantSaltStore
 	IssuerResolver      func(ctx context.Context, tenantID string) string
 	SystemDefaultLocale string
@@ -222,8 +222,8 @@ type RouteDeps struct {
 	UserRepo                userports.UserRepository
 	PasswordDelegation      passwordports.PasswordDelegation
 	TenantRepo              tenantports.TenantRepository
-	EmailSender             sharednotification.EmailSender
-	Notifier                sharednotification.Notifier
+	EmailSender             notificationports.EmailSender
+	Notifier                notificationports.Notifier
 	TenantSaltStore         auditports.TenantSaltStore
 	DefaultSignInPolicyRepo policyports.DefaultSignInPolicyRepository
 }

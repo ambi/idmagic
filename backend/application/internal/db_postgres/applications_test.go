@@ -14,7 +14,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -23,15 +23,15 @@ import (
 
 // seedApplication は指定テナントに Application を作成して返す。application_id は UUID 列の
 // ため UUID を生成する。icon / assignment / sign-in policy は本 Application を FK 親に持つ。
-func seedApplication(t *testing.T, db sharedpg.DB, tenantID string) *domain.Application {
+func seedApplication(t *testing.T, db sharedpg.DB, tenantID string) *appdomain.Application {
 	t.Helper()
 	now := pgfixtures.TestClock()
-	app := &domain.Application{
+	app := &appdomain.Application{
 		TenantID:    tenantID,
 		ID:          pgfixtures.NewUUID(t),
 		Name:        pgfixtures.UniqueID("app-name"),
-		Kind:        domain.ApplicationWeblink,
-		Status:      domain.ApplicationActive,
+		Kind:        appdomain.ApplicationWeblink,
+		Status:      appdomain.ApplicationActive,
 		LaunchURL:   "https://example.com",
 		CategoryIDs: []string{},
 		CreatedAt:   now,
@@ -52,14 +52,14 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 
 	now := pgfixtures.TestClock()
 	categoryID := pgfixtures.NewUUID(t)
-	app := &domain.Application{
+	app := &appdomain.Application{
 		TenantID:    tenant.ID,
 		ID:          pgfixtures.NewUUID(t),
 		Name:        "Portal App",
-		Kind:        domain.ApplicationFederated,
-		Status:      domain.ApplicationActive,
+		Kind:        appdomain.ApplicationFederated,
+		Status:      appdomain.ApplicationActive,
 		LaunchURL:   "https://app.example/launch",
-		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: client.ClientID},
+		Protocol:    &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: client.ClientID},
 		CategoryIDs: []string{categoryID},
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -72,7 +72,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find by id: %v %+v", err, got)
 	}
-	if got.Name != "Portal App" || got.Kind != domain.ApplicationFederated {
+	if got.Name != "Portal App" || got.Kind != appdomain.ApplicationFederated {
 		t.Fatalf("unexpected application: %+v", got)
 	}
 	if got.Protocol == nil || got.Protocol.ClientID != client.ClientID {
@@ -82,7 +82,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("category ids not round-tripped: %+v", got.CategoryIDs)
 	}
 
-	byBinding, err := repo.FindByProtocol(ctx, tenant.ID, domain.ApplicationProtocolOIDC, client.ClientID)
+	byBinding, err := repo.FindByProtocol(ctx, tenant.ID, appdomain.ApplicationProtocolOIDC, client.ClientID)
 	if err != nil || byBinding == nil || byBinding.ID != app.ID {
 		t.Fatalf("find by binding: %v %+v", err, byBinding)
 	}
@@ -135,10 +135,10 @@ func TestApplicationProtocolRelationConstraintsAndCascade(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository(db, testProtocolLinkers())
 	now := pgfixtures.TestClock()
-	app := &domain.Application{
+	app := &appdomain.Application{
 		TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: "OIDC App",
-		Kind: domain.ApplicationFederated, Status: domain.ApplicationActive,
-		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: first.ClientID},
+		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+		Protocol:    &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: first.ClientID},
 		CategoryIDs: []string{}, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repo.Create(ctx, app); err != nil {
@@ -262,7 +262,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 
 	now := pgfixtures.TestClock()
 	iconID := pgfixtures.NewUUID(t)
-	icon := &domain.ApplicationIcon{
+	icon := &appdomain.ApplicationIcon{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ID,
 		ID:            iconID,
@@ -303,7 +303,7 @@ func TestApplicationIconStoreFindIsScopedToTenant(t *testing.T) {
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
-	icon := &domain.ApplicationIcon{
+	icon := &appdomain.ApplicationIcon{
 		TenantID: owner.ID, ApplicationID: app.ID, ID: pgfixtures.NewUUID(t),
 		ContentType: "image/png", SizeBytes: 4, Data: []byte{0x1, 0x2, 0x3, 0x4},
 		CreatedAt: now, UpdatedAt: now,
@@ -331,21 +331,21 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
-	userAssignment := &domain.ApplicationAssignment{
+	userAssignment := &appdomain.ApplicationAssignment{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ID,
-		SubjectType:   domain.AssignmentSubjectUser,
+		SubjectType:   appdomain.AssignmentSubjectUser,
 		SubjectID:     user.ID,
-		Visibility:    domain.AssignmentVisible,
+		Visibility:    appdomain.AssignmentVisible,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	groupAssignment := &domain.ApplicationAssignment{
+	groupAssignment := &appdomain.ApplicationAssignment{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ID,
-		SubjectType:   domain.AssignmentSubjectGroup,
+		SubjectType:   appdomain.AssignmentSubjectGroup,
 		SubjectID:     group.ID,
-		Visibility:    domain.AssignmentHidden,
+		Visibility:    appdomain.AssignmentHidden,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -367,13 +367,13 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	}
 
 	bySubjects, err := repo.ListBySubjects(ctx, tenant.ID, []appports.SubjectRef{
-		{Type: domain.AssignmentSubjectUser, ID: user.ID},
+		{Type: appdomain.AssignmentSubjectUser, ID: user.ID},
 	})
 	if err != nil || len(bySubjects) != 1 || bySubjects[0].SubjectID != user.ID {
 		t.Fatalf("list by subjects: %v %+v", err, bySubjects)
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ID, domain.AssignmentSubjectUser, user.ID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ID, appdomain.AssignmentSubjectUser, user.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	byApp, err = repo.ListByApplication(ctx, tenant.ID, app.ID)
@@ -402,7 +402,7 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 	}
 
 	now := pgfixtures.TestClock()
-	ordering := &domain.ApplicationOrdering{
+	ordering := &appdomain.ApplicationOrdering{
 		UserID:         user.ID,
 		ApplicationIDs: []string{"app-b", "app-a", "app-c"},
 		CreatedAt:      now,
@@ -440,7 +440,7 @@ func TestApplicationCategoryRepositoryFindByIDIsScopedToTenant(t *testing.T) {
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
-	category := &domain.ApplicationCategory{
+	category := &appdomain.ApplicationCategory{
 		TenantID: owner.ID, ID: pgfixtures.NewUUID(t), Name: "Finance", CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, category); err != nil {
@@ -463,7 +463,7 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
-	category := &domain.ApplicationCategory{
+	category := &appdomain.ApplicationCategory{
 		TenantID:  tenant.ID,
 		ID:        pgfixtures.NewUUID(t),
 		Name:      "Productivity",
@@ -505,9 +505,9 @@ func TestApplicationAssignmentRepositoryListPage(t *testing.T) {
 	for range 5 {
 		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		userIDs = append(userIDs, u.ID)
-		if err := repo.Save(ctx, &domain.ApplicationAssignment{
-			TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser,
-			SubjectID: u.ID, Visibility: domain.AssignmentVisible,
+		if err := repo.Save(ctx, &appdomain.ApplicationAssignment{
+			TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser,
+			SubjectID: u.ID, Visibility: appdomain.AssignmentVisible,
 		}); err != nil {
 			t.Fatalf("save assignment: %v", err)
 		}
@@ -548,9 +548,9 @@ func TestApplicationRepositoryListPage(t *testing.T) {
 	now := pgfixtures.TestClock()
 
 	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
-		app := &domain.Application{
-			TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: name, Kind: domain.ApplicationWeblink,
-			Status: domain.ApplicationActive, LaunchURL: "https://example.com", CategoryIDs: []string{},
+		app := &appdomain.Application{
+			TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: name, Kind: appdomain.ApplicationWeblink,
+			Status: appdomain.ApplicationActive, LaunchURL: "https://example.com", CategoryIDs: []string{},
 			CreatedAt: now, UpdatedAt: now,
 		}
 		if err := repo.Save(ctx, app); err != nil {

@@ -10,7 +10,7 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -111,12 +111,12 @@ type revokedWhileListing struct {
 	*memory.SessionStore
 }
 
-func (s revokedWhileListing) ListBySub(ctx context.Context, sub string) ([]*domain.LoginSession, error) {
+func (s revokedWhileListing) ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error) {
 	sessions, err := s.SessionStore.ListBySub(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
-	listed := make([]*domain.LoginSession, 0, len(sessions))
+	listed := make([]*sessiondomain.LoginSession, 0, len(sessions))
 	for _, sess := range sessions {
 		snapshot := *sess
 		listed = append(listed, &snapshot)

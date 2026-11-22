@@ -16,7 +16,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	"github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -47,16 +47,16 @@ type Deps struct {
 	Emit                  func(spec.DomainEvent) error
 }
 
-func (d Deps) adminDeps() usecases.AdminStreamDeps {
-	return usecases.AdminStreamDeps{
+func (d Deps) adminDeps() ssusecases.AdminStreamDeps {
+	return ssusecases.AdminStreamDeps{
 		StreamRepo: d.StreamRepo, TransmitterConfigRepo: d.TransmitterConfigRepo,
 		ReceiverConfigRepo: d.ReceiverConfigRepo, DeliveryRepo: d.DeliveryRepo,
 		QuotaRepo: d.QuotaRepo, CheckDeliveryEndpoint: d.CheckDeliveryEndpoint, Emit: d.Emit,
 	}
 }
 
-func (d Deps) receiveDeps() usecases.ReceiveDeps {
-	return usecases.ReceiveDeps{
+func (d Deps) receiveDeps() ssusecases.ReceiveDeps {
+	return ssusecases.ReceiveDeps{
 		StreamRepo: d.StreamRepo, ReceiverConfigRepo: d.ReceiverConfigRepo, ReceivedEventRepo: d.ReceivedEventRepo,
 		EpochRepo: d.EpochRepo, UserEpochRepo: d.UserEpochRepo, AgentRepo: d.AgentRepo, Users: d.Users,
 		EndUserSessions: d.EndUserSessions, Verifier: d.Verifier, Emit: d.Emit,
@@ -91,7 +91,7 @@ func (d Deps) handleReceiveSecurityEvent(c *echo.Context) error {
 	if len(body) > maxSecurityEventTokenBytes {
 		return writeSecurityEventReceiverError(c, http.StatusRequestEntityTooLarge, "security_event_token_too_large", "The Security Event Token exceeds the accepted size.")
 	}
-	if err := usecases.ReceiveSecurityEvent(c.Request().Context(), d.receiveDeps(), c.Param("stream_id"), string(body), time.Now().UTC()); err != nil {
+	if err := ssusecases.ReceiveSecurityEvent(c.Request().Context(), d.receiveDeps(), c.Param("stream_id"), string(body), time.Now().UTC()); err != nil {
 		return writeReceivedSecurityEventError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -165,7 +165,7 @@ func (d Deps) handleListStreams(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	streams, err := usecases.ListSsfStreams(c.Request().Context(), d.adminDeps())
+	streams, err := ssusecases.ListSsfStreams(c.Request().Context(), d.adminDeps())
 	if err != nil {
 		return writeAdminSharedSignalsError(c, err)
 	}
@@ -180,7 +180,7 @@ func (d Deps) handleGetStream(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	stream, err := usecases.GetSsfStream(c.Request().Context(), d.adminDeps(), c.Param("stream_id"))
+	stream, err := ssusecases.GetSsfStream(c.Request().Context(), d.adminDeps(), c.Param("stream_id"))
 	if err != nil {
 		return writeAdminSharedSignalsError(c, err)
 	}
@@ -198,7 +198,7 @@ func (d Deps) handleRegisterTransmitterStream(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	stream, err := usecases.RegisterSsfTransmitterStream(c.Request().Context(), d.adminDeps(), usecases.RegisterSsfTransmitterStreamInput{
+	stream, err := ssusecases.RegisterSsfTransmitterStream(c.Request().Context(), d.adminDeps(), ssusecases.RegisterSsfTransmitterStreamInput{
 		EventTypes: caepEventTypesFromStrings(req.EventTypes), AuditEventTypes: req.AuditEventTypes, DeliveryEndpoint: req.DeliveryEndpoint,
 		Audience: req.Audience, DeliveryAuthorization: req.DeliveryAuthorization, MaxDeliveryAttempts: req.MaxDeliveryAttempts,
 	}, time.Now().UTC())
@@ -219,7 +219,7 @@ func (d Deps) handleRegisterReceiverStream(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	stream, err := usecases.RegisterSsfReceiverStream(c.Request().Context(), d.adminDeps(), usecases.RegisterSsfReceiverStreamInput{
+	stream, err := ssusecases.RegisterSsfReceiverStream(c.Request().Context(), d.adminDeps(), ssusecases.RegisterSsfReceiverStreamInput{
 		EventTypes: caepEventTypesFromStrings(req.EventTypes), TrustedIssuer: req.TrustedIssuer,
 		JWKSURI: req.JWKSURI, JWKS: req.JWKS, AcceptedAudiences: req.AcceptedAudiences,
 	}, time.Now().UTC())
@@ -245,7 +245,7 @@ func (d Deps) handleUpdateStream(c *echo.Context) error {
 		converted := caepEventTypesFromStrings(*req.EventTypes)
 		eventTypes = &converted
 	}
-	stream, err := usecases.UpdateSsfStream(c.Request().Context(), d.adminDeps(), c.Param("stream_id"), usecases.UpdateSsfStreamInput{
+	stream, err := ssusecases.UpdateSsfStream(c.Request().Context(), d.adminDeps(), c.Param("stream_id"), ssusecases.UpdateSsfStreamInput{
 		EventTypes: eventTypes, AuditEventTypes: req.AuditEventTypes,
 	}, time.Now().UTC())
 	if err != nil {
@@ -256,21 +256,21 @@ func (d Deps) handleUpdateStream(c *echo.Context) error {
 
 func (d Deps) handleDisableStream(c *echo.Context) error {
 	return d.changeStreamStatus(c, func(id string, now time.Time) error {
-		_, err := usecases.DisableSsfStream(c.Request().Context(), d.adminDeps(), id, now)
+		_, err := ssusecases.DisableSsfStream(c.Request().Context(), d.adminDeps(), id, now)
 		return err
 	})
 }
 
 func (d Deps) handleEnableStream(c *echo.Context) error {
 	return d.changeStreamStatus(c, func(id string, now time.Time) error {
-		_, err := usecases.EnableSsfStream(c.Request().Context(), d.adminDeps(), id, now)
+		_, err := ssusecases.EnableSsfStream(c.Request().Context(), d.adminDeps(), id, now)
 		return err
 	})
 }
 
 func (d Deps) handleDeleteStream(c *echo.Context) error {
 	return d.changeStreamStatus(c, func(id string, now time.Time) error {
-		return usecases.DeleteSsfStream(c.Request().Context(), d.adminDeps(), id, now)
+		return ssusecases.DeleteSsfStream(c.Request().Context(), d.adminDeps(), id, now)
 	})
 }
 
@@ -315,7 +315,7 @@ func (d Deps) handleListSecurityEventDeliveries(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	deliveries, err := usecases.ListSecurityEventDeliveries(c.Request().Context(), d.adminDeps(), c.Param("stream_id"))
+	deliveries, err := ssusecases.ListSecurityEventDeliveries(c.Request().Context(), d.adminDeps(), c.Param("stream_id"))
 	if err != nil {
 		return writeAdminSharedSignalsError(c, err)
 	}
@@ -333,7 +333,7 @@ func (d Deps) handleRedeliverDeadLetteredDeliveries(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	count, err := usecases.RedeliverDeadLetteredDeliveries(c.Request().Context(), d.adminDeps(), c.Param("stream_id"), time.Now().UTC())
+	count, err := ssusecases.RedeliverDeadLetteredDeliveries(c.Request().Context(), d.adminDeps(), c.Param("stream_id"), time.Now().UTC())
 	if err != nil {
 		return writeAdminSharedSignalsError(c, err)
 	}
@@ -346,23 +346,23 @@ func (d Deps) handleRedeliverDeadLetteredDeliveries(c *echo.Context) error {
 // writeSecurityEventReceiverError を使うこと。
 func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, usecases.ErrStreamNotFound):
+	case errors.Is(err, ssusecases.ErrStreamNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "ssf_stream_not_found", "The SSF stream does not exist.")
-	case errors.Is(err, usecases.ErrStreamDisabled):
+	case errors.Is(err, ssusecases.ErrStreamDisabled):
 		return support.WriteProblem(c, http.StatusConflict, "ssf_stream_disabled", "The SSF stream is disabled.")
-	case errors.Is(err, usecases.ErrEventTypesEmpty):
+	case errors.Is(err, ssusecases.ErrEventTypesEmpty):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_stream_event_types_required", "event_types must not be empty.")
-	case errors.Is(err, usecases.ErrEventTypeInvalid):
+	case errors.Is(err, ssusecases.ErrEventTypeInvalid):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_stream_event_type_invalid", "event_types contains an unknown CAEP event type.")
-	case errors.Is(err, usecases.ErrDeliveryEndpointInvalid):
+	case errors.Is(err, ssusecases.ErrDeliveryEndpointInvalid):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_transmitter_delivery_endpoint_invalid", "delivery_endpoint is required and must be an https URL.")
-	case errors.Is(err, usecases.ErrAudienceRequired):
+	case errors.Is(err, ssusecases.ErrAudienceRequired):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_transmitter_audience_required", "audience is required.")
-	case errors.Is(err, usecases.ErrTrustedIssuerInvalid):
+	case errors.Is(err, ssusecases.ErrTrustedIssuerInvalid):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_receiver_trusted_issuer_invalid", "trusted_issuer is required and must be an https URL.")
-	case errors.Is(err, usecases.ErrJWKSSourceRequired):
+	case errors.Is(err, ssusecases.ErrJWKSSourceRequired):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_receiver_jwks_required", "jwks_uri or jwks is required.")
-	case errors.Is(err, usecases.ErrAcceptedAudiencesEmpty):
+	case errors.Is(err, ssusecases.ErrAcceptedAudiencesEmpty):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_receiver_accepted_audiences_required", "accepted_audiences must not be empty.")
 	default:
 		return err
@@ -382,9 +382,9 @@ func writeSecurityEventReceiverError(c *echo.Context, status int, code, descript
 
 func writeReceivedSecurityEventError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, usecases.ErrStreamNotFound):
+	case errors.Is(err, ssusecases.ErrStreamNotFound):
 		return writeSecurityEventReceiverError(c, http.StatusNotFound, "ssf_stream_not_found", "The SSF stream does not exist.")
-	case errors.Is(err, usecases.ErrSecurityEventRejected):
+	case errors.Is(err, ssusecases.ErrSecurityEventRejected):
 		return writeSecurityEventReceiverError(c, http.StatusBadRequest, "security_event_rejected", "The Security Event Token was rejected.")
 	default:
 		return err

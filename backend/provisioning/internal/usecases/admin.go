@@ -9,8 +9,8 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -18,15 +18,15 @@ import (
 // AdminDeps are the admin (Application-detail "provisioning" subroute)
 // usecases' dependencies (docs/modules/provisioning/ interfaces).
 type AdminDeps struct {
-	ConnectionRepo ports.ProvisioningConnectionRepository
-	TaskRepo       ports.ProvisioningTaskRepository
+	ConnectionRepo provisioningports.ProvisioningConnectionRepository
+	TaskRepo       provisioningports.ProvisioningTaskRepository
 	AssignmentRepo appports.AssignmentRepository
 	UserRepo       userports.UserRepository
 	// GroupRepo lets a full resync cover the Groups a push_groups connection
 	// targets. nil resyncs Users only; a connection whose GroupPushConfig names
 	// its groups explicitly still resyncs them, because that list needs no lookup.
 	GroupRepo       groupports.GroupRepository
-	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
+	NewTargetClient func(conn *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error)
 	// Emit は接続の保存に成功した管理操作のイベントを発行する。nil なら発行しない。
 	Emit func(spec.DomainEvent)
 }
@@ -42,15 +42,15 @@ func (d AdminDeps) captureDeps() CaptureDeps {
 
 // defaultSCIMUserMapping seeds the SCIM core User mapping table
 // (docs/modules/provisioning/ §属性マッピングのセマンティクス 既定マッピング).
-func defaultSCIMUserMapping() []domain.AttributeMappingRule {
-	return []domain.AttributeMappingRule{
-		{TargetPath: "externalId", SourceKind: domain.SourceKindAttribute, SourceKey: "id", ApplyOn: domain.ApplyCreateOnly, Required: true},
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
-		{TargetPath: "active", SourceKind: domain.SourceKindAttribute, SourceKey: "active", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
-		{TargetPath: "name.givenName", SourceKind: domain.SourceKindAttribute, SourceKey: "given_name", ApplyOn: domain.ApplyCreateAndUpdate},
-		{TargetPath: "name.familyName", SourceKind: domain.SourceKindAttribute, SourceKey: "family_name", ApplyOn: domain.ApplyCreateAndUpdate},
-		{TargetPath: "displayName", SourceKind: domain.SourceKindAttribute, SourceKey: "display_name", ApplyOn: domain.ApplyCreateAndUpdate},
-		{TargetPath: `emails[type eq "work"].value`, SourceKind: domain.SourceKindAttribute, SourceKey: "email", ApplyOn: domain.ApplyCreateAndUpdate},
+func defaultSCIMUserMapping() []provisioningdomain.AttributeMappingRule {
+	return []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "externalId", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "id", ApplyOn: provisioningdomain.ApplyCreateOnly, Required: true},
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
+		{TargetPath: "active", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "active", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
+		{TargetPath: "name.givenName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "given_name", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
+		{TargetPath: "name.familyName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "family_name", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
+		{TargetPath: "displayName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "display_name", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
+		{TargetPath: `emails[type eq "work"].value`, SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "email", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 }
 
@@ -59,14 +59,14 @@ type RegisterConnectionInput struct {
 	TenantID      string
 	ApplicationID string
 	BaseURL       string
-	Credential    domain.ProvisioningCredentialInput
+	Credential    provisioningdomain.ProvisioningCredentialInput
 	Now           time.Time
 }
 
 // RegisterConnection creates a ProvisioningConnection with seeded defaults
 // (docs/modules/provisioning/ interfaces.RegisterProvisioningConnection).
-func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnectionInput) (*domain.ProvisioningConnection, error) {
-	if err := domain.ValidateOutboundBaseURL(in.BaseURL); err != nil {
+func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnectionInput) (*provisioningdomain.ProvisioningConnection, error) {
+	if err := provisioningdomain.ValidateOutboundBaseURL(in.BaseURL); err != nil {
 		return nil, &InvalidInputError{cause: err}
 	}
 	if err := validateCredential(in.Credential); err != nil {
@@ -77,21 +77,21 @@ func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnecti
 		return nil, err
 	}
 	now := in.Now.UTC()
-	conn := &domain.ProvisioningConnection{
+	conn := &provisioningdomain.ProvisioningConnection{
 		ApplicationID:                     in.ApplicationID,
 		TenantID:                          in.TenantID,
-		Status:                            domain.ConnectionActive,
+		Status:                            provisioningdomain.ConnectionActive,
 		BaseURL:                           in.BaseURL,
 		Credential:                        credentialMetadata(credentialID, in.Credential, now, nil),
-		FeatureFlags:                      domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
-		Scope:                             domain.ScopeAssignedOnly,
+		FeatureFlags:                      provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
+		Scope:                             provisioningdomain.ScopeAssignedOnly,
 		AttributeMappings:                 defaultSCIMUserMapping(),
-		Matching:                          domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy:                 domain.DeprovisionPolicy{OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate, OnGroupDeletedOrUnassigned: domain.DeprovisionNone},
+		Matching:                          provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy:                 provisioningdomain.DeprovisionPolicy{OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate, OnGroupDeletedOrUnassigned: provisioningdomain.DeprovisionNone},
 		RateLimitPerMinute:                60,
 		MaxAttempts:                       8,
 		QuarantineAfterConsecutiveFailure: 10,
-		Health:                            domain.HealthOK,
+		Health:                            provisioningdomain.HealthOK,
 		CreatedAt:                         now,
 		UpdatedAt:                         now,
 	}
@@ -101,7 +101,7 @@ func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnecti
 	if err := deps.ConnectionRepo.Register(ctx, conn, in.Credential.Secret()); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ProvisioningConnectionRegistered{At: now, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
+	emit(deps.Emit, &provisioningdomain.ProvisioningConnectionRegistered{At: now, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
 	return conn, nil
 }
 
@@ -111,14 +111,14 @@ type UpdateConnectionInput struct {
 	TenantID                          string
 	ApplicationID                     string
 	BaseURL                           *string
-	Status                            *domain.ProvisioningConnectionStatus
-	Credential                        *domain.ProvisioningCredentialInput
-	FeatureFlags                      *domain.ProvisioningFeatureFlags
-	Scope                             *domain.ProvisioningScope
-	GroupPush                         *domain.GroupPushConfig
-	AttributeMappings                 *[]domain.AttributeMappingRule
-	Matching                          *domain.MatchingRule
-	DeprovisionPolicy                 *domain.DeprovisionPolicy
+	Status                            *provisioningdomain.ProvisioningConnectionStatus
+	Credential                        *provisioningdomain.ProvisioningCredentialInput
+	FeatureFlags                      *provisioningdomain.ProvisioningFeatureFlags
+	Scope                             *provisioningdomain.ProvisioningScope
+	GroupPush                         *provisioningdomain.GroupPushConfig
+	AttributeMappings                 *[]provisioningdomain.AttributeMappingRule
+	Matching                          *provisioningdomain.MatchingRule
+	DeprovisionPolicy                 *provisioningdomain.DeprovisionPolicy
 	RateLimitPerMinute                *int
 	MaxAttempts                       *int
 	NotificationEmail                 *string
@@ -128,7 +128,7 @@ type UpdateConnectionInput struct {
 
 // UpdateConnection applies a partial update to an existing connection
 // (docs/modules/provisioning/ interfaces.UpdateProvisioningConnection).
-func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionInput) (*domain.ProvisioningConnection, error) {
+func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionInput) (*provisioningdomain.ProvisioningConnection, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, in.TenantID, in.ApplicationID)
 	if err != nil {
 		return nil, err
@@ -136,9 +136,9 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	if conn == nil {
 		return nil, ErrConnectionNotFound
 	}
-	wasDisabled := conn.Status == domain.ConnectionDisabled
+	wasDisabled := conn.Status == provisioningdomain.ConnectionDisabled
 	if in.BaseURL != nil {
-		if err := domain.ValidateOutboundBaseURL(*in.BaseURL); err != nil {
+		if err := provisioningdomain.ValidateOutboundBaseURL(*in.BaseURL); err != nil {
 			return nil, &InvalidInputError{cause: err}
 		}
 		conn.BaseURL = *in.BaseURL
@@ -196,15 +196,15 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 	if err := deps.ConnectionRepo.Update(ctx, conn, secret); err != nil {
 		return nil, err
 	}
-	isDisabled := conn.Status == domain.ConnectionDisabled
+	isDisabled := conn.Status == provisioningdomain.ConnectionDisabled
 	if in.changesSettings() || (wasDisabled && !isDisabled) {
-		emit(deps.Emit, &domain.ProvisioningConnectionUpdated{At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
+		emit(deps.Emit, &provisioningdomain.ProvisioningConnectionUpdated{At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
 	}
 	if !wasDisabled && isDisabled {
-		emit(deps.Emit, &domain.ProvisioningConnectionDisabled{At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
+		emit(deps.Emit, &provisioningdomain.ProvisioningConnectionDisabled{At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
 	}
 	if secret != nil {
-		emit(deps.Emit, &domain.ProvisioningCredentialRotated{
+		emit(deps.Emit, &provisioningdomain.ProvisioningCredentialRotated{
 			At: conn.UpdatedAt, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID, CredentialID: conn.Credential.CredentialID,
 		})
 	}
@@ -220,21 +220,21 @@ func (in UpdateConnectionInput) changesSettings() bool {
 		in.QuarantineAfterConsecutiveFailure != nil
 }
 
-func validateCredential(c domain.ProvisioningCredentialInput) error {
+func validateCredential(c provisioningdomain.ProvisioningCredentialInput) error {
 	if !c.AuthMethod.Valid() {
 		return errors.New("provisioning: invalid auth_method")
 	}
-	if c.AuthMethod == domain.AuthBearerToken && c.BearerToken == "" {
+	if c.AuthMethod == provisioningdomain.AuthBearerToken && c.BearerToken == "" {
 		return errors.New("provisioning: bearer_token is required for auth_method=bearer_token")
 	}
-	if c.AuthMethod == domain.AuthOAuth2ClientCredentials && (c.OAuth2TokenURL == "" || c.OAuth2ClientID == "" || c.OAuth2ClientSecret == "") {
+	if c.AuthMethod == provisioningdomain.AuthOAuth2ClientCredentials && (c.OAuth2TokenURL == "" || c.OAuth2ClientID == "" || c.OAuth2ClientSecret == "") {
 		return errors.New("provisioning: oauth2 credential fields are required for auth_method=oauth2_client_credentials")
 	}
 	return nil
 }
 
 // GetConnection returns the connection for applicationID, or nil if none exists.
-func GetConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string) (*domain.ProvisioningConnection, error) {
+func GetConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string) (*provisioningdomain.ProvisioningConnection, error) {
 	return deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 }
 
@@ -250,15 +250,15 @@ func DeleteConnection(ctx context.Context, deps AdminDeps, tenantID, application
 	if err := deps.ConnectionRepo.Delete(ctx, tenantID, applicationID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ProvisioningConnectionDeleted{At: now.UTC(), TenantID: tenantID, ApplicationID: applicationID})
+	emit(deps.Emit, &provisioningdomain.ProvisioningConnectionDeleted{At: now.UTC(), TenantID: tenantID, ApplicationID: applicationID})
 	return nil
 }
 
 // TestConnectionResult is TestConnection's output.
 type TestConnectionResult struct {
-	Reachable    bool                             `json:"reachable"`
-	Capabilities *domain.ProvisioningCapabilities `json:"capabilities,omitempty"`
-	Error        string                           `json:"error,omitempty"`
+	Reachable    bool                                         `json:"reachable"`
+	Capabilities *provisioningdomain.ProvisioningCapabilities `json:"capabilities,omitempty"`
+	Error        string                                       `json:"error,omitempty"`
 }
 
 // TestConnection calls the downstream /ServiceProviderConfig and persists the
@@ -299,7 +299,7 @@ var ErrSubjectNotInScope = errors.New("provisioning: subject is not in this conn
 
 // ProvisionOnDemand creates an immediate pending task for a single subject
 // (docs/modules/provisioning/ interfaces.ProvisionOnDemand).
-func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicationID string, sourceType domain.ProvisioningSourceType, sourceID string, now time.Time) (*domain.ProvisioningTask, error) {
+func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicationID string, sourceType provisioningdomain.ProvisioningSourceType, sourceID string, now time.Time) (*provisioningdomain.ProvisioningTask, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {
 		return nil, err
@@ -307,10 +307,10 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 	if conn == nil {
 		return nil, ErrConnectionNotFound
 	}
-	if conn.Health == domain.HealthQuarantined {
+	if conn.Health == provisioningdomain.HealthQuarantined {
 		return nil, ErrConnectionQuarantined
 	}
-	if sourceType == domain.SourceTypeUser {
+	if sourceType == provisioningdomain.SourceTypeUser {
 		ok, err := inScope(ctx, deps.captureDeps(), *conn, tenantID, sourceID)
 		if err != nil {
 			return nil, err
@@ -323,9 +323,9 @@ func ProvisionOnDemand(ctx context.Context, deps AdminDeps, tenantID, applicatio
 	if err != nil {
 		return nil, err
 	}
-	task := &domain.ProvisioningTask{
+	task := &provisioningdomain.ProvisioningTask{
 		ID: id, TenantID: tenantID, ConnectionID: applicationID, SourceType: sourceType, SourceID: sourceID,
-		SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.TaskPending,
+		SourceVersion: now.UnixNano(), Operation: provisioningdomain.OperationUpdate, Status: provisioningdomain.TaskPending,
 		CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 	}
 	if _, err := deps.TaskRepo.Save(ctx, task); err != nil {
@@ -347,11 +347,11 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 	if conn == nil {
 		return 0, ErrConnectionNotFound
 	}
-	if conn.Health == domain.HealthQuarantined {
+	if conn.Health == provisioningdomain.HealthQuarantined {
 		return 0, ErrConnectionQuarantined
 	}
 	var subjectIDs []string
-	if conn.Scope == domain.ScopeAllUsers {
+	if conn.Scope == provisioningdomain.ScopeAllUsers {
 		if deps.UserRepo == nil {
 			return 0, errors.New("provisioning: all_users resync requires UserRepo")
 		}
@@ -386,21 +386,21 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 	if err != nil {
 		return 0, err
 	}
-	resync := domain.NewFullResync(resyncID, tenantID, applicationID, len(subjectIDs)+len(groupIDs), now)
+	resync := provisioningdomain.NewFullResync(resyncID, tenantID, applicationID, len(subjectIDs)+len(groupIDs), now)
 	if err := deps.TaskRepo.SaveFullResync(ctx, resync); err != nil {
 		return 0, err
 	}
 
 	enqueued := 0
-	enqueue := func(sourceType domain.ProvisioningSourceType, ids []string) error {
+	enqueue := func(sourceType provisioningdomain.ProvisioningSourceType, ids []string) error {
 		for _, sourceID := range ids {
 			id, err := spec.NewUUIDv4()
 			if err != nil {
 				return err
 			}
-			task := &domain.ProvisioningTask{
+			task := &provisioningdomain.ProvisioningTask{
 				ID: id, TenantID: tenantID, ConnectionID: applicationID, SourceType: sourceType, SourceID: sourceID,
-				SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.TaskPending,
+				SourceVersion: now.UnixNano(), Operation: provisioningdomain.OperationUpdate, Status: provisioningdomain.TaskPending,
 				CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
 			}
 			created, err := deps.TaskRepo.SaveFullResyncTask(ctx, resync.ID, task)
@@ -413,10 +413,10 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 		}
 		return nil
 	}
-	if err := enqueue(domain.SourceTypeUser, subjectIDs); err != nil {
+	if err := enqueue(provisioningdomain.SourceTypeUser, subjectIDs); err != nil {
 		return enqueued, err
 	}
-	if err := enqueue(domain.SourceTypeGroup, groupIDs); err != nil {
+	if err := enqueue(provisioningdomain.SourceTypeGroup, groupIDs); err != nil {
 		return enqueued, err
 	}
 	conn.LastFullSyncAt = new(now.UTC())
@@ -433,14 +433,14 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 // ListTasks lists a connection's tasks, most recent first.
 // afterCreatedAt/afterID are the keyset continuation cursor (wi-159)
 // ; zero/"" for the first page.
-func ListTasks(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
+func ListTasks(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *provisioningdomain.ProvisioningTaskStatus, sourceType *provisioningdomain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*provisioningdomain.ProvisioningTask, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	return deps.TaskRepo.ListPageByConnection(ctx, tenantID, applicationID, status, sourceType, afterCreatedAt, afterID, limit)
 }
 
-func ListTasksBefore(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error) {
+func ListTasksBefore(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *provisioningdomain.ProvisioningTaskStatus, sourceType *provisioningdomain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*provisioningdomain.ProvisioningTask, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -448,7 +448,7 @@ func ListTasksBefore(ctx context.Context, deps AdminDeps, tenantID, applicationI
 }
 
 // GetTask returns one task, verifying it belongs to applicationID.
-func GetTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*domain.ProvisioningTask, error) {
+func GetTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*provisioningdomain.ProvisioningTask, error) {
 	d, err := deps.TaskRepo.Find(ctx, tenantID, taskID)
 	if err != nil {
 		return nil, err
@@ -463,12 +463,12 @@ var ErrTaskNotRetryable = errors.New("provisioning: task is not dead_letter")
 
 // RetryTask resets a dead_letter task to pending
 // (docs/modules/provisioning/ interfaces.RetryProvisioningTask).
-func RetryTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*domain.ProvisioningTask, error) {
+func RetryTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, taskID string) (*provisioningdomain.ProvisioningTask, error) {
 	d, err := GetTask(ctx, deps, tenantID, applicationID, taskID)
 	if err != nil {
 		return nil, err
 	}
-	if d.Status != domain.TaskDeadLetter {
+	if d.Status != provisioningdomain.TaskDeadLetter {
 		return nil, ErrTaskNotRetryable
 	}
 	retried, err := deps.TaskRepo.RetryDeadLetter(ctx, tenantID, taskID)
@@ -483,7 +483,7 @@ func RetryTask(ctx context.Context, deps AdminDeps, tenantID, applicationID, tas
 
 // ResumeConnection clears quarantine (docs/modules/provisioning/
 // interfaces.ResumeProvisioningConnection).
-func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (*domain.ProvisioningConnection, error) {
+func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, applicationID string, now time.Time) (*provisioningdomain.ProvisioningConnection, error) {
 	conn, err := deps.ConnectionRepo.Find(ctx, tenantID, applicationID)
 	if err != nil {
 		return nil, err
@@ -497,13 +497,13 @@ func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, application
 	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ProvisioningConnectionQuarantineCleared{At: now.UTC(), TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
+	emit(deps.Emit, &provisioningdomain.ProvisioningConnectionQuarantineCleared{At: now.UTC(), TenantID: conn.TenantID, ApplicationID: conn.ApplicationID})
 	return conn, nil
 }
 
 // ListTenantConnections lists every connection in the tenant
 // (docs/modules/provisioning/ interfaces.ListTenantProvisioningConnections).
-func ListTenantConnections(ctx context.Context, deps AdminDeps, tenantID string) ([]*domain.ProvisioningConnection, error) {
+func ListTenantConnections(ctx context.Context, deps AdminDeps, tenantID string) ([]*provisioningdomain.ProvisioningConnection, error) {
 	return deps.ConnectionRepo.ListAll(ctx, tenantID)
 }
 
@@ -513,15 +513,15 @@ func ListTenantConnections(ctx context.Context, deps AdminDeps, tenantID string)
 // トークン取得に必要なので保存しなければならない (wi-440 以前は検証だけして捨てていた)。
 func credentialMetadata(
 	credentialID string,
-	in domain.ProvisioningCredentialInput,
+	in provisioningdomain.ProvisioningCredentialInput,
 	createdAt time.Time,
 	rotatedAt *time.Time,
-) domain.ProvisioningConnectionCredentialMetadata {
-	metadata := domain.ProvisioningConnectionCredentialMetadata{
+) provisioningdomain.ProvisioningConnectionCredentialMetadata {
+	metadata := provisioningdomain.ProvisioningConnectionCredentialMetadata{
 		CredentialID: credentialID, AuthMethod: in.AuthMethod,
 		CreatedAt: createdAt, RotatedAt: rotatedAt,
 	}
-	if in.AuthMethod == domain.AuthOAuth2ClientCredentials {
+	if in.AuthMethod == provisioningdomain.AuthOAuth2ClientCredentials {
 		metadata.OAuth2TokenURL = in.OAuth2TokenURL
 		metadata.OAuth2ClientID = in.OAuth2ClientID
 		metadata.OAuth2Scope = in.OAuth2Scope
@@ -538,13 +538,13 @@ func credentialMetadata(
 func resyncGroupIDs(
 	ctx context.Context,
 	deps AdminDeps,
-	conn domain.ProvisioningConnection,
+	conn provisioningdomain.ProvisioningConnection,
 	tenantID string,
 ) ([]string, error) {
 	if !conn.FeatureFlags.PushGroups || conn.GroupPush == nil {
 		return nil, nil
 	}
-	if conn.GroupPush.Selection == domain.GroupSelectionExplicit {
+	if conn.GroupPush.Selection == provisioningdomain.GroupSelectionExplicit {
 		// 明示指定は一覧を引く必要が無い。GroupRepo が未配線でも再同期できる。
 		return slices.Clone(conn.GroupPush.ExplicitGroupIDs), nil
 	}

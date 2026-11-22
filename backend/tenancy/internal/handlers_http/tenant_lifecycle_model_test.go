@@ -24,7 +24,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/testing_statematrix"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 const tenantLifecycleSource = "testdata/TenantLifecycle.statemachine.json"
@@ -42,12 +42,12 @@ var tenantLifecycleRequests = map[string]func(realm string) (method, path string
 var tenantLifecycleTargets = map[string]string{
 	"":           "acme",
 	"default 以外": "acme",
-	"default":    domain.DefaultRealm,
+	"default":    tenancydomain.DefaultRealm,
 }
 
-var tenantLifecycleStatuses = map[string]domain.TenantStatus{
-	"Active":   domain.TenantStatusActive,
-	"Disabled": domain.TenantStatusDisabled,
+var tenantLifecycleStatuses = map[string]tenancydomain.TenantStatus{
+	"Active":   tenancydomain.TenantStatusActive,
+	"Disabled": tenancydomain.TenantStatusDisabled,
 }
 
 // 状態遷移表のすべての状態と操作の組、条件で分かれるセルはその条件ごとに、一度ずつ試す。
@@ -144,7 +144,7 @@ func (m *tenantLifecycleModel) seed(state string) {
 	tenant := m.tenant()
 	tenant.Status = tenantLifecycleStatus(m.t, state)
 	tenant.DisabledAt = nil
-	if tenant.Status == domain.TenantStatusDisabled {
+	if tenant.Status == tenancydomain.TenantStatusDisabled {
 		disabledAt := time.Now().UTC().Add(-time.Hour)
 		tenant.DisabledAt = &disabledAt
 	}
@@ -153,7 +153,7 @@ func (m *tenantLifecycleModel) seed(state string) {
 	}
 }
 
-func (m *tenantLifecycleModel) tenant() *domain.Tenant {
+func (m *tenantLifecycleModel) tenant() *tenancydomain.Tenant {
 	m.t.Helper()
 	tenant, err := m.server.tenants.FindByRealm(context.Background(), m.realm)
 	if err != nil || tenant == nil {
@@ -201,7 +201,7 @@ func (m *tenantLifecycleModel) apply(state, operation string, outcome testing_st
 	if after.Status != tenantLifecycleStatus(m.t, expectedState) {
 		m.t.Fatalf("%s: 状態が %s になった。表は %s を予測する", cell, after.Status, expectedState)
 	}
-	if (after.Status == domain.TenantStatusDisabled) != (after.DisabledAt != nil) {
+	if (after.Status == tenancydomain.TenantStatusDisabled) != (after.DisabledAt != nil) {
 		m.t.Fatalf("%s: 状態 %s と disabled_at %v が食い違う", cell, after.Status, after.DisabledAt)
 	}
 	if !slices.Equal(events, expectedEvents) {
@@ -221,7 +221,7 @@ func (m *tenantLifecycleModel) lifecycleEvents(emitted []spec.DomainEvent) []str
 	return names
 }
 
-func tenantLifecycleStatus(t *testing.T, state string) domain.TenantStatus {
+func tenantLifecycleStatus(t *testing.T, state string) tenancydomain.TenantStatus {
 	t.Helper()
 	status, ok := tenantLifecycleStatuses[state]
 	if !ok {

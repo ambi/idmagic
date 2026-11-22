@@ -16,8 +16,8 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -93,13 +93,13 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 			return nil
 		},
 	})
-	const kindDataExport domain.JobKind = "data_export"
+	const kindDataExport jobsdomain.JobKind = "data_export"
 	params, err := json.Marshal(map[string]any{"target": "user", "columns": []string{"preferred_username"}, "actor_user_id": "admin-actor"})
 	if err != nil {
 		t.Fatalf("marshal params: %v", err)
 	}
-	job, _, err := jobRepo.Enqueue(ctx, ports.EnqueueInput{
-		TenantID: tenant.ID, Kind: kindDataExport, Lane: domain.LaneBulk, Params: params,
+	job, _, err := jobRepo.Enqueue(ctx, jobsports.EnqueueInput{
+		TenantID: tenant.ID, Kind: kindDataExport, Lane: jobsdomain.LaneBulk, Params: params,
 		MaxAttempts: 1, Now: now, RunAt: now,
 	})
 	if err != nil {
@@ -107,11 +107,11 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	}
 	exportID = job.ID
 	runner := jobs.NewRunner(jobs.RunnerConfig{
-		WorkerID: "export-audit-worker", Lane: domain.LaneBulk, PollInterval: time.Millisecond,
+		WorkerID: "export-audit-worker", Lane: jobsdomain.LaneBulk, PollInterval: time.Millisecond,
 	}, jobs.RunnerDeps{Repo: jobRepo, Handlers: handlers})
 	_ = runner.Run(runCtx)
 	stored, err := jobRepo.Get(ctx, job.ID)
-	if err != nil || stored.Status != domain.StatusSucceeded {
+	if err != nil || stored.Status != jobsdomain.StatusSucceeded {
 		t.Fatalf("保存結果=(%+v, %v)", stored, err)
 	}
 

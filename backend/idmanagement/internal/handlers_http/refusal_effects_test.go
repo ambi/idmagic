@@ -54,7 +54,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -269,7 +269,7 @@ func newIdmRefusalServer(t *testing.T) *idmRefusalFixture {
 			PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 		},
 		OAuth2:            oauth2.Module{ConsentRepo: fixture.consents, ClientRepo: fixture.clients},
-		Notification:      sharednotification.Module{EmailSender: fixture.emails},
+		Notification:      notificationports.Module{EmailSender: fixture.emails},
 		Jobs:              jobs.Module{Repo: fixture.jobClock, Enqueuer: jobs.NewEnqueuer(fixture.jobClock, jobQuotas, func(spec.DomainEvent) {}), Canceler: jobs.NewCanceler(fixture.jobClock, jobQuotas, func(spec.DomainEvent) {})},
 		ApiTokens:         apitoken.Module{Repo: apiTokenRepo},
 		KeyStore:          keyStore,

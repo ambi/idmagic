@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 
-	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -94,7 +94,7 @@ func seedReceiveStream(t *testing.T, d receiveTestDeps, status ssdomain.SsfStrea
 func seedReceiveAgent(t *testing.T, d receiveTestDeps, agentID string) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := d.agentRepo.Save(context.Background(), &agentmodel.Agent{
+	if err := d.agentRepo.Save(context.Background(), &agentdomain.Agent{
 		ID: agentID, TenantID: receiveTestTenantID, Name: agentID,
 		Kind: idmdomain.AgentKindAutonomous, OwnerUserID: "owner_1", Status: idmdomain.AgentStatusActive,
 		CreatedAt: now, UpdatedAt: now,
@@ -247,7 +247,7 @@ func TestReceiveSecurityEvent_AcceptsAndReflectsLocalRevocation(t *testing.T) {
 	ctx := receiveTestCtx()
 	now := time.Now().UTC()
 	seedReceiveStream(t, d, ssdomain.SsfStreamStatusEnabled)
-	if err := d.agentRepo.Save(context.Background(), &agentmodel.Agent{
+	if err := d.agentRepo.Save(context.Background(), &agentdomain.Agent{
 		ID: "agent_1", TenantID: receiveTestTenantID, Name: "agent_1", Kind: idmdomain.AgentKindAutonomous,
 		OwnerUserID: "user_1", Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {

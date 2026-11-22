@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -18,7 +18,7 @@ import (
 var ErrUnassignedInOrder = errors.New("ordering contains an unassigned application")
 
 // GetMyApplicationOrder は利用者の保存済み手動並び順を返す。未保存なら空スライス。
-func GetMyApplicationOrder(ctx context.Context, repo ports.ApplicationOrderingRepository, userID string) ([]string, error) {
+func GetMyApplicationOrder(ctx context.Context, repo appports.ApplicationOrderingRepository, userID string) ([]string, error) {
 	if repo == nil {
 		return []string{}, nil
 	}
@@ -35,15 +35,15 @@ func GetMyApplicationOrder(ctx context.Context, repo ports.ApplicationOrderingRe
 // ApplyManualOrder は name 昇順の apps に手動順 order を重ねる。order に在るアプリを
 // その順で前に置き、order に無い割当アプリは元の (name 昇順) で末尾に付ける。
 // order に在って apps に無い (現在は未割当) id は無視する。
-func ApplyManualOrder(apps []*domain.Application, order []string) []*domain.Application {
+func ApplyManualOrder(apps []*appdomain.Application, order []string) []*appdomain.Application {
 	if len(order) == 0 {
 		return apps
 	}
-	byID := make(map[string]*domain.Application, len(apps))
+	byID := make(map[string]*appdomain.Application, len(apps))
 	for _, app := range apps {
 		byID[app.ID] = app
 	}
-	out := make([]*domain.Application, 0, len(apps))
+	out := make([]*appdomain.Application, 0, len(apps))
 	placed := make(map[string]struct{}, len(apps))
 	for _, id := range order {
 		app, ok := byID[id]
@@ -68,7 +68,7 @@ func ApplyManualOrder(apps []*domain.Application, order []string) []*domain.Appl
 // SaveMyApplicationOrder は利用者の手動並び順を検証して保存する。application_ids は
 // 利用者に割当済みの visible active アプリのみを含めること。重複は除去し、それ以外の
 // id を含む場合は ErrUnassignedInOrder を返す。
-func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID string, subjects []ports.SubjectRef, applicationIDs []string, now time.Time) ([]string, error) {
+func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID string, subjects []appports.SubjectRef, applicationIDs []string, now time.Time) ([]string, error) {
 	assigned, err := ListMyApplications(ctx, deps, subjects)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID str
 		cleaned = append(cleaned, id)
 	}
 	nowAt := adminNow(now)
-	ordering := &domain.ApplicationOrdering{
+	ordering := &appdomain.ApplicationOrdering{
 		UserID:         userID,
 		ApplicationIDs: cleaned,
 		CreatedAt:      nowAt,

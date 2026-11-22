@@ -7,7 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -43,10 +43,10 @@ func TestRepositoryRoundTripScopesAndTenantRevoke(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	token := &domain.ApiToken{
+	token := &apitokendomain.ApiToken{
 		ID: newUUID(t), TenantID: tenant.ID, UserID: userID, JTI: "jti-" + newUUID(t),
 		ClientID: "idmagic-api-token", Audience: "https://idp.test/realms/" + tenant.Realm,
-		Scopes:      domain.Scopes{domain.ScopeScimUsersRead, domain.ScopeScimUsersWrite},
+		Scopes:      apitokendomain.Scopes{apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite},
 		Description: "SCIM", CreatedAt: now, ExpiresAt: &expiresAt,
 	}
 	repository := &Repository{Pool: db}
@@ -54,7 +54,7 @@ func TestRepositoryRoundTripScopesAndTenantRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	found, err := repository.FindByJTI(ctx, tenant.ID, token.JTI)
-	if err != nil || found == nil || found.ID != token.ID || !found.Scopes.Has(domain.ScopeScimUsersWrite) {
+	if err != nil || found == nil || found.ID != token.ID || !found.Scopes.Has(apitokendomain.ScopeScimUsersWrite) {
 		t.Fatalf("found = %+v, err = %v", found, err)
 	}
 	listed, err := repository.List(ctx, tenant.ID)

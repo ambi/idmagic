@@ -10,7 +10,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -34,14 +34,14 @@ func TestAssembledPostgresStandaloneClientDeletion(t *testing.T) {
 	user := pgfixtures.SeedUser(t, deps.IdManagement.UserRepo, tenant.ID)
 	client := pgfixtures.SeedClient(t, deps.OAuth2.ClientRepo, tenant.ID)
 	quota := deps.Tenancy.QuotaRepo
-	if err := quota.CheckAndIncrement(ctx, tenant.ID, tenantdomain.ResourceOAuth2Clients, 1); err != nil {
+	if err := quota.CheckAndIncrement(ctx, tenant.ID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
 		t.Fatal(err)
 	}
 	consent := &oauthdomain.Consent{UserID: user.ID, ClientID: client.ClientID, Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour)}
 	if err := deps.OAuth2.ConsentRepo.Save(ctx, tenant.ID, consent); err != nil {
 		t.Fatal(err)
 	}
-	if err := quota.CheckAndIncrement(ctx, tenant.ID, tenantdomain.ResourceConsents, 1); err != nil {
+	if err := quota.CheckAndIncrement(ctx, tenant.ID, tenancydomain.ResourceConsents, 1); err != nil {
 		t.Fatal(err)
 	}
 	token := &oauthdomain.RefreshTokenRecord{TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), FamilyID: pgfixtures.NewUUID(t), Hash: pgfixtures.UniqueID("refresh"), ClientID: client.ClientID, UserID: user.ID, Scopes: []string{"openid"}, IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.Add(24 * time.Hour)}

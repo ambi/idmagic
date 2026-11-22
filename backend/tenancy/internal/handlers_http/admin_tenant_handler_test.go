@@ -28,7 +28,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -53,7 +53,7 @@ type observedQuotaRepository struct {
 	setQuotaCalls atomic.Int32
 }
 
-func (r *observedQuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *domain.TenantQuota) error {
+func (r *observedQuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *tenancydomain.TenantQuota) error {
 	r.setQuotaCalls.Add(1)
 	return r.QuotaRepository.SetQuota(ctx, tenantID, quota)
 }
@@ -85,14 +85,14 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 	now := time.Now().UTC()
 
 	tenantRepo := memory.NewTenantRepository()
-	for _, tenant := range []*domain.Tenant{
+	for _, tenant := range []*tenancydomain.Tenant{
 		{
-			ID: domain.DefaultTenantID, Realm: domain.DefaultRealm, DisplayName: "Default",
-			Status: domain.TenantStatusActive, CreatedAt: now,
+			ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
+			Status: tenancydomain.TenantStatusActive, CreatedAt: now,
 		},
 		{
 			ID: quotaTestTenantID, Realm: quotaTestTenant, DisplayName: "Acme",
-			Status: domain.TenantStatusActive, CreatedAt: now,
+			Status: tenancydomain.TenantStatusActive, CreatedAt: now,
 		},
 	} {
 		if err := tenantRepo.Save(testing_tenant.Default(context.Background()), tenant); err != nil {
@@ -102,14 +102,14 @@ func newQuotaControlPlaneServer(t *testing.T) *quotaTestServer {
 
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	actor := &userdomain.User{
-		ID: "ops", PreferredUsername: "ops", TenantID: domain.DefaultTenantID,
+		ID: "ops", PreferredUsername: "ops", TenantID: tenancydomain.DefaultTenantID,
 		Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	}
 	_ = userRepo.Save(context.Background(), actor)
 
 	quotas := &observedQuotaRepository{QuotaRepository: memory.NewQuotaRepository()}
 	seeded := quotaTestSeededUsers
-	if err := quotas.QuotaRepository.SetQuota(testing_tenant.Default(context.Background()), quotaTestTenantID, &domain.TenantQuota{Users: &seeded}); err != nil {
+	if err := quotas.QuotaRepository.SetQuota(testing_tenant.Default(context.Background()), quotaTestTenantID, &tenancydomain.TenantQuota{Users: &seeded}); err != nil {
 		t.Fatal(err)
 	}
 

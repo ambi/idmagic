@@ -10,7 +10,7 @@ import (
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
 var ErrLifecycleWorkflowTargetUserNotFound = errors.New("lifecycle workflow dry-run target user not found")
@@ -21,7 +21,7 @@ type DryRunLifecycleWorkflowDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	Notifier        sharednotification.Notifier
+	Notifier        notificationports.Notifier
 }
 
 type LifecycleWorkflowDryRunStepResult struct {

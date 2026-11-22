@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -20,17 +20,17 @@ func TestProvisioningTaskHandlerDeletedTaskDoesNotUseRecreatedConnection(t *test
 		t.Run(fmt.Sprint(attempts), func(t *testing.T) {
 			ctx := t.Context()
 			deps, connections, tasks := newJobHandlerDeps(&fakeTargetClient{}, &fakeAttributeSource{exists: true})
-			conn := activeConnection("app-1", domain.ScopeAllUsers)
+			conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 			conn.ConsecutiveFailureCount = 3
 			if err := connections.Register(ctx, conn, "new-secret"); err != nil {
 				t.Fatal(err)
 			}
-			newTask := &domain.ProvisioningTask{
-				ID: "new-task", TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser,
-				SourceID: "user-1", SourceVersion: 1, Operation: domain.OperationCreate,
-				Status: domain.TaskPending, CreatedAt: conn.CreatedAt, UpdatedAt: conn.UpdatedAt,
+			newTask := &provisioningdomain.ProvisioningTask{
+				ID: "new-task", TenantID: testTenantID, ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser,
+				SourceID: "user-1", SourceVersion: 1, Operation: provisioningdomain.OperationCreate,
+				Status: provisioningdomain.TaskPending, CreatedAt: conn.CreatedAt, UpdatedAt: conn.UpdatedAt,
 			}
-			resync := domain.NewFullResync("new-resync", testTenantID, "app-1", 1, conn.CreatedAt)
+			resync := provisioningdomain.NewFullResync("new-resync", testTenantID, "app-1", 1, conn.CreatedAt)
 			if err := tasks.SaveFullResync(ctx, resync); err != nil {
 				t.Fatal(err)
 			}
@@ -39,13 +39,13 @@ func TestProvisioningTaskHandlerDeletedTaskDoesNotUseRecreatedConnection(t *test
 			}
 			credentials := &credentialReadRecorder{ProvisioningConnectionRepository: connections}
 			deps.ExecuteTaskDeps.ConnectionRepo = credentials
-			deps.ExecuteTaskDeps.NewTargetClient = func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
+			deps.ExecuteTaskDeps.NewTargetClient = func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error) {
 				t.Error("deleted task built a downstream client")
 				return nil, errors.New("unexpected downstream client")
 			}
 			var events []spec.DomainEvent
 			deps.Emit = func(event spec.DomainEvent) { events = append(events, event) }
-			if _, err := usecases.ProvisioningTaskHandler(deps)(ctx, newTestJob(t, "deleted-task", attempts)); err != nil {
+			if _, err := provisioningusecases.ProvisioningTaskHandler(deps)(ctx, newTestJob(t, "deleted-task", attempts)); err != nil {
 				t.Fatalf("deleted job error=%v; want normal completion", err)
 			}
 			storedConn, err := connections.Find(ctx, testTenantID, "app-1")
@@ -68,7 +68,7 @@ func TestProvisioningTaskHandlerDeletedTaskDoesNotUseRecreatedConnection(t *test
 }
 
 type deletionErrorRepository struct {
-	ports.ProvisioningConnectionRepository
+	provisioningports.ProvisioningConnectionRepository
 	err error
 }
 
@@ -78,13 +78,13 @@ func (r deletionErrorRepository) Delete(context.Context, string, string) error {
 func TestDeleteConnectionFailureLeavesStateAndEventsUntouched(t *testing.T) {
 	ctx := t.Context()
 	deps, connections, tasks := newAdminDeps()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	if err := connections.Register(ctx, conn, "secret"); err != nil {
 		t.Fatal(err)
 	}
-	task := &domain.ProvisioningTask{
-		ID: "task-1", TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser,
-		SourceID: "user-1", SourceVersion: 1, Operation: domain.OperationCreate, Status: domain.TaskPending,
+	task := &provisioningdomain.ProvisioningTask{
+		ID: "task-1", TenantID: testTenantID, ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser,
+		SourceID: "user-1", SourceVersion: 1, Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending,
 		CreatedAt: conn.CreatedAt, UpdatedAt: conn.UpdatedAt,
 	}
 	if _, err := tasks.Save(ctx, task); err != nil {
@@ -92,12 +92,12 @@ func TestDeleteConnectionFailureLeavesStateAndEventsUntouched(t *testing.T) {
 	}
 	var events []spec.DomainEvent
 	deps.Emit = func(event spec.DomainEvent) { events = append(events, event) }
-	if err := usecases.DeleteConnection(ctx, deps, "other-tenant", "app-1", time.Now()); !errors.Is(err, usecases.ErrConnectionNotFound) {
+	if err := provisioningusecases.DeleteConnection(ctx, deps, "other-tenant", "app-1", time.Now()); !errors.Is(err, provisioningusecases.ErrConnectionNotFound) {
 		t.Fatalf("other tenant delete=%v", err)
 	}
 	injected := errors.New("delete failed")
 	deps.ConnectionRepo = deletionErrorRepository{ProvisioningConnectionRepository: connections, err: injected}
-	if err := usecases.DeleteConnection(ctx, deps, testTenantID, "app-1", time.Now()); !errors.Is(err, injected) {
+	if err := provisioningusecases.DeleteConnection(ctx, deps, testTenantID, "app-1", time.Now()); !errors.Is(err, injected) {
 		t.Fatalf("delete error=%v", err)
 	}
 	stored, err := connections.Find(ctx, testTenantID, "app-1")
@@ -111,11 +111,11 @@ func TestDeleteConnectionFailureLeavesStateAndEventsUntouched(t *testing.T) {
 }
 
 type taskReadFailure struct {
-	ports.ProvisioningTaskRepository
+	provisioningports.ProvisioningTaskRepository
 	err error
 }
 
-func (r taskReadFailure) Find(context.Context, string, string) (*domain.ProvisioningTask, error) {
+func (r taskReadFailure) Find(context.Context, string, string) (*provisioningdomain.ProvisioningTask, error) {
 	return nil, r.err
 }
 
@@ -124,17 +124,17 @@ func TestProvisioningTaskHandlerTaskReadFailureIsRetryable(t *testing.T) {
 	deps, _, tasks := newJobHandlerDeps(&fakeTargetClient{}, &fakeAttributeSource{exists: true})
 	injected := errors.New("read failed")
 	deps.TaskRepo = taskReadFailure{ProvisioningTaskRepository: tasks, err: injected}
-	if _, err := usecases.ProvisioningTaskHandler(deps)(t.Context(), newTestJob(t, "task-1", 1)); !errors.Is(err, injected) {
+	if _, err := provisioningusecases.ProvisioningTaskHandler(deps)(t.Context(), newTestJob(t, "task-1", 1)); !errors.Is(err, injected) {
 		t.Fatalf("job error=%v; want read failure", err)
 	}
 }
 
 type deleteAfterTaskRead struct {
-	ports.ProvisioningTaskRepository
+	provisioningports.ProvisioningTaskRepository
 	remove func() error
 }
 
-func (r deleteAfterTaskRead) Find(ctx context.Context, tenantID, taskID string) (*domain.ProvisioningTask, error) {
+func (r deleteAfterTaskRead) Find(ctx context.Context, tenantID, taskID string) (*provisioningdomain.ProvisioningTask, error) {
 	task, err := r.ProvisioningTaskRepository.Find(ctx, tenantID, taskID)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (r deleteAfterTaskRead) Find(ctx context.Context, tenantID, taskID string) 
 func TestProvisioningTaskHandlerDeletionBetweenTaskLookups(t *testing.T) {
 	ctx := t.Context()
 	deps, connections, tasks := newJobHandlerDeps(&fakeTargetClient{}, &fakeAttributeSource{exists: true})
-	task := setupConnectionAndTask(t, connections, tasks, domain.OperationCreate)
+	task := setupConnectionAndTask(t, connections, tasks, provisioningdomain.OperationCreate)
 	deps.TaskRepo = deleteAfterTaskRead{ProvisioningTaskRepository: tasks, remove: func() error {
 		return connections.Delete(ctx, testTenantID, task.ConnectionID)
 	}}
@@ -157,7 +157,7 @@ func TestProvisioningTaskHandlerDeletionBetweenTaskLookups(t *testing.T) {
 	deps.ExecuteTaskDeps.ConnectionRepo = credentials
 	var events []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
-	if _, err := usecases.ProvisioningTaskHandler(deps)(ctx, newTestJob(t, task.ID, testJobMaxAttempts)); err != nil {
+	if _, err := provisioningusecases.ProvisioningTaskHandler(deps)(ctx, newTestJob(t, task.ID, testJobMaxAttempts)); err != nil {
 		t.Fatalf("job error=%v", err)
 	}
 	if credentials.reads != 0 || len(events) != 0 {

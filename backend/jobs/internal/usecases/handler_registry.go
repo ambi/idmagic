@@ -7,8 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 )
 
 // ErrHandlerNotRegistered is returned by HandlerRegistry.Lookup (and
@@ -17,28 +17,28 @@ import (
 // binary that predates a JobKind added to docs/modules/jobs/.
 var ErrHandlerNotRegistered = errors.New("jobs: no handler registered for job kind")
 
-var _ ports.HandlerRegistrar = (*HandlerRegistry)(nil)
+var _ jobsports.HandlerRegistrar = (*HandlerRegistry)(nil)
 
 // HandlerRegistry maps a JobKind to the Handler that executes it. A JobKind
 // must first be added to docs/modules/jobs/ (SCL-first) before a
 // consumer WI registers its Handler here.
 type HandlerRegistry struct {
 	mu       sync.RWMutex
-	handlers map[domain.JobKind]handlerRegistration
+	handlers map[jobsdomain.JobKind]handlerRegistration
 }
 
 type handlerRegistration struct {
-	handler ports.Handler
-	after   []ports.SettlementHandler
+	handler jobsports.Handler
+	after   []jobsports.SettlementHandler
 }
 
 func NewHandlerRegistry() *HandlerRegistry {
-	return &HandlerRegistry{handlers: map[domain.JobKind]handlerRegistration{}}
+	return &HandlerRegistry{handlers: map[jobsdomain.JobKind]handlerRegistration{}}
 }
 
 // Register は起動時に、種類ごとのハンドラーと確定後の通知をまとめて登録する。
 // 再登録は以前の通知も置き換える。不明な種類と nil の通知は構築時の誤りとして拒否する。
-func (r *HandlerRegistry) Register(kind domain.JobKind, h ports.Handler, after ...ports.SettlementHandler) {
+func (r *HandlerRegistry) Register(kind jobsdomain.JobKind, h jobsports.Handler, after ...jobsports.SettlementHandler) {
 	if !kind.Valid() {
 		panic(fmt.Sprintf("jobs: cannot register handler for unknown JobKind %q", kind))
 	}
@@ -54,7 +54,7 @@ func (r *HandlerRegistry) Register(kind domain.JobKind, h ports.Handler, after .
 
 // Lookup returns the Handler registered for kind, or
 // (nil, ErrHandlerNotRegistered).
-func (r *HandlerRegistry) Lookup(kind domain.JobKind) (ports.Handler, error) {
+func (r *HandlerRegistry) Lookup(kind jobsdomain.JobKind) (jobsports.Handler, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	h, ok := r.handlers[kind]
@@ -64,7 +64,7 @@ func (r *HandlerRegistry) Lookup(kind domain.JobKind) (ports.Handler, error) {
 	return h.handler, nil
 }
 
-func (r *HandlerRegistry) notifySettlement(ctx context.Context, job *domain.Job) {
+func (r *HandlerRegistry) notifySettlement(ctx context.Context, job *jobsdomain.Job) {
 	r.mu.RLock()
 	after := r.handlers[job.Kind].after
 	r.mu.RUnlock()

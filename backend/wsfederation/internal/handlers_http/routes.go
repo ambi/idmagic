@@ -13,7 +13,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -26,13 +26,13 @@ type Deps struct {
 	Sessions
 	SecondFactors SecondFactorSteps
 
-	WsFedRPRepo       wsfederationports.WsFedRelyingPartyRepository
-	EntraObservations wsfederationports.EntraFederationObservationRepository
+	WsFedRPRepo       wsfedports.WsFedRelyingPartyRepository
+	EntraObservations wsfedports.EntraFederationObservationRepository
 	// EntraRealms は、ドメインの解除の前に Entra の送り先を確かめる。nil なら探索を無効として扱う。
-	EntraRealms          wsfederationports.EntraRealmDiscovery
+	EntraRealms          wsfedports.EntraRealmDiscovery
 	UserRepo             userports.UserRepository
 	FederationSigner     samltoken.SignerProvider
-	MessageIDReplayStore wsfederationports.MessageIDReplayStore
+	MessageIDReplayStore wsfedports.MessageIDReplayStore
 	// Passwords は UsernameToken を、対話のログインと同じ試行の制限と監査で認証する。
 	// Authentication が所有し、組み立て地点が結ぶ。
 	Passwords      signinports.PasswordAuthenticator

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 func memberOp(scimIDs ...string) []any {
@@ -56,7 +56,7 @@ func TestCreateGroupRejectsDuplicateDisplayName(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := u.CreateGroup(ctx, scimTenant, map[string]any{"displayName": "Engineers"})
-	if !errors.Is(err, usecases.ErrDuplicate) {
+	if !errors.Is(err, scimusecases.ErrDuplicate) {
 		t.Fatalf("err=%v, want ErrDuplicate", err)
 	}
 }
@@ -75,7 +75,7 @@ func TestCreateGroupRejectsUnresolvableMember(t *testing.T) {
 func TestGetGroupNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
-	if _, err := u.GetGroup(ctx, scimTenant, "no-such-id"); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.GetGroup(ctx, scimTenant, "no-such-id"); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
 }
@@ -116,10 +116,10 @@ func TestUpdateGroupRenameAndReplaceMembers(t *testing.T) {
 func TestUpdateGroupNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
-	if _, err := u.UpdateGroup(ctx, scimTenant, "no-such-id", map[string]any{"displayName": "X"}); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.UpdateGroup(ctx, scimTenant, "no-such-id", map[string]any{"displayName": "X"}); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
-	if _, err := u.GetGroup(ctx, scimTenant, "no-such-id"); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.GetGroup(ctx, scimTenant, "no-such-id"); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("re-read err=%v, want the missing group to remain absent", err)
 	}
 }
@@ -135,7 +135,7 @@ func TestUpdateGroupRejectsRenameToExistingDisplayName(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = u.UpdateGroup(ctx, scimTenant, group["id"].(string), map[string]any{"displayName": "Taken"})
-	if !errors.Is(err, usecases.ErrDuplicate) {
+	if !errors.Is(err, scimusecases.ErrDuplicate) {
 		t.Fatalf("err=%v, want ErrDuplicate", err)
 	}
 }
@@ -212,7 +212,7 @@ func TestPatchGroupDisplayNameAndMembers(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err := u.PatchGroup(ctx, scimTenant, scimID, patchBody(patchOp("replace", "displayName", "Collides")))
-		if !errors.Is(err, usecases.ErrDuplicate) {
+		if !errors.Is(err, scimusecases.ErrDuplicate) {
 			t.Fatalf("err=%v, want ErrDuplicate", err)
 		}
 	})
@@ -222,7 +222,7 @@ func TestPatchGroupNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
 	_, err := u.PatchGroup(ctx, scimTenant, "no-such-id", patchBody(patchOp("replace", "displayName", "X")))
-	if !errors.Is(err, usecases.ErrNotFound) {
+	if !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
 }
@@ -238,7 +238,7 @@ func TestDeleteGroup(t *testing.T) {
 	if err := u.DeleteGroup(ctx, scimTenant, group["id"].(string)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := u.GetGroup(ctx, scimTenant, group["id"].(string)); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.GetGroup(ctx, scimTenant, group["id"].(string)); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound after delete", err)
 	}
 	ref, err := u.ScimRepo.FindGroupRefByScimID(ctx, scimTenant, group["id"].(string))
@@ -264,7 +264,7 @@ func TestListGroupsFiltersByDisplayName(t *testing.T) {
 	if _, err := u.CreateGroup(ctx, scimTenant, map[string]any{"displayName": "Other"}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := u.ListGroups(ctx, scimTenant, usecases.ListQuery{Filter: `displayName eq "FindMe"`})
+	result, err := u.ListGroups(ctx, scimTenant, scimusecases.ListQuery{Filter: `displayName eq "FindMe"`})
 	if err != nil {
 		t.Fatal(err)
 	}

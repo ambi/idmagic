@@ -10,7 +10,7 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -28,7 +28,7 @@ type failFirstDelegationSave struct {
 	failed bool
 }
 
-func (r *failFirstDelegationSave) SaveAgentDelegation(ctx context.Context, tenantID string, c *domain.Consent) error {
+func (r *failFirstDelegationSave) SaveAgentDelegation(ctx context.Context, tenantID string, c *oauthdomain.Consent) error {
 	if !r.failed {
 		r.failed = true
 		return errConsentSave

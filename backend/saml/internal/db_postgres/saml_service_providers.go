@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/saml/domain"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 )
@@ -14,8 +14,8 @@ import (
 // URI 識別子と claim policy は tenant scope の行と JSONB に閉じる。
 type SamlServiceProviderRepository struct{ Pool sharedpg.DB }
 
-func samlServiceProviderFromRow(row *SamlServiceProvider) (*domain.SamlServiceProvider, error) {
-	var sp domain.SamlServiceProvider
+func samlServiceProviderFromRow(row *SamlServiceProvider) (*samldomain.SamlServiceProvider, error) {
+	var sp samldomain.SamlServiceProvider
 	sp.TenantID, sp.EntityID, sp.IDPProfileID = row.TenantID, row.EntityID, row.IdpProfileID
 	sp.DisplayName, sp.SLOURL, sp.Audience = row.DisplayName, row.SloUrl, row.Audience
 	sp.ApplicationID = sharedpg.UUIDString(row.ApplicationID)
@@ -30,7 +30,7 @@ func samlServiceProviderFromRow(row *SamlServiceProvider) (*domain.SamlServicePr
 	return &sp, nil
 }
 
-func (r *SamlServiceProviderRepository) FindByEntityID(ctx context.Context, tenantID, entityID string) (*domain.SamlServiceProvider, error) {
+func (r *SamlServiceProviderRepository) FindByEntityID(ctx context.Context, tenantID, entityID string) (*samldomain.SamlServiceProvider, error) {
 	row, err := New(r.Pool).GetSamlServiceProvider(ctx, GetSamlServiceProviderParams{TenantID: tenantID, EntityID: entityID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -41,12 +41,12 @@ func (r *SamlServiceProviderRepository) FindByEntityID(ctx context.Context, tena
 	return samlServiceProviderFromRow(row)
 }
 
-func (r *SamlServiceProviderRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.SamlServiceProvider, error) {
+func (r *SamlServiceProviderRepository) ListAll(ctx context.Context, tenantID string) ([]*samldomain.SamlServiceProvider, error) {
 	rows, err := New(r.Pool).ListSamlServiceProvidersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.SamlServiceProvider, 0, len(rows))
+	out := make([]*samldomain.SamlServiceProvider, 0, len(rows))
 	for _, row := range rows {
 		sp, err := samlServiceProviderFromRow(row)
 		if err != nil {
@@ -57,7 +57,7 @@ func (r *SamlServiceProviderRepository) ListAll(ctx context.Context, tenantID st
 	return out, nil
 }
 
-func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *domain.SamlServiceProvider) error {
+func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *samldomain.SamlServiceProvider) error {
 	if sp == nil {
 		return errors.New("saml service provider is required")
 	}
@@ -80,7 +80,7 @@ func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *domain.Sam
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
 	sp.IDPProfileID = sp.EffectiveIDPProfileID()
-	if sp.IDPProfileID == domain.DefaultIDPProfileID {
+	if sp.IDPProfileID == samldomain.DefaultIDPProfileID {
 		if _, err := q.EnsureDefaultSamlIDPProfile(ctx, sp.TenantID); err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *domain.Sam
 		TenantID: sp.TenantID, ProfileID: sp.IDPProfileID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.ErrInvalidIDPProfile
+		return samldomain.ErrInvalidIDPProfile
 	}
 	if err != nil {
 		return err

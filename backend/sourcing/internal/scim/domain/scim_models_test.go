@@ -3,12 +3,12 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // NewScimError は RFC 7644 のエラースキーマを付与した ScimErrorResponse を組み立てる。
 func TestNewScimError(t *testing.T) {
-	got := domain.NewScimError("404", "not found", "invalidValue")
+	got := scimdomain.NewScimError("404", "not found", "invalidValue")
 
 	if len(got.Schemas) != 1 ||
 		got.Schemas[0] != "urn:ietf:params:scim:api:messages:2.0:Error" {
@@ -27,7 +27,7 @@ func TestNewScimError(t *testing.T) {
 
 // detail / scimType が空でも schema と status は必ず設定される。
 func TestNewScimErrorEmptyOptionalFields(t *testing.T) {
-	got := domain.NewScimError("500", "", "")
+	got := scimdomain.NewScimError("500", "", "")
 	if got.Status != "500" {
 		t.Errorf("Status = %q, want 500", got.Status)
 	}

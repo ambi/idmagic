@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -77,7 +77,7 @@ func TestRetentionSweepAppliesThePeriodOfEachEventType(t *testing.T) {
 		{"bypass", (&authdomain.MfaEnrollmentBypassExpired{}).EventType(), 90},
 		{"sess", (&authdomain.SessionEnded{}).EventType(), 90},
 		{"ok", (&authdomain.UserAuthenticated{}).EventType(), 365},
-		{"consent", (&consentdomain.ConsentRevokedEvent{}).EventType(), 365},
+		{"consent", (&oauthdomain.ConsentRevokedEvent{}).EventType(), 365},
 		// なりすましは短い期間へ入れず、デフォルトの期間で消す。無期限には残さない。
 		{"imp-start", (&authdomain.SessionImpersonationStarted{}).EventType(), 365},
 		{"imp-end", (&authdomain.SessionImpersonationEnded{}).EventType(), 365},
@@ -133,7 +133,7 @@ func TestRetentionKeepsSecurityAndAuthorizationRecordsWithinTheDefinedPeriod(t *
 	m := audit.NewMemoryModule(0)
 
 	securityType := (&authdomain.AuthenticationFailed{}).EventType()
-	authorizationType := (&consentdomain.ConsentRevokedEvent{}).EventType()
+	authorizationType := (&oauthdomain.ConsentRevokedEvent{}).EventType()
 	seedAudit(t, m, "security-inside", securityType, daysAgo(now, 29), nil)
 	seedAudit(t, m, "security-outside", securityType, daysAgo(now, 31), nil)
 	seedAudit(t, m, "authorization-inside", authorizationType, daysAgo(now, 364), nil)

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/internal/testing_contract"
 )
 
@@ -18,7 +18,7 @@ func TestMcpCatalogCAS(t *testing.T) {
 func TestManagedMcpConfigurationEditsRequireSave(t *testing.T) {
 	repo := NewMcpResourceServerRepository()
 	ctx := context.Background()
-	server := &domain.McpResourceServer{TenantID: "tenant", ID: "managed", Resource: "https://idmagic.example/mcp", Hosting: &domain.HostedMcpConfiguration{UpstreamURL: "https://upstream.example/mcp", Authentication: "token_exchange", AllowedOrigins: []string{"https://agent.example"}}}
+	server := &oauthdomain.McpResourceServer{TenantID: "tenant", ID: "managed", Resource: "https://idmagic.example/mcp", Hosting: &oauthdomain.HostedMcpConfiguration{UpstreamURL: "https://upstream.example/mcp", Authentication: "token_exchange", AllowedOrigins: []string{"https://agent.example"}}}
 	if err := repo.Save(ctx, server); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestManagedMcpConfigurationEditsRequireSave(t *testing.T) {
 func TestToolCatalogEditsRequireSave(t *testing.T) {
 	ctx := context.Background()
 	repo := NewMcpResourceServerRepository()
-	server := &domain.McpResourceServer{TenantID: "tenant-1", ID: "catalog", Resource: "https://catalog.example/", AccessRules: []domain.ResourceAccessRule{{Scopes: []string{"read"}, Tool: &domain.ResourceAccessTool{ID: "operation-" + "read_document", Name: "read_document", DisplayName: "閲覧"}}}}
+	server := &oauthdomain.McpResourceServer{TenantID: "tenant-1", ID: "catalog", Resource: "https://catalog.example/", AccessRules: []oauthdomain.ResourceAccessRule{{Scopes: []string{"read"}, Tool: &oauthdomain.ResourceAccessTool{ID: "operation-" + "read_document", Name: "read_document", DisplayName: "閲覧"}}}}
 	if err := repo.Save(ctx, server); err != nil {
 		t.Fatal(err)
 	}
@@ -68,13 +68,13 @@ func TestMcpResourceServerRepository(t *testing.T) {
 	now := time.Now().UTC()
 
 	t.Run("Save and FindByID", func(t *testing.T) {
-		m := &domain.McpResourceServer{
+		m := &oauthdomain.McpResourceServer{
 			TenantID:  "tenant-1",
 			ID:        "rs-1",
 			Resource:  "https://mcp.example.com/tools/github",
 			Name:      "GitHub MCP Tools",
 			Scopes:    []string{"mcp.read"},
-			State:     domain.McpResourceServerActive,
+			State:     oauthdomain.McpResourceServerActive,
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
@@ -103,10 +103,10 @@ func TestMcpResourceServerRepository(t *testing.T) {
 	})
 
 	t.Run("FindByResource is tenant scoped", func(t *testing.T) {
-		m := &domain.McpResourceServer{
+		m := &oauthdomain.McpResourceServer{
 			TenantID: "tenant-1", ID: "rs-2",
 			Resource: "https://mcp.example.com/tools/slack", Name: "Slack MCP",
-			Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
+			Scopes: []string{"mcp.read"}, State: oauthdomain.McpResourceServerActive,
 			CreatedAt: now, UpdatedAt: now,
 		}
 		if err := repo.Save(ctx, m); err != nil {

@@ -22,8 +22,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
-	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
@@ -45,11 +45,11 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 		Email: &email, EmailVerified: true, CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
-	err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
+	err := passwordusecases.RequestPasswordReset(testing_tenant.Default(context.Background()), passwordusecases.RequestPasswordResetDeps{
 		UserRepo: userRepo, TokenStore: tokenStore, Notifier: newTestNotifier(emailSender),
 		Emit:   func(event spec.DomainEvent) { events = append(events, event) },
 		Issuer: "http://idp.test",
-	}, usecases.RequestPasswordResetInput{Email: " ALICE@Example.COM ", Now: now})
+	}, passwordusecases.RequestPasswordResetInput{Email: " ALICE@Example.COM ", Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,11 +80,11 @@ func TestRequestPasswordResetSendsOnlyForVerifiedEmail(t *testing.T) {
 func TestRequestPasswordResetDoesNotRevealUnknownEmail(t *testing.T) {
 	var events []spec.DomainEvent
 	sender := &email_memory.NoopEmailSender{}
-	err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
+	err := passwordusecases.RequestPasswordReset(testing_tenant.Default(context.Background()), passwordusecases.RequestPasswordResetDeps{
 		UserRepo: idmanagement.NewMemoryModule().UserRepo, TokenStore: newResetTokenStore(idmanagement.NewMemoryModule().UserRepo),
 		Notifier: newTestNotifier(sender), Emit: func(event spec.DomainEvent) { events = append(events, event) },
 		Issuer: "http://idp.test",
-	}, usecases.RequestPasswordResetInput{Email: "unknown@example.com"})
+	}, passwordusecases.RequestPasswordResetInput{Email: "unknown@example.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,8 +142,8 @@ func newResetFixture(t *testing.T) *resetFixture {
 	}
 }
 
-func (f *resetFixture) deps(emit func(spec.DomainEvent)) usecases.ResetPasswordWithTokenDeps {
-	return usecases.ResetPasswordWithTokenDeps{
+func (f *resetFixture) deps(emit func(spec.DomainEvent)) passwordusecases.ResetPasswordWithTokenDeps {
+	return passwordusecases.ResetPasswordWithTokenDeps{
 		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:       f.users, TokenStore: f.tokenStore, PasswordHasher: f.hasher,
 		PasswordHistoryRepo: f.history, Emit: emit,
@@ -170,9 +170,9 @@ func (f *resetFixture) currentPasswordHolds(t *testing.T, password string) {
 func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 	f := newResetFixture(t)
 	var events []spec.DomainEvent
-	updated, err := usecases.ResetPasswordWithToken(f.ctx,
+	updated, err := passwordusecases.ResetPasswordWithToken(f.ctx,
 		f.deps(func(event spec.DomainEvent) { events = append(events, event) }),
-		usecases.ResetPasswordWithTokenInput{
+		passwordusecases.ResetPasswordWithTokenInput{
 			Token: f.rawToken, NewPassword: "fresh-password-9182", Now: f.now,
 		})
 	if err != nil {
@@ -187,10 +187,10 @@ func TestResetPasswordWithTokenConsumesTokenAndUpdatesPassword(t *testing.T) {
 		t.Fatalf("unexpected events: %#v", events)
 	}
 
-	if _, err := usecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
-		usecases.ResetPasswordWithTokenInput{
+	if _, err := passwordusecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
+		passwordusecases.ResetPasswordWithTokenInput{
 			Token: f.rawToken, NewPassword: "another-password-9182", Now: f.now,
-		}); !errors.Is(err, usecases.ErrInvalidResetToken) {
+		}); !errors.Is(err, passwordusecases.ErrInvalidResetToken) {
 		t.Fatalf("reused token error=%v, want ErrInvalidResetToken", err)
 	}
 	// 拒否は作用も止める。二度目のパスワードは設定されていない。
@@ -208,11 +208,11 @@ func TestResetPasswordWithTokenRejectsExpiredOrUnknownToken(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			f := newResetFixture(t)
 			token, at := presented(f)
-			_, err := usecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
-				usecases.ResetPasswordWithTokenInput{
+			_, err := passwordusecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
+				passwordusecases.ResetPasswordWithTokenInput{
 					Token: token, NewPassword: "fresh-password-9182", Now: at,
 				})
-			if !errors.Is(err, usecases.ErrInvalidResetToken) {
+			if !errors.Is(err, passwordusecases.ErrInvalidResetToken) {
 				t.Fatalf("error=%v, want ErrInvalidResetToken", err)
 			}
 			f.currentPasswordHolds(t, "current-password-1")
@@ -239,10 +239,10 @@ func TestResetPasswordWithTokenRejectsATokenOfAnotherPurpose(t *testing.T) {
 	deps := f.deps(nil)
 	deps.TokenStore = store
 
-	_, err = usecases.ResetPasswordWithToken(f.ctx, deps, usecases.ResetPasswordWithTokenInput{
+	_, err = passwordusecases.ResetPasswordWithToken(f.ctx, deps, passwordusecases.ResetPasswordWithTokenInput{
 		Token: foreign.RawToken, NewPassword: "fresh-password-9182", Now: f.now,
 	})
-	if !errors.Is(err, usecases.ErrInvalidResetToken) {
+	if !errors.Is(err, passwordusecases.ErrInvalidResetToken) {
 		t.Fatalf("error=%v, want ErrInvalidResetToken", err)
 	}
 	// 外部には無効なトークンと同じ一つのエラーが出るが、拒否の理由は連鎖に残る。
@@ -274,7 +274,7 @@ func (s *purposeBlindStore) Find(
 }
 
 func (s *purposeBlindStore) ConsumeAndApply(
-	ctx context.Context, commit authnports.PasswordResetCommit,
+	ctx context.Context, commit passwordports.PasswordResetCommit,
 ) error {
 	if commit.Digest == s.extra.Digest {
 		s.consumed = true
@@ -289,9 +289,9 @@ func (s *purposeBlindStore) ConsumeAndApply(
 //spec:covers EX-AUTHENTICATION-016-06: 新しいパスワードがパスワード規則に反する。
 func TestResetPasswordWithTokenKeepsTheTokenWhenThePolicyRefuses(t *testing.T) {
 	f := newResetFixture(t)
-	_, err := usecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
-		usecases.ResetPasswordWithTokenInput{Token: f.rawToken, NewPassword: "short", Now: f.now})
-	if _, ok := errors.AsType[*usecases.PasswordPolicyError](err); !ok {
+	_, err := passwordusecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
+		passwordusecases.ResetPasswordWithTokenInput{Token: f.rawToken, NewPassword: "short", Now: f.now})
+	if _, ok := errors.AsType[*passwordusecases.PasswordPolicyError](err); !ok {
 		t.Fatalf("error=%v, want PasswordPolicyError", err)
 	}
 	f.currentPasswordHolds(t, "current-password-1")
@@ -300,8 +300,8 @@ func TestResetPasswordWithTokenKeepsTheTokenWhenThePolicyRefuses(t *testing.T) {
 	if err != nil || stored == nil {
 		t.Fatalf("the refused attempt consumed the token: %#v %v", stored, err)
 	}
-	if _, err := usecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
-		usecases.ResetPasswordWithTokenInput{
+	if _, err := passwordusecases.ResetPasswordWithToken(f.ctx, f.deps(nil),
+		passwordusecases.ResetPasswordWithTokenInput{
 			Token: f.rawToken, NewPassword: "fresh-password-9182", Now: f.now,
 		}); err != nil {
 		t.Fatalf("the retained token no longer works: %v", err)
@@ -349,10 +349,10 @@ func TestRequestPasswordResetLocalizesToTheRecipientLocale(t *testing.T) {
 	})
 	sender := &email_memory.NoopEmailSender{}
 
-	err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
+	err := passwordusecases.RequestPasswordReset(testing_tenant.Default(context.Background()), passwordusecases.RequestPasswordResetDeps{
 		UserRepo: userRepo, TokenStore: newResetTokenStore(userRepo),
 		Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
-	}, usecases.RequestPasswordResetInput{Email: email, Now: now})
+	}, passwordusecases.RequestPasswordResetInput{Email: email, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,10 +388,10 @@ func TestRequestPasswordResetFallsBackToSystemDefaultLocale(t *testing.T) {
 	})
 	sender := &email_memory.NoopEmailSender{}
 
-	if err := usecases.RequestPasswordReset(testing_tenant.Default(context.Background()), usecases.RequestPasswordResetDeps{
+	if err := passwordusecases.RequestPasswordReset(testing_tenant.Default(context.Background()), passwordusecases.RequestPasswordResetDeps{
 		UserRepo: userRepo, TokenStore: newResetTokenStore(userRepo),
 		Notifier: newTestNotifier(sender), Issuer: "http://idp.test",
-	}, usecases.RequestPasswordResetInput{Email: email, Now: now}); err != nil {
+	}, passwordusecases.RequestPasswordResetInput{Email: email, Now: now}); err != nil {
 		t.Fatal(err)
 	}
 	if len(sender.Sent) != 1 {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
@@ -49,7 +49,7 @@ func TestUpdateTrustedDeviceMaxAgeAcceptsRangeAndRejectsOverflow(t *testing.T) {
 		t.Fatalf("EffectiveTrustedDeviceMaxAge() = %v, want 7 days", updated.EffectiveTrustedDeviceMaxAge())
 	}
 
-	over := domain.TrustedDeviceMaxAgeCeilingSeconds + 1
+	over := tenancydomain.TrustedDeviceMaxAgeCeilingSeconds + 1
 	if _, err := Update(
 		ctx, repo, id, UpdateInput{TrustedDeviceMaxAgeSeconds: &over}, floor, now,
 	); !errors.Is(err, ErrPolicyOverrideWeaker) {
@@ -72,8 +72,8 @@ func TestUpdateTrustedDeviceMaxAgeAcceptsRangeAndRejectsOverflow(t *testing.T) {
 
 // 壊れた値が保存されていても、読み出し側は 0 (無効) として読み MFA を弱めない (wi-91)。
 func TestEffectiveTrustedDeviceMaxAgeFailsClosedOnBrokenValues(t *testing.T) {
-	for _, seconds := range []int{-1, domain.TrustedDeviceMaxAgeCeilingSeconds + 1} {
-		tenant := domain.Tenant{TrustedDeviceMaxAgeSeconds: &seconds}
+	for _, seconds := range []int{-1, tenancydomain.TrustedDeviceMaxAgeCeilingSeconds + 1} {
+		tenant := tenancydomain.Tenant{TrustedDeviceMaxAgeSeconds: &seconds}
 		if got := tenant.EffectiveTrustedDeviceMaxAge(); got != 0 {
 			t.Fatalf("EffectiveTrustedDeviceMaxAge(%d) = %v, want 0", seconds, got)
 		}

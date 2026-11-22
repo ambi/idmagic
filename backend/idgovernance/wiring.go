@@ -8,8 +8,8 @@ import (
 	"github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/idgovernance/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/ports"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
+	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -31,7 +31,7 @@ func NewMemoryModule(users userports.UserRepository) Module {
 	return Module{
 		AccessReviewPlans: reviews, AccessReviews: reviews,
 		LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs, UserWorkflowCapture: capture,
-		UserMutationCommitter: usecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},
+		UserMutationCommitter: igusecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},
 	}
 }
 
@@ -43,7 +43,7 @@ func NewPostgresModule(pool postgres.DB, users userports.UserRepository, usersIn
 	return Module{
 		AccessReviewPlans: reviews, AccessReviews: reviews,
 		LifecycleWorkflowRepo: workflows, LifecycleWorkflowRunRepo: runs, UserWorkflowCapture: capture,
-		UserMutationCommitter: usecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},
+		UserMutationCommitter: igusecases.UserMutationCommitter{WorkflowRepo: workflows, Capture: capture, UserRepo: users, RunRepo: runs},
 	}
 }
 
@@ -75,18 +75,18 @@ type ExecutorDeps struct {
 	GroupRepo              groupports.GroupRepository
 	ApplicationRepo        appports.ApplicationRepository
 	AssignmentRepo         appports.AssignmentRepository
-	ApplicationAssignments ports.ApplicationAssignments
-	UserLifecycle          ports.UserLifecycle
-	GroupMembership        ports.GroupMembership
-	UserRequiredActions    ports.UserRequiredActions
+	ApplicationAssignments igports.ApplicationAssignments
+	UserLifecycle          igports.UserLifecycle
+	GroupMembership        igports.GroupMembership
+	UserRequiredActions    igports.UserRequiredActions
 	Notifier               notificationports.Notifier
 	Emit                   func(spec.DomainEvent) error
 }
 
-const LifecycleWorkflowRunJobKind = usecases.LifecycleWorkflowRunJobKind
+const LifecycleWorkflowRunJobKind = igusecases.LifecycleWorkflowRunJobKind
 
 func (m Module) Executor(d ExecutorDeps) jobsports.Handler {
-	return usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+	return igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: m.LifecycleWorkflowRunRepo, WorkflowRepo: m.LifecycleWorkflowRepo,
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, ApplicationRepo: d.ApplicationRepo, AssignmentRepo: d.AssignmentRepo,
 		ApplicationAssignments: d.ApplicationAssignments, UserLifecycle: d.UserLifecycle,
@@ -95,5 +95,5 @@ func (m Module) Executor(d ExecutorDeps) jobsports.Handler {
 }
 
 func (m Module) DispatchQueuedRuns(ctx context.Context, jobs jobsports.Enqueuer, limit int, now time.Time) error {
-	return usecases.DispatchQueuedLifecycleWorkflowRuns(ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: m.LifecycleWorkflowRunRepo, Jobs: jobs}, limit, now)
+	return igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: m.LifecycleWorkflowRunRepo, Jobs: jobs}, limit, now)
 }

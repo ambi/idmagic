@@ -9,7 +9,7 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/internal/client/db_memory"
 )
 
@@ -35,8 +35,8 @@ func TestCatalogOperationsPreserveUnchangedClientState(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			repo := db_memory.NewClientRepository()
-			client := &domain.OAuth2Client{TenantID: "tenant", ClientID: "client", Scope: "openid", ClaimPolicy: tc.policy}
-			other := &domain.OAuth2Client{TenantID: "other", ClientID: "client", ApplicationID: "other-app"}
+			client := &oauthdomain.OAuth2Client{TenantID: "tenant", ClientID: "client", Scope: "openid", ClaimPolicy: tc.policy}
+			other := &oauthdomain.OAuth2Client{TenantID: "other", ClientID: "client", ApplicationID: "other-app"}
 			if err := repo.Save(ctx, client); err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestCatalogOperationsPreserveUnchangedClientState(t *testing.T) {
 //spec:covers REQ-OAUTH2-080: Catalog の公開操作からも組み込みクライアントは削除できない。
 func TestCatalogDeletionProtectsFirstPartyClient(t *testing.T) {
 	repo := db_memory.NewClientRepository()
-	client := &domain.OAuth2Client{TenantID: "tenant", ClientID: "client", FirstParty: true, ApplicationID: "app"}
+	client := &oauthdomain.OAuth2Client{TenantID: "tenant", ClientID: "client", FirstParty: true, ApplicationID: "app"}
 	if err := repo.Save(t.Context(), client); err != nil {
 		t.Fatal(err)
 	}
@@ -90,14 +90,14 @@ type catalogFailureRepository struct {
 	findErr, saveErr, deleteErr error
 }
 
-func (r catalogFailureRepository) FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error) {
+func (r catalogFailureRepository) FindByID(ctx context.Context, tenantID, clientID string) (*oauthdomain.OAuth2Client, error) {
 	if r.findErr != nil {
 		return nil, r.findErr
 	}
 	return r.OAuth2ClientRepository.FindByID(ctx, tenantID, clientID)
 }
 
-func (r catalogFailureRepository) Save(ctx context.Context, client *domain.OAuth2Client) error {
+func (r catalogFailureRepository) Save(ctx context.Context, client *oauthdomain.OAuth2Client) error {
 	if r.saveErr != nil {
 		return r.saveErr
 	}
@@ -122,7 +122,7 @@ func TestCatalogOperationsPreserveMissingAndStoreFailures(t *testing.T) {
 		t.Fatalf("missing claims: %v", err)
 	}
 	failure := errors.New("store failed")
-	if err := repo.Save(ctx, &domain.OAuth2Client{TenantID: "tenant", ClientID: "client"}); err != nil {
+	if err := repo.Save(ctx, &oauthdomain.OAuth2Client{TenantID: "tenant", ClientID: "client"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, failing := range []catalogFailureRepository{

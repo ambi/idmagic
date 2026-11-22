@@ -3,7 +3,7 @@
 package workloadidentity
 
 import (
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 // Module holds the dependencies WorkloadIdentity's admin API and the
@@ -11,7 +11,7 @@ import (
 // VerifyWorkloadAttestation) need. Bootstrap assembles these per persistence
 // backend (memory / postgres) and passes the Module through.
 type Module struct {
-	TrustBundleRepo ports.WorkloadTrustBundleRepository
-	BindingRepo     ports.AgentWorkloadBindingRepository
+	TrustBundleRepo workloadports.WorkloadTrustBundleRepository
+	BindingRepo     workloadports.AgentWorkloadBindingRepository
 	jwksFallback    *jwksFallbackMetrics
 }

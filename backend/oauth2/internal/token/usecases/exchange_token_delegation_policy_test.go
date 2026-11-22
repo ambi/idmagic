@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -39,13 +39,13 @@ func actChainOfDepth(n int) map[string]any {
 
 func exchangeWithPolicy(
 	t *testing.T,
-	policy ports.DelegationPolicyResolver,
+	policy oauthports.DelegationPolicyResolver,
 	existingAct map[string]any,
 	events *[]spec.DomainEvent,
 ) (*recordingIssuer, error) {
 	t.Helper()
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", Act: existingAct},
 	})
 	deps.DelegationPolicy = policy
@@ -130,7 +130,7 @@ func TestExchangeTokenHonoursTenantDelegationDepth(t *testing.T) {
 // hasTokenExchangeRejected は、拒否された交換が監査へ理由を残したかを返す。
 func hasTokenExchangeRejected(events []spec.DomainEvent) bool {
 	for _, event := range events {
-		if _, ok := event.(*domain.TokenExchangeRejected); ok {
+		if _, ok := event.(*oauthdomain.TokenExchangeRejected); ok {
 			return true
 		}
 	}
@@ -145,9 +145,9 @@ func TestExchangeTokenAuditRecordsDepthLimitAndMode(t *testing.T) {
 	if _, err := exchangeWithPolicy(t, stubDelegationPolicy{depth: 2}, nil, &events); err != nil {
 		t.Fatalf("ExchangeToken: %v", err)
 	}
-	var exchanged *domain.TokenExchanged
+	var exchanged *oauthdomain.TokenExchanged
 	for _, event := range events {
-		if typed, ok := event.(*domain.TokenExchanged); ok {
+		if typed, ok := event.(*oauthdomain.TokenExchanged); ok {
 			exchanged = typed
 		}
 	}
@@ -161,7 +161,7 @@ func TestExchangeTokenAuditRecordsDepthLimitAndMode(t *testing.T) {
 		t.Fatalf("MaxDelegationDepth = %d, want 2 (the limit actually applied)", exchanged.MaxDelegationDepth)
 	}
 	// sub は user-1、act は client なので利用者の代理である。
-	if exchanged.DelegationMode != domain.DelegationModeOnBehalfOf {
-		t.Fatalf("DelegationMode = %q, want %q", exchanged.DelegationMode, domain.DelegationModeOnBehalfOf)
+	if exchanged.DelegationMode != oauthdomain.DelegationModeOnBehalfOf {
+		t.Fatalf("DelegationMode = %q, want %q", exchanged.DelegationMode, oauthdomain.DelegationModeOnBehalfOf)
 	}
 }

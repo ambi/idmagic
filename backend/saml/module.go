@@ -6,7 +6,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlhttp "github.com/ambi/idmagic/backend/saml/internal/handlers_http"
 	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
-	"github.com/ambi/idmagic/backend/saml/ports"
+	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 
@@ -14,9 +14,9 @@ import (
 )
 
 type Module struct {
-	SPRepo      ports.SamlServiceProviderRepository
-	ProfileRepo ports.SamlIdentityProviderProfileRepository
-	ReplayStore ports.AuthnRequestReplayStore
+	SPRepo      samlports.SamlServiceProviderRepository
+	ProfileRepo samlports.SamlIdentityProviderProfileRepository
+	ReplayStore samlports.AuthnRequestReplayStore
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
@@ -25,7 +25,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 ) {
 	profileRepo := m.ProfileRepo
 	if profileRepo == nil {
-		profileRepo, _ = m.SPRepo.(ports.SamlIdentityProviderProfileRepository)
+		profileRepo, _ = m.SPRepo.(samlports.SamlIdentityProviderProfileRepository)
 	}
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate, Sessions: sessions,
@@ -36,7 +36,7 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 
 // ServiceProviderAdministration は、Application のカタログが使う SP の管理操作を返す。
 // SP の保存先がなければ nil を返す。
-func (m Module) ServiceProviderAdministration() ports.ServiceProviderAdministration {
+func (m Module) ServiceProviderAdministration() samlports.ServiceProviderAdministration {
 	if m.SPRepo == nil {
 		return nil
 	}

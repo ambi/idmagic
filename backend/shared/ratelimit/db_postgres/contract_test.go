@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/shared/ratelimit/ports"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/ratelimit/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -15,7 +15,7 @@ func TestPersistenceContract(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	newFixture := func(*testing.T) testing_contract.Fixture {
-		return testing_contract.Fixture{Limiter: &RateLimiter{Pool: db, Configs: ports.RateLimitConfigs{"contract": {MaxRequests: 2, WindowSeconds: 60}, "other-policy": {MaxRequests: 2, WindowSeconds: 60}}}, Context: tenantports.WithTenant(context.Background(), tenant, "", ""), Now: pgtest.Now()}
+		return testing_contract.Fixture{Limiter: &RateLimiter{Pool: db, Configs: rlports.RateLimitConfigs{"contract": {MaxRequests: 2, WindowSeconds: 60}, "other-policy": {MaxRequests: 2, WindowSeconds: 60}}}, Context: tenantports.WithTenant(context.Background(), tenant, "", ""), Now: pgtest.Now()}
 	}
 	testing_contract.Run(t, newFixture)
 	testing_contract.RunAllowWithin(t, newFixture)

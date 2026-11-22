@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -20,7 +20,7 @@ func TestWriteUserInfoErrorMapsInvalidTokenToBearerChallenge(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	if err := writeUserInfoError(c, usecases.NewOAuthError("invalid_token", "The token is invalid.")); err != nil {
+	if err := writeUserInfoError(c, oauthusecases.NewOAuthError("invalid_token", "The token is invalid.")); err != nil {
 		t.Fatal(err)
 	}
 	if rec.Code != http.StatusUnauthorized {

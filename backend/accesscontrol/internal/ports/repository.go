@@ -4,7 +4,7 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 )
 
 // RelationTupleFilter は一覧の絞り込み。空のフィールドは絞り込まない。
@@ -19,9 +19,9 @@ type RelationTupleFilter struct {
 // TupleWrite は 1 トランザクションで適用する差分。DeleteObjects に挙げた
 // オブジェクトは、リソース側・主体側の双方のタプルを取り除く。
 type TupleWrite struct {
-	Writes        []domain.RelationTuple
-	Deletes       []domain.RelationTuple
-	DeleteObjects []domain.ObjectRef
+	Writes        []accessdomain.RelationTuple
+	Deletes       []accessdomain.RelationTuple
+	DeleteObjects []accessdomain.ObjectRef
 }
 
 // TupleWriteResult は適用件数と、適用後のテナントの書き込みバージョン。
@@ -34,10 +34,10 @@ type TupleWriteResult struct {
 // RelationTupleRepository はテナント境界を持つ関係タプルのストア。
 // 実装は memory と PostgreSQL の 2 つで、同じ契約テストを共有する。
 type RelationTupleRepository interface {
-	domain.TupleReader
+	accessdomain.TupleReader
 
 	// List は絞り込んだタプルを limit 件まで返す。
-	List(ctx context.Context, tenantID string, filter RelationTupleFilter, limit int) ([]domain.RelationTuple, error)
+	List(ctx context.Context, tenantID string, filter RelationTupleFilter, limit int) ([]accessdomain.RelationTuple, error)
 	// ListResourceIDs は、そのテナント・そのリソース型に現れる識別子を limit 件まで返す。
 	// ListAccessibleResources の走査対象になる。
 	ListResourceIDs(ctx context.Context, tenantID, resourceType string, limit int) ([]string, error)
@@ -55,11 +55,11 @@ type AuthorizationModelRepository interface {
 	// を返し、何も保存しない。比較と採番は一つのトランザクションの中で行う。
 	// 呼び出し側は ID / TenantID / ResourceTypes / CreatedAt を埋め、Version は
 	// この実装が決める。
-	Publish(ctx context.Context, model *domain.AuthorizationModel, expectedVersion int) (*domain.AuthorizationModel, int64, error)
+	Publish(ctx context.Context, model *accessdomain.AuthorizationModel, expectedVersion int) (*accessdomain.AuthorizationModel, int64, error)
 	// Latest は最新バージョンを返す。1 バージョンも無ければ nil を返す。
-	Latest(ctx context.Context, tenantID string) (*domain.AuthorizationModel, error)
+	Latest(ctx context.Context, tenantID string) (*accessdomain.AuthorizationModel, error)
 	// FindByVersion は指定したバージョンを返す。無ければ nil を返す。
-	FindByVersion(ctx context.Context, tenantID string, version int) (*domain.AuthorizationModel, error)
+	FindByVersion(ctx context.Context, tenantID string, version int) (*accessdomain.AuthorizationModel, error)
 }
 
 // PrincipalStatusResolver は代行チェーン上のプリンシパルが有効かどうかを解決する。

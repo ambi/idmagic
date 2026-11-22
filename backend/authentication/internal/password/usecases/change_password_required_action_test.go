@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/internal/password/db_memory"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -48,13 +48,13 @@ func TestChangePasswordAutoClearsUpdatePasswordAction(t *testing.T) {
 	}
 	*events = (*events)[:0]
 
-	updated, err := authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
+	updated, err := passwordusecases.ChangePassword(ctx, passwordusecases.ChangePasswordDeps{
 		TrustedDevices:      trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:            idm.UserRepo,
 		PasswordHasher:      hasher,
 		PasswordHistoryRepo: history,
 		Emit:                emit,
-	}, authusecases.ChangePasswordInput{
+	}, passwordusecases.ChangePasswordInput{
 		Sub:             user.ID,
 		CurrentPassword: "initial-password-9182",
 		NewPassword:     "fresh-pass-77182",

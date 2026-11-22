@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 )
 
 func TestMfaEnrollmentBypassConsumeIsSingleUse(t *testing.T) {
 	repo := NewMfaEnrollmentBypassRepository()
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
-	bypass := &domain.MfaEnrollmentBypass{ID: "id", TenantID: "tenant", UserID: "user", IssuedBy: "admin", IssuedAt: now, ExpiresAt: now.Add(time.Minute)}
+	bypass := &mfadomain.MfaEnrollmentBypass{ID: "id", TenantID: "tenant", UserID: "user", IssuedBy: "admin", IssuedAt: now, ExpiresAt: now.Add(time.Minute)}
 	if err := repo.Save(context.Background(), bypass); err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestMfaEnrollmentBypassConsumeIsSingleUse(t *testing.T) {
 func TestMfaEnrollmentBypassExpiresOnce(t *testing.T) {
 	repo := NewMfaEnrollmentBypassRepository()
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
-	bypass := &domain.MfaEnrollmentBypass{ID: "expired", TenantID: "tenant", UserID: "user", IssuedBy: "admin", IssuedAt: now, ExpiresAt: now.Add(time.Minute)}
+	bypass := &mfadomain.MfaEnrollmentBypass{ID: "expired", TenantID: "tenant", UserID: "user", IssuedBy: "admin", IssuedAt: now, ExpiresAt: now.Add(time.Minute)}
 	if err := repo.Save(context.Background(), bypass); err != nil {
 		t.Fatal(err)
 	}

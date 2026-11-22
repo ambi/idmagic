@@ -14,14 +14,14 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ldap_goldap"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/testing_openldap"
 )
 
 func config(url string, startTLS bool, tlsConfig *tls.Config) ldap_goldap.Config {
 	return ldap_goldap.Config{
-		URL: url, StartTLS: startTLS, TLS: tlsConfig, Dialect: domain.OpenLDAP,
+		URL: url, StartTLS: startTLS, TLS: tlsConfig, Dialect: directoryconnectordomain.OpenLDAP,
 		BindDN: testing_openldap.AdminDN, BindPassword: testing_openldap.AdminPassword, PageSize: 2, Timeout: 10 * time.Second,
 	}
 }
@@ -66,7 +66,7 @@ func TestDelegatedPasswordUsesTheImmutableIdentityAndTrustedTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope := domain.Scope{BaseDNs: []string{testing_openldap.PeopleDN}, Filter: "(objectClass=inetOrgPerson)"}
+	scope := directoryconnectordomain.Scope{BaseDNs: []string{testing_openldap.PeopleDN}, Filter: "(objectClass=inetOrgPerson)"}
 	if got := directory.VerifyPassword(t.Context(), scope, id, "directory-password-921"); got != "accepted" {
 		t.Fatal(got)
 	}
@@ -102,13 +102,13 @@ func TestDirectoryBindsOverTLSAndPagesTheSearch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if root, err := session.RootInfo(context.Background()); err != nil || root != (domain.RootInfo{}) {
+		if root, err := session.RootInfo(context.Background()); err != nil || root != (directoryconnectordomain.RootInfo{}) {
 			t.Fatalf("%s: root=%+v err=%v, want empty for openldap", name, root, err)
 		}
 		var pages []int
 		var uids []string
 		err = session.Search(context.Background(), testing_openldap.PeopleDN, "(objectClass=inetOrgPerson)", []string{"entryUUID", "uid"},
-			func(entries []domain.Entry) error {
+			func(entries []directoryconnectordomain.Entry) error {
 				pages = append(pages, len(entries))
 				for _, entry := range entries {
 					if len(entry.Attributes) != 2 {

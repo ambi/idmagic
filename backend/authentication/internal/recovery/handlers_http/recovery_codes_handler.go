@@ -8,7 +8,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/recovery/usecases"
+	recoveryusecases "github.com/ambi/idmagic/backend/authentication/internal/recovery/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -19,8 +19,8 @@ type recoveryCodesGenerateResponse struct {
 	GeneratedAt time.Time `json:"generated_at"`
 }
 
-func recoveryCodesDeps(d httpdeps.Deps) authusecases.RecoveryCodesDeps {
-	return authusecases.RecoveryCodesDeps{
+func recoveryCodesDeps(d httpdeps.Deps) recoveryusecases.RecoveryCodesDeps {
+	return recoveryusecases.RecoveryCodesDeps{
 		UserRepo: d.UserRepo, RecoveryCodeRepo: d.RecoveryCodeRepo, Emit: d.Emit,
 	}
 }
@@ -36,7 +36,7 @@ func HandleGenerateRecoveryCodes(d httpdeps.Deps, c *echo.Context) error {
 	if d.RecoveryCodeRepo == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "recovery_unavailable", "Recovery codes are unavailable.")
 	}
-	result, err := authusecases.GenerateRecoveryCodes(c.Request().Context(), recoveryCodesDeps(d), sub, time.Now().UTC())
+	result, err := recoveryusecases.GenerateRecoveryCodes(c.Request().Context(), recoveryCodesDeps(d), sub, time.Now().UTC())
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -56,7 +56,7 @@ func HandleRevokeRecoveryCodes(d httpdeps.Deps, c *echo.Context) error {
 	if d.RecoveryCodeRepo == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "recovery_unavailable", "Recovery codes are unavailable.")
 	}
-	if err := authusecases.RevokeRecoveryCodes(c.Request().Context(), recoveryCodesDeps(d), sub, time.Now().UTC()); err != nil {
+	if err := recoveryusecases.RevokeRecoveryCodes(c.Request().Context(), recoveryCodesDeps(d), sub, time.Now().UTC()); err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")

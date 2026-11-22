@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accesscontrolusecases "github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -22,18 +22,18 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	TupleRepo  ports.RelationTupleRepository
-	ModelRepo  ports.AuthorizationModelRepository
-	Principals ports.PrincipalStatusResolver
+	TupleRepo  accessinternalports.RelationTupleRepository
+	ModelRepo  accessinternalports.AuthorizationModelRepository
+	Principals accessinternalports.PrincipalStatusResolver
 	// Authorizer は認可の問い合わせの境界で、合成規則はこの先の評価器にある。
-	Authorizer policyports.Authorizer
+	Authorizer accessports.Authorizer
 	// MaxDepth と MaxEnumeratedResources はゼロなら usecases / domain の既定を使う。
 	MaxDepth               int
 	MaxEnumeratedResources int
 }
 
-func (d Deps) usecaseDeps() usecases.Deps {
-	return usecases.Deps{
+func (d Deps) usecaseDeps() accesscontrolusecases.Deps {
+	return accesscontrolusecases.Deps{
 		Tuples: d.TupleRepo, Models: d.ModelRepo, Principals: d.Principals,
 		Authorizer: d.Authorizer, Emit: d.Emit,
 		MaxDepth: d.MaxDepth, MaxEnumeratedResources: d.MaxEnumeratedResources,
@@ -97,28 +97,28 @@ type actorWire struct {
 	ID   string `json:"id"`
 }
 
-func toResourceTypes(wire []resourceTypeWire) []domain.ResourceTypeDefinition {
-	out := make([]domain.ResourceTypeDefinition, 0, len(wire))
+func toResourceTypes(wire []resourceTypeWire) []accessdomain.ResourceTypeDefinition {
+	out := make([]accessdomain.ResourceTypeDefinition, 0, len(wire))
 	for _, t := range wire {
-		relations := make([]domain.RelationDefinition, 0, len(t.Relations))
+		relations := make([]accessdomain.RelationDefinition, 0, len(t.Relations))
 		for _, r := range t.Relations {
-			rewrites := make([]domain.RelationRewrite, 0, len(r.Rewrites))
+			rewrites := make([]accessdomain.RelationRewrite, 0, len(r.Rewrites))
 			for _, rw := range r.Rewrites {
-				rewrites = append(rewrites, domain.RelationRewrite{
-					Kind:               domain.RelationRewriteKind(rw.Kind),
+				rewrites = append(rewrites, accessdomain.RelationRewrite{
+					Kind:               accessdomain.RelationRewriteKind(rw.Kind),
 					ComputedRelation:   rw.ComputedRelation,
 					TuplesetRelation:   rw.TuplesetRelation,
 					DirectSubjectTypes: rw.DirectSubjectTypes,
 				})
 			}
-			relations = append(relations, domain.RelationDefinition{Name: r.Name, Rewrites: rewrites})
+			relations = append(relations, accessdomain.RelationDefinition{Name: r.Name, Rewrites: rewrites})
 		}
-		out = append(out, domain.ResourceTypeDefinition{Name: t.Name, Relations: relations})
+		out = append(out, accessdomain.ResourceTypeDefinition{Name: t.Name, Relations: relations})
 	}
 	return out
 }
 
-func toModelWire(model *domain.AuthorizationModel) authorizationModelWire {
+func toModelWire(model *accessdomain.AuthorizationModel) authorizationModelWire {
 	types := make([]resourceTypeWire, 0, len(model.ResourceTypes))
 	for _, t := range model.ResourceTypes {
 		relations := make([]relationDefinitionWire, 0, len(t.Relations))
@@ -143,27 +143,27 @@ func toModelWire(model *domain.AuthorizationModel) authorizationModelWire {
 	}
 }
 
-func toTuple(wire relationTupleWire) domain.RelationTuple {
-	return domain.RelationTuple{
-		Resource: domain.ObjectRef{Type: wire.ResourceType, ID: wire.ResourceID},
+func toTuple(wire relationTupleWire) accessdomain.RelationTuple {
+	return accessdomain.RelationTuple{
+		Resource: accessdomain.ObjectRef{Type: wire.ResourceType, ID: wire.ResourceID},
 		Relation: wire.Relation,
-		Subject: domain.SubjectRef{
+		Subject: accessdomain.SubjectRef{
 			Type: wire.SubjectType, ID: wire.SubjectID, Relation: wire.SubjectRelation,
 		},
 	}
 }
 
-func toTupleWire(t domain.RelationTuple) relationTupleWire {
+func toTupleWire(t accessdomain.RelationTuple) relationTupleWire {
 	return relationTupleWire{
 		ResourceType: t.Resource.Type, ResourceID: t.Resource.ID, Relation: t.Relation,
 		SubjectType: t.Subject.Type, SubjectID: t.Subject.ID, SubjectRelation: t.Subject.Relation,
 	}
 }
 
-func toActors(wire []actorWire) []usecases.Actor {
-	out := make([]usecases.Actor, 0, len(wire))
+func toActors(wire []actorWire) []accesscontrolusecases.Actor {
+	out := make([]accesscontrolusecases.Actor, 0, len(wire))
 	for _, a := range wire {
-		out = append(out, usecases.Actor{Type: a.Type, ID: a.ID})
+		out = append(out, accesscontrolusecases.Actor{Type: a.Type, ID: a.ID})
 	}
 	return out
 }
@@ -178,7 +178,7 @@ func (d Deps) handleGetAuthorizationModel(c *echo.Context) error {
 	if err != nil {
 		version = 0
 	}
-	published, err := usecases.GetAuthorizationModel(c.Request().Context(), d.usecaseDeps(), support.RequestTenantID(c), version)
+	published, err := accesscontrolusecases.GetAuthorizationModel(c.Request().Context(), d.usecaseDeps(), support.RequestTenantID(c), version)
 	if err != nil {
 		return writeAuthorizationError(c, err)
 	}
@@ -209,7 +209,7 @@ func (d Deps) handlePutAuthorizationModel(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"expected_version must be the latest version the model was based on, or 0 when none exists.")
 	}
-	published, err := usecases.PutAuthorizationModel(c.Request().Context(), d.usecaseDeps(),
+	published, err := accesscontrolusecases.PutAuthorizationModel(c.Request().Context(), d.usecaseDeps(),
 		support.RequestTenantID(c), int(*req.ExpectedVersion), toResourceTypes(req.ResourceTypes), time.Now().UTC())
 	if err != nil {
 		return writeAuthorizationError(c, err)
@@ -231,8 +231,8 @@ func (d Deps) handleListRelationTuples(c *echo.Context) error {
 	if err != nil {
 		limit = 0
 	}
-	listed, err := usecases.ListRelationTuples(c.Request().Context(), d.usecaseDeps(), support.RequestTenantID(c),
-		ports.RelationTupleFilter{
+	listed, err := accesscontrolusecases.ListRelationTuples(c.Request().Context(), d.usecaseDeps(), support.RequestTenantID(c),
+		accessinternalports.RelationTupleFilter{
 			ResourceType: query.Get("resource_type"),
 			ResourceID:   query.Get("resource_id"),
 			Relation:     query.Get("relation"),
@@ -268,7 +268,7 @@ func (d Deps) handleWriteRelationTuples(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	write := ports.TupleWrite{}
+	write := accessinternalports.TupleWrite{}
 	for _, t := range req.Writes {
 		write.Writes = append(write.Writes, toTuple(t))
 	}
@@ -276,9 +276,9 @@ func (d Deps) handleWriteRelationTuples(c *echo.Context) error {
 		write.Deletes = append(write.Deletes, toTuple(t))
 	}
 	for _, o := range req.DeleteObjects {
-		write.DeleteObjects = append(write.DeleteObjects, domain.ObjectRef{Type: o.Type, ID: o.ID})
+		write.DeleteObjects = append(write.DeleteObjects, accessdomain.ObjectRef{Type: o.Type, ID: o.ID})
 	}
-	outcome, err := usecases.WriteRelationTuples(c.Request().Context(), d.usecaseDeps(),
+	outcome, err := accesscontrolusecases.WriteRelationTuples(c.Request().Context(), d.usecaseDeps(),
 		support.RequestTenantID(c), write, time.Now().UTC())
 	if err != nil {
 		return writeAuthorizationError(c, err)
@@ -315,11 +315,11 @@ func (d Deps) handleCheckAccess(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	result, err := usecases.CheckAccess(c.Request().Context(), d.usecaseDeps(), usecases.CheckAccessInput{
+	result, err := accesscontrolusecases.CheckAccess(c.Request().Context(), d.usecaseDeps(), accesscontrolusecases.CheckAccessInput{
 		TenantID:           support.RequestTenantID(c),
-		Resource:           domain.ObjectRef{Type: req.ResourceType, ID: req.ResourceID},
+		Resource:           accessdomain.ObjectRef{Type: req.ResourceType, ID: req.ResourceID},
 		Relation:           req.Relation,
-		Subject:            domain.SubjectRef{Type: req.SubjectType, ID: req.SubjectID},
+		Subject:            accessdomain.SubjectRef{Type: req.SubjectType, ID: req.SubjectID},
 		ActorChain:         toActors(req.ActorChain),
 		MinimumConsistency: req.MinimumConsistency,
 		GrantedScopes:      req.GrantedScopes,
@@ -359,9 +359,9 @@ func (d Deps) handleListAccessibleResources(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	listed, err := usecases.ListAccessibleResources(c.Request().Context(), d.usecaseDeps(), usecases.ListAccessibleResourcesInput{
+	listed, err := accesscontrolusecases.ListAccessibleResources(c.Request().Context(), d.usecaseDeps(), accesscontrolusecases.ListAccessibleResourcesInput{
 		TenantID: support.RequestTenantID(c), ResourceType: req.ResourceType, Relation: req.Relation,
-		Subject:            domain.SubjectRef{Type: req.SubjectType, ID: req.SubjectID},
+		Subject:            accessdomain.SubjectRef{Type: req.SubjectType, ID: req.SubjectID},
 		ActorChain:         toActors(req.ActorChain),
 		MinimumConsistency: req.MinimumConsistency,
 		GrantedScopes:      req.GrantedScopes,
@@ -396,17 +396,17 @@ func (d Deps) requireAuthorizationAdmin(c *echo.Context) error {
 
 func writeAuthorizationError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, domain.ErrModelNotFound):
+	case errors.Is(err, accessdomain.ErrModelNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "authorization_model_not_found",
 			"No authorization model has been published for this tenant.")
-	case errors.Is(err, domain.ErrModelVersionConflict):
+	case errors.Is(err, accessdomain.ErrModelVersionConflict):
 		return support.WriteProblem(c, http.StatusConflict, "authorization_model_version_conflict",
 			"Another authorization model version was published first. Reload the latest version and review again.")
-	case errors.Is(err, domain.ErrModelInvalid):
+	case errors.Is(err, accessdomain.ErrModelInvalid):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "authorization_model_invalid", err.Error())
-	case errors.Is(err, domain.ErrTupleInvalid):
+	case errors.Is(err, accessdomain.ErrTupleInvalid):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "relation_tuple_invalid", err.Error())
-	case errors.Is(err, domain.ErrConsistencyNotSatisfied):
+	case errors.Is(err, accessdomain.ErrConsistencyNotSatisfied):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "consistency_not_satisfied",
 			"The store has not caught up with the supplied consistency token.")
 	default:

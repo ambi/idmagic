@@ -9,17 +9,17 @@ import (
 	"uuid"
 
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 // IngestionFixture は取り込みの保存先と、外部キーを満たす Connector と User を作る関数である。
 type IngestionFixture struct {
 	Correlations interface {
-		ports.CorrelationRepository
+		directoryinternalports.CorrelationRepository
 		directoryports.CorrelationWriter
 	}
-	Runs          ports.IngestionRunRepository
+	Runs          directoryinternalports.IngestionRunRepository
 	TenantID      string
 	OtherTenantID string
 	NewConnector  func(t *testing.T, tenantID string) string
@@ -75,19 +75,19 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 	})
 
 	t.Run("runs", func(t *testing.T) {
-		run := func(id, connectorID string, at time.Duration) domain.IngestionRun {
-			return domain.IngestionRun{
-				TenantID: f.TenantID, ID: id, ConnectorID: connectorID, Mode: domain.ModeFull,
-				Status: domain.RunRunning, StartedAt: base.Add(at),
+		run := func(id, connectorID string, at time.Duration) directorydomain.IngestionRun {
+			return directorydomain.IngestionRun{
+				TenantID: f.TenantID, ID: id, ConnectorID: connectorID, Mode: directorydomain.ModeFull,
+				Status: directorydomain.RunRunning, StartedAt: base.Add(at),
 			}
 		}
 		older, newer, other := run(uuid.NewV4().String(), connector, 0), run(uuid.NewV4().String(), connector, time.Minute), run(uuid.NewV4().String(), sibling, 0)
-		for _, r := range []domain.IngestionRun{older, other, newer} {
+		for _, r := range []directorydomain.IngestionRun{older, other, newer} {
 			if err := f.Runs.Start(ctx, r); err != nil {
 				t.Fatalf("Start: %v", err)
 			}
 		}
-		statusOf := func(id, connectorID string) domain.IngestionRunStatus {
+		statusOf := func(id, connectorID string) directorydomain.IngestionRunStatus {
 			t.Helper()
 			found, err := f.Runs.Find(ctx, f.TenantID, connectorID, id)
 			if err != nil || found == nil {
@@ -95,17 +95,17 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 			}
 			return found.Status
 		}
-		if statusOf(older.ID, connector) != domain.RunSuperseded || statusOf(newer.ID, connector) != domain.RunRunning || statusOf(other.ID, sibling) != domain.RunRunning {
+		if statusOf(older.ID, connector) != directorydomain.RunSuperseded || statusOf(newer.ID, connector) != directorydomain.RunRunning || statusOf(other.ID, sibling) != directorydomain.RunRunning {
 			t.Fatalf("Start superseded the wrong runs")
 		}
 		if found, err := f.Runs.Find(ctx, f.TenantID, sibling, newer.ID); err != nil || found != nil {
 			t.Fatalf("Find through another connector = %+v, %v", found, err)
 		}
 
-		results := []domain.ItemResult{
-			{ExternalID: "a", Outcome: domain.OutcomeCreated}, {ExternalID: "b", Outcome: domain.OutcomeFailed, Error: domain.ItemErrorUsernameConflict},
+		results := []directorydomain.ItemResult{
+			{ExternalID: "a", Outcome: directorydomain.OutcomeCreated}, {ExternalID: "b", Outcome: directorydomain.OutcomeFailed, Error: directorydomain.ItemErrorUsernameConflict},
 		}
-		batch := domain.IngestionBatch{TenantID: f.TenantID, RunID: newer.ID, BatchID: "b1", Digest: "d1", Results: results, RecordedAt: base}
+		batch := directorydomain.IngestionBatch{TenantID: f.TenantID, RunID: newer.ID, BatchID: "b1", Digest: "d1", Results: results, RecordedAt: base}
 		if recorded, err := f.Runs.RecordBatch(ctx, batch); err != nil || recorded.Digest != "d1" || !slices.Equal(recorded.Results, results) {
 			t.Fatalf("RecordBatch = %+v, %v", recorded, err)
 		}
@@ -114,9 +114,9 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 		if recorded, err := f.Runs.RecordBatch(ctx, again); err != nil || recorded.Digest != "d1" || len(recorded.Results) != 2 {
 			t.Fatalf("RecordBatch of a recorded id = %+v, %v; want the first batch", recorded, err)
 		}
-		second := domain.IngestionBatch{
+		second := directorydomain.IngestionBatch{
 			TenantID: f.TenantID, RunID: newer.ID, BatchID: "b0", Digest: "d3",
-			Results: []domain.ItemResult{{ExternalID: "c", Outcome: domain.OutcomeDeleted}}, RecordedAt: base,
+			Results: []directorydomain.ItemResult{{ExternalID: "c", Outcome: directorydomain.OutcomeDeleted}}, RecordedAt: base,
 		}
 		if _, err := f.Runs.RecordBatch(ctx, second); err != nil {
 			t.Fatal(err)
@@ -132,7 +132,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 		if err != nil || len(batches) != 2 || batches[0].BatchID != "b1" || batches[1].BatchID != "b0" {
 			t.Fatalf("ListBatches = %+v, %v; want the recorded order", batches, err)
 		}
-		want := domain.RunCounts{Batches: 2, Items: 3, Created: 1, Deleted: 1, Failed: 1}
+		want := directorydomain.RunCounts{Batches: 2, Items: 3, Created: 1, Deleted: 1, Failed: 1}
 		if got, _ := f.Runs.Find(ctx, f.TenantID, connector, newer.ID); got.Counts != want {
 			t.Fatalf("counts = %+v, want %+v", got.Counts, want)
 		}
@@ -144,7 +144,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 			t.Fatalf("Complete = %v, %v", changed, err)
 		}
 		completed, _ := f.Runs.Find(ctx, f.TenantID, connector, newer.ID)
-		if completed.Status != domain.RunCompleted || completed.CompletedAt == nil || !completed.CompletedAt.Equal(base.Add(time.Hour)) || completed.Counts.Disabled != 4 {
+		if completed.Status != directorydomain.RunCompleted || completed.CompletedAt == nil || !completed.CompletedAt.Equal(base.Add(time.Hour)) || completed.Counts.Disabled != 4 {
 			t.Fatalf("completed run = %+v", completed)
 		}
 		if changed, err := f.Runs.Complete(ctx, f.TenantID, newer.ID, base, 0); err != nil || changed {
@@ -162,12 +162,12 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 
 	t.Run("protection and connector lock", func(t *testing.T) {
 		id := uuid.NewV4().String()
-		run := domain.IngestionRun{TenantID: f.TenantID, ConnectorID: connector, ID: id, Mode: domain.ModeFull, Status: domain.RunRunning, StartedAt: base}
+		run := directorydomain.IngestionRun{TenantID: f.TenantID, ConnectorID: connector, ID: id, Mode: directorydomain.ModeFull, Status: directorydomain.RunRunning, StartedAt: base}
 		if err := f.Runs.Start(ctx, run); err != nil {
 			t.Fatal(err)
 		}
-		run.Status = domain.RunAwaitingApproval
-		run.Protection = &domain.IngestionProtection{Thresholds: domain.DisableThresholds{Count: 1, Percent: 20}, ActiveCount: 10, HeldAt: base, Candidates: []domain.DisableCandidate{{UserID: uuid.NewV4().String(), ExternalID: "saved"}}}
+		run.Status = directorydomain.RunAwaitingApproval
+		run.Protection = &directorydomain.IngestionProtection{Thresholds: directorydomain.DisableThresholds{Count: 1, Percent: 20}, ActiveCount: 10, HeldAt: base, Candidates: []directorydomain.DisableCandidate{{UserID: uuid.NewV4().String(), ExternalID: "saved"}}}
 		if err := f.Runs.SaveProgress(ctx, run); err != nil {
 			t.Fatal(err)
 		}
@@ -180,21 +180,21 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 		if again.Protection.Candidates[0].Done {
 			t.Fatal("read mutated saved candidates")
 		}
-		got.Status = domain.RunApplying
+		got.Status = directorydomain.RunApplying
 		if err := f.Runs.SaveProgress(ctx, *got); err != nil {
 			t.Fatal(err)
 		}
 		newer := run
 		newer.ID = uuid.NewV4().String()
-		newer.Status = domain.RunRunning
+		newer.Status = directorydomain.RunRunning
 		newer.Protection = nil
-		if err := f.Runs.Start(ctx, newer); !errors.Is(err, ports.ErrRunBusy) {
+		if err := f.Runs.Start(ctx, newer); !errors.Is(err, directoryinternalports.ErrRunBusy) {
 			t.Fatalf("start while applying = %v", err)
 		}
 		called := false
 		if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error {
 			called = true
-			if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error { t.Fatal("competing operation ran"); return nil }); !errors.Is(err, ports.ErrRunBusy) {
+			if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error { t.Fatal("competing operation ran"); return nil }); !errors.Is(err, directoryinternalports.ErrRunBusy) {
 				t.Fatalf("competing lock = %v", err)
 			}
 			return f.Runs.WithConnectorLock(ctx, f.TenantID, sibling, func() error { return nil })
@@ -207,7 +207,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 		if err := f.Runs.WithConnectorLock(ctx, f.TenantID, connector, func() error { return nil }); err != nil {
 			t.Fatalf("lock not released: %v", err)
 		}
-		got.Status = domain.RunAwaitingApproval
+		got.Status = directorydomain.RunAwaitingApproval
 		if err := f.Runs.SaveProgress(ctx, *got); err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +215,7 @@ func RunIngestion(t *testing.T, f IngestionFixture) {
 			t.Fatal(err)
 		}
 		superseded, _ := f.Runs.Find(ctx, f.TenantID, connector, id)
-		if superseded.Status != domain.RunSuperseded {
+		if superseded.Status != directorydomain.RunSuperseded {
 			t.Fatalf("held run = %s", superseded.Status)
 		}
 	})

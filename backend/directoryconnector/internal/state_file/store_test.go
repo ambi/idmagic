@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/state_file"
 )
 
@@ -29,7 +29,7 @@ func TestStoreKeepsTheCredentialsOwnerOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	enrollment := ports.Enrollment{ConnectorID: "c1", KeyID: "k1", Audience: "https://idp.test/realms/a/directory-connector/v1"}
+	enrollment := directoryconnectorports.Enrollment{ConnectorID: "c1", KeyID: "k1", Audience: "https://idp.test/realms/a/directory-connector/v1"}
 	if err := store.SaveCredentials(context.Background(), key, enrollment); err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +57,8 @@ func TestStoreRoundTripsTheCursor(t *testing.T) {
 	if cursor, err := store.Load(context.Background()); err != nil || cursor != nil {
 		t.Fatalf("empty cursor = %+v err=%v", cursor, err)
 	}
-	want := domain.Cursor{
-		Dialect: domain.ActiveDirectory, Scope: domain.Scope{BaseDNs: []string{"OU=Staff", "OU=Contractors"}, Filter: "(objectClass=user)"},
+	want := directoryconnectordomain.Cursor{
+		Dialect: directoryconnectordomain.ActiveDirectory, Scope: directoryconnectordomain.Scope{BaseDNs: []string{"OU=Staff", "OU=Contractors"}, Filter: "(objectClass=user)"},
 		Server: "CN=NTDS Settings,CN=DC1", USN: 9000, LastFullAt: time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC),
 	}
 	if err := store.Save(context.Background(), want); err != nil {

@@ -4,8 +4,8 @@
 package handlers_http
 
 import (
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
-	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
@@ -16,11 +16,11 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Repository ports.DataKeyRepository
+	Repository datakeysports.DataKeyRepository
 	Crypto     envelope_crypto.EnvelopeCrypto
 	TenantRepo tenantports.TenantRepository
-	Cache      ports.CacheInvalidator
-	Migrators  *usecases.MigratorRegistry
+	Cache      datakeysports.CacheInvalidator
+	Migrators  *datakeysusecases.MigratorRegistry
 	Jobs       jobsports.Enqueuer
 }
 

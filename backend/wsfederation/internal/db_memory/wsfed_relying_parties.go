@@ -9,26 +9,26 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
-var _ ports.WsFedRelyingPartyRepository = (*WsFedRelyingPartyRepository)(nil)
+var _ wsfedports.WsFedRelyingPartyRepository = (*WsFedRelyingPartyRepository)(nil)
 
 type WsFedRelyingPartyRepository struct {
 	mu    sync.RWMutex
-	parts map[string]*domain.WsFedRelyingParty
+	parts map[string]*wsfeddomain.WsFedRelyingParty
 }
 
 func NewWsFedRelyingPartyRepository() *WsFedRelyingPartyRepository {
-	return &WsFedRelyingPartyRepository{parts: map[string]*domain.WsFedRelyingParty{}}
+	return &WsFedRelyingPartyRepository{parts: map[string]*wsfeddomain.WsFedRelyingParty{}}
 }
 
-func (r *WsFedRelyingPartyRepository) Seed(rp *domain.WsFedRelyingParty) {
+func (r *WsFedRelyingPartyRepository) Seed(rp *wsfeddomain.WsFedRelyingParty) {
 	_ = r.Save(context.Background(), rp)
 }
 
-func cloneRelyingParty(rp *domain.WsFedRelyingParty) *domain.WsFedRelyingParty {
+func cloneRelyingParty(rp *wsfeddomain.WsFedRelyingParty) *wsfeddomain.WsFedRelyingParty {
 	cloned := *rp
 	cloned.ReplyURLs = slices.Clone(rp.ReplyURLs)
 	cloned.ClaimPolicy.Rules = slices.Clone(rp.ClaimPolicy.Rules)
@@ -40,7 +40,7 @@ func cloneRelyingParty(rp *domain.WsFedRelyingParty) *domain.WsFedRelyingParty {
 	return &cloned
 }
 
-func (r *WsFedRelyingPartyRepository) FindByWtrealm(_ context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error) {
+func (r *WsFedRelyingPartyRepository) FindByWtrealm(_ context.Context, tenantID, wtrealm string) (*wsfeddomain.WsFedRelyingParty, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	rp := r.parts[sharedmem.ScopedKey(tenantID, wtrealm, kernel.DefaultTenantID)]
@@ -50,20 +50,20 @@ func (r *WsFedRelyingPartyRepository) FindByWtrealm(_ context.Context, tenantID,
 	return cloneRelyingParty(rp), nil
 }
 
-func (r *WsFedRelyingPartyRepository) ListAll(_ context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error) {
+func (r *WsFedRelyingPartyRepository) ListAll(_ context.Context, tenantID string) ([]*wsfeddomain.WsFedRelyingParty, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.WsFedRelyingParty, 0)
+	out := make([]*wsfeddomain.WsFedRelyingParty, 0)
 	for _, rp := range r.parts {
 		if rp.TenantID == tenantID {
 			out = append(out, cloneRelyingParty(rp))
 		}
 	}
-	slices.SortFunc(out, func(a, b *domain.WsFedRelyingParty) int { return strings.Compare(a.Wtrealm, b.Wtrealm) })
+	slices.SortFunc(out, func(a, b *wsfeddomain.WsFedRelyingParty) int { return strings.Compare(a.Wtrealm, b.Wtrealm) })
 	return out, nil
 }
 
-func (r *WsFedRelyingPartyRepository) Save(_ context.Context, rp *domain.WsFedRelyingParty) error {
+func (r *WsFedRelyingPartyRepository) Save(_ context.Context, rp *wsfeddomain.WsFedRelyingParty) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	sharedmem.DefaultScope(&rp.TenantID, kernel.DefaultTenantID)
@@ -79,11 +79,11 @@ func (r *WsFedRelyingPartyRepository) Delete(_ context.Context, tenantID, wtreal
 }
 
 // Update は排他ロックの間に最新の RP を読み、change の結果を当てる。
-func (r *WsFedRelyingPartyRepository) Update(_ context.Context, tenantID, wtrealm string, change ports.RelyingPartyChange) error {
+func (r *WsFedRelyingPartyRepository) Update(_ context.Context, tenantID, wtrealm string, change wsfedports.RelyingPartyChange) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := sharedmem.ScopedKey(tenantID, wtrealm, kernel.DefaultTenantID)
-	var current *domain.WsFedRelyingParty
+	var current *wsfeddomain.WsFedRelyingParty
 	if stored := r.parts[key]; stored != nil {
 		current = cloneRelyingParty(stored)
 	}
@@ -92,11 +92,11 @@ func (r *WsFedRelyingPartyRepository) Update(_ context.Context, tenantID, wtreal
 		return err
 	}
 	switch outcome {
-	case ports.RelyingPartySaved:
+	case wsfedports.RelyingPartySaved:
 		if current != nil {
 			r.parts[key] = cloneRelyingParty(current)
 		}
-	case ports.RelyingPartyDeleted:
+	case wsfedports.RelyingPartyDeleted:
 		delete(r.parts, key)
 	}
 	return nil

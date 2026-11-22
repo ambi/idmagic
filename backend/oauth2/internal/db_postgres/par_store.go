@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
@@ -18,15 +18,15 @@ import (
 // フィルタを付けない (memory adapter とのパリティ: 期限判定は呼び出し側の domain)。
 type PARStore struct{ Pool sharedpg.DB }
 
-func parFromPayload(payload []byte) (*domain.PARRecord, error) {
-	var rec domain.PARRecord
+func parFromPayload(payload []byte) (*oauthdomain.PARRecord, error) {
+	var rec oauthdomain.PARRecord
 	if err := json.Unmarshal(payload, &rec); err != nil {
 		return nil, err
 	}
 	return &rec, nil
 }
 
-func (s *PARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
+func (s *PARStore) Save(ctx context.Context, rec *oauthdomain.PARRecord) error {
 	rec.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(rec)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *PARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
 	})
 }
 
-func (s *PARStore) Find(ctx context.Context, requestURI string) (*domain.PARRecord, error) {
+func (s *PARStore) Find(ctx context.Context, requestURI string) (*oauthdomain.PARRecord, error) {
 	row, err := New(s.Pool).FindPARRequest(ctx, FindPARRequestParams{
 		RequestUri: requestURI,
 		TenantID:   tenantports.TenantID(ctx),
@@ -60,7 +60,7 @@ func (s *PARStore) Find(ctx context.Context, requestURI string) (*domain.PARReco
 	return rec, nil
 }
 
-func (s *PARStore) Consume(ctx context.Context, requestURI string) (*domain.PARRecord, error) {
+func (s *PARStore) Consume(ctx context.Context, requestURI string) (*oauthdomain.PARRecord, error) {
 	payload, err := New(s.Pool).ConsumePARRequest(ctx, ConsumePARRequestParams{
 		RequestUri: requestURI,
 		TenantID:   tenantports.TenantID(ctx),

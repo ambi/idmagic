@@ -6,8 +6,8 @@ import (
 	"context"
 	"slices"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 func nonEmpty(values []string) []string {
@@ -32,11 +32,11 @@ func nonEmpty(values []string) []string {
 //     invalid_scope を返す。
 func ResolveResourceIndicator(
 	ctx context.Context,
-	repo ports.McpResourceServerRepository,
+	repo oauthports.McpResourceServerRepository,
 	tenantID string,
 	resources []string,
 	requestedScopes []string,
-) (*domain.McpResourceServer, error) {
+) (*oauthdomain.McpResourceServer, error) {
 	values := nonEmpty(resources)
 	if len(values) == 0 {
 		return nil, nil //nolint:nilnil // resource 未指定は「audience 限定なし」を表す正常系

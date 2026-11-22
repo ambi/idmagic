@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	mfa "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
-	password "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
-	session "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
-	"github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
-	webauthn "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -26,40 +26,40 @@ func TestCredentialChangingUseCasesRefuseWithoutRevoker(t *testing.T) {
 		run  func() error
 	}{
 		{"パスワードの変更", func() error {
-			_, err := password.ChangePassword(ctx, password.ChangePasswordDeps{}, password.ChangePasswordInput{})
+			_, err := passwordusecases.ChangePassword(ctx, passwordusecases.ChangePasswordDeps{}, passwordusecases.ChangePasswordInput{})
 			return err
 		}},
 		{"パスワードの再設定", func() error {
-			_, err := password.ResetPasswordWithToken(ctx, password.ResetPasswordWithTokenDeps{}, password.ResetPasswordWithTokenInput{})
+			_, err := passwordusecases.ResetPasswordWithToken(ctx, passwordusecases.ResetPasswordWithTokenDeps{}, passwordusecases.ResetPasswordWithTokenInput{})
 			return err
 		}},
 		{"TOTP の登録", func() error {
-			return mfa.ConfirmTOTPEnrollment(ctx, mfa.AccountMfaDeps{}, mfa.ConfirmTOTPEnrollmentInput{})
+			return mfausecases.ConfirmTOTPEnrollment(ctx, mfausecases.AccountMfaDeps{}, mfausecases.ConfirmTOTPEnrollmentInput{})
 		}},
 		{"TOTP の解除", func() error {
-			return mfa.RemoveTOTPFactor(ctx, mfa.AccountMfaDeps{}, mfa.RemoveTOTPFactorInput{})
+			return mfausecases.RemoveTOTPFactor(ctx, mfausecases.AccountMfaDeps{}, mfausecases.RemoveTOTPFactorInput{})
 		}},
 		{"WebAuthn の登録", func() error {
-			return webauthn.FinishWebAuthnRegistration(ctx, webauthn.WebAuthnDeps{RP: &webauthn.RelyingParty{}}, "alice", nil, nil, now)
+			return webauthnusecases.FinishWebAuthnRegistration(ctx, webauthnusecases.WebAuthnDeps{RP: &webauthnusecases.RelyingParty{}}, "alice", nil, nil, now)
 		}},
 		{"WebAuthn の解除", func() error {
-			return webauthn.RemoveWebAuthnCredential(ctx, webauthn.WebAuthnDeps{}, "alice", "credential", now)
+			return webauthnusecases.RemoveWebAuthnCredential(ctx, webauthnusecases.WebAuthnDeps{}, "alice", "credential", now)
 		}},
 		{"管理者による認証器のリセット", func() error {
-			_, err := mfa.ResetUserAuthenticators(ctx, mfa.AuthenticatorResetDeps{}, "admin", "alice", []spec.AuthenticatorResetTarget{spec.AuthenticatorResetTotp}, now)
+			_, err := mfausecases.ResetUserAuthenticators(ctx, mfausecases.AuthenticatorResetDeps{}, "admin", "alice", []spec.AuthenticatorResetTarget{spec.AuthenticatorResetTotp}, now)
 			return err
 		}},
 		{"本人による全セッションの失効", func() error {
-			_, err := session.RevokeOtherSessions(ctx, session.SessionDeps{}, "alice", "current", now)
+			_, err := sessionusecases.RevokeOtherSessions(ctx, sessionusecases.SessionDeps{}, "alice", "current", now)
 			return err
 		}},
 		{"管理者による全セッションの失効", func() error {
-			_, err := session.AdminRevokeUserSessions(ctx, session.SessionDeps{}, "admin", "alice", now)
+			_, err := sessionusecases.AdminRevokeUserSessions(ctx, sessionusecases.SessionDeps{}, "admin", "alice", now)
 			return err
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.run(); !errors.Is(err, usecases.ErrTrustedDeviceRevokerMissing) {
+			if err := tc.run(); !errors.Is(err, trusteddeviceusecases.ErrTrustedDeviceRevokerMissing) {
 				t.Fatalf("error=%v, want ErrTrustedDeviceRevokerMissing", err)
 			}
 		})

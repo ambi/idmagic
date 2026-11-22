@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 type Fixture struct {
-	Connections        ports.ProvisioningConnectionRepository
-	Tasks              ports.ProvisioningTaskRepository
-	Links              ports.RemoteResourceLinkRepository
+	Connections        provisioningports.ProvisioningConnectionRepository
+	Tasks              provisioningports.ProvisioningTaskRepository
+	Links              provisioningports.RemoteResourceLinkRepository
 	SiblingApplication string
 	OtherApplication   string
 	TenantA            string
@@ -31,25 +31,25 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	connection := &domain.ProvisioningConnection{
-		ApplicationID: f.Application, TenantID: f.TenantA, Status: domain.ConnectionActive,
+	connection := &provisioningdomain.ProvisioningConnection{
+		ApplicationID: f.Application, TenantID: f.TenantA, Status: provisioningdomain.ConnectionActive,
 		BaseURL: "https://downstream.example/scim/v2",
-		Credential: domain.ProvisioningConnectionCredentialMetadata{
-			CredentialID: f.CredentialID, AuthMethod: domain.AuthBearerToken, CreatedAt: f.Now,
+		Credential: provisioningdomain.ProvisioningConnectionCredentialMetadata{
+			CredentialID: f.CredentialID, AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: f.Now,
 		},
-		FeatureFlags: domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
-		Scope:        domain.ScopeAssignedOnly, Matching: domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate,
+		FeatureFlags: provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
+		Scope:        provisioningdomain.ScopeAssignedOnly, Matching: provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate,
 		},
 		RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10,
-		Health: domain.HealthOK, CreatedAt: f.Now, UpdatedAt: f.Now,
+		Health: provisioningdomain.HealthOK, CreatedAt: f.Now, UpdatedAt: f.Now,
 	}
 	if err := f.Connections.Register(ctx, connection, "secret-1"); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 	duplicate := *connection
-	if err := f.Connections.Register(ctx, &duplicate, "secret-2"); !errors.Is(err, ports.ErrConnectionAlreadyExists) {
+	if err := f.Connections.Register(ctx, &duplicate, "secret-2"); !errors.Is(err, provisioningports.ErrConnectionAlreadyExists) {
 		t.Fatalf("duplicate Register = %v", err)
 	}
 	found, err := f.Connections.Find(ctx, f.TenantA, f.Application)

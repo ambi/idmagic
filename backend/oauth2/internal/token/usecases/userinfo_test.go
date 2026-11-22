@@ -14,7 +14,7 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 )
 
 func userInfoFixture(t *testing.T) userports.UserRepository {
@@ -40,7 +40,7 @@ func resolveBuiltin(_ context.Context, _ string) ([]userdomain.UserAttributeDef,
 
 func TestUserInfoIncludesAttributeClaimsByScope(t *testing.T) {
 	repo := userInfoFixture(t)
-	res, err := usecases.UserInfo(context.Background(), repo, nil, usecases.UserInfoInput{
+	res, err := tokenusecases.UserInfo(context.Background(), repo, nil, tokenusecases.UserInfoInput{
 		Scopes: []string{"openid", "profile", "phone"}, Sub: "user-1", Active: true, ClientID: "c1",
 		ResolveAttributeDefs: resolveBuiltin,
 	})
@@ -69,7 +69,7 @@ func TestUserInfoIncludesAttributeClaimsByScope(t *testing.T) {
 
 func TestUserInfoOmitsAttributeClaimsWithoutScope(t *testing.T) {
 	repo := userInfoFixture(t)
-	res, err := usecases.UserInfo(context.Background(), repo, nil, usecases.UserInfoInput{
+	res, err := tokenusecases.UserInfo(context.Background(), repo, nil, tokenusecases.UserInfoInput{
 		Scopes: []string{"openid"}, Sub: "user-1", Active: true, ClientID: "c1",
 		ResolveAttributeDefs: resolveBuiltin,
 	})
@@ -103,7 +103,7 @@ func TestUserInfo_ClaimPolicyAddsOverrideClaim(t *testing.T) {
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department", Required: true},
 		},
 	}
-	res, err := usecases.UserInfo(context.Background(), repo, nil, usecases.UserInfoInput{
+	res, err := tokenusecases.UserInfo(context.Background(), repo, nil, tokenusecases.UserInfoInput{
 		Scopes: []string{"openid"}, Sub: "user-1", Active: true, ClientID: "c1",
 		ResolveAttributeDefs: resolveBuiltin, ClaimPolicy: &policy,
 	})
@@ -134,7 +134,7 @@ func TestUserInfo_ClaimPolicyRejectsPrivateAttribute(t *testing.T) {
 			{ClaimType: "leak", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "not_a_defined_attribute"},
 		},
 	}
-	_, err := usecases.UserInfo(context.Background(), repo, nil, usecases.UserInfoInput{
+	_, err := tokenusecases.UserInfo(context.Background(), repo, nil, tokenusecases.UserInfoInput{
 		Scopes: []string{"openid"}, Sub: "user-1", Active: true, ClientID: "c1",
 		ResolveAttributeDefs: resolveBuiltin, ClaimPolicy: &policy,
 	})

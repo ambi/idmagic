@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2pg "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -50,8 +50,8 @@ func uuidParam(value string) (pgtype.UUID, error) {
 	return id, err
 }
 
-func consentFromRow(row consentRow) (*domain.Consent, error) {
-	c := &domain.Consent{
+func consentFromRow(row consentRow) (*oauthdomain.Consent, error) {
+	c := &oauthdomain.Consent{
 		UserID:    row.user,
 		ClientID:  uuidText(row.clientID),
 		AgentID:   uuidText(row.agentID),
@@ -71,17 +71,17 @@ func consentFromRow(row consentRow) (*domain.Consent, error) {
 	}
 	switch {
 	case c.RevokedAt != nil:
-		c.State = domain.ConsentRevoked
+		c.State = oauthdomain.ConsentRevoked
 	case !time.Now().Before(c.ExpiresAt):
-		c.State = domain.ConsentExpired
+		c.State = oauthdomain.ConsentExpired
 	default:
-		c.State = domain.ConsentGranted
+		c.State = oauthdomain.ConsentGranted
 	}
 	return c, nil
 }
 
-func consentsFromRows[R any](rows []*R, toRow func(*R) consentRow) ([]*domain.Consent, error) {
-	out := make([]*domain.Consent, 0, len(rows))
+func consentsFromRows[R any](rows []*R, toRow func(*R) consentRow) ([]*oauthdomain.Consent, error) {
+	out := make([]*oauthdomain.Consent, 0, len(rows))
 	for _, row := range rows {
 		c, err := consentFromRow(toRow(row))
 		if err != nil {
@@ -92,7 +92,7 @@ func consentsFromRows[R any](rows []*R, toRow func(*R) consentRow) ([]*domain.Co
 	return out, nil
 }
 
-func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*domain.Consent, error) {
+func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID string) (*oauthdomain.Consent, error) {
 	client, err := uuidParam(clientID)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (r *ConsentRepository) Find(ctx context.Context, tenantID, sub, clientID st
 	})
 }
 
-func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*domain.Consent, error) {
+func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*oauthdomain.Consent, error) {
 	rows, err := oauth2pg.New(r.Pool).ListConsentsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*do
 // ListPage implements ports.ConsentRepository.ListPage
 // (wi-159): keyset pagination ordered by (user_id, client_id)
 // ascending, strictly after the given keyset ("", "" for the first page).
-func (r *ConsentRepository) ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
+func (r *ConsentRepository) ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*oauthdomain.Consent, error) {
 	q := oauth2pg.New(r.Pool)
 	if afterUserID == "" && afterClientID == "" {
 		rows, err := q.ListConsentsByTenantPage(ctx, oauth2pg.ListConsentsByTenantPageParams{
@@ -160,7 +160,7 @@ func (r *ConsentRepository) ListPage(ctx context.Context, tenantID, afterUserID,
 	})
 }
 
-func (r *ConsentRepository) ListPageBefore(ctx context.Context, tenantID, beforeUserID, beforeClientID string, limit int) ([]*domain.Consent, error) {
+func (r *ConsentRepository) ListPageBefore(ctx context.Context, tenantID, beforeUserID, beforeClientID string, limit int) ([]*oauthdomain.Consent, error) {
 	rows, err := oauth2pg.New(r.Pool).ListConsentsByTenantPageBefore(ctx, oauth2pg.ListConsentsByTenantPageBeforeParams{
 		TenantID: tenantID, BeforeUserID: beforeUserID, BeforeClientID: beforeClientID,
 		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
@@ -177,7 +177,7 @@ func (r *ConsentRepository) ListPageBefore(ctx context.Context, tenantID, before
 	})
 }
 
-func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *domain.Consent) error {
+func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *oauthdomain.Consent) error {
 	scopes, err := json.Marshal(c.Scopes)
 	if err != nil {
 		return err
@@ -215,7 +215,7 @@ func (r *ConsentRepository) DeleteAllForSub(ctx context.Context, sub string) (in
 
 // FindAgentDelegation は UUID でない agentID を、付与がないものとして扱う。パスから直接
 // 届く値で、存在しない Agent と区別する理由がないからである。
-func (r *ConsentRepository) FindAgentDelegation(ctx context.Context, tenantID, sub, agentID string) (*domain.Consent, error) {
+func (r *ConsentRepository) FindAgentDelegation(ctx context.Context, tenantID, sub, agentID string) (*oauthdomain.Consent, error) {
 	agent, err := uuidParam(agentID)
 	if err != nil {
 		return nil, nil //nolint:nilerr // 上のコメントのとおり
@@ -233,7 +233,7 @@ func (r *ConsentRepository) FindAgentDelegation(ctx context.Context, tenantID, s
 	})
 }
 
-func (r *ConsentRepository) ListAgentDelegations(ctx context.Context, tenantID, sub string) ([]*domain.Consent, error) {
+func (r *ConsentRepository) ListAgentDelegations(ctx context.Context, tenantID, sub string) ([]*oauthdomain.Consent, error) {
 	rows, err := oauth2pg.New(r.Pool).ListAgentDelegationsForUser(ctx, sub)
 	if err != nil {
 		return nil, err
@@ -246,10 +246,10 @@ func (r *ConsentRepository) ListAgentDelegations(ctx context.Context, tenantID, 
 	})
 }
 
-func (r *ConsentRepository) ListDelegationsForAgent(ctx context.Context, tenantID, agentID string) ([]*domain.Consent, error) {
+func (r *ConsentRepository) ListDelegationsForAgent(ctx context.Context, tenantID, agentID string) ([]*oauthdomain.Consent, error) {
 	agent, err := uuidParam(agentID)
 	if err != nil {
-		return []*domain.Consent{}, nil //nolint:nilerr // 存在しない Agent と同じ扱い。
+		return []*oauthdomain.Consent{}, nil //nolint:nilerr // 存在しない Agent と同じ扱い。
 	}
 	rows, err := oauth2pg.New(r.Pool).ListDelegationsForAgent(ctx, oauth2pg.ListDelegationsForAgentParams{TenantID: tenantID, AgentID: agent})
 	if err != nil {
@@ -263,7 +263,7 @@ func (r *ConsentRepository) ListDelegationsForAgent(ctx context.Context, tenantI
 	})
 }
 
-func (r *ConsentRepository) ListAgentDelegationPage(ctx context.Context, tenantID, afterUserID, afterAgentID string, limit int) ([]*domain.Consent, error) {
+func (r *ConsentRepository) ListAgentDelegationPage(ctx context.Context, tenantID, afterUserID, afterAgentID string, limit int) ([]*oauthdomain.Consent, error) {
 	q := oauth2pg.New(r.Pool)
 	if afterUserID == "" && afterAgentID == "" {
 		rows, err := q.ListAgentDelegationsByTenantPage(ctx, oauth2pg.ListAgentDelegationsByTenantPageParams{
@@ -295,7 +295,7 @@ func (r *ConsentRepository) ListAgentDelegationPage(ctx context.Context, tenantI
 	})
 }
 
-func (r *ConsentRepository) ListAgentDelegationPageBefore(ctx context.Context, tenantID, beforeUserID, beforeAgentID string, limit int) ([]*domain.Consent, error) {
+func (r *ConsentRepository) ListAgentDelegationPageBefore(ctx context.Context, tenantID, beforeUserID, beforeAgentID string, limit int) ([]*oauthdomain.Consent, error) {
 	rows, err := oauth2pg.New(r.Pool).ListAgentDelegationsByTenantPageBefore(ctx, oauth2pg.ListAgentDelegationsByTenantPageBeforeParams{
 		TenantID: tenantID, BeforeUserID: beforeUserID, BeforeAgentID: beforeAgentID,
 		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
@@ -312,7 +312,7 @@ func (r *ConsentRepository) ListAgentDelegationPageBefore(ctx context.Context, t
 	})
 }
 
-func (r *ConsentRepository) SaveAgentDelegation(ctx context.Context, tenantID string, c *domain.Consent) error {
+func (r *ConsentRepository) SaveAgentDelegation(ctx context.Context, tenantID string, c *oauthdomain.Consent) error {
 	scopes, err := json.Marshal(c.Scopes)
 	if err != nil {
 		return err

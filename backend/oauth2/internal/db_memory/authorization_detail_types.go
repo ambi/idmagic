@@ -9,26 +9,26 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // AuthorizationDetailTypeRepository (RFC 9396)
 
 type AuthorizationDetailTypeRepository struct {
 	mu    sync.RWMutex
-	types map[string]*domain.AuthorizationDetailType // key: sharedmem.TenantKey(tenant_id, type)
+	types map[string]*oauthdomain.AuthorizationDetailType // key: sharedmem.TenantKey(tenant_id, type)
 }
 
 func NewAuthorizationDetailTypeRepository() *AuthorizationDetailTypeRepository {
-	return &AuthorizationDetailTypeRepository{types: map[string]*domain.AuthorizationDetailType{}}
+	return &AuthorizationDetailTypeRepository{types: map[string]*oauthdomain.AuthorizationDetailType{}}
 }
 
 // Seed は起動時のサンプル type 投入に使う (テスト・デモ用)。
-func (r *AuthorizationDetailTypeRepository) Seed(t *domain.AuthorizationDetailType) {
+func (r *AuthorizationDetailTypeRepository) Seed(t *oauthdomain.AuthorizationDetailType) {
 	_ = r.Save(context.Background(), t)
 }
 
-func cloneDetailType(t *domain.AuthorizationDetailType) *domain.AuthorizationDetailType {
+func cloneDetailType(t *oauthdomain.AuthorizationDetailType) *oauthdomain.AuthorizationDetailType {
 	cloned := *t
 	cloned.Schema.Rules = slices.Clone(t.Schema.Rules)
 	for i := range cloned.Schema.Rules {
@@ -37,20 +37,20 @@ func cloneDetailType(t *domain.AuthorizationDetailType) *domain.AuthorizationDet
 	return &cloned
 }
 
-func (r *AuthorizationDetailTypeRepository) ListAll(_ context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) ListAll(_ context.Context, tenantID string) ([]*oauthdomain.AuthorizationDetailType, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.AuthorizationDetailType, 0)
+	out := make([]*oauthdomain.AuthorizationDetailType, 0)
 	for _, t := range r.types {
 		if t.TenantID == tenantID {
 			out = append(out, cloneDetailType(t))
 		}
 	}
-	slices.SortFunc(out, func(a, b *domain.AuthorizationDetailType) int { return strings.Compare(a.Type, b.Type) })
+	slices.SortFunc(out, func(a, b *oauthdomain.AuthorizationDetailType) int { return strings.Compare(a.Type, b.Type) })
 	return out, nil
 }
 
-func (r *AuthorizationDetailTypeRepository) FindByType(_ context.Context, tenantID, detailType string) (*domain.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) FindByType(_ context.Context, tenantID, detailType string) (*oauthdomain.AuthorizationDetailType, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	t := r.types[sharedmem.ScopedKey(tenantID, detailType, kernel.DefaultTenantID)]
@@ -60,7 +60,7 @@ func (r *AuthorizationDetailTypeRepository) FindByType(_ context.Context, tenant
 	return cloneDetailType(t), nil
 }
 
-func (r *AuthorizationDetailTypeRepository) Save(_ context.Context, t *domain.AuthorizationDetailType) error {
+func (r *AuthorizationDetailTypeRepository) Save(_ context.Context, t *oauthdomain.AuthorizationDetailType) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	sharedmem.DefaultScope(&t.TenantID, kernel.DefaultTenantID)

@@ -7,14 +7,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/go-ldap/ldap/v3"
 )
 
 var entryUUIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
-func identityFilter(dialect domain.Dialect, externalID string) (string, bool) {
-	if dialect == domain.ActiveDirectory {
+func identityFilter(dialect directoryconnectordomain.Dialect, externalID string) (string, bool) {
+	if dialect == directoryconnectordomain.ActiveDirectory {
 		raw, err := base64.StdEncoding.Strict().DecodeString(externalID)
 		if err != nil || len(raw) != 16 {
 			return "", false
@@ -32,7 +32,7 @@ func identityFilter(dialect domain.Dialect, externalID string) (string, bool) {
 }
 
 // VerifyPassword はサービス接続と利用者の bind を分ける。再 bind で同期中の接続を変更しない。
-func (d *Directory) VerifyPassword(ctx context.Context, scope domain.Scope, externalID, password string) string {
+func (d *Directory) VerifyPassword(ctx context.Context, scope directoryconnectordomain.Scope, externalID, password string) string {
 	filter, ok := identityFilter(d.config.Dialect, externalID)
 	if !ok || password == "" {
 		return "invalid_credentials"
@@ -64,7 +64,7 @@ func (d *Directory) VerifyPassword(ctx context.Context, scope domain.Scope, exte
 		return "accepted"
 	}
 	if ldap.IsErrorWithCode(err, ldap.LDAPResultInvalidCredentials) {
-		if d.config.Dialect == domain.ActiveDirectory {
+		if d.config.Dialect == directoryconnectordomain.ActiveDirectory {
 			return adPasswordRejection(err.Error())
 		}
 		return "invalid_credentials"

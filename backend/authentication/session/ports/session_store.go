@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -13,17 +13,17 @@ import (
 // sessions so authentication resolution stays fail-closed, and Revoke
 // tombstones a session instead of deleting it.
 type SessionStore interface {
-	Save(ctx context.Context, s *domain.LoginSession) error
+	Save(ctx context.Context, s *sessiondomain.LoginSession) error
 
 	// Find resolves an active (unrevoked, unexpired) session for
 	// authentication. A nil result must be treated as unauthenticated.
-	Find(ctx context.Context, sessionID string) (*domain.LoginSession, error)
+	Find(ctx context.Context, sessionID string) (*sessiondomain.LoginSession, error)
 
 	// FindOwned resolves a session regardless of revoked/expired state,
 	// scoped to its owner (userID). Returns nil if no such session exists
 	// for that owner. Used by self-service revoke to distinguish "no such
 	// session" from "already revoked" without leaking other users' sessions.
-	FindOwned(ctx context.Context, sessionID, userID string) (*domain.LoginSession, error)
+	FindOwned(ctx context.Context, sessionID, userID string) (*sessiondomain.LoginSession, error)
 
 	// Revoke idempotently tombstones a session: the first call records
 	// revoked_at / revoke_reason, later calls (with any reason) are a no-op.
@@ -41,7 +41,7 @@ type SessionStore interface {
 
 	// ListBySub は対象 sub の有効な (未失効・未期限切れ) LoginSession を新しい順で返す
 	// (wi-20 スライス 2)。self / admin のセッション一覧に使う。
-	ListBySub(ctx context.Context, sub string) ([]*domain.LoginSession, error)
+	ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error)
 
 	// DeleteAllForSub は anonymize cascade から呼ばれる。
 	// 対象 sub の LoginSession をすべて物理削除する (tombstone ではなく erasure)。

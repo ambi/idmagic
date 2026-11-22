@@ -22,7 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -46,7 +46,7 @@ type transactionCodeStore struct {
 	ids []string
 }
 
-func (s *transactionCodeStore) Save(ctx context.Context, code *domain.AuthorizationCodeRecord) error {
+func (s *transactionCodeStore) Save(ctx context.Context, code *oauthdomain.AuthorizationCodeRecord) error {
 	if err := s.AuthorizationCodeStore.Save(ctx, code); err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (s *transactionCodeStore) Save(ctx context.Context, code *domain.Authorizat
 	return nil
 }
 
-func (s *transactionFailureStore) Find(ctx context.Context, id string) (*domain.AuthorizationRequest, error) {
+func (s *transactionFailureStore) Find(ctx context.Context, id string) (*oauthdomain.AuthorizationRequest, error) {
 	if s.failure != nil {
 		return nil, s.failure
 	}
@@ -65,7 +65,7 @@ type transactionErrorFixture struct {
 	e        *echo.Echo
 	requests *transactionFailureStore
 	auth     authentication.Module
-	request  *domain.AuthorizationRequest
+	request  *oauthdomain.AuthorizationRequest
 	codes    *transactionCodeStore
 	user     *userdomain.User
 	users    func() (*userdomain.User, error)
@@ -123,7 +123,7 @@ func newTransactionErrorFixture(t *testing.T, enrollment bool) *transactionError
 		cookie: authentication.SessionCookie + "=" + session.SessionID,
 		users:  func() (*userdomain.User, error) { return users.FindBySub(ctx, user.ID) },
 	}
-	f.request = &domain.AuthorizationRequest{
+	f.request = &oauthdomain.AuthorizationRequest{
 		ID: "transaction-1", TenantID: user.TenantID, ClientID: authClientID,
 		State: spec.AuthFlowAuthenticationPending, RedirectURI: authRedirectURI, Scope: "openid", CreatedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
@@ -161,7 +161,7 @@ func (f *transactionErrorFixture) snapshot(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var codes []*domain.AuthorizationCodeRecord
+	var codes []*oauthdomain.AuthorizationCodeRecord
 	for _, id := range f.codes.ids {
 		code, err := f.codes.Find(ctx, id)
 		if err != nil {

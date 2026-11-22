@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -20,7 +20,7 @@ type grantCase struct {
 	input ExchangeTokenInput
 }
 
-func newGrantCase(t *testing.T, subject *ports.IntrospectionResult) *grantCase {
+func newGrantCase(t *testing.T, subject *oauthports.IntrospectionResult) *grantCase {
 	t.Helper()
 	now := time.Now().UTC()
 	subject.Active, subject.JTI = true, "subject-jti"
@@ -28,18 +28,18 @@ func newGrantCase(t *testing.T, subject *ports.IntrospectionResult) *grantCase {
 		subject.Exp = now.Add(time.Hour).Unix()
 	}
 	store := oauth2memory.NewTokenExchangeGrantStore()
-	deps := newExchangeTokenDeps(t, &recordingIssuer{}, map[string]*ports.IntrospectionResult{"subj": subject})
+	deps := newExchangeTokenDeps(t, &recordingIssuer{}, map[string]*oauthports.IntrospectionResult{"subj": subject})
 	deps.Grants = store
 	c := &grantCase{deps: deps, store: store, now: now, input: ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}, ProofJKT: "gateway-key", TokenExchangeGrant: "g",
 	}}
-	c.save(t, now.Add(domain.TokenExchangeGrantTTL))
+	c.save(t, now.Add(oauthdomain.TokenExchangeGrantTTL))
 	return c
 }
 
 func (c *grantCase) save(t *testing.T, expiresAt time.Time) {
 	t.Helper()
-	if err := c.store.Save(testing_tenant.Default(context.Background()), domain.HashTokenExchangeGrant("g"), domain.TokenExchangeGrant{
+	if err := c.store.Save(testing_tenant.Default(context.Background()), oauthdomain.HashTokenExchangeGrant("g"), oauthdomain.TokenExchangeGrant{
 		ClientID: "client", SubjectTokenID: "subject-jti", Resource: "https://api.example", ExpiresAt: expiresAt,
 	}); err != nil {
 		t.Fatal(err)
@@ -57,8 +57,8 @@ func requireOAuthCode(t *testing.T, err error, code string) {
 	}
 }
 
-func dpopSubject() *ports.IntrospectionResult {
-	return &ports.IntrospectionResult{Sub: "user-1", ClientID: "agent-client", Scope: "read", SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "agent-key"}}
+func dpopSubject() *oauthports.IntrospectionResult {
+	return &oauthports.IntrospectionResult{Sub: "user-1", ClientID: "agent-client", Scope: "read", SenderConstraint: &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "agent-key"}}
 }
 
 //spec:covers REQ-OAUTH2-056, REQ-OAUTH2-048: 許可を伴う交換は示した鍵へ束縛し、元のクライアントを act の内側に残し、期限切れと再利用を拒否する
@@ -110,7 +110,7 @@ func TestGrantExpiryBoundary(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-056: mTLS に束縛した subject_token も許可があれば示した証明書へ束縛する
 func TestGrantRebindsAnMTLSSubject(t *testing.T) {
-	c := newGrantCase(t, &ports.IntrospectionResult{Sub: "user-1", Scope: "read", SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "agent-cert"}})
+	c := newGrantCase(t, &oauthports.IntrospectionResult{Sub: "user-1", Scope: "read", SenderConstraint: &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "agent-cert"}})
 	c.input.ProofJKT, c.input.ProofX5TS256 = "", "gateway-cert"
 	if _, err := c.exchange(); err != nil {
 		t.Fatal(err)
@@ -166,7 +166,7 @@ func TestGrantRequiresTheUsersDelegation(t *testing.T) {
 	c.deps.Consents = oauth2memory.NewConsentRepository()
 	_, err := c.exchange()
 	requireOAuthCode(t, err, "invalid_grant")
-	claimed, err := c.store.Claim(testing_tenant.Default(context.Background()), domain.HashTokenExchangeGrant("g"), domain.TokenExchangeGrant{
+	claimed, err := c.store.Claim(testing_tenant.Default(context.Background()), oauthdomain.HashTokenExchangeGrant("g"), oauthdomain.TokenExchangeGrant{
 		ClientID: "client", SubjectTokenID: "subject-jti", Resource: "https://api.example",
 	}, c.now)
 	if err != nil || !claimed {

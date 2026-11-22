@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 )
 
 func TestLoadWorkerConfigDefaults(t *testing.T) {
@@ -103,10 +103,10 @@ func TestLoadWorkerConfigLaneSpecificConcurrency(t *testing.T) {
 	if err := l.Err(); err != nil {
 		t.Fatalf("LoadWorkerConfig: %v", err)
 	}
-	if got := cfg.Concurrency[domain.LaneLatencySensitive]; got != 16 {
+	if got := cfg.Concurrency[jobsdomain.LaneLatencySensitive]; got != 16 {
 		t.Errorf("latency_sensitive concurrency = %d, want the lane override 16", got)
 	}
-	if got := cfg.Concurrency[domain.LaneBulk]; got != 8 {
+	if got := cfg.Concurrency[jobsdomain.LaneBulk]; got != 8 {
 		t.Errorf("bulk concurrency = %d, want the shared default 8", got)
 	}
 }

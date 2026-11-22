@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
-	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -20,8 +20,8 @@ import (
 // backend/authentication/totp/ports.SecretCipher) rather than this concrete
 // type directly.
 type FieldCipher struct {
-	Repository ports.DataKeyRepository
-	Cache      *usecases.DataKeyCache
+	Repository datakeysports.DataKeyRepository
+	Cache      *datakeysusecases.DataKeyCache
 	Crypto     envelope_crypto.EnvelopeCrypto
 	// Emit optionally publishes DataEncryptionKeyBootstrapped when Encrypt
 	// lazily provisions a tenant's first DEK.
@@ -36,12 +36,12 @@ type FieldCipher struct {
 // provisioning step is required.
 func (f *FieldCipher) Encrypt(ctx context.Context, tenantID, recordContext, table, recordID, field, plaintext string) (keyVersion int, ciphertext []byte, err error) {
 	version, dek, err := f.Cache.GetActive(ctx, tenantID)
-	if errors.Is(err, domain.ErrNoActiveDataKey) {
-		bootstrapDeps := usecases.Deps{Repository: f.Repository, Crypto: f.Crypto, Cache: f.Cache, Emit: f.Emit}
-		_, bootstrapErr := usecases.BootstrapTenantDataKey(ctx, bootstrapDeps, tenantID, time.Now().UTC())
+	if errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
+		bootstrapDeps := datakeysusecases.Deps{Repository: f.Repository, Crypto: f.Crypto, Cache: f.Cache, Emit: f.Emit}
+		_, bootstrapErr := datakeysusecases.BootstrapTenantDataKey(ctx, bootstrapDeps, tenantID, time.Now().UTC())
 		// A concurrent request may have bootstrapped the tenant's DEK first;
 		// that is not a failure here, just proceed to read the now-active key.
-		if bootstrapErr != nil && !errors.Is(bootstrapErr, domain.ErrDataKeyAlreadyBootstrapped) {
+		if bootstrapErr != nil && !errors.Is(bootstrapErr, datakeysdomain.ErrDataKeyAlreadyBootstrapped) {
 			return 0, nil, bootstrapErr
 		}
 		version, dek, err = f.Cache.GetActive(ctx, tenantID)

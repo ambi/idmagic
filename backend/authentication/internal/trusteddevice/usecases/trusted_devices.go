@@ -12,8 +12,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -31,7 +31,7 @@ var ErrTrustedDeviceNotFound = errors.New("trusted device not found")
 // Deps は信頼済みデバイスの use case が要る依存。Repo が nil なら機能全体を無効として
 // 扱い、発行も評価も静かに行わない (配線の無い環境で MFA を弱めない)。
 type Deps struct {
-	Repo ports.TrustedDeviceRepository
+	Repo trusteddeviceports.TrustedDeviceRepository
 	Emit func(spec.DomainEvent)
 }
 
@@ -50,7 +50,7 @@ func Issue(
 	if deps.Repo == nil || maxAge <= 0 || !Rememberable(factor) {
 		return "", nil
 	}
-	device, cookie, err := domain.NewTrustedDevice(
+	device, cookie, err := trusteddevicedomain.NewTrustedDevice(
 		tenantID, userID, authdomain.DeviceLabel(userAgent), maxAge, now, entropy.Crypto(),
 	)
 	if err != nil {
@@ -63,7 +63,7 @@ func Issue(
 		return "", err
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.TrustedDeviceRegistered{
+		deps.Emit(&trusteddevicedomain.TrustedDeviceRegistered{
 			At: now, TenantID: tenantID, UserID: userID,
 			DeviceID: device.ID, Factor: factor, ExpiresAt: device.ExpiresAt,
 		})
@@ -94,7 +94,7 @@ func Evaluate(
 		return EvaluationResult{}, nil
 	}
 	// 改竄された cookie は「信頼できない端末」であって、リクエスト全体の失敗ではない。
-	selector, verifier, ok := domain.ParseCookie(cookie)
+	selector, verifier, ok := trusteddevicedomain.ParseCookie(cookie)
 	if !ok {
 		return EvaluationResult{}, nil
 	}
@@ -118,7 +118,7 @@ func Evaluate(
 	}
 	return EvaluationResult{
 		Trusted: true, DeviceID: device.ID,
-		RotatedCookie: domain.FormatCookie(device.Selector, rotated),
+		RotatedCookie: trusteddevicedomain.FormatCookie(device.Selector, rotated),
 	}, nil
 }
 
@@ -129,15 +129,15 @@ func ListActive(
 	deps Deps,
 	tenantID, userID string,
 	now time.Time,
-) ([]*domain.TrustedDevice, error) {
+) ([]*trusteddevicedomain.TrustedDevice, error) {
 	if deps.Repo == nil {
-		return []*domain.TrustedDevice{}, nil
+		return []*trusteddevicedomain.TrustedDevice{}, nil
 	}
 	devices, err := deps.Repo.ListActiveByUser(ctx, tenantID, userID, now)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.TrustedDevice, 0, len(devices))
+	out := make([]*trusteddevicedomain.TrustedDevice, 0, len(devices))
 	for _, device := range devices {
 		if device.Active(now) {
 			out = append(out, device)
@@ -199,17 +199,19 @@ func RevokeAllForUser(
 	return nil
 }
 
-func emitRevoked(deps Deps, device *domain.TrustedDevice, now time.Time) {
+func emitRevoked(deps Deps, device *trusteddevicedomain.TrustedDevice, now time.Time) {
 	if deps.Emit == nil || device == nil {
 		return
 	}
-	deps.Emit(domain.RevokedEvent(device, now))
+	deps.Emit(trusteddevicedomain.RevokedEvent(device, now))
 }
 
 // UserDeviceRevoker は ports.UserDeviceRevoker を Repo で実装する。
-type UserDeviceRevoker struct{ Repo ports.TrustedDeviceRepository }
+type UserDeviceRevoker struct {
+	Repo trusteddeviceports.TrustedDeviceRepository
+}
 
-var _ ports.UserDeviceRevoker = UserDeviceRevoker{}
+var _ trusteddeviceports.UserDeviceRevoker = UserDeviceRevoker{}
 
 // RevokeAllForUser は対象ユーザーの信頼済みデバイスをすべて失効させ、失効した端末ごとの
 // TrustedDeviceRevoked を返す。
@@ -226,7 +228,7 @@ func (r UserDeviceRevoker) RevokeAllForUser(
 	events := make([]spec.DomainEvent, 0, len(revoked))
 	for _, device := range revoked {
 		if device != nil {
-			events = append(events, domain.RevokedEvent(device, now))
+			events = append(events, trusteddevicedomain.RevokedEvent(device, now))
 		}
 	}
 	return events, nil

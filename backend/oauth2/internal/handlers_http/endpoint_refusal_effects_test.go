@@ -27,7 +27,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
 	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/internal/authorization/domain"
@@ -111,10 +111,10 @@ func newEndpointServer(t *testing.T, options ...func(*httpadapter.Deps)) *endpoi
 	now := time.Now().UTC()
 
 	clients := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(endpointClientSecret)
+	secretHash := oauthdomain.HashClientSecret(endpointClientSecret)
 	// first-party にしておくと同意画面を挟まず認可コードまで届くので、
 	// 「防護を外せばレコードが 1 件できる」対照が 1 リクエストで書ける。
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: endpointClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{endpointRedirectURI},
@@ -122,24 +122,24 @@ func newEndpointServer(t *testing.T, options ...func(*httpadapter.Deps)) *endpoi
 			spec.GrantAuthorizationCode, spec.GrantDeviceCode, spec.GrantCiba,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretPost,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretPost,
 		Scope:                    "openid profile",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		FirstParty:               true,
 		CreatedAt:                now,
 	})
 	// PAR を必須とする FAPI クライアント。
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: endpointFapiClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs:                       []string{endpointRedirectURI},
 		GrantTypes:                         []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:                      []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:            domain.AuthMethodClientSecretPost,
+		TokenEndpointAuthMethod:            oauthdomain.AuthMethodClientSecretPost,
 		Scope:                              "openid profile",
 		IDTokenSignedResponseAlg:           signingdomain.SigAlgPS256,
-		FapiProfile:                        domain.FapiNone,
+		FapiProfile:                        oauthdomain.FapiNone,
 		FirstParty:                         true,
 		RequirePushedAuthorizationRequests: true,
 		CreatedAt:                          now,

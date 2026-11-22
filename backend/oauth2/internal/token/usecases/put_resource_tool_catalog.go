@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 // ErrInvalidToolCatalog はカタログの形か上限が REQ-OAUTH2-086 を満たさないことを表す。
@@ -14,8 +14,8 @@ var ErrInvalidToolCatalog = errors.New("invalid tool catalog")
 
 // ToolCatalogDeps はカタログの保存に要る保存先である。
 type ToolCatalogDeps struct {
-	Servers  ports.McpResourceServerRepository
-	Catalogs ports.McpToolCatalogRepository
+	Servers  oauthports.McpResourceServerRepository
+	Catalogs oauthports.McpToolCatalogRepository
 }
 
 // ToolCatalogRequest は認証したクライアントと、フォームで受けたカタログである。
@@ -39,11 +39,11 @@ func PutResourceToolCatalog(ctx context.Context, deps ToolCatalogDeps, in ToolCa
 	if in.Complete != "true" && in.Complete != "false" {
 		return ErrInvalidToolCatalog
 	}
-	tools, err := domain.ParseCatalogTools(in.Tools)
+	tools, err := oauthdomain.ParseCatalogTools(in.Tools)
 	if err != nil {
 		return ErrInvalidToolCatalog
 	}
-	return deps.Catalogs.Save(ctx, &domain.McpToolCatalog{
+	return deps.Catalogs.Save(ctx, &oauthdomain.McpToolCatalog{
 		TenantID: server.TenantID, ResourceServerID: server.ID, Tools: tools,
 		Complete: in.Complete == "true", ReceivedAt: now,
 	})

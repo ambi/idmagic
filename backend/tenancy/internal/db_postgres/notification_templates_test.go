@@ -7,7 +7,7 @@ import (
 
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func TestNotificationTemplateRepositorySaveFindListDelete(t *testing.T) {
@@ -119,9 +119,9 @@ func TestTenantRepositoryPersistsDefaultLocale(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 	locale := "ja"
-	tenant := &domain.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID: "33333333-3333-3333-3333-333333333334", Realm: "locale-tenant",
-		DisplayName: "Locale Test Tenant", Status: domain.TenantStatusActive,
+		DisplayName: "Locale Test Tenant", Status: tenancydomain.TenantStatusActive,
 		DefaultLocale: &locale, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, tenant); err != nil {

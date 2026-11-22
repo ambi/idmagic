@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/federation/db_postgres"
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 	"github.com/ambi/idmagic/backend/datakeys"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -156,7 +156,7 @@ func TestConnectionAndIdentityRepositoriesRoundTrip(t *testing.T) {
 	if err := idmanagement.NewPostgresModule(pool).UserRepo.Save(ctx, user); err != nil {
 		t.Fatalf("Save user: %v", err)
 	}
-	link := &domain.FederatedIdentity{
+	link := &federationdomain.FederatedIdentity{
 		TenantID: tenant.ID, ProviderID: connection.ID, ExternalSubject: "external",
 		LocalUserID: userID, LinkedAt: now,
 	}
@@ -194,8 +194,8 @@ func TestAttemptStoreConsumesOnceAndScopesTenant(t *testing.T) {
 		t.Fatal(err)
 	}
 	attempts := &db_postgres.AttemptStore{Pool: pool}
-	attempt := &domain.FederatedLoginAttempt{
-		State: "state", TenantID: tenantA.ID, ProviderID: connection.ID, Protocol: domain.ProtocolOIDC,
+	attempt := &federationdomain.FederatedLoginAttempt{
+		State: "state", TenantID: tenantA.ID, ProviderID: connection.ID, Protocol: federationdomain.ProtocolOIDC,
 		CreatedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
 	if err := attempts.Save(ctx, attempt); err != nil {
@@ -212,15 +212,15 @@ func TestAttemptStoreConsumesOnceAndScopesTenant(t *testing.T) {
 	}
 }
 
-func testConnection(t *testing.T, tenantID string, now time.Time) *domain.IdentityProviderConnection {
+func testConnection(t *testing.T, tenantID string, now time.Time) *federationdomain.IdentityProviderConnection {
 	t.Helper()
-	return &domain.IdentityProviderConnection{
+	return &federationdomain.IdentityProviderConnection{
 		ID: pgfixtures.NewUUID(t), TenantID: tenantID, DisplayName: "OIDC",
-		Protocol: domain.ProtocolOIDC, Status: domain.ConnectionActive,
+		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
 		Issuer: "https://idp.example", ClientID: "client", SecretReference: "env:OIDC_SECRET",
 		AuthorizationEndpoint: "https://idp.example/auth", TokenEndpoint: "https://idp.example/token",
 		JWKSURI:       "https://idp.example/jwks",
-		ClaimMapping:  domain.ClaimMapping{Subject: "sub", Username: "email"},
-		LinkingPolicy: domain.LinkingNone, CreatedAt: now, UpdatedAt: now,
+		ClaimMapping:  federationdomain.ClaimMapping{Subject: "sub", Username: "email"},
+		LinkingPolicy: federationdomain.LinkingNone, CreatedAt: now, UpdatedAt: now,
 	}
 }

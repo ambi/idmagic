@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 type Fixture struct {
-	DetailTypes ports.AuthorizationDetailTypeRepository
+	DetailTypes oauthports.AuthorizationDetailTypeRepository
 	TenantA     string
 	TenantB     string
 	Now         time.Time
@@ -23,11 +23,11 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	detailType := &domain.AuthorizationDetailType{
+	detailType := &oauthdomain.AuthorizationDetailType{
 		TenantID: f.TenantA, Type: "payment_initiation", Description: "Payment initiation details",
-		DisplayTemplate: "Pay {{.amount}}", State: domain.DetailTypeEnabled,
-		Schema: domain.AuthorizationDetailsSchema{Rules: []domain.AuthorizationDetailFieldRule{
-			{Name: "currency", Semantics: domain.DetailFieldEnum, Allowed: []string{"JPY", "USD"}},
+		DisplayTemplate: "Pay {{.amount}}", State: oauthdomain.DetailTypeEnabled,
+		Schema: oauthdomain.AuthorizationDetailsSchema{Rules: []oauthdomain.AuthorizationDetailFieldRule{
+			{Name: "currency", Semantics: oauthdomain.DetailFieldEnum, Allowed: []string{"JPY", "USD"}},
 		}},
 		CreatedAt: f.Now, UpdatedAt: f.Now,
 	}

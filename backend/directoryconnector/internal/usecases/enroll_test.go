@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 )
 
 type fakeEnrollmentAPI struct {
@@ -17,20 +17,20 @@ type fakeEnrollmentAPI struct {
 	err   error
 }
 
-func (a *fakeEnrollmentAPI) Enroll(_ context.Context, token string, jwk map[string]any) (ports.Enrollment, error) {
+func (a *fakeEnrollmentAPI) Enroll(_ context.Context, token string, jwk map[string]any) (directoryconnectorports.Enrollment, error) {
 	a.token, a.jwk = token, jwk
 	if a.err != nil {
-		return ports.Enrollment{}, a.err
+		return directoryconnectorports.Enrollment{}, a.err
 	}
-	return ports.Enrollment{ConnectorID: "c1", KeyID: "k1", Audience: "https://idp.test/realms/acme/directory-connector/v1"}, nil
+	return directoryconnectorports.Enrollment{ConnectorID: "c1", KeyID: "k1", Audience: "https://idp.test/realms/acme/directory-connector/v1"}, nil
 }
 
 type memoryCredentials struct {
 	key        *ecdsa.PrivateKey
-	enrollment *ports.Enrollment
+	enrollment *directoryconnectorports.Enrollment
 }
 
-func (m *memoryCredentials) SaveCredentials(_ context.Context, key *ecdsa.PrivateKey, enrollment ports.Enrollment) error {
+func (m *memoryCredentials) SaveCredentials(_ context.Context, key *ecdsa.PrivateKey, enrollment directoryconnectorports.Enrollment) error {
 	m.key, m.enrollment = key, &enrollment
 	return nil
 }
@@ -75,7 +75,7 @@ func TestEnrollSendsOnlyThePublicKeyAndSavesTheCredentials(t *testing.T) {
 
 //spec:covers REQ-DIRECTORYCONNECTOR-001: 登録が拒否されたら、保存済みの秘密鍵と登録の情報を変えない。
 func TestEnrollKeepsTheStateWhenRefused(t *testing.T) {
-	refused := &ports.APIError{Status: 401, Type: "invalid_token"}
+	refused := &directoryconnectorports.APIError{Status: 401, Type: "invalid_token"}
 	store := &memoryCredentials{}
 	if _, err := Enroll(context.Background(), &fakeEnrollmentAPI{err: refused}, store, "idmagic_dce_expired"); !errors.Is(err, refused) {
 		t.Fatalf("error = %v", err)

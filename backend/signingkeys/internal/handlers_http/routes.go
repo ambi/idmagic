@@ -9,7 +9,7 @@ import (
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
@@ -17,7 +17,7 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	KeyStore   ports.KeyStore
+	KeyStore   signingports.KeyStore
 	TenantRepo tenantports.TenantRepository
 }
 
@@ -52,13 +52,13 @@ func (d Deps) handleJWKS(c *echo.Context) error {
 }
 
 // publicKeys は JWKS に載せる用途の鍵を集める (REQ-SIGNINGKEYS-013)。
-func publicKeys(ctx context.Context, store ports.KeyStore) ([]*signingdomain.SigningKey, error) {
+func publicKeys(ctx context.Context, store signingports.KeyStore) ([]*signingdomain.SigningKey, error) {
 	now := time.Now().UTC()
 	keys, err := store.ListPublicKeys(ctx, now)
 	if err != nil {
 		return nil, err
 	}
-	idJag, err := store.ListPublicKeys(ports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning), now)
+	idJag, err := store.ListPublicKeys(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning), now)
 	if err != nil {
 		return nil, err
 	}

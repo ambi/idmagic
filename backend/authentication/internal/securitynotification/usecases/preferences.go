@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 )
 
 // ErrPreferencesUnavailable は受信設定の保存先が配線されていない。取得は既定
@@ -15,13 +15,13 @@ var ErrPreferencesUnavailable = errors.New("notification preferences are not con
 
 // PreferenceDeps は受信設定の取得 / 更新が要る依存。
 type PreferenceDeps struct {
-	Repo ports.PreferenceRepository
+	Repo securitynotificationports.PreferenceRepository
 }
 
 // CategoryPreference は種別 1 件の本人向けの提示。SCL
 // `AccountNotificationCategoryPreference` の双子定義。
 type CategoryPreference struct {
-	Category  domain.Category
+	Category  securitynotificationdomain.Category
 	Mandatory bool
 	Enabled   bool
 }
@@ -29,7 +29,7 @@ type CategoryPreference struct {
 // GetPreferences は全種別をカタログの並びで返す。行が無い場合も同じ並びで
 // 「すべて有効」を返すので、UI は行の有無を意識しない。
 func GetPreferences(ctx context.Context, deps PreferenceDeps, userID string) ([]CategoryPreference, error) {
-	var stored domain.Preferences
+	var stored securitynotificationdomain.Preferences
 	if deps.Repo != nil {
 		found, err := deps.Repo.Find(ctx, userID)
 		if err != nil {
@@ -39,8 +39,8 @@ func GetPreferences(ctx context.Context, deps PreferenceDeps, userID string) ([]
 			stored = *found
 		}
 	}
-	out := make([]CategoryPreference, 0, len(domain.Categories()))
-	for _, category := range domain.Categories() {
+	out := make([]CategoryPreference, 0, len(securitynotificationdomain.Categories()))
+	for _, category := range securitynotificationdomain.Categories() {
 		out = append(out, CategoryPreference{
 			Category:  category,
 			Mandatory: category.Mandatory(),
@@ -56,10 +56,10 @@ func UpdatePreferences(
 	ctx context.Context,
 	deps PreferenceDeps,
 	userID string,
-	disabled []domain.Category,
+	disabled []securitynotificationdomain.Category,
 	now time.Time,
 ) ([]CategoryPreference, error) {
-	preferences, err := domain.NewPreferences(userID, disabled, now)
+	preferences, err := securitynotificationdomain.NewPreferences(userID, disabled, now)
 	if err != nil {
 		return nil, err
 	}

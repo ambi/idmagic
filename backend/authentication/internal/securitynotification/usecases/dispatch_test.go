@@ -13,13 +13,13 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -34,12 +34,12 @@ const (
 // recordingNotifier は送信要求をそのまま覚える。文面の描画は Notifier 実装の責務なので、
 // ここで確かめるのは「誰に、どの key で、どの差し込み変数で送ったか」だけである。
 type recordingNotifier struct {
-	sent      []sharednotification.Notification
+	sent      []notificationports.Notification
 	failNext  bool
 	callCount int
 }
 
-func (n *recordingNotifier) Notify(_ context.Context, notification sharednotification.Notification) bool {
+func (n *recordingNotifier) Notify(_ context.Context, notification notificationports.Notification) bool {
 	n.callCount++
 	n.sent = append(n.sent, notification)
 	return !n.failNext
@@ -106,7 +106,7 @@ func TestDispatchNotifiesOnlyTheFirstSignInFromEachDevice(t *testing.T) {
 	if sent.To != testAddress {
 		t.Errorf("To = %q, want the stored verified address", sent.To)
 	}
-	if sent.Key != sharednotification.TemplateKeyAccountSecurityAlert {
+	if sent.Key != notificationports.TemplateKeyAccountSecurityAlert {
 		t.Errorf("Key = %q, want the account security alert", sent.Key)
 	}
 	if got := sent.Vars["device_summary"]; got != "Chrome / macOS (JP)" {
@@ -146,11 +146,11 @@ func TestDispatchNotifiesOnlyTheFirstSignInFromEachDevice(t *testing.T) {
 	if len(emitter.events) != 2 {
 		t.Fatalf("emitted %d event(s), want one per notification", len(emitter.events))
 	}
-	sentEvent, ok := emitter.events[0].(*domain.AccountSecurityNotificationSent)
+	sentEvent, ok := emitter.events[0].(*securitynotificationdomain.AccountSecurityNotificationSent)
 	if !ok {
 		t.Fatalf("emitted %T, want AccountSecurityNotificationSent", emitter.events[0])
 	}
-	if sentEvent.Category != domain.CategoryNewDeviceSignIn || !sentEvent.Delivered {
+	if sentEvent.Category != securitynotificationdomain.CategoryNewDeviceSignIn || !sentEvent.Delivered {
 		t.Errorf("event = %#v", sentEvent)
 	}
 	if sentEvent.TriggerEventType != "UserAuthenticated" {
@@ -163,9 +163,9 @@ func TestDispatchIgnoresItsOwnEvent(t *testing.T) {
 	t.Parallel()
 	deps, notifier, _ := newTestDeps(t, true)
 
-	err := Dispatch(context.Background(), deps, &domain.AccountSecurityNotificationSent{
+	err := Dispatch(context.Background(), deps, &securitynotificationdomain.AccountSecurityNotificationSent{
 		At: testNow(), TenantID: testTenant, UserID: testSub,
-		Category: domain.CategoryNewDeviceSignIn, TriggerEventType: "UserAuthenticated", Delivered: true,
+		Category: securitynotificationdomain.CategoryNewDeviceSignIn, TriggerEventType: "UserAuthenticated", Delivered: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -243,7 +243,7 @@ func TestDispatchSendsImpersonationNoticeToTheTarget(t *testing.T) {
 	if notifier.callCount != 1 || notifier.sent[0].To != testAddress {
 		t.Fatalf("the impersonation notice went to %#v, want the target's address", notifier.sent)
 	}
-	sent := emitter.events[0].(*domain.AccountSecurityNotificationSent)
+	sent := emitter.events[0].(*securitynotificationdomain.AccountSecurityNotificationSent)
 	if sent.UserID != testSub {
 		t.Errorf("UserID = %q, want the impersonated user rather than the admin", sent.UserID)
 	}
@@ -283,7 +283,7 @@ func TestDispatchReportsDeliveryFailureWithoutFailing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a delivery failure must not surface as an error: %v", err)
 	}
-	sent := emitter.events[0].(*domain.AccountSecurityNotificationSent)
+	sent := emitter.events[0].(*securitynotificationdomain.AccountSecurityNotificationSent)
 	if sent.Delivered {
 		t.Error("Delivered = true after a failed send")
 	}
@@ -318,7 +318,7 @@ func TestDispatchHonorsDisabledCategoriesButNotForMandatoryOnes(t *testing.T) {
 	deps, notifier, _ := newTestDeps(t, true)
 	ctx := context.Background()
 
-	prefs, err := domain.NewPreferences(testSub, []domain.Category{domain.CategoryNewDeviceSignIn}, testNow())
+	prefs, err := securitynotificationdomain.NewPreferences(testSub, []securitynotificationdomain.Category{securitynotificationdomain.CategoryNewDeviceSignIn}, testNow())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,8 +370,8 @@ func TestDispatchRefusesToCrossTenantBoundaries(t *testing.T) {
 	}
 }
 
-func knownDeviceForTest() ports.KnownDevice {
-	return ports.KnownDevice{
+func knownDeviceForTest() securitynotificationports.KnownDevice {
+	return securitynotificationports.KnownDevice{
 		UserID:     testSub,
 		DeviceHash: deviceHash(context.Background(), DispatchDeps{}, testUA),
 		Label:      authdomain.DeviceLabel(testUA),
@@ -381,11 +381,11 @@ func knownDeviceForTest() ports.KnownDevice {
 
 type failingPreferences struct{}
 
-func (failingPreferences) Find(context.Context, string) (*domain.Preferences, error) {
+func (failingPreferences) Find(context.Context, string) (*securitynotificationdomain.Preferences, error) {
 	return nil, errors.New("preference store is down")
 }
 
-func (failingPreferences) Save(context.Context, domain.Preferences) error {
+func (failingPreferences) Save(context.Context, securitynotificationdomain.Preferences) error {
 	return errors.New("preference store is down")
 }
 

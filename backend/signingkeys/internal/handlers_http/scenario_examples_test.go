@@ -28,7 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
+	signingusecases "github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -206,7 +206,7 @@ func TestArchivingAnExpiredVerifyingKeyRemovesItFromTheJWKS(t *testing.T) {
 	}
 
 	var events []spec.DomainEvent
-	archived, err := usecases.ArchiveExpiredSigningKeys(ctx, usecases.ArchiveExpiredSigningKeysDeps{
+	archived, err := signingusecases.ArchiveExpiredSigningKeys(ctx, signingusecases.ArchiveExpiredSigningKeysDeps{
 		KeyStore: s.KeyStore,
 		Emit:     func(event spec.DomainEvent) { events = append(events, event) },
 	}, now)

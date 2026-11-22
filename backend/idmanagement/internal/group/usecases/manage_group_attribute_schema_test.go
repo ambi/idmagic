@@ -9,18 +9,18 @@ import (
 	memory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 func TestGetGroupAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 	repo := memory.NewTenantGroupAttributeSchemaRepository()
-	schema, err := GetGroupAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
+	schema, err := GetGroupAttributeSchema(context.Background(), repo, tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if schema == nil || schema.TenantID != domain.DefaultTenantID || len(schema.Attributes) != 0 {
+	if schema == nil || schema.TenantID != tenancydomain.DefaultTenantID || len(schema.Attributes) != 0 {
 		t.Fatalf("expected empty schema, got %#v", schema)
 	}
 }
@@ -31,14 +31,14 @@ func TestUpdateGroupAttributeSchemaPersistsCustomDefs(t *testing.T) {
 	defs := []groupdomain.GroupAttributeDef{
 		{Key: "cost_center", Type: idmdomain.AttributeTypeString},
 	}
-	saved, err := UpdateGroupAttributeSchema(ctx, repo, domain.DefaultTenantID, defs, time.Now().UTC())
+	saved, err := UpdateGroupAttributeSchema(ctx, repo, tenancydomain.DefaultTenantID, defs, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
 	}
 	if len(saved.Attributes) != 1 || saved.Attributes[0].Key != "cost_center" {
 		t.Fatalf("unexpected saved schema: %#v", saved)
 	}
-	reloaded, err := GetGroupAttributeSchema(ctx, repo, domain.DefaultTenantID)
+	reloaded, err := GetGroupAttributeSchema(ctx, repo, tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestUpdateGroupAttributeSchemaRejectsDuplicateKey(t *testing.T) {
 		{Key: "cost_center", Type: idmdomain.AttributeTypeNumber},
 	}
 	if _, err := UpdateGroupAttributeSchema(
-		context.Background(), repo, domain.DefaultTenantID, defs, time.Now().UTC(),
+		context.Background(), repo, tenancydomain.DefaultTenantID, defs, time.Now().UTC(),
 	); !errors.Is(err, ErrInvalidGroupAttributeSchema) {
 		t.Fatalf("expected ErrInvalidGroupAttributeSchema, got %v", err)
 	}
@@ -63,12 +63,12 @@ func TestUpdateGroupAttributeSchemaRejectsDuplicateKey(t *testing.T) {
 func TestUpdateGroupAttributeSchemaAllowsEmptyClear(t *testing.T) {
 	repo := memory.NewTenantGroupAttributeSchemaRepository()
 	ctx := context.Background()
-	if _, err := UpdateGroupAttributeSchema(ctx, repo, domain.DefaultTenantID,
+	if _, err := UpdateGroupAttributeSchema(ctx, repo, tenancydomain.DefaultTenantID,
 		[]groupdomain.GroupAttributeDef{{Key: "cost_center", Type: idmdomain.AttributeTypeString}},
 		time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	cleared, err := UpdateGroupAttributeSchema(ctx, repo, domain.DefaultTenantID, nil, time.Now().UTC())
+	cleared, err := UpdateGroupAttributeSchema(ctx, repo, tenancydomain.DefaultTenantID, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("clear failed: %v", err)
 	}

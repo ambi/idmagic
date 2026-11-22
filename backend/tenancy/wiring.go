@@ -10,12 +10,12 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/internal/db_postgres"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/tenancy/internal/usecases"
-	"github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // NewMemoryModule は Tenancy が所有する保存先をメモリで作る。
@@ -41,17 +41,19 @@ func NewPostgresModule(pool postgres.DB) Module {
 }
 
 // NewQuotaRepository は db の使用量と上限を読み書きする PostgreSQL のクォータの保存先を返す。
-func NewQuotaRepository(db postgres.DB) ports.QuotaRepository {
+func NewQuotaRepository(db postgres.DB) tenantports.QuotaRepository {
 	return db_postgres.NewQuotaRepository(db)
 }
 
 // QuotaRepositoryInTx は、呼び出し側のトランザクションで使用量を加減算する QuotaRepository を返す。
 // ほかのモジュールの書き込みと使用量を同じトランザクションで確定させるため、組み立て地点が渡す。
-func QuotaRepositoryInTx(tx pgx.Tx) ports.QuotaRepository { return db_postgres.QuotaRepositoryInTx(tx) }
+func QuotaRepositoryInTx(tx pgx.Tx) tenantports.QuotaRepository {
+	return db_postgres.QuotaRepositoryInTx(tx)
+}
 
 // EnsureDefault は default テナントがなければ作る。
 func (m Module) EnsureDefault(ctx context.Context, now time.Time) error {
-	return usecases.EnsureDefault(ctx, m.TenantRepo, now)
+	return tenancyusecases.EnsureDefault(ctx, m.TenantRepo, now)
 }
 
 // HTTPMiddleware は公開経路の組み立てにテナントの解決器を渡す。
@@ -61,13 +63,13 @@ func (m Module) HTTPMiddleware(issuer, baseDomain string) (host, path echo.Middl
 }
 
 // CanonicalLocation は HTTP と背景の通知に共通の正規ロケーションを返す。
-func CanonicalLocation(tenant *domain.Tenant, issuer, baseDomain string) (string, string) {
+func CanonicalLocation(tenant *tenancydomain.Tenant, issuer, baseDomain string) (string, string) {
 	return (tenancyhttp.TenantResolver{Issuer: issuer, TenantBaseDomain: baseDomain}).CanonicalLocation(tenant)
 }
 
 // NotificationSource は、通知の既定 locale、製品名、表示名とテンプレートの上書きをテナントから読む。
 func (m Module) NotificationSource() notificationports.TenantNotificationSource {
-	return usecases.TenantNotificationSource{
+	return tenancyusecases.TenantNotificationSource{
 		TenantRepo:   m.TenantRepo,
 		BrandingRepo: m.BrandingRepo,
 		TemplateRepo: m.NotificationTemplates,
@@ -78,10 +80,10 @@ func (m Module) NotificationSource() notificationports.TenantNotificationSource 
 type RouteDeps struct {
 	support.Deps
 	*support.Authenticator
-	TenantRepo ports.TenantRepository
+	TenantRepo tenantports.TenantRepository
 	// Notifier はテンプレート編集画面からのテスト送信に使う。
 	Notifier              notificationports.Notifier
-	TestNotificationActor ports.TestNotificationActorReader
+	TestNotificationActor tenantports.TestNotificationActorReader
 	// FederationSigner は要求テナントの有効な公開 XML 資格情報を解決する。
 	FederationSigner tenancyhttp.FederationSigner
 }

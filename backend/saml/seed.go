@@ -3,10 +3,10 @@ package saml
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/saml/domain"
-	"github.com/ambi/idmagic/backend/saml/internal/usecases"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
+	samlusecases "github.com/ambi/idmagic/backend/saml/internal/usecases"
 )
 
-func (m Module) CreateSeedServiceProvider(ctx context.Context, sp *domain.SamlServiceProvider) error {
-	return (usecases.ServiceProviderAdministration{SPRepo: m.SPRepo}).CreateSeed(ctx, sp)
+func (m Module) CreateSeedServiceProvider(ctx context.Context, sp *samldomain.SamlServiceProvider) error {
+	return (samlusecases.ServiceProviderAdministration{SPRepo: m.SPRepo}).CreateSeed(ctx, sp)
 }

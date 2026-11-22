@@ -12,8 +12,8 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -24,7 +24,7 @@ type (
 )
 
 type RegisterClientDeps struct {
-	ClientRepo ports.OAuth2ClientRepository
+	ClientRepo oauthports.OAuth2ClientRepository
 	Emit       func(spec.DomainEvent)
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (wi-160).
 	// This single check covers both dynamic client registration (/register) and admin client creation
@@ -54,21 +54,21 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	if in.TokenEndpointAuthMethod == "" {
 		if in.ClientType == spec.ClientPublic {
-			in.TokenEndpointAuthMethod = domain.AuthMethodNone
+			in.TokenEndpointAuthMethod = oauthdomain.AuthMethodNone
 		} else {
-			in.TokenEndpointAuthMethod = domain.AuthMethodClientSecretBasic
+			in.TokenEndpointAuthMethod = oauthdomain.AuthMethodClientSecretBasic
 		}
 	}
-	if in.TokenEndpointAuthMethod == domain.AuthMethodPrivateKeyJwt {
-		candidate := domain.OAuth2Client{
+	if in.TokenEndpointAuthMethod == oauthdomain.AuthMethodPrivateKeyJwt {
+		candidate := oauthdomain.OAuth2Client{
 			TenantID: tenancydomain.DefaultTenantID, ClientID: "validation", ClientType: in.ClientType,
 			RedirectURIs:             []string{"https://validation.invalid/callback"},
 			GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
-			TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,
+			TokenEndpointAuthMethod:  oauthdomain.AuthMethodPrivateKeyJwt,
 			JWKS:                     in.JWKS,
 			JwksURI:                  in.JwksURI,
 			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-			FapiProfile:              domain.FapiNone,
+			FapiProfile:              oauthdomain.FapiNone,
 			CreatedAt:                now,
 			// 検証用の候補にも UpdatedAt を入れる。スキーマがこれを必須にして
 			// いるので、欠けていると鍵の有無によらず候補が必ず落ち、どんな
@@ -85,26 +85,26 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 	}
 	var secret string
 	var secretHash *string
-	usesSecret := in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretBasic ||
-		in.TokenEndpointAuthMethod == domain.AuthMethodClientSecretPost
+	usesSecret := in.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretBasic ||
+		in.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretPost
 	if in.ClientType == spec.ClientConfidential && usesSecret {
 		s, err := generateOpaqueToken()
 		if err != nil {
 			return nil, err
 		}
 		secret = s
-		ss := domain.HashClientSecret(s)
+		ss := oauthdomain.HashClientSecret(s)
 		secretHash = &ss
 	}
 	fapiProfile := in.FapiProfile
 	if fapiProfile == "" {
-		fapiProfile = domain.FapiNone
+		fapiProfile = oauthdomain.FapiNone
 	}
 	scope := in.Scope
 	if scope == "" {
 		scope = "openid profile email"
 	}
-	c := &domain.OAuth2Client{
+	c := &oauthdomain.OAuth2Client{
 		TenantID:                           tenantports.TenantID(ctx),
 		ClientID:                           clientID,
 		ClientSecretHash:                   secretHash,
@@ -141,18 +141,18 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 		if err != nil {
 			return nil, err
 		}
-		if err := deps.ClientRepo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
+		if err := deps.ClientRepo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{
 			ID: credentialID, ClientID: clientID, SecretHash: *secretHash, CreatedAt: now,
 		}); err != nil {
 			return nil, err
 		}
 	}
-	emit(deps.Emit, &domain.ClientRegistered{At: now, TenantID: tenantports.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
+	emit(deps.Emit, &oauthdomain.ClientRegistered{At: now, TenantID: tenantports.TenantID(ctx), ClientID: clientID, ClientType: in.ClientType})
 	return &RegisterClientResult{Client: c, ClientSecret: secret}, nil
 }
 
 // storeNewClient は登録経路に依存しないメタデータ検証と使用量の確保を所有する。
-func storeNewClient(ctx context.Context, deps RegisterClientDeps, c *domain.OAuth2Client) error {
+func storeNewClient(ctx context.Context, deps RegisterClientDeps, c *oauthdomain.OAuth2Client) error {
 	if err := c.Validate(); err != nil {
 		return NewOAuthError("invalid_client_metadata", err.Error())
 	}
@@ -171,7 +171,7 @@ func storeNewClient(ctx context.Context, deps RegisterClientDeps, c *domain.OAut
 	return nil
 }
 
-func CreateSeedClient(ctx context.Context, deps RegisterClientDeps, c *domain.OAuth2Client) error {
+func CreateSeedClient(ctx context.Context, deps RegisterClientDeps, c *oauthdomain.OAuth2Client) error {
 	existing, err := deps.ClientRepo.FindByID(ctx, c.TenantID, c.ClientID)
 	if err != nil {
 		return err
@@ -182,6 +182,6 @@ func CreateSeedClient(ctx context.Context, deps RegisterClientDeps, c *domain.OA
 	if err := storeNewClient(ctx, deps, c); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.AdminOAuth2ClientCreated{At: c.CreatedAt, TenantID: c.TenantID, ActorUserID: "seed", ClientID: c.ClientID})
+	emit(deps.Emit, &oauthdomain.AdminOAuth2ClientCreated{At: c.CreatedAt, TenantID: c.TenantID, ActorUserID: "seed", ClientID: c.ClientID})
 	return nil
 }

@@ -8,27 +8,27 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 )
 
 // Module holds the Jobs module's persistence dependency. The HTTP
 // surface (handlers_http) is read-and-cancel only: nothing over HTTP enqueues
 // or claims, so the queue keeps a single entrance through in-process Go calls.
 type Module struct {
-	Repo ports.JobRepository
+	Repo jobsports.JobRepository
 	// Enqueuer はほかのモジュールへ渡す投入器である。イベントの発行先が決まった後に、組み立て地点が
 	// usecases.NewEnqueuer で作って設定する。
-	Enqueuer ports.Enqueuer
+	Enqueuer jobsports.Enqueuer
 	// Canceler はほかのモジュールと管理の経路へ渡す取り消しの操作である。Enqueuer と同じく、
 	// 組み立て地点が NewCanceler で作って設定する。
-	Canceler ports.Canceler
+	Canceler jobsports.Canceler
 }
 
 // NoopEchoHandler is the wi-42 core-runtime smoke-test handler for
 // domain.KindNoopEcho: it does nothing but echo its params back as the
 // result, proving worker claim -> execute -> complete end to end without
 // depending on any other module.
-func NoopEchoHandler(_ context.Context, job *domain.Job) (json.RawMessage, error) {
+func NoopEchoHandler(_ context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
 	return job.Params, nil
 }

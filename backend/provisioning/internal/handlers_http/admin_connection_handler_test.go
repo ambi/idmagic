@@ -15,9 +15,9 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -27,15 +27,15 @@ import (
 
 type discoveryTarget struct{}
 
-func (discoveryTarget) Discover(context.Context) (domain.ProvisioningCapabilities, error) {
-	return domain.ProvisioningCapabilities{SupportsPatch: true, SupportsFilter: true}, nil
+func (discoveryTarget) Discover(context.Context) (provisioningdomain.ProvisioningCapabilities, error) {
+	return provisioningdomain.ProvisioningCapabilities{SupportsPatch: true, SupportsFilter: true}, nil
 }
 
-func (discoveryTarget) CreateUser(context.Context, []domain.AttributeMappingRule, map[string]any) (string, *string, error) {
+func (discoveryTarget) CreateUser(context.Context, []provisioningdomain.AttributeMappingRule, map[string]any) (string, *string, error) {
 	return "", nil, nil
 }
 
-func (discoveryTarget) UpdateUser(context.Context, string, []domain.AttributeMappingRule, map[string]any, bool) (*string, error) {
+func (discoveryTarget) UpdateUser(context.Context, string, []provisioningdomain.AttributeMappingRule, map[string]any, bool) (*string, error) {
 	// 差分なしを表す nil を返す。適用先の表示名が変わらなかったことは失敗ではない。
 	return nil, nil //nolint:nilnil // ports 契約: 変化なしは nil で表し、adapter の失敗としない。
 }
@@ -44,11 +44,11 @@ func (discoveryTarget) SearchUserByAttribute(context.Context, string, string) (s
 	return "", false, nil
 }
 
-func (discoveryTarget) CreateGroup(context.Context, []domain.AttributeMappingRule, map[string]any) (string, *string, error) {
+func (discoveryTarget) CreateGroup(context.Context, []provisioningdomain.AttributeMappingRule, map[string]any) (string, *string, error) {
 	return "", nil, nil
 }
 
-func (discoveryTarget) UpdateGroup(context.Context, string, []domain.AttributeMappingRule, map[string]any, bool) (*string, error) {
+func (discoveryTarget) UpdateGroup(context.Context, string, []provisioningdomain.AttributeMappingRule, map[string]any, bool) (*string, error) {
 	// UpdateUser と同じ契約。変化なしは nil で表す。
 	return nil, nil //nolint:nilnil // ports 契約: 変化なしは nil で表し、adapter の失敗としない。
 }
@@ -95,7 +95,7 @@ func newProvisioningContractServer(t *testing.T, configure ...func(*provisioning
 		ConnectionRepo: connections,
 		TaskRepo:       tasks,
 		UserRepo:       users,
-		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
+		NewTargetClient: func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error) {
 			return discoveryTarget{}, nil
 		},
 	}

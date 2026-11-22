@@ -10,7 +10,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signinpolicy"
@@ -67,7 +67,7 @@ func TestDeviceApprovalRefusesApplicationAccess(t *testing.T) {
 			issued := deviceAuthorizationForTest(t, f)
 			response := approveDeviceForTest(f, issued["user_code"].(string))
 			oauthContractProblem(t, response, http.StatusForbidden, "access_denied")
-			stored, err := f.deviceStore.FindByUserCode(ctx, domain.NormalizeUserCode(issued["user_code"].(string)))
+			stored, err := f.deviceStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(issued["user_code"].(string)))
 			if err != nil || stored.State != spec.DeviceFlowIssued || stored.UserID != nil || stored.AuthTime != nil {
 				t.Fatalf("refused approval changed the record: %+v err=%v", stored, err)
 			}

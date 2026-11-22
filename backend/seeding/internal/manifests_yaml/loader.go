@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/goccy/go-yaml"
 )
 
@@ -18,13 +18,13 @@ const (
 	maxManifestFiles = 64
 )
 
-func DefaultPath(profile domain.Profile) string {
+func DefaultPath(profile seedingdomain.Profile) string {
 	return filepath.FromSlash(filepath.Join("seed", "manifests", string(profile)+".yaml"))
 }
 
 // LocateDefaultPath は CLI の repository root と Go test の package working directory の
 // どちらからでも既定 manifest を見つける。
-func LocateDefaultPath(profile domain.Profile) (string, error) {
+func LocateDefaultPath(profile seedingdomain.Profile) (string, error) {
 	relative := DefaultPath(profile)
 	current, err := os.Getwd()
 	if err != nil {
@@ -43,23 +43,23 @@ func LocateDefaultPath(profile domain.Profile) (string, error) {
 	}
 }
 
-func Load(path string) (domain.Manifest, error) {
+func Load(path string) (seedingdomain.Manifest, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
-		return domain.Manifest{}, fmt.Errorf("resolve seed manifest path: %w", err)
+		return seedingdomain.Manifest{}, fmt.Errorf("resolve seed manifest path: %w", err)
 	}
 	root, err := filepath.EvalSymlinks(filepath.Dir(absolute))
 	if err != nil {
-		return domain.Manifest{}, fmt.Errorf("resolve seed manifest root: %w", err)
+		return seedingdomain.Manifest{}, fmt.Errorf("resolve seed manifest root: %w", err)
 	}
 	state := loadState{root: root, active: map[string]bool{}, loaded: map[string]bool{}}
 	manifest, err := state.load(absolute, 0)
 	if err != nil {
-		return domain.Manifest{}, err
+		return seedingdomain.Manifest{}, err
 	}
 	manifest.Includes = nil
 	if err := manifest.Validate(); err != nil {
-		return domain.Manifest{}, err
+		return seedingdomain.Manifest{}, err
 	}
 	return manifest, nil
 }
@@ -71,52 +71,52 @@ type loadState struct {
 	count  int
 }
 
-func (s *loadState) load(path string, depth int) (domain.Manifest, error) {
+func (s *loadState) load(path string, depth int) (seedingdomain.Manifest, error) {
 	if depth > maxIncludeDepth {
-		return domain.Manifest{}, fmt.Errorf("seed manifest include depth exceeds %d", maxIncludeDepth)
+		return seedingdomain.Manifest{}, fmt.Errorf("seed manifest include depth exceeds %d", maxIncludeDepth)
 	}
 	canonical, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return domain.Manifest{}, fmt.Errorf("resolve seed manifest: %w", err)
+		return seedingdomain.Manifest{}, fmt.Errorf("resolve seed manifest: %w", err)
 	}
 	if !contained(s.root, canonical) {
-		return domain.Manifest{}, fmt.Errorf("seed manifest include escapes root")
+		return seedingdomain.Manifest{}, fmt.Errorf("seed manifest include escapes root")
 	}
 	if s.active[canonical] {
-		return domain.Manifest{}, fmt.Errorf("seed manifest include cycle")
+		return seedingdomain.Manifest{}, fmt.Errorf("seed manifest include cycle")
 	}
 	if s.loaded[canonical] {
-		return domain.Manifest{}, nil
+		return seedingdomain.Manifest{}, nil
 	}
 	s.count++
 	if s.count > maxManifestFiles {
-		return domain.Manifest{}, fmt.Errorf("seed manifest file count exceeds %d", maxManifestFiles)
+		return seedingdomain.Manifest{}, fmt.Errorf("seed manifest file count exceeds %d", maxManifestFiles)
 	}
 	data, err := readBounded(canonical, maxManifestBytes)
 	if err != nil {
-		return domain.Manifest{}, err
+		return seedingdomain.Manifest{}, err
 	}
 	if hasUnsupportedYAMLFeature(data) {
-		return domain.Manifest{}, fmt.Errorf("seed manifest anchors, aliases, and merge keys are not supported")
+		return seedingdomain.Manifest{}, fmt.Errorf("seed manifest anchors, aliases, and merge keys are not supported")
 	}
-	var current domain.Manifest
+	var current seedingdomain.Manifest
 	decoder := yaml.NewDecoder(bytes.NewReader(data), yaml.Strict())
 	if err := decoder.Decode(&current); err != nil {
-		return domain.Manifest{}, fmt.Errorf("decode seed manifest: %w", err)
+		return seedingdomain.Manifest{}, fmt.Errorf("decode seed manifest: %w", err)
 	}
 	s.active[canonical] = true
 	defer delete(s.active, canonical)
-	merged := domain.Manifest{SchemaVersion: current.SchemaVersion, Profile: current.Profile}
+	merged := seedingdomain.Manifest{SchemaVersion: current.SchemaVersion, Profile: current.Profile}
 	for _, include := range current.Includes {
 		if filepath.IsAbs(include) || strings.Contains(include, "://") {
-			return domain.Manifest{}, fmt.Errorf("seed manifest include must be a local relative path")
+			return seedingdomain.Manifest{}, fmt.Errorf("seed manifest include must be a local relative path")
 		}
 		child, err := s.load(filepath.Join(filepath.Dir(canonical), filepath.Clean(include)), depth+1)
 		if err != nil {
-			return domain.Manifest{}, err
+			return seedingdomain.Manifest{}, err
 		}
 		if child.SchemaVersion != "" && (child.SchemaVersion != current.SchemaVersion || child.Profile != current.Profile) {
-			return domain.Manifest{}, fmt.Errorf("included seed manifest schema/profile mismatch")
+			return seedingdomain.Manifest{}, fmt.Errorf("included seed manifest schema/profile mismatch")
 		}
 		merged.Resources = append(merged.Resources, child.Resources...)
 		merged.Generators = append(merged.Generators, child.Generators...)

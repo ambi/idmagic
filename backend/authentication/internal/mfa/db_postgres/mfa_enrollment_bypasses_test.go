@@ -7,7 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -23,7 +23,7 @@ func TestMfaEnrollmentBypassRepositoryConsumesOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bypass := &domain.MfaEnrollmentBypass{
+	bypass := &mfadomain.MfaEnrollmentBypass{
 		ID: id, TenantID: tenant.ID, UserID: user.ID, IssuedBy: user.ID,
 		IssuedAt: now, ExpiresAt: now.Add(15 * time.Minute),
 	}

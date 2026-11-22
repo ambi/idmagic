@@ -8,8 +8,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
@@ -28,7 +28,7 @@ func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T
 	}
 
 	now := pgfixtures.TestClock()
-	prefs, err := domain.NewPreferences(user.ID, []domain.Category{domain.CategoryNewDeviceSignIn}, now)
+	prefs, err := securitynotificationdomain.NewPreferences(user.ID, []securitynotificationdomain.Category{securitynotificationdomain.CategoryNewDeviceSignIn}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,15 +39,15 @@ func TestPreferenceRepositoryRoundTripsAndTreatsAbsenceAsAllEnabled(t *testing.T
 	if err != nil || found == nil {
 		t.Fatalf("Find = %#v, err %v", found, err)
 	}
-	if !slices.Equal(found.Disabled, []domain.Category{domain.CategoryNewDeviceSignIn}) {
+	if !slices.Equal(found.Disabled, []securitynotificationdomain.Category{securitynotificationdomain.CategoryNewDeviceSignIn}) {
 		t.Fatalf("Disabled = %v, want the saved category", found.Disabled)
 	}
-	if found.Allows(domain.CategoryNewDeviceSignIn) || !found.Allows(domain.CategoryCredentialChange) {
+	if found.Allows(securitynotificationdomain.CategoryNewDeviceSignIn) || !found.Allows(securitynotificationdomain.CategoryCredentialChange) {
 		t.Fatal("only the saved category may be suppressed")
 	}
 
 	// 再保存は行を置き換える (追記ではない)。
-	cleared, err := domain.NewPreferences(user.ID, nil, now.Add(time.Minute))
+	cleared, err := securitynotificationdomain.NewPreferences(user.ID, nil, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 	ctx := context.Background()
 	now := pgfixtures.TestClock()
 
-	device := ports.KnownDevice{
+	device := securitynotificationports.KnownDevice{
 		UserID: alice.ID, DeviceHash: "hash-a", Label: "Chrome / macOS", SeenAt: now,
 	}
 	first, err := repo.Observe(ctx, device)
@@ -110,7 +110,7 @@ func TestKnownDeviceRepositoryReportsOnlyTheFirstObservation(t *testing.T) {
 	}
 
 	// 別のユーザーの同じ端末は、そのユーザーにとっては新しい。
-	other, err := repo.Observe(ctx, ports.KnownDevice{
+	other, err := repo.Observe(ctx, securitynotificationports.KnownDevice{
 		UserID: bob.ID, DeviceHash: "hash-a", SeenAt: now,
 	})
 	if err != nil || !other {
@@ -127,12 +127,12 @@ func TestKnownDeviceRepositoryDeletesOnlyIdleRows(t *testing.T) {
 	ctx := context.Background()
 	now := pgfixtures.TestClock()
 
-	if _, err := repo.Observe(ctx, ports.KnownDevice{
+	if _, err := repo.Observe(ctx, securitynotificationports.KnownDevice{
 		UserID: user.ID, DeviceHash: "idle", SeenAt: now.Add(-400 * 24 * time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repo.Observe(ctx, ports.KnownDevice{
+	if _, err := repo.Observe(ctx, securitynotificationports.KnownDevice{
 		UserID: user.ID, DeviceHash: "recent", SeenAt: now,
 	}); err != nil {
 		t.Fatal(err)
@@ -145,13 +145,13 @@ func TestKnownDeviceRepositoryDeletesOnlyIdleRows(t *testing.T) {
 	if deleted != 1 {
 		t.Fatalf("DeleteIdleBefore deleted %d row(s), want 1", deleted)
 	}
-	stillKnown, err := repo.Observe(ctx, ports.KnownDevice{
+	stillKnown, err := repo.Observe(ctx, securitynotificationports.KnownDevice{
 		UserID: user.ID, DeviceHash: "recent", SeenAt: now,
 	})
 	if err != nil || stillKnown {
 		t.Fatalf("the recent device = %v, err %v; want it to stay known", stillKnown, err)
 	}
-	returned, err := repo.Observe(ctx, ports.KnownDevice{
+	returned, err := repo.Observe(ctx, securitynotificationports.KnownDevice{
 		UserID: user.ID, DeviceHash: "idle", SeenAt: now,
 	})
 	if err != nil || !returned {

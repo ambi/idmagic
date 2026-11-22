@@ -8,8 +8,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -64,17 +64,17 @@ type notificationTemplateRequest struct {
 	FromDisplayName string `json:"from_display_name"`
 }
 
-func (r notificationTemplateRequest) toInput() tenantusecases.NotificationTemplateInput {
-	return tenantusecases.NotificationTemplateInput{
+func (r notificationTemplateRequest) toInput() tenancyusecases.NotificationTemplateInput {
+	return tenancyusecases.NotificationTemplateInput{
 		Subject: r.Subject, BodyText: r.BodyText, BodyHTML: r.BodyHTML,
 		FromDisplayName: r.FromDisplayName,
 	}
 }
 
-func (d Deps) notificationTemplateDeps() tenantusecases.NotificationTemplateDeps {
-	return tenantusecases.NotificationTemplateDeps{
+func (d Deps) notificationTemplateDeps() tenancyusecases.NotificationTemplateDeps {
+	return tenancyusecases.NotificationTemplateDeps{
 		Repo: d.NotificationTemplateRepo,
-		Tenant: tenantusecases.TenantNotificationSource{
+		Tenant: tenancyusecases.TenantNotificationSource{
 			TenantRepo: d.TenantRepo, BrandingRepo: d.BrandingRepo, TemplateRepo: d.NotificationTemplateRepo,
 		},
 		Notifier: d.Notifier,
@@ -83,13 +83,13 @@ func (d Deps) notificationTemplateDeps() tenantusecases.NotificationTemplateDeps
 
 func (d Deps) writeNotificationTemplateError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, tenantusecases.ErrUnknownNotificationTemplate):
+	case errors.Is(err, tenancyusecases.ErrUnknownNotificationTemplate):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"The notification template key or locale does not exist.")
-	case errors.Is(err, tenantusecases.ErrInvalidNotificationTemplate):
+	case errors.Is(err, tenancyusecases.ErrInvalidNotificationTemplate):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_notification_template",
 			"The template must set a subject, a text body, and an HTML body, and may only use the listed placeholders.")
-	case errors.Is(err, tenantusecases.ErrTestNotificationRecipient):
+	case errors.Is(err, tenancyusecases.ErrTestNotificationRecipient):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"A test message is only sent to your own verified email address, and your account has none.")
 	default:
@@ -102,7 +102,7 @@ func (d Deps) handleListNotificationTemplates(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	summaries, err := tenantusecases.ListNotificationTemplates(c.Request().Context(), d.notificationTemplateDeps(), actor.TenantID)
+	summaries, err := tenancyusecases.ListNotificationTemplates(c.Request().Context(), d.notificationTemplateDeps(), actor.TenantID)
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
 	}
@@ -124,7 +124,7 @@ func (d Deps) handleGetNotificationTemplate(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	detail, err := tenantusecases.GetNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
+	detail, err := tenancyusecases.GetNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, notificationTemplateKeyParam(c), c.Param("locale"))
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
@@ -146,13 +146,13 @@ func (d Deps) handleUpdateNotificationTemplate(c *echo.Context) error {
 	}
 	key, locale := notificationTemplateKeyParam(c), c.Param("locale")
 	now := time.Now().UTC()
-	detail, err := tenantusecases.UpdateNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
+	detail, err := tenancyusecases.UpdateNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, key, locale, input.toInput(), now)
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.NotificationTemplateUpdated{
+		d.Emit(&tenancydomain.NotificationTemplateUpdated{
 			At: now, TenantID: actor.TenantID, ActorUserID: actor.ID,
 			TemplateKey: string(key), Locale: locale,
 		})
@@ -169,13 +169,13 @@ func (d Deps) handleResetNotificationTemplate(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	key, locale := notificationTemplateKeyParam(c), c.Param("locale")
-	detail, err := tenantusecases.ResetNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
+	detail, err := tenancyusecases.ResetNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, key, locale)
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.NotificationTemplateReset{
+		d.Emit(&tenancydomain.NotificationTemplateReset{
 			At: time.Now().UTC(), TenantID: actor.TenantID, ActorUserID: actor.ID,
 			TemplateKey: string(key), Locale: locale,
 		})
@@ -195,7 +195,7 @@ func (d Deps) handlePreviewNotificationTemplate(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	preview, err := tenantusecases.PreviewNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
+	preview, err := tenancyusecases.PreviewNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, notificationTemplateKeyParam(c), c.Param("locale"), input.toInput())
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
@@ -226,8 +226,8 @@ func (d Deps) handleSendTestNotification(c *echo.Context) error {
 	if operator == nil {
 		return d.WriteAdminAccessError(c, support.ErrAdminAccessDenied)
 	}
-	recipient := tenantusecases.TestNotificationActor{DisplayName: operator.DisplayName, Email: operator.Email}
-	result, err := tenantusecases.SendTestNotification(c.Request().Context(), d.notificationTemplateDeps(),
+	recipient := tenancyusecases.TestNotificationActor{DisplayName: operator.DisplayName, Email: operator.Email}
+	result, err := tenancyusecases.SendTestNotification(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, notificationTemplateKeyParam(c), c.Param("locale"), recipient)
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
@@ -241,7 +241,7 @@ func notificationTemplateKeyParam(c *echo.Context) notificationports.TemplateKey
 	return notificationports.TemplateKey(c.Param("template_key"))
 }
 
-func toNotificationTemplateDetailResponse(detail *tenantusecases.NotificationTemplateDetail) notificationTemplateDetailResponse {
+func toNotificationTemplateDetailResponse(detail *tenancyusecases.NotificationTemplateDetail) notificationTemplateDetailResponse {
 	return notificationTemplateDetailResponse{
 		TemplateKey: string(detail.Key), Locale: detail.Locale, Customized: detail.Customized,
 		Subject: detail.Subject, BodyText: detail.BodyText, BodyHTML: detail.BodyHTML,

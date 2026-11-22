@@ -11,8 +11,8 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -37,14 +37,14 @@ func TestAgentRequiresHumanApproval(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			agent := &agentdomain.Agent{ID: "agent_1", Kind: tc.kind}
-			if got := sharedusecases.AgentRequiresHumanApproval(agent); got != tc.want {
+			if got := oauthusecases.AgentRequiresHumanApproval(agent); got != tc.want {
 				t.Fatalf("kind %q: expected %v, got %v", tc.kind, tc.want, got)
 			}
 		})
 	}
 
 	t.Run("NoAgentIsUnaffected", func(t *testing.T) {
-		if sharedusecases.AgentRequiresHumanApproval(nil) {
+		if oauthusecases.AgentRequiresHumanApproval(nil) {
 			t.Fatal("expected a client with no bound agent to need no approval")
 		}
 	})
@@ -58,7 +58,7 @@ func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	now := time.Now().UTC()
 
-	seed := func(t *testing.T, kind idmdomain.AgentKind) (sharedusecases.AgentIssuanceDeps, *[]spec.DomainEvent) {
+	seed := func(t *testing.T, kind idmdomain.AgentKind) (oauthusecases.AgentIssuanceDeps, *[]spec.DomainEvent) {
 		t.Helper()
 		agentRepo := idmanagement.NewMemoryModule().AgentRepo
 		if err := agentRepo.Save(context.Background(), &agentdomain.Agent{
@@ -82,7 +82,7 @@ func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 			t.Fatalf("seed owner: %v", err)
 		}
 		events := &[]spec.DomainEvent{}
-		return sharedusecases.AgentIssuanceDeps{
+		return oauthusecases.AgentIssuanceDeps{
 			AgentRepo: agentRepo, UserRepo: userRepo,
 			Emit: func(e spec.DomainEvent) { *events = append(*events, e) },
 		}, events
@@ -90,15 +90,15 @@ func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 
 	t.Run("SupervisedRejected", func(t *testing.T) {
 		deps, events := seed(t, idmdomain.AgentKindSupervised)
-		_, err := sharedusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "agent_client", "client_credentials", now)
-		var oauthErr *sharedusecases.OAuthError
+		_, err := oauthusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "agent_client", "client_credentials", now)
+		var oauthErr *oauthusecases.OAuthError
 		if !errors.As(err, &oauthErr) || oauthErr.Code != "unauthorized_client" {
 			t.Fatalf("expected unauthorized_client, got %v", err)
 		}
 		if len(*events) != 1 {
 			t.Fatalf("expected one audit event, got %d", len(*events))
 		}
-		required, ok := (*events)[0].(*domain.AgentApprovalRequired)
+		required, ok := (*events)[0].(*oauthdomain.AgentApprovalRequired)
 		if !ok {
 			t.Fatalf("expected AgentApprovalRequired, got %T", (*events)[0])
 		}
@@ -110,10 +110,10 @@ func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 
 	t.Run("UnknownKindRecordsTheValueAsRead", func(t *testing.T) {
 		deps, events := seed(t, idmdomain.AgentKind("mystery"))
-		if _, err := sharedusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "agent_client", "client_credentials", now); err == nil {
+		if _, err := oauthusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "agent_client", "client_credentials", now); err == nil {
 			t.Fatal("expected an unknown kind to fail closed")
 		}
-		required, ok := (*events)[0].(*domain.AgentApprovalRequired)
+		required, ok := (*events)[0].(*oauthdomain.AgentApprovalRequired)
 		if !ok || required.Kind != "mystery" {
 			t.Fatalf("expected the kind to be recorded as read, got %+v", (*events)[0])
 		}
@@ -121,7 +121,7 @@ func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 
 	t.Run("AutonomousIssues", func(t *testing.T) {
 		deps, events := seed(t, idmdomain.AgentKindAutonomous)
-		agent, err := sharedusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "agent_client", "client_credentials", now)
+		agent, err := oauthusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "agent_client", "client_credentials", now)
 		if err != nil {
 			t.Fatalf("expected an autonomous agent to be unaffected: %v", err)
 		}
@@ -135,7 +135,7 @@ func TestResolveIssuableAgentWithoutApproval(t *testing.T) {
 
 	t.Run("UnboundClientIsUnaffected", func(t *testing.T) {
 		deps, _ := seed(t, idmdomain.AgentKindSupervised)
-		agent, err := sharedusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "plain_client", "client_credentials", now)
+		agent, err := oauthusecases.ResolveIssuableAgentWithoutApproval(ctx, deps, "plain_client", "client_credentials", now)
 		if err != nil || agent != nil {
 			t.Fatalf("expected a client with no bound agent to be unaffected, got %v %v", agent, err)
 		}

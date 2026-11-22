@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpostgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -41,7 +41,7 @@ func timeToPg(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
-func (r *DataKeyRepository) Bootstrap(ctx context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Bootstrap(ctx context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (r *DataKeyRepository) Bootstrap(ctx context.Context, tenantID string, wrap
 		return nil, err
 	}
 	if count > 0 {
-		return nil, domain.ErrDataKeyAlreadyBootstrapped
+		return nil, datakeysdomain.ErrDataKeyAlreadyBootstrapped
 	}
 	maxVersion, err := q.MaxDataKeyVersion(ctx, tenantID)
 	if err != nil {
@@ -82,10 +82,10 @@ func (r *DataKeyRepository) Bootstrap(ctx context.Context, tenantID string, wrap
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return newKeyRow(id, tenantID, version, domain.DataKeyStatusActive, wrappedDEK, masterKeyID, now, &now, nil, nil), nil
+	return newKeyRow(id, tenantID, version, datakeysdomain.DataKeyStatusActive, wrappedDEK, masterKeyID, now, &now, nil, nil), nil
 }
 
-func (r *DataKeyRepository) Rotate(ctx context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*domain.TenantDataEncryptionKey, *domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Rotate(ctx context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, *datakeysdomain.TenantDataEncryptionKey, error) {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -98,7 +98,7 @@ func (r *DataKeyRepository) Rotate(ctx context.Context, tenantID string, wrapped
 	}
 	activeRow, err := q.GetActiveDataKey(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil, domain.ErrNoActiveDataKey
+		return nil, nil, datakeysdomain.ErrNoActiveDataKey
 	}
 	if err != nil {
 		return nil, nil, err
@@ -127,13 +127,13 @@ func (r *DataKeyRepository) Rotate(ctx context.Context, tenantID string, wrapped
 		return nil, nil, err
 	}
 
-	next := newKeyRow(id, tenantID, nextVersion, domain.DataKeyStatusActive, wrappedDEK, masterKeyID, now, &now, nil, nil)
+	next := newKeyRow(id, tenantID, nextVersion, datakeysdomain.DataKeyStatusActive, wrappedDEK, masterKeyID, now, &now, nil, nil)
 	previous := activeDataKeyRowToDomain(activeRow)
-	previous.Status = domain.DataKeyStatusRetiring
+	previous.Status = datakeysdomain.DataKeyStatusRetiring
 	return next, previous, nil
 }
 
-func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, version int, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, version int, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	storedVersion, err := postgresVersion(version)
 	if err != nil {
 		return nil, err
@@ -142,11 +142,11 @@ func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, versio
 	if err != nil {
 		return nil, err
 	}
-	if key.Status == domain.DataKeyStatusActive {
-		return nil, domain.ErrDataKeyIsActive
+	if key.Status == datakeysdomain.DataKeyStatusActive {
+		return nil, datakeysdomain.ErrDataKeyIsActive
 	}
-	if key.Status != domain.DataKeyStatusRetiring {
-		return nil, domain.ErrDataKeyNotDisableable
+	if key.Status != datakeysdomain.DataKeyStatusRetiring {
+		return nil, datakeysdomain.ErrDataKeyNotDisableable
 	}
 	if err := New(r.Pool).DisableDataKey(ctx, DisableDataKeyParams{
 		TenantID:   tenantID,
@@ -155,12 +155,12 @@ func (r *DataKeyRepository) Disable(ctx context.Context, tenantID string, versio
 	}); err != nil {
 		return nil, err
 	}
-	key.Status = domain.DataKeyStatusDisabled
+	key.Status = datakeysdomain.DataKeyStatusDisabled
 	key.DisabledAt = &now
 	return key, nil
 }
 
-func (r *DataKeyRepository) Destroy(ctx context.Context, tenantID string, version int, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Destroy(ctx context.Context, tenantID string, version int, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	storedVersion, err := postgresVersion(version)
 	if err != nil {
 		return nil, err
@@ -169,11 +169,11 @@ func (r *DataKeyRepository) Destroy(ctx context.Context, tenantID string, versio
 	if err != nil {
 		return nil, err
 	}
-	if key.Status == domain.DataKeyStatusActive {
-		return nil, domain.ErrDataKeyIsActive
+	if key.Status == datakeysdomain.DataKeyStatusActive {
+		return nil, datakeysdomain.ErrDataKeyIsActive
 	}
-	if key.Status != domain.DataKeyStatusRetiring && key.Status != domain.DataKeyStatusDisabled {
-		return nil, domain.ErrDataKeyNotDestroyable
+	if key.Status != datakeysdomain.DataKeyStatusRetiring && key.Status != datakeysdomain.DataKeyStatusDisabled {
+		return nil, datakeysdomain.ErrDataKeyNotDestroyable
 	}
 	if err := New(r.Pool).DestroyDataKey(ctx, DestroyDataKeyParams{
 		TenantID:    tenantID,
@@ -182,16 +182,16 @@ func (r *DataKeyRepository) Destroy(ctx context.Context, tenantID string, versio
 	}); err != nil {
 		return nil, err
 	}
-	key.Status = domain.DataKeyStatusDestroyed
+	key.Status = datakeysdomain.DataKeyStatusDestroyed
 	key.WrappedDEK = nil
 	key.DestroyedAt = &now
 	return key, nil
 }
 
-func (r *DataKeyRepository) FindActive(ctx context.Context, tenantID string) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) FindActive(ctx context.Context, tenantID string) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	row, err := New(r.Pool).GetActiveDataKey(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, domain.ErrNoActiveDataKey
+		return nil, datakeysdomain.ErrNoActiveDataKey
 	}
 	if err != nil {
 		return nil, err
@@ -199,14 +199,14 @@ func (r *DataKeyRepository) FindActive(ctx context.Context, tenantID string) (*d
 	return activeDataKeyRowToDomain(row), nil
 }
 
-func (r *DataKeyRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	storedVersion, err := postgresVersion(version)
 	if err != nil {
 		return nil, err
 	}
 	row, err := New(r.Pool).GetDataKeyByVersion(ctx, GetDataKeyByVersionParams{TenantID: tenantID, Version: storedVersion})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, domain.ErrDataKeyNotFound
+		return nil, datakeysdomain.ErrDataKeyNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -217,23 +217,23 @@ func (r *DataKeyRepository) FindByVersion(ctx context.Context, tenantID string, 
 // postgresVersion は保存できない版を存在しないものとして扱い、別の版への折り返しを防ぐ。
 func postgresVersion(version int) (int32, error) {
 	if version < 1 || version > math.MaxInt32 {
-		return 0, domain.ErrDataKeyNotFound
+		return 0, datakeysdomain.ErrDataKeyNotFound
 	}
 	return int32(version), nil
 }
 
-func (r *DataKeyRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) ListAll(ctx context.Context, tenantID string) ([]*datakeysdomain.TenantDataEncryptionKey, error) {
 	rows, err := New(r.Pool).ListDataKeysByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.TenantDataEncryptionKey, len(rows))
+	out := make([]*datakeysdomain.TenantDataEncryptionKey, len(rows))
 	for i, row := range rows {
-		out[i] = &domain.TenantDataEncryptionKey{
+		out[i] = &datakeysdomain.TenantDataEncryptionKey{
 			ID:          row.ID,
 			TenantID:    row.TenantID,
 			Version:     int(row.Version),
-			Status:      domain.DataKeyStatus(row.Status),
+			Status:      datakeysdomain.DataKeyStatus(row.Status),
 			WrappedDEK:  row.WrappedDek,
 			MasterKeyID: row.MasterKeyID,
 			CreatedAt:   row.CreatedAt,
@@ -245,8 +245,8 @@ func (r *DataKeyRepository) ListAll(ctx context.Context, tenantID string) ([]*do
 	return out, nil
 }
 
-func newKeyRow(id, tenantID string, version int32, status domain.DataKeyStatus, wrappedDEK []byte, masterKeyID string, createdAt time.Time, activatedAt, disabledAt, destroyedAt *time.Time) *domain.TenantDataEncryptionKey {
-	return &domain.TenantDataEncryptionKey{
+func newKeyRow(id, tenantID string, version int32, status datakeysdomain.DataKeyStatus, wrappedDEK []byte, masterKeyID string, createdAt time.Time, activatedAt, disabledAt, destroyedAt *time.Time) *datakeysdomain.TenantDataEncryptionKey {
+	return &datakeysdomain.TenantDataEncryptionKey{
 		ID:          id,
 		TenantID:    tenantID,
 		Version:     int(version),
@@ -260,12 +260,12 @@ func newKeyRow(id, tenantID string, version int32, status domain.DataKeyStatus, 
 	}
 }
 
-func activeDataKeyRowToDomain(row *GetActiveDataKeyRow) *domain.TenantDataEncryptionKey {
-	return &domain.TenantDataEncryptionKey{
+func activeDataKeyRowToDomain(row *GetActiveDataKeyRow) *datakeysdomain.TenantDataEncryptionKey {
+	return &datakeysdomain.TenantDataEncryptionKey{
 		ID:          row.ID,
 		TenantID:    row.TenantID,
 		Version:     int(row.Version),
-		Status:      domain.DataKeyStatus(row.Status),
+		Status:      datakeysdomain.DataKeyStatus(row.Status),
 		WrappedDEK:  row.WrappedDek,
 		MasterKeyID: row.MasterKeyID,
 		CreatedAt:   row.CreatedAt,
@@ -275,12 +275,12 @@ func activeDataKeyRowToDomain(row *GetActiveDataKeyRow) *domain.TenantDataEncryp
 	}
 }
 
-func byVersionRowToDomain(row *GetDataKeyByVersionRow) *domain.TenantDataEncryptionKey {
-	return &domain.TenantDataEncryptionKey{
+func byVersionRowToDomain(row *GetDataKeyByVersionRow) *datakeysdomain.TenantDataEncryptionKey {
+	return &datakeysdomain.TenantDataEncryptionKey{
 		ID:          row.ID,
 		TenantID:    row.TenantID,
 		Version:     int(row.Version),
-		Status:      domain.DataKeyStatus(row.Status),
+		Status:      datakeysdomain.DataKeyStatus(row.Status),
 		WrappedDEK:  row.WrappedDek,
 		MasterKeyID: row.MasterKeyID,
 		CreatedAt:   row.CreatedAt,

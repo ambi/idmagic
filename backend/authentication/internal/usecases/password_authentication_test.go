@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -17,7 +17,7 @@ import (
 
 // passwordFixture は、パスワードを password にした alice を保存したパスワード認証と、
 // パスワードの期限を maxAgeDays 日にしたテナントの文脈を返す。
-func passwordFixture(t *testing.T, password string, maxAgeDays int, edit func(*userdomain.User)) (usecases.PasswordAuthentication, context.Context) {
+func passwordFixture(t *testing.T, password string, maxAgeDays int, edit func(*userdomain.User)) (authusecases.PasswordAuthentication, context.Context) {
 	t.Helper()
 	hasher := testing_passwords.NewHasher()
 	hash, err := hasher.Hash(password)
@@ -40,7 +40,7 @@ func passwordFixture(t *testing.T, password string, maxAgeDays int, edit func(*u
 		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MaxAgeDays: &maxAgeDays},
 	}
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
-	return usecases.PasswordAuthentication{UserRepo: users, PasswordHasher: hasher}, ctx
+	return authusecases.PasswordAuthentication{UserRepo: users, PasswordHasher: hasher}, ctx
 }
 
 //spec:covers REQ-AUTHENTICATION-007: 正しいパスワードが現在のパスワードのポリシーを満たさない場合は password_policy で拒否し、利用者を返さないこと。

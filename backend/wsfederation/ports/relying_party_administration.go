@@ -6,7 +6,7 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 // 関連付け、削除する操作である。既定値と設定値の検査は WsFederation が保つ。
 type RelyingPartyAdministration interface {
 	// Find は wtrealm に一致する RP を返す。存在しなければ (nil, nil)。
-	Find(ctx context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error)
+	Find(ctx context.Context, tenantID, wtrealm string) (*wsfeddomain.WsFedRelyingParty, error)
 	// CreateForApplication は新しい RP を保存する。wtrealm が長さの上限を超えれば Validate のエラーを、
 	// 同じ wtrealm の RP があれば、Entra の RP か、どの Application に属するかを問わず
 	// ErrRelyingPartyAlreadyRegistered を返す。
@@ -49,7 +49,7 @@ type UpdateRelyingPartyInput struct {
 	Wtrealm      string
 	ReplyURLs    *[]string
 	Audience     *string
-	TokenType    *domain.WsFedTokenType
+	TokenType    *wsfeddomain.WsFedTokenType
 	NameIDFormat *string
 	NameIDSource *string
 	Rules        *[]claimdomain.ClaimMappingRule

@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
 func TestGetBrandingReturnsEmptyForUnconfiguredTenant(t *testing.T) {
 	repo := tenancymemory.NewTenantBrandingRepository()
-	branding, err := GetBranding(context.Background(), repo, domain.DefaultTenantID)
+	branding, err := GetBranding(context.Background(), repo, tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if branding == nil || branding.TenantID != domain.DefaultTenantID || branding.IsConfigured() {
+	if branding == nil || branding.TenantID != tenancydomain.DefaultTenantID || branding.IsConfigured() {
 		t.Fatalf("expected empty unconfigured branding, got %#v", branding)
 	}
 }
@@ -28,10 +28,10 @@ func TestUpdateBrandingPersistsAndClearsFields(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	saved, err := UpdateBranding(ctx, repo, domain.DefaultTenantID, BrandingUpdateInput{
+	saved, err := UpdateBranding(ctx, repo, tenancydomain.DefaultTenantID, BrandingUpdateInput{
 		ProductName:  new("Acme"),
 		PrimaryColor: new("#0f172a"),
-		FooterLink1:  &domain.TenantFooterLink{Label: "ヘルプ", URL: "https://support.example.com"},
+		FooterLink1:  &tenancydomain.TenantFooterLink{Label: "ヘルプ", URL: "https://support.example.com"},
 		FooterText:   new("(c) Acme"),
 	}, now)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestUpdateBrandingPersistsAndClearsFields(t *testing.T) {
 		t.Fatal("expected configured branding")
 	}
 
-	cleared, err := UpdateBranding(ctx, repo, domain.DefaultTenantID, BrandingUpdateInput{
+	cleared, err := UpdateBranding(ctx, repo, tenancydomain.DefaultTenantID, BrandingUpdateInput{
 		ProductName: new(""),
 	}, now)
 	if err != nil {
@@ -62,8 +62,8 @@ func TestUpdateBrandingRejectsNonHTTPSLinks(t *testing.T) {
 	repo := tenancymemory.NewTenantBrandingRepository()
 	cases := []string{"javascript:alert(1)", "http://example.com", "data:text/html,<script>1</script>"}
 	for _, link := range cases {
-		if _, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{
-			FooterLink1: &domain.TenantFooterLink{Label: "ヘルプ", URL: link},
+		if _, err := UpdateBranding(context.Background(), repo, tenancydomain.DefaultTenantID, BrandingUpdateInput{
+			FooterLink1: &tenancydomain.TenantFooterLink{Label: "ヘルプ", URL: link},
 		}, time.Now().UTC()); !errors.Is(err, ErrInvalidBranding) {
 			t.Fatalf("link %q: expected ErrInvalidBranding, got %v", link, err)
 		}
@@ -72,8 +72,8 @@ func TestUpdateBrandingRejectsNonHTTPSLinks(t *testing.T) {
 
 func TestUpdateBrandingRejectsIncompleteFooterLinks(t *testing.T) {
 	repo := tenancymemory.NewTenantBrandingRepository()
-	for _, link := range []domain.TenantFooterLink{{Label: "ヘルプ"}, {URL: "https://help.example.com"}} {
-		if _, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{FooterLink1: &link}, time.Now().UTC()); !errors.Is(err, ErrInvalidBranding) {
+	for _, link := range []tenancydomain.TenantFooterLink{{Label: "ヘルプ"}, {URL: "https://help.example.com"}} {
+		if _, err := UpdateBranding(context.Background(), repo, tenancydomain.DefaultTenantID, BrandingUpdateInput{FooterLink1: &link}, time.Now().UTC()); !errors.Is(err, ErrInvalidBranding) {
 			t.Fatalf("link %#v: expected ErrInvalidBranding, got %v", link, err)
 		}
 	}
@@ -81,7 +81,7 @@ func TestUpdateBrandingRejectsIncompleteFooterLinks(t *testing.T) {
 
 func TestUpdateBrandingPersistsLowContrastColor(t *testing.T) {
 	repo := tenancymemory.NewTenantBrandingRepository()
-	branding, err := UpdateBranding(context.Background(), repo, domain.DefaultTenantID, BrandingUpdateInput{
+	branding, err := UpdateBranding(context.Background(), repo, tenancydomain.DefaultTenantID, BrandingUpdateInput{
 		PrimaryColor: new("#eeeeee"),
 	}, time.Now().UTC())
 	if err != nil {
@@ -98,8 +98,8 @@ func TestUploadAndDeleteBrandingAssetRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 
-	branding, err := UploadBrandingAsset(ctx, brandingRepo, assetStore, domain.DefaultTenantID, UploadBrandingAssetInput{
-		Kind: domain.TenantBrandingAssetKindLogo, Data: png, URL: "/tenant-branding-assets/logo/abc", Now: time.Now().UTC(),
+	branding, err := UploadBrandingAsset(ctx, brandingRepo, assetStore, tenancydomain.DefaultTenantID, UploadBrandingAssetInput{
+		Kind: tenancydomain.TenantBrandingAssetKindLogo, Data: png, URL: "/tenant-branding-assets/logo/abc", Now: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatalf("upload failed: %v", err)
@@ -108,19 +108,19 @@ func TestUploadAndDeleteBrandingAssetRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected branding after upload: %#v", branding)
 	}
 
-	stored, err := assetStore.Find(ctx, domain.DefaultTenantID, domain.TenantBrandingAssetKindLogo, branding.LogoObjectKey)
+	stored, err := assetStore.Find(ctx, tenancydomain.DefaultTenantID, tenancydomain.TenantBrandingAssetKindLogo, branding.LogoObjectKey)
 	if err != nil || stored == nil || stored.ContentType != "image/png" {
 		t.Fatalf("expected stored png asset, got %#v err=%v", stored, err)
 	}
 
-	deleted, err := DeleteBrandingAsset(ctx, brandingRepo, assetStore, domain.DefaultTenantID, domain.TenantBrandingAssetKindLogo, time.Now().UTC())
+	deleted, err := DeleteBrandingAsset(ctx, brandingRepo, assetStore, tenancydomain.DefaultTenantID, tenancydomain.TenantBrandingAssetKindLogo, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("delete failed: %v", err)
 	}
 	if deleted.LogoObjectKey != "" || deleted.LogoURL != "" {
 		t.Fatalf("expected logo reference cleared, got %#v", deleted)
 	}
-	if stillStored, _ := assetStore.Find(ctx, domain.DefaultTenantID, domain.TenantBrandingAssetKindLogo, branding.LogoObjectKey); stillStored != nil {
+	if stillStored, _ := assetStore.Find(ctx, tenancydomain.DefaultTenantID, tenancydomain.TenantBrandingAssetKindLogo, branding.LogoObjectKey); stillStored != nil {
 		t.Fatal("expected asset blob deleted")
 	}
 }
@@ -128,8 +128,8 @@ func TestUploadAndDeleteBrandingAssetRoundTrip(t *testing.T) {
 func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 	brandingRepo := tenancymemory.NewTenantBrandingRepository()
 	assetStore := tenancymemory.NewTenantBrandingAssetStore()
-	_, err := UploadBrandingAsset(context.Background(), brandingRepo, assetStore, domain.DefaultTenantID, UploadBrandingAssetInput{
-		Kind: domain.TenantBrandingAssetKindLogo, Data: []byte("<svg onload=alert(1)></svg>"), Now: time.Now().UTC(),
+	_, err := UploadBrandingAsset(context.Background(), brandingRepo, assetStore, tenancydomain.DefaultTenantID, UploadBrandingAssetInput{
+		Kind: tenancydomain.TenantBrandingAssetKindLogo, Data: []byte("<svg onload=alert(1)></svg>"), Now: time.Now().UTC(),
 	})
 	if !errors.Is(err, ErrBrandingAssetFormat) {
 		t.Fatalf("expected ErrBrandingAssetFormat, got %v", err)
@@ -139,7 +139,7 @@ func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 func TestUploadBrandingAssetRejectsInvalidKind(t *testing.T) {
 	brandingRepo := tenancymemory.NewTenantBrandingRepository()
 	assetStore := tenancymemory.NewTenantBrandingAssetStore()
-	_, err := UploadBrandingAsset(context.Background(), brandingRepo, assetStore, domain.DefaultTenantID, UploadBrandingAssetInput{
+	_, err := UploadBrandingAsset(context.Background(), brandingRepo, assetStore, tenancydomain.DefaultTenantID, UploadBrandingAssetInput{
 		Kind: "logo-mark", Data: []byte{0x89, 'P', 'N', 'G'}, Now: time.Now().UTC(),
 	})
 	if !errors.Is(err, ErrInvalidBrandingAssetKind) {
@@ -150,7 +150,7 @@ func TestUploadBrandingAssetRejectsInvalidKind(t *testing.T) {
 func TestDeleteBrandingAssetIsIdempotentForUnconfiguredTenant(t *testing.T) {
 	brandingRepo := tenancymemory.NewTenantBrandingRepository()
 	assetStore := tenancymemory.NewTenantBrandingAssetStore()
-	branding, err := DeleteBrandingAsset(context.Background(), brandingRepo, assetStore, domain.DefaultTenantID, domain.TenantBrandingAssetKindFavicon, time.Now().UTC())
+	branding, err := DeleteBrandingAsset(context.Background(), brandingRepo, assetStore, tenancydomain.DefaultTenantID, tenancydomain.TenantBrandingAssetKindFavicon, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no-op delete to succeed, got %v", err)
 	}

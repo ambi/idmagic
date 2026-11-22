@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 )
 
 func main() {
@@ -44,11 +44,11 @@ func run() error {
 	flag.BoolVar(&allowLarge, "allow-large", false, "allow performance count above the default safety limit")
 	flag.Parse()
 
-	request := domain.Request{Environment: domain.Environment(environment), Profile: domain.Profile(profile), Mode: domain.Mode(mode), ManifestPath: manifestPath, GeneratorSeed: generatorSeed, Count: count, BatchSize: batchSize, AllowLarge: allowLarge, FirstPartyRedirectURIs: bootstrap.ParseSeedRedirectURIs(redirectURIs)}
+	request := seedingdomain.Request{Environment: seedingdomain.Environment(environment), Profile: seedingdomain.Profile(profile), Mode: seedingdomain.Mode(mode), ManifestPath: manifestPath, GeneratorSeed: generatorSeed, Count: count, BatchSize: batchSize, AllowLarge: allowLarge, FirstPartyRedirectURIs: bootstrap.ParseSeedRedirectURIs(redirectURIs)}
 	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err == nil {
 		defer deps.Close()
-		var plan domain.Plan
+		var plan seedingdomain.Plan
 		plan, err = bootstrap.Seed(context.Background(), deps, request, seed.SecretRoot)
 		if err == nil {
 			err = json.NewEncoder(os.Stdout).Encode(plan)

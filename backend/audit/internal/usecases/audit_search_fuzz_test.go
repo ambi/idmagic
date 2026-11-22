@@ -3,7 +3,7 @@ package usecases
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 // FuzzParseAuditFilter は、受理したフィルタ式が検索属性の許可集合に収まることを表明する。
@@ -34,7 +34,7 @@ func FuzzParseAuditFilter(f *testing.F) {
 			return
 		}
 		for _, expr := range exprs {
-			attr, ok := ports.LookupSearchAttribute(expr.Field)
+			attr, ok := auditports.LookupSearchAttribute(expr.Field)
 			if !ok {
 				t.Fatalf("ParseAuditFilter accepted the unknown field %q", expr.Field)
 			}

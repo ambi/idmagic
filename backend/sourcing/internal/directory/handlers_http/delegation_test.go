@@ -10,7 +10,7 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -90,7 +90,7 @@ func TestDelegationHTTPContracts(t *testing.T) {
 	if rec.Code != 200 || rec.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("poll=%d %s", rec.Code, rec.Body.String())
 	}
-	challenge := decode[domain.PasswordChallenge](t, rec)
+	challenge := decode[directorydomain.PasswordChallenge](t, rec)
 	if challenge.ID == "" || challenge.TenantID != tenancydomain.DefaultTenantID || challenge.ConnectorID != enrollment.ConnectorID || challenge.KeyID != registered["key_id"] || challenge.EncryptedRequest == "" || strings.Contains(rec.Body.String(), "diagnostic-secret") || !time.Now().Before(challenge.ExpiresAt) {
 		t.Fatal("invalid public challenge")
 	}

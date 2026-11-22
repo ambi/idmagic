@@ -5,16 +5,16 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
 )
 
 type ClientSessionStore struct {
 	mu       sync.RWMutex
-	sessions map[string]*domain.ClientSession
+	sessions map[string]*logoutdomain.ClientSession
 }
 
 func NewClientSessionStore() *ClientSessionStore {
-	return &ClientSessionStore{sessions: map[string]*domain.ClientSession{}}
+	return &ClientSessionStore{sessions: map[string]*logoutdomain.ClientSession{}}
 }
 
 func (s *ClientSessionStore) DeleteForClient(_ context.Context, tenantID, clientID string) error {
@@ -28,7 +28,7 @@ func (s *ClientSessionStore) DeleteForClient(_ context.Context, tenantID, client
 	return nil
 }
 
-func (s *ClientSessionStore) Upsert(_ context.Context, session *domain.ClientSession) error {
+func (s *ClientSessionStore) Upsert(_ context.Context, session *logoutdomain.ClientSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	key := session.TenantID + "\x00" + session.Sid + "\x00" + session.ClientID
@@ -40,10 +40,10 @@ func (s *ClientSessionStore) Upsert(_ context.Context, session *domain.ClientSes
 	return nil
 }
 
-func (s *ClientSessionStore) ListBySid(_ context.Context, tenantID, sid string) ([]*domain.ClientSession, error) {
+func (s *ClientSessionStore) ListBySid(_ context.Context, tenantID, sid string) ([]*logoutdomain.ClientSession, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	result := []*domain.ClientSession{}
+	result := []*logoutdomain.ClientSession{}
 	for _, session := range s.sessions {
 		if session.TenantID == tenantID && session.Sid == sid {
 			clone := *session
@@ -56,14 +56,14 @@ func (s *ClientSessionStore) ListBySid(_ context.Context, tenantID, sid string) 
 
 type LogoutNotificationStore struct {
 	mu            sync.RWMutex
-	notifications map[string]*domain.LogoutNotification
+	notifications map[string]*logoutdomain.LogoutNotification
 }
 
 func NewLogoutNotificationStore() *LogoutNotificationStore {
-	return &LogoutNotificationStore{notifications: map[string]*domain.LogoutNotification{}}
+	return &LogoutNotificationStore{notifications: map[string]*logoutdomain.LogoutNotification{}}
 }
 
-func (s *LogoutNotificationStore) Save(_ context.Context, notification *domain.LogoutNotification) error {
+func (s *LogoutNotificationStore) Save(_ context.Context, notification *logoutdomain.LogoutNotification) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	clone := *notification
@@ -71,7 +71,7 @@ func (s *LogoutNotificationStore) Save(_ context.Context, notification *domain.L
 	return nil
 }
 
-func (s *LogoutNotificationStore) FindByID(_ context.Context, tenantID, id string) (*domain.LogoutNotification, error) {
+func (s *LogoutNotificationStore) FindByID(_ context.Context, tenantID, id string) (*logoutdomain.LogoutNotification, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	notification := s.notifications[tenantID+"\x00"+id]

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/token/ports"
+	tokenports "github.com/ambi/idmagic/backend/oauth2/internal/token/ports"
 )
 
 type DenylistFixture struct {
-	Denylist ports.AccessTokenDenylist
+	Denylist tokenports.AccessTokenDenylist
 	Context  context.Context
 	Now      time.Time
 }

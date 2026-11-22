@@ -11,7 +11,7 @@ import (
 	"time"
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -42,7 +42,7 @@ type AgentDelegationGrant struct {
 }
 
 // GrantAgentDelegation は Agent への代行を付与し、既にあれば置き換える。
-func GrantAgentDelegation(ctx context.Context, deps AgentDelegationDeps, in AgentDelegationGrant, now time.Time) (*domain.Consent, error) {
+func GrantAgentDelegation(ctx context.Context, deps AgentDelegationDeps, in AgentDelegationGrant, now time.Time) (*oauthdomain.Consent, error) {
 	scopes := normalizeDelegationScopes(in.Scopes)
 	latest := now.Add(MaxAgentDelegationLifetime)
 	expiresAt := latest
@@ -79,28 +79,28 @@ func GrantAgentDelegation(ctx context.Context, deps AgentDelegationDeps, in Agen
 		}
 		defer reservation.Release(ctx)
 	}
-	grant := &domain.Consent{
+	grant := &oauthdomain.Consent{
 		UserID: in.Sub, AgentID: in.AgentID, Scopes: scopes,
-		State: domain.ConsentGranted, GrantedAt: now, ExpiresAt: expiresAt,
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: expiresAt,
 	}
 	if err := deps.ConsentRepo.SaveAgentDelegation(ctx, tenantID, grant); err != nil {
 		return nil, err
 	}
 	reservation.Keep()
-	emit(deps.Emit, &domain.AgentDelegationGranted{
+	emit(deps.Emit, &oauthdomain.AgentDelegationGranted{
 		At: now, TenantID: tenantID, UserID: in.Sub, AgentID: in.AgentID, Scopes: scopes, ExpiresAt: expiresAt,
 	})
 	return grant, nil
 }
 
 // ListGrantedAgentDelegations は sub の Granted で期限内の付与だけを返す。
-func ListGrantedAgentDelegations(ctx context.Context, deps ConsentDeps, sub string, now time.Time) ([]*domain.Consent, error) {
+func ListGrantedAgentDelegations(ctx context.Context, deps ConsentDeps, sub string, now time.Time) ([]*oauthdomain.Consent, error) {
 	all, err := deps.ConsentRepo.ListAgentDelegations(ctx, tenantports.TenantID(ctx), sub)
 	if err != nil {
 		return nil, err
 	}
-	return slices.DeleteFunc(all, func(grant *domain.Consent) bool {
-		return grant.State != domain.ConsentGranted || !now.Before(grant.ExpiresAt)
+	return slices.DeleteFunc(all, func(grant *oauthdomain.Consent) bool {
+		return grant.State != oauthdomain.ConsentGranted || !now.Before(grant.ExpiresAt)
 	}), nil
 }
 
@@ -118,12 +118,12 @@ func RevokeAgentDelegation(ctx context.Context, deps ConsentDeps, sub, agentID s
 	if err := deps.ConsentRepo.RevokeAgentDelegation(ctx, tenantID, sub, agentID); err != nil {
 		return err
 	}
-	if deps.QuotaRepo != nil && grant.State == domain.ConsentGranted {
+	if deps.QuotaRepo != nil && grant.State == oauthdomain.ConsentGranted {
 		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
 			return err
 		}
 	}
-	emit(deps.Emit, &domain.AgentDelegationRevoked{At: now, TenantID: tenantID, UserID: sub, AgentID: agentID})
+	emit(deps.Emit, &oauthdomain.AgentDelegationRevoked{At: now, TenantID: tenantID, UserID: sub, AgentID: agentID})
 	return nil
 }
 

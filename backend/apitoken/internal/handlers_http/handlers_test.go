@@ -21,7 +21,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/apitoken/internal/db_memory"
 	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -48,7 +48,7 @@ func newHandler(t *testing.T) *echo.Echo {
 		ID: "admin", TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "admin",
 		PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
-	service := usecases.New(db_memory.NewRepository(), usecases.WithTokenIssuer(fakeIssuer{}))
+	service := apitokenusecases.New(db_memory.NewRepository(), apitokenusecases.WithTokenIssuer(fakeIssuer{}))
 	deps := support.Deps{Issuer: "http://idp.test"}
 	authenticator := &support.Authenticator{Principals: idmanagement.Module{UserRepo: users}.Principals(), Sessions: authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications()}
 	e := echo.New()

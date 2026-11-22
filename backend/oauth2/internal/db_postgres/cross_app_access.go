@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 )
@@ -15,8 +15,8 @@ import (
 // ON CONFLICT で判定し、読んでから書く競合を残さない。
 type CrossAppAccessPolicyRepository struct{ Pool sharedpg.DB }
 
-func issuePolicyFromRow(row *CrossAppAccessIssuePolicy) (*domain.CrossAppAccessIssuePolicy, error) {
-	policy := &domain.CrossAppAccessIssuePolicy{
+func issuePolicyFromRow(row *CrossAppAccessIssuePolicy) (*oauthdomain.CrossAppAccessIssuePolicy, error) {
+	policy := &oauthdomain.CrossAppAccessIssuePolicy{
 		TenantID: row.TenantID, ID: row.ID, ClientID: row.ClientID, Audience: row.Audience,
 		RelyingPartyClientID: row.RelyingPartyClientID, TargetClientID: row.TargetClientID,
 		ReleaseEmail: row.ReleaseEmail, CreatedAt: row.CreatedAt,
@@ -32,8 +32,8 @@ func issuePolicyFromRow(row *CrossAppAccessIssuePolicy) (*domain.CrossAppAccessI
 	return policy, nil
 }
 
-func redeemPolicyFromRow(row *CrossAppAccessRedeemPolicy) (*domain.CrossAppAccessRedeemPolicy, error) {
-	policy := &domain.CrossAppAccessRedeemPolicy{
+func redeemPolicyFromRow(row *CrossAppAccessRedeemPolicy) (*oauthdomain.CrossAppAccessRedeemPolicy, error) {
+	policy := &oauthdomain.CrossAppAccessRedeemPolicy{
 		TenantID: row.TenantID, ID: row.ID, ProviderID: row.ProviderID, ClientID: row.ClientID, CreatedAt: row.CreatedAt,
 	}
 	if err := json.Unmarshal(row.Scopes, &policy.Scopes); err != nil {
@@ -42,12 +42,12 @@ func redeemPolicyFromRow(row *CrossAppAccessRedeemPolicy) (*domain.CrossAppAcces
 	return policy, nil
 }
 
-func (r *CrossAppAccessPolicyRepository) ListIssuePolicies(ctx context.Context, tenantID string) ([]*domain.CrossAppAccessIssuePolicy, error) {
+func (r *CrossAppAccessPolicyRepository) ListIssuePolicies(ctx context.Context, tenantID string) ([]*oauthdomain.CrossAppAccessIssuePolicy, error) {
 	rows, err := New(r.Pool).ListCrossAppAccessIssuePolicies(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.CrossAppAccessIssuePolicy, 0, len(rows))
+	out := make([]*oauthdomain.CrossAppAccessIssuePolicy, 0, len(rows))
 	for _, row := range rows {
 		policy, err := issuePolicyFromRow(row)
 		if err != nil {
@@ -58,7 +58,7 @@ func (r *CrossAppAccessPolicyRepository) ListIssuePolicies(ctx context.Context, 
 	return out, nil
 }
 
-func (r *CrossAppAccessPolicyRepository) FindIssuePolicy(ctx context.Context, tenantID, id string) (*domain.CrossAppAccessIssuePolicy, error) {
+func (r *CrossAppAccessPolicyRepository) FindIssuePolicy(ctx context.Context, tenantID, id string) (*oauthdomain.CrossAppAccessIssuePolicy, error) {
 	row, err := New(r.Pool).GetCrossAppAccessIssuePolicy(ctx, GetCrossAppAccessIssuePolicyParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -69,7 +69,7 @@ func (r *CrossAppAccessPolicyRepository) FindIssuePolicy(ctx context.Context, te
 	return issuePolicyFromRow(row)
 }
 
-func (r *CrossAppAccessPolicyRepository) CreateIssuePolicy(ctx context.Context, policy *domain.CrossAppAccessIssuePolicy) error {
+func (r *CrossAppAccessPolicyRepository) CreateIssuePolicy(ctx context.Context, policy *oauthdomain.CrossAppAccessIssuePolicy) error {
 	resources, err := json.Marshal(policy.Resources)
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (r *CrossAppAccessPolicyRepository) CreateIssuePolicy(ctx context.Context, 
 		return err
 	}
 	if inserted == 0 {
-		return ports.ErrCrossAppAccessPolicyExists
+		return oauthports.ErrCrossAppAccessPolicyExists
 	}
 	return nil
 }
@@ -105,12 +105,12 @@ func (r *CrossAppAccessPolicyRepository) DeleteIssuePolicy(ctx context.Context, 
 	return New(r.Pool).DeleteCrossAppAccessIssuePolicy(ctx, DeleteCrossAppAccessIssuePolicyParams{TenantID: tenantID, ID: id})
 }
 
-func (r *CrossAppAccessPolicyRepository) ListRedeemPolicies(ctx context.Context, tenantID string) ([]*domain.CrossAppAccessRedeemPolicy, error) {
+func (r *CrossAppAccessPolicyRepository) ListRedeemPolicies(ctx context.Context, tenantID string) ([]*oauthdomain.CrossAppAccessRedeemPolicy, error) {
 	rows, err := New(r.Pool).ListCrossAppAccessRedeemPolicies(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.CrossAppAccessRedeemPolicy, 0, len(rows))
+	out := make([]*oauthdomain.CrossAppAccessRedeemPolicy, 0, len(rows))
 	for _, row := range rows {
 		policy, err := redeemPolicyFromRow(row)
 		if err != nil {
@@ -121,7 +121,7 @@ func (r *CrossAppAccessPolicyRepository) ListRedeemPolicies(ctx context.Context,
 	return out, nil
 }
 
-func (r *CrossAppAccessPolicyRepository) FindRedeemPolicy(ctx context.Context, tenantID, id string) (*domain.CrossAppAccessRedeemPolicy, error) {
+func (r *CrossAppAccessPolicyRepository) FindRedeemPolicy(ctx context.Context, tenantID, id string) (*oauthdomain.CrossAppAccessRedeemPolicy, error) {
 	row, err := New(r.Pool).GetCrossAppAccessRedeemPolicy(ctx, GetCrossAppAccessRedeemPolicyParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -132,7 +132,7 @@ func (r *CrossAppAccessPolicyRepository) FindRedeemPolicy(ctx context.Context, t
 	return redeemPolicyFromRow(row)
 }
 
-func (r *CrossAppAccessPolicyRepository) FindRedeemPolicyFor(ctx context.Context, tenantID, providerID, clientID string) (*domain.CrossAppAccessRedeemPolicy, error) {
+func (r *CrossAppAccessPolicyRepository) FindRedeemPolicyFor(ctx context.Context, tenantID, providerID, clientID string) (*oauthdomain.CrossAppAccessRedeemPolicy, error) {
 	row, err := New(r.Pool).GetCrossAppAccessRedeemPolicyFor(ctx, GetCrossAppAccessRedeemPolicyForParams{TenantID: tenantID, ProviderID: providerID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -143,7 +143,7 @@ func (r *CrossAppAccessPolicyRepository) FindRedeemPolicyFor(ctx context.Context
 	return redeemPolicyFromRow(row)
 }
 
-func (r *CrossAppAccessPolicyRepository) CreateRedeemPolicy(ctx context.Context, policy *domain.CrossAppAccessRedeemPolicy) error {
+func (r *CrossAppAccessPolicyRepository) CreateRedeemPolicy(ctx context.Context, policy *oauthdomain.CrossAppAccessRedeemPolicy) error {
 	scopes, err := json.Marshal(policy.Scopes)
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (r *CrossAppAccessPolicyRepository) CreateRedeemPolicy(ctx context.Context,
 		return err
 	}
 	if inserted == 0 {
-		return ports.ErrCrossAppAccessPolicyExists
+		return oauthports.ErrCrossAppAccessPolicyExists
 	}
 	return nil
 }

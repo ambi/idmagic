@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	d "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	p "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type AccessReviewFixture struct {
-	Plans   p.AccessReviewPlanRepository
-	Reviews p.AccessReviewRepository
+	Plans   igports.AccessReviewPlanRepository
+	Reviews igports.AccessReviewRepository
 	TenantA string
 	TenantB string
 }
@@ -33,12 +33,12 @@ func RunAccessReviews(t *testing.T, f AccessReviewFixture) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := d.AccessReviewPlanInput{Name: "Access check", Enabled: true, TargetKind: "agent", ResourceIDs: []string{"agent"}, FallbackReviewerID: "reviewer", DefaultDecision: "revoke", StartsAt: now, DurationDays: 1}
-	plan := &d.AccessReviewPlan{ID: planID, TenantID: f.TenantA, Revision: 1, NextStartAt: &now, AccessReviewPlanInput: input}
+	input := igdomain.AccessReviewPlanInput{Name: "Access check", Enabled: true, TargetKind: "agent", ResourceIDs: []string{"agent"}, FallbackReviewerID: "reviewer", DefaultDecision: "revoke", StartsAt: now, DurationDays: 1}
+	plan := &igdomain.AccessReviewPlan{ID: planID, TenantID: f.TenantA, Revision: 1, NextStartAt: &now, AccessReviewPlanInput: input}
 	if err := f.Plans.CreatePlan(ctx, plan); err != nil {
 		t.Fatal(err)
 	}
-	review := &d.AccessReview{ID: reviewID, TenantID: f.TenantA, PlanID: planID, Name: plan.Name, TargetKind: "agent", DefaultDecision: "revoke", StartedAt: now, DueAt: now.Add(time.Hour), Status: "open", Items: []d.AccessReviewItem{{ID: "one", ReviewerID: "reviewer"}, {ID: "two", ReviewerID: "reviewer"}}, Notified: map[string]bool{"start:reviewer": true}}
+	review := &igdomain.AccessReview{ID: reviewID, TenantID: f.TenantA, PlanID: planID, Name: plan.Name, TargetKind: "agent", DefaultDecision: "revoke", StartedAt: now, DueAt: now.Add(time.Hour), Status: "open", Items: []igdomain.AccessReviewItem{{ID: "one", ReviewerID: "reviewer"}, {ID: "two", ReviewerID: "reviewer"}}, Notified: map[string]bool{"start:reviewer": true}}
 	var captures atomic.Int32
 	var wg sync.WaitGroup
 	for range 2 {
@@ -58,7 +58,7 @@ func RunAccessReviews(t *testing.T, f AccessReviewFixture) {
 	}
 	for _, id := range []string{"one", "two"} {
 		wg.Go(func() {
-			_, err := f.Reviews.UpdateReview(ctx, f.TenantA, reviewID, func(r *d.AccessReview) error { _, err := r.Decide(id, "reviewer", "retain", now); return err })
+			_, err := f.Reviews.UpdateReview(ctx, f.TenantA, reviewID, func(r *igdomain.AccessReview) error { _, err := r.Decide(id, "reviewer", "retain", now); return err })
 			if err != nil {
 				t.Error(err)
 			}
@@ -78,7 +78,7 @@ func RunAccessReviews(t *testing.T, f AccessReviewFixture) {
 		t.Fatal("notification checkpoint was lost")
 	}
 	sentinel := errors.New("rollback")
-	_, err = f.Reviews.UpdateReview(ctx, f.TenantA, reviewID, func(r *d.AccessReview) error { r.Status = "completed"; return sentinel })
+	_, err = f.Reviews.UpdateReview(ctx, f.TenantA, reviewID, func(r *igdomain.AccessReview) error { r.Status = "completed"; return sentinel })
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("rollback err=%v", err)
 	}
@@ -92,7 +92,7 @@ func RunAccessReviews(t *testing.T, f AccessReviewFixture) {
 	if foreign, err := f.Reviews.ListForReviewer(ctx, f.TenantB, "reviewer"); err != nil || len(foreign) != 0 {
 		t.Fatalf("foreign reviews=%+v err=%v", foreign, err)
 	}
-	if _, err := f.Reviews.UpdateReview(ctx, f.TenantB, reviewID, func(*d.AccessReview) error { t.Error("foreign callback reached"); return nil }); !errors.Is(err, d.ErrAccessReviewInvalid) {
+	if _, err := f.Reviews.UpdateReview(ctx, f.TenantB, reviewID, func(*igdomain.AccessReview) error { t.Error("foreign callback reached"); return nil }); !errors.Is(err, igdomain.ErrAccessReviewInvalid) {
 		t.Fatalf("foreign update err=%v", err)
 	}
 }

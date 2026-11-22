@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -22,7 +22,7 @@ import (
 )
 
 type failingConnectionRepository struct {
-	ports.ProvisioningConnectionRepository
+	provisioningports.ProvisioningConnectionRepository
 	failure error
 }
 
@@ -31,18 +31,18 @@ type failingDiscoveryTarget struct {
 	failure error
 }
 
-func (d failingDiscoveryTarget) Discover(context.Context) (domain.ProvisioningCapabilities, error) {
-	return domain.ProvisioningCapabilities{}, d.failure
+func (d failingDiscoveryTarget) Discover(context.Context) (provisioningdomain.ProvisioningCapabilities, error) {
+	return provisioningdomain.ProvisioningCapabilities{}, d.failure
 }
 
-func (r *failingConnectionRepository) Register(ctx context.Context, conn *domain.ProvisioningConnection, secret string) error {
+func (r *failingConnectionRepository) Register(ctx context.Context, conn *provisioningdomain.ProvisioningConnection, secret string) error {
 	if r.failure != nil {
 		return r.failure
 	}
 	return r.ProvisioningConnectionRepository.Register(ctx, conn, secret)
 }
 
-func (r *failingConnectionRepository) Update(ctx context.Context, conn *domain.ProvisioningConnection, secret *string) error {
+func (r *failingConnectionRepository) Update(ctx context.Context, conn *provisioningdomain.ProvisioningConnection, secret *string) error {
 	if r.failure != nil {
 		return r.failure
 	}
@@ -133,7 +133,7 @@ func TestProvisioningDiscoveryErrorIsNotDisclosed(t *testing.T) {
 	logging.SetDefault(logging.New(&logs, slog.LevelError, "test", ""))
 	t.Cleanup(func() { logging.SetDefault(previous) })
 	request, connections, _ := newProvisioningContractServer(t, func(d *provisioninghttp.Deps, _ *echo.Echo) {
-		d.NewTargetClient = func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
+		d.NewTargetClient = func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error) {
 			return failingDiscoveryTarget{failure: errors.New("private-marker: dial tcp 10.0.0.5:443")}, nil
 		}
 	})

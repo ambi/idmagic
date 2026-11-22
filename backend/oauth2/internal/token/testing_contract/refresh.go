@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/token/domain"
-	"github.com/ambi/idmagic/backend/oauth2/internal/token/ports"
+	tokendomain "github.com/ambi/idmagic/backend/oauth2/internal/token/domain"
+	tokenports "github.com/ambi/idmagic/backend/oauth2/internal/token/ports"
 )
 
 type RefreshFixture struct {
-	Store    ports.RefreshTokenStore
+	Store    tokenports.RefreshTokenStore
 	TenantID string
 	ClientID string
 	UserID   string
@@ -24,7 +24,7 @@ func RunRefresh(t *testing.T, newFixture NewRefreshFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	record := &domain.RefreshTokenRecord{ID: "00000000-0000-4000-8000-000000000011", TenantID: f.TenantID, Hash: "refresh-hash-contract", FamilyID: "00000000-0000-4000-8000-000000000012", ClientID: f.ClientID, UserID: f.UserID, Scopes: []string{"openid"}, IssuedAt: f.Now, ExpiresAt: f.Now.Add(24 * time.Hour), AbsoluteExpiresAt: f.Now.Add(48 * time.Hour)}
+	record := &tokendomain.RefreshTokenRecord{ID: "00000000-0000-4000-8000-000000000011", TenantID: f.TenantID, Hash: "refresh-hash-contract", FamilyID: "00000000-0000-4000-8000-000000000012", ClientID: f.ClientID, UserID: f.UserID, Scopes: []string{"openid"}, IssuedAt: f.Now, ExpiresAt: f.Now.Add(24 * time.Hour), AbsoluteExpiresAt: f.Now.Add(48 * time.Hour)}
 	if err := f.Store.Save(ctx, record); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -37,7 +37,7 @@ func RunRefresh(t *testing.T, newFixture NewRefreshFixture) {
 	}
 
 	authTime, acr := f.Now.Add(-time.Hour).Unix(), "urn:idmagic:acr:mfa"
-	authenticated := &domain.RefreshTokenRecord{ID: "00000000-0000-4000-8000-000000000013", TenantID: f.TenantID, Hash: "refresh-hash-contract-authenticated", FamilyID: record.FamilyID, ClientID: f.ClientID, UserID: f.UserID, Scopes: []string{"openid"}, IssuedAt: f.Now, ExpiresAt: f.Now.Add(24 * time.Hour), AbsoluteExpiresAt: f.Now.Add(48 * time.Hour), AuthTime: &authTime, AMR: []string{"pwd", "otp"}, ACR: &acr}
+	authenticated := &tokendomain.RefreshTokenRecord{ID: "00000000-0000-4000-8000-000000000013", TenantID: f.TenantID, Hash: "refresh-hash-contract-authenticated", FamilyID: record.FamilyID, ClientID: f.ClientID, UserID: f.UserID, Scopes: []string{"openid"}, IssuedAt: f.Now, ExpiresAt: f.Now.Add(24 * time.Hour), AbsoluteExpiresAt: f.Now.Add(48 * time.Hour), AuthTime: &authTime, AMR: []string{"pwd", "otp"}, ACR: &acr}
 	if err := f.Store.Save(ctx, authenticated); err != nil {
 		t.Fatalf("Save authenticated: %v", err)
 	}

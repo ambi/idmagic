@@ -6,35 +6,35 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 // Fixture は契約の入力である。TenantA と UserA は実在し、ConnectorID は UUID である。
 type Fixture struct {
-	Connectors              ports.ConnectorRepository
-	Connections             ports.ConnectionRepository
-	Attempts                ports.AttemptStore
+	Connectors              tokenvaultports.ConnectorRepository
+	Connections             tokenvaultports.ConnectionRepository
+	Attempts                tokenvaultports.AttemptStore
 	TenantA, TenantB, UserA string
 	NewID                   func() string
 	Now                     time.Time
 }
 
-func connector(f Fixture, name string) *domain.Connector {
-	return &domain.Connector{
-		ID: f.NewID(), TenantID: f.TenantA, Name: name, Status: domain.ConnectorActive,
+func connector(f Fixture, name string) *tokenvaultdomain.Connector {
+	return &tokenvaultdomain.Connector{
+		ID: f.NewID(), TenantID: f.TenantA, Name: name, Status: tokenvaultdomain.ConnectorActive,
 		AuthorizationEndpoint: "https://idp.example.com/a", TokenEndpoint: "https://idp.example.com/t",
-		ClientID: "client", ClientSecret: "client-secret", TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		ClientID: "client", ClientSecret: "client-secret", TokenEndpointAuthMethod: tokenvaultdomain.AuthMethodClientSecretBasic,
 		AllowedScopes: []string{"read"},
-		Rules:         []domain.ExecutionRule{{ID: "r", Method: "GET", Origin: "https://api.example.com", PathPrefix: "/v1", RequiredScopes: []string{"read"}}},
+		Rules:         []tokenvaultdomain.ExecutionRule{{ID: "r", Method: "GET", Origin: "https://api.example.com", PathPrefix: "/v1", RequiredScopes: []string{"read"}}},
 		Version:       1, CreatedAt: f.Now, UpdatedAt: f.Now,
 	}
 }
 
-func linked(f Fixture, connectorID, access, refresh string) *domain.Connection {
+func linked(f Fixture, connectorID, access, refresh string) *tokenvaultdomain.Connection {
 	expires := f.Now.Add(time.Hour)
-	return &domain.Connection{
-		ID: f.NewID(), TenantID: f.TenantA, ConnectorID: connectorID, UserID: f.UserA, Status: domain.ConnectionActive,
+	return &tokenvaultdomain.Connection{
+		ID: f.NewID(), TenantID: f.TenantA, ConnectorID: connectorID, UserID: f.UserA, Status: tokenvaultdomain.ConnectionActive,
 		GrantedScopes: []string{"read"}, AccessToken: access, RefreshToken: refresh, ExpiresAt: &expires, CreatedAt: f.Now, UpdatedAt: f.Now,
 	}
 }
@@ -58,7 +58,7 @@ func connectorContract(t *testing.T, f Fixture) {
 		t.Fatal(err)
 	}
 	duplicate := connector(f, "c1")
-	if err := f.Connectors.Create(ctx, duplicate); err != ports.ErrConnectorConflict { //nolint:errorlint // 契約は値そのものを返すこと。
+	if err := f.Connectors.Create(ctx, duplicate); err != tokenvaultports.ErrConnectorConflict { //nolint:errorlint // 契約は値そのものを返すこと。
 		t.Fatalf("duplicate name: %v", err)
 	}
 	found, err := f.Connectors.Find(ctx, f.TenantA, created.ID)
@@ -76,7 +76,7 @@ func connectorContract(t *testing.T, f Fixture) {
 	if err := f.Connectors.Update(ctx, found); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Connectors.Update(ctx, &stale); err != ports.ErrConnectorConflict { //nolint:errorlint // 同上。
+	if err := f.Connectors.Update(ctx, &stale); err != tokenvaultports.ErrConnectorConflict { //nolint:errorlint // 同上。
 		t.Fatalf("stale update: %v", err)
 	}
 }
@@ -192,14 +192,14 @@ func reauthorizationContract(t *testing.T, f Fixture) {
 		t.Fatalf("mark: %v, %v", changed, err)
 	}
 	current, err := f.Connections.Find(ctx, f.TenantA, c.ID, f.UserA)
-	if err != nil || current.Status != domain.ConnectionReauthorizationRequired || current.AccessToken != "" || current.RefreshToken != "" {
+	if err != nil || current.Status != tokenvaultdomain.ConnectionReauthorizationRequired || current.AccessToken != "" || current.RefreshToken != "" {
 		t.Fatalf("current: %+v, %v", current, err)
 	}
 	if err := f.Connections.SaveLinked(ctx, linked(f, c.ID, "a3", "r3")); err != nil {
 		t.Fatal(err)
 	}
 	relinked, err := f.Connections.Find(ctx, f.TenantA, c.ID, f.UserA)
-	if err != nil || relinked.Status != domain.ConnectionActive || relinked.AccessToken != "a3" {
+	if err != nil || relinked.Status != tokenvaultdomain.ConnectionActive || relinked.AccessToken != "a3" {
 		t.Fatalf("relinked: %+v, %v", relinked, err)
 	}
 }
@@ -211,14 +211,14 @@ func attemptContract(t *testing.T, f Fixture) {
 	if err := f.Connectors.Create(ctx, c); err != nil {
 		t.Fatal(err)
 	}
-	attempt := &domain.ConnectionAttempt{
+	attempt := &tokenvaultdomain.ConnectionAttempt{
 		ID: f.NewID(), TenantID: f.TenantA, ConnectorID: c.ID, UserID: f.UserA, StateHash: []byte("hash-1"),
 		CodeVerifier: "verifier", RequestedScopes: []string{"read"}, ExpiresAt: f.Now.Add(time.Minute),
 	}
 	if err := f.Attempts.Save(ctx, attempt); err != nil {
 		t.Fatal(err)
 	}
-	consume := func(user string, hash []byte, at time.Time) *domain.ConnectionAttempt {
+	consume := func(user string, hash []byte, at time.Time) *tokenvaultdomain.ConnectionAttempt {
 		t.Helper()
 		found, err := f.Attempts.Consume(ctx, f.TenantA, c.ID, user, hash, at)
 		if err != nil {

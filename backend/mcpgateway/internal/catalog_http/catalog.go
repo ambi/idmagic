@@ -15,7 +15,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
 
 // 上限は REQ-MCPGATEWAY-011 と、IdMagic が受け入れる REQ-OAUTH2-086 の上限に揃える。
@@ -103,7 +103,7 @@ type listedTool struct {
 
 func (r Publisher) fetchPage(ctx context.Context, cursor string) ([]Tool, string, error) {
 	params := map[string]any{"_meta": map[string]any{
-		"io.modelcontextprotocol/protocolVersion":    domain.ProtocolVersion,
+		"io.modelcontextprotocol/protocolVersion":    mcpgatewaydomain.ProtocolVersion,
 		"io.modelcontextprotocol/clientCapabilities": map[string]any{},
 	}}
 	if cursor != "" {
@@ -119,7 +119,7 @@ func (r Publisher) fetchPage(ctx context.Context, cursor string) ([]Tool, string
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
-	request.Header.Set("Mcp-Protocol-Version", domain.ProtocolVersion)
+	request.Header.Set("Mcp-Protocol-Version", mcpgatewaydomain.ProtocolVersion)
 	request.Header.Set("Mcp-Method", "tools/list")
 	response, err := r.UpstreamClient.Do(request)
 	if err != nil {

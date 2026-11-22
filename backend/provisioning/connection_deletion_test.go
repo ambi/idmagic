@@ -8,9 +8,9 @@ import (
 
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/provisioning"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -19,19 +19,19 @@ func TestMemoryModuleDeletionSeparatesRecreatedConnection(t *testing.T) {
 	ctx := t.Context()
 	m := provisioning.NewMemoryModule()
 	var events []spec.DomainEvent
-	admin := usecases.AdminDeps{ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, Emit: func(e spec.DomainEvent) { events = append(events, e) }}
+	admin := provisioningusecases.AdminDeps{ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, Emit: func(e spec.DomainEvent) { events = append(events, e) }}
 	now := time.Now().UTC()
-	input := usecases.RegisterConnectionInput{
+	input := provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://old.example/scim/v2", Now: now,
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "old-secret"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "old-secret"},
 	}
-	if _, err := usecases.RegisterConnection(ctx, admin, input); err != nil {
+	if _, err := provisioningusecases.RegisterConnection(ctx, admin, input); err != nil {
 		t.Fatal(err)
 	}
-	oldTask := &domain.ProvisioningTask{
-		ID: "old-task", TenantID: input.TenantID, ConnectionID: input.ApplicationID, SourceType: domain.SourceTypeUser,
-		SourceID: "user-1", SourceVersion: 1, Operation: domain.OperationUpdate,
-		Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+	oldTask := &provisioningdomain.ProvisioningTask{
+		ID: "old-task", TenantID: input.TenantID, ConnectionID: input.ApplicationID, SourceType: provisioningdomain.SourceTypeUser,
+		SourceID: "user-1", SourceVersion: 1, Operation: provisioningdomain.OperationUpdate,
+		Status: provisioningdomain.TaskPending, CreatedAt: now, UpdatedAt: now,
 	}
 	if _, err := m.TaskRepo.Save(ctx, oldTask); err != nil {
 		t.Fatal(err)
@@ -39,13 +39,13 @@ func TestMemoryModuleDeletionSeparatesRecreatedConnection(t *testing.T) {
 	if attached, err := m.TaskRepo.AttachJob(ctx, input.TenantID, oldTask.ID, "old-job", nil); err != nil || !attached {
 		t.Fatalf("attach=%v error=%v", attached, err)
 	}
-	if err := m.RemoteLinkRepo.Upsert(ctx, &domain.RemoteResourceLink{
+	if err := m.RemoteLinkRepo.Upsert(ctx, &provisioningdomain.RemoteResourceLink{
 		TenantID: input.TenantID, ConnectionID: input.ApplicationID, SourceType: oldTask.SourceType, SourceID: oldTask.SourceID,
 		RemoteID: "old-remote", ExternalID: oldTask.SourceID, Active: true, LastSyncedVersion: 1, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := usecases.DeleteConnection(ctx, admin, input.TenantID, input.ApplicationID, now); err != nil {
+	if err := provisioningusecases.DeleteConnection(ctx, admin, input.TenantID, input.ApplicationID, now); err != nil {
 		t.Fatal(err)
 	}
 	if task, err := m.TaskRepo.Find(ctx, input.TenantID, oldTask.ID); err != nil || task != nil {
@@ -61,7 +61,7 @@ func TestMemoryModuleDeletionSeparatesRecreatedConnection(t *testing.T) {
 		t.Fatalf("events=%v", events)
 	}
 	input.BaseURL, input.Credential.BearerToken, input.Now = "https://new.example/scim/v2", "new-secret", now.Add(time.Second)
-	conn, err := usecases.RegisterConnection(ctx, admin, input)
+	conn, err := provisioningusecases.RegisterConnection(ctx, admin, input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestMemoryModuleDeletionSeparatesRecreatedConnection(t *testing.T) {
 	if created, err := m.TaskRepo.Save(ctx, &newTask); err != nil || !created {
 		t.Fatalf("new task=%v error=%v", created, err)
 	}
-	deps := m.JobHandlerDeps(nil, nil, func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
+	deps := m.JobHandlerDeps(nil, nil, func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error) {
 		t.Error("old job tried to build a downstream client")
 		return nil, errors.New("unexpected downstream request")
 	}, admin.Emit, nil)

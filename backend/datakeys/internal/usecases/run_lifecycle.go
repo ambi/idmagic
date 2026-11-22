@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/logging"
 )
 
@@ -14,13 +14,13 @@ import (
 // 残った未移行の行を回収する。DEK を持たないテナントには、初回の暗号化が作るので何もしない。
 func RunTenantDataKeyLifecycle(ctx context.Context, deps Deps, tenantID string, now time.Time, cadence time.Duration) error {
 	active, err := deps.Repository.FindActive(ctx, tenantID)
-	if errors.Is(err, domain.ErrNoActiveDataKey) {
+	if errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if domain.RotationDue(active, now, cadence) {
+	if datakeysdomain.RotationDue(active, now, cadence) {
 		_, err := RotateTenantDataKey(ctx, deps, tenantID, now)
 		return err
 	}

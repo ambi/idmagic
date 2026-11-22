@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -22,12 +22,12 @@ func (r *WebAuthnCredentialRepository) queries() *Queries { return New(r.Pool) }
 func (r *WebAuthnCredentialRepository) ListBySub(
 	ctx context.Context,
 	sub string,
-) ([]*domain.WebAuthnCredential, error) {
+) ([]*webauthndomain.WebAuthnCredential, error) {
 	rows, err := r.queries().ListWebAuthnCredentialsBySub(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.WebAuthnCredential, 0, len(rows))
+	out := make([]*webauthndomain.WebAuthnCredential, 0, len(rows))
 	for _, row := range rows {
 		c, err := webAuthnCredentialFromRow(
 			row.CredentialID, row.UserID, row.PublicKey, row.SignCount, row.Transports,
@@ -44,7 +44,7 @@ func (r *WebAuthnCredentialRepository) ListBySub(
 func (r *WebAuthnCredentialRepository) FindByCredentialID(
 	ctx context.Context,
 	credentialID string,
-) (*domain.WebAuthnCredential, error) {
+) (*webauthndomain.WebAuthnCredential, error) {
 	row, err := r.queries().GetWebAuthnCredentialByID(ctx, credentialID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -62,7 +62,7 @@ func (r *WebAuthnCredentialRepository) FindByCredentialID(
 // webauthn_credentials の一意制約は主キーの credential_id だけである。
 const sqlstateUniqueViolation = "23505"
 
-func (r *WebAuthnCredentialRepository) Save(ctx context.Context, c *domain.WebAuthnCredential) error {
+func (r *WebAuthnCredentialRepository) Save(ctx context.Context, c *webauthndomain.WebAuthnCredential) error {
 	transports := c.Transports
 	if transports == nil {
 		transports = []string{}
@@ -82,7 +82,7 @@ func (r *WebAuthnCredentialRepository) Save(ctx context.Context, c *domain.WebAu
 	})
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == sqlstateUniqueViolation {
-		return ports.ErrWebAuthnCredentialExists
+		return webauthnports.ErrWebAuthnCredentialExists
 	}
 	return err
 }
@@ -118,7 +118,7 @@ func webAuthnCredentialFromRow(
 	backupEligible, backupState bool,
 	createdAt time.Time,
 	lastUsedAt pgtype.Timestamptz,
-) (*domain.WebAuthnCredential, error) {
+) (*webauthndomain.WebAuthnCredential, error) {
 	// sign_count は uint32 として書き込むため通常は範囲内だが、DB 破損に備えて範囲を丸める。
 	if signCount < 0 || signCount > math.MaxUint32 {
 		signCount = 0
@@ -126,7 +126,7 @@ func webAuthnCredentialFromRow(
 	if transports == nil {
 		transports = []string{}
 	}
-	c := &domain.WebAuthnCredential{
+	c := &webauthndomain.WebAuthnCredential{
 		CredentialID:   credentialID,
 		UserID:         userID,
 		PublicKey:      publicKey,

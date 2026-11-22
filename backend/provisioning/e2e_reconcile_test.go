@@ -13,8 +13,8 @@ import (
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	notificationtemplate "github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -35,15 +35,15 @@ func (failingNotifier) NotifyUserMutation(context.Context, string, string, userp
 func (h *e2eHarness) mapActive() {
 	h.t.Helper()
 	conn := h.connection()
-	conn.AttributeMappings = []domain.AttributeMappingRule{
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
-		{TargetPath: "active", SourceKind: domain.SourceKindAttribute, SourceKey: "active", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
+	conn.AttributeMappings = []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
+		{TargetPath: "active", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "active", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
 	}
 	h.saveConnection(conn)
 }
 
-func (h *e2eHarness) reconcileDeps() usecases.ReconcileDeps {
-	return usecases.ReconcileDeps{
+func (h *e2eHarness) reconcileDeps() provisioningusecases.ReconcileDeps {
+	return provisioningusecases.ReconcileDeps{
 		ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo, LinkRepo: h.linkRepo, UserRepo: h.userRepo,
 	}
 }
@@ -57,7 +57,7 @@ func (h *e2eHarness) provisionActiveUser(username string) string {
 	if err != nil {
 		h.t.Fatalf("CreateUser() error = %v", err)
 	}
-	if created := h.executePendingTask(user.ID); created.Status != domain.TaskSucceeded {
+	if created := h.executePendingTask(user.ID); created.Status != provisioningdomain.TaskSucceeded {
 		h.t.Fatalf("create task status = %v, want succeeded (last_error=%v)", created.Status, created.LastError)
 	}
 	return user.ID
@@ -70,7 +70,7 @@ func (h *e2eHarness) assertNoPendingTask(userID string) {
 		h.t.Fatalf("ListByConnection() error = %v", err)
 	}
 	for _, task := range tasks {
-		if task.SourceID == userID && task.Status == domain.TaskPending {
+		if task.SourceID == userID && task.Status == provisioningdomain.TaskPending {
 			h.t.Fatalf("pending task already exists before reconciliation: %+v", task)
 		}
 	}
@@ -80,7 +80,7 @@ func (h *e2eHarness) assertNoPendingTask(userID string) {
 func (h *e2eHarness) reconcileAndExecuteDeactivation(userID string) {
 	h.t.Helper()
 	remoteID := h.remoteUserID(userID)
-	created, err := usecases.ReconcileConnections(testing_tenant.Default(context.Background()), h.reconcileDeps(), 100, time.Now().UTC())
+	created, err := provisioningusecases.ReconcileConnections(testing_tenant.Default(context.Background()), h.reconcileDeps(), 100, time.Now().UTC())
 	if err != nil {
 		h.t.Fatalf("ReconcileConnections() error = %v", err)
 	}
@@ -88,7 +88,7 @@ func (h *e2eHarness) reconcileAndExecuteDeactivation(userID string) {
 		h.t.Fatalf("ReconcileConnections() created = %d, want 1 deactivation", created)
 	}
 	task := h.executePendingTask(userID)
-	if task.Operation != domain.OperationDeactivate || task.Status != domain.TaskSucceeded {
+	if task.Operation != provisioningdomain.OperationDeactivate || task.Status != provisioningdomain.TaskSucceeded {
 		h.t.Fatalf("reconciled task = %+v, want succeeded deactivate", task)
 	}
 	last := h.downstream.last()
@@ -143,7 +143,7 @@ func TestE2E_ReconcileCreatesNothingWhenCaptureAlreadyConverged(t *testing.T) {
 	h.provisionActiveUser("reconcile-converged")
 	before := h.downstream.count()
 
-	created, err := usecases.ReconcileConnections(testing_tenant.Default(context.Background()), h.reconcileDeps(), 100, time.Now().UTC())
+	created, err := provisioningusecases.ReconcileConnections(testing_tenant.Default(context.Background()), h.reconcileDeps(), 100, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("ReconcileConnections() error = %v", err)
 	}
@@ -178,17 +178,17 @@ func (g *guardRun) reconcile() int {
 	module := provisioning.Module{ConnectionRepo: g.h.connRepo, RemoteLinkRepo: g.h.linkRepo, TaskRepo: g.h.taskRepo}
 	emit := func(event spec.DomainEvent) { g.events = append(g.events, event) }
 	notifier := &notificationtemplate.Notifier{Sender: &g.mails, SystemDefaultLocale: "en"}
-	created, err := usecases.ReconcileConnections(testing_tenant.Default(context.Background()), module.ReconcileDeps(g.h.userRepo, nil, emit, notifier), 100, time.Now().UTC())
+	created, err := provisioningusecases.ReconcileConnections(testing_tenant.Default(context.Background()), module.ReconcileDeps(g.h.userRepo, nil, emit, notifier), 100, time.Now().UTC())
 	if err != nil {
 		g.h.t.Fatalf("ReconcileConnections() error = %v", err)
 	}
 	return created
 }
 
-func (g *guardRun) quarantines() []*domain.ConnectionQuarantined {
-	var quarantined []*domain.ConnectionQuarantined
+func (g *guardRun) quarantines() []*provisioningdomain.ConnectionQuarantined {
+	var quarantined []*provisioningdomain.ConnectionQuarantined
 	for _, event := range g.events {
-		if q, ok := event.(*domain.ConnectionQuarantined); ok {
+		if q, ok := event.(*provisioningdomain.ConnectionQuarantined); ok {
 			quarantined = append(quarantined, q)
 		}
 	}
@@ -209,7 +209,7 @@ func (h *e2eHarness) setAccidentalDeletionGuard(count, percent *int) {
 func (h *e2eHarness) narrowScopeToAssignments() {
 	h.t.Helper()
 	conn := h.connection()
-	conn.Scope = domain.ScopeAssignedOnly
+	conn.Scope = provisioningdomain.ScopeAssignedOnly
 	h.saveConnection(conn)
 }
 
@@ -222,7 +222,7 @@ func (h *e2eHarness) taskCount() int {
 	return len(tasks)
 }
 
-func (h *e2eHarness) health() domain.ProvisioningHealth {
+func (h *e2eHarness) health() provisioningdomain.ProvisioningHealth {
 	h.t.Helper()
 	return h.connection().Health
 }
@@ -247,7 +247,7 @@ func TestE2E_ReconcileOverTheGuardQuarantinesWithoutDeprovisioning(t *testing.T)
 	if got := h.downstream.count(); got != requestsBefore {
 		t.Fatalf("downstream requests = %d, want %d", got, requestsBefore)
 	}
-	if got := h.health(); got != domain.HealthQuarantined {
+	if got := h.health(); got != provisioningdomain.HealthQuarantined {
 		t.Fatalf("connection health = %q, want quarantined", got)
 	}
 	quarantined := run.quarantines()
@@ -277,7 +277,7 @@ func TestE2E_ReconcileOverTheGuardNotifiesAndIsResumed(t *testing.T) {
 	if created := run.reconcile(); created != 0 || h.taskCount() != tasksBefore {
 		t.Fatalf("ReconcileConnections() created = %d, tasks = %d; want 0 and %d over the guard", created, h.taskCount(), tasksBefore)
 	}
-	if got := h.health(); got != domain.HealthQuarantined || len(run.quarantines()) != 1 {
+	if got := h.health(); got != provisioningdomain.HealthQuarantined || len(run.quarantines()) != 1 {
 		t.Fatalf("health = %q, ConnectionQuarantined = %d; want quarantined and 1", got, len(run.quarantines()))
 	}
 	if len(run.mails.sent) != 1 {
@@ -300,14 +300,14 @@ func TestE2E_ReconcileOverTheGuardNotifiesAndIsResumed(t *testing.T) {
 	}
 
 	var cleared []spec.DomainEvent
-	adminDeps := usecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo, Emit: func(event spec.DomainEvent) { cleared = append(cleared, event) }}
-	if _, err := usecases.ResumeConnection(testing_tenant.Default(context.Background()), adminDeps, h.tenantID, h.connectionID, time.Now().UTC()); err != nil {
+	adminDeps := provisioningusecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo, Emit: func(event spec.DomainEvent) { cleared = append(cleared, event) }}
+	if _, err := provisioningusecases.ResumeConnection(testing_tenant.Default(context.Background()), adminDeps, h.tenantID, h.connectionID, time.Now().UTC()); err != nil {
 		t.Fatalf("ResumeConnection() error = %v", err)
 	}
 	if len(cleared) != 1 || cleared[0].EventType() != "ProvisioningConnectionQuarantineCleared" {
 		t.Fatalf("events after resume = %+v, want one ProvisioningConnectionQuarantineCleared", cleared)
 	}
-	if got := h.health(); got != domain.HealthOK {
+	if got := h.health(); got != provisioningdomain.HealthOK {
 		t.Fatalf("health after resume = %q, want ok", got)
 	}
 }
@@ -331,14 +331,14 @@ func TestE2E_ReconcileAtTheGuardStillDeprovisions(t *testing.T) {
 	}
 	deactivations := 0
 	for _, task := range tasks {
-		if task.Status == domain.TaskPending && task.Operation == domain.OperationDeactivate {
+		if task.Status == provisioningdomain.TaskPending && task.Operation == provisioningdomain.OperationDeactivate {
 			deactivations++
 		}
 	}
 	if deactivations != 5 {
 		t.Fatalf("pending deactivations = %d, want 5 (tasks %+v)", deactivations, tasks)
 	}
-	if got := h.health(); got != domain.HealthOK {
+	if got := h.health(); got != provisioningdomain.HealthOK {
 		t.Fatalf("connection health = %q, want ok at the threshold", got)
 	}
 	if got := run.quarantines(); len(got) != 0 {

@@ -5,7 +5,7 @@ package usecases
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 func TestParseAuditFilterAcceptsAllowlisted(t *testing.T) {
@@ -43,7 +43,7 @@ func TestParseAuditFilterRejects(t *testing.T) {
 }
 
 func TestExtractSearchAttributes(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type: "UserAuthenticated",
 		Payload: map[string]any{
 			"userId":    "user-1",
@@ -76,7 +76,7 @@ func TestExtractSearchAttributes(t *testing.T) {
 func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
 	// 実アカウントが確定しない可能性のある
 	// AuthenticationFailed は平文 username をそのまま検索属性として使う。
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type:    "AuthenticationFailed",
 		Payload: map[string]any{"username": "someone"},
 	}
@@ -93,7 +93,7 @@ func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
 //
 //spec:covers REQ-AUDIT-005: エージェントが代行した操作は、行為者の種別とエージェントの識別子を持ち、
 func TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type: "TokenExchanged",
 		Payload: map[string]any{
 			"agentId":        "agent-a",
@@ -105,8 +105,8 @@ func TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser(t *testing.T)
 		},
 	}
 	attrs := ExtractSearchAttributes(rec)
-	if got := attrs["actor.type"]; len(got) != 1 || got[0] != ports.ActorTypeAgent {
-		t.Fatalf("actor.type = %v, want [%s]", got, ports.ActorTypeAgent)
+	if got := attrs["actor.type"]; len(got) != 1 || got[0] != auditports.ActorTypeAgent {
+		t.Fatalf("actor.type = %v, want [%s]", got, auditports.ActorTypeAgent)
 	}
 	if got := attrs["agent.id"]; len(got) != 1 || got[0] != "agent-a" {
 		t.Fatalf("agent.id = %v, want [agent-a]", got)
@@ -126,7 +126,7 @@ func TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser(t *testing.T)
 //
 //spec:covers REQ-AUDIT-005, EX-AUDIT-005-02: agentId を持つイベントでも、Agent が操作の対象であるものは行為者を管理者 (人間) のままにし、agent.id はその Agent を指す識別子としてだけ残ることを固定する。
 func TestExtractSearchAttributesAgentAsTargetKeepsTheHumanActor(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type: "AgentRegistered",
 		Payload: map[string]any{
 			"actorUserId": "admin-1",
@@ -134,8 +134,8 @@ func TestExtractSearchAttributesAgentAsTargetKeepsTheHumanActor(t *testing.T) {
 		},
 	}
 	attrs := ExtractSearchAttributes(rec)
-	if got := attrs["actor.type"]; len(got) != 1 || got[0] != ports.ActorTypeUser {
-		t.Fatalf("actor.type = %v, want [%s]", got, ports.ActorTypeUser)
+	if got := attrs["actor.type"]; len(got) != 1 || got[0] != auditports.ActorTypeUser {
+		t.Fatalf("actor.type = %v, want [%s]", got, auditports.ActorTypeUser)
 	}
 	if got := attrs["actor.id"]; len(got) != 1 || got[0] != "admin-1" {
 		t.Fatalf("actor.id = %v, want [admin-1]", got)
@@ -149,7 +149,7 @@ func TestExtractSearchAttributesAgentAsTargetKeepsTheHumanActor(t *testing.T) {
 //
 //spec:covers REQ-AUDIT-005: 行為者が Agent で、その識別子しか無いイベントは actor.id を
 func TestExtractSearchAttributesAgentActorWithoutAnActorSubUsesTheAgent(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type: "BackchannelAuthRequested",
 		Payload: map[string]any{
 			"agentId":  "agent-a",
@@ -161,8 +161,8 @@ func TestExtractSearchAttributesAgentActorWithoutAnActorSubUsesTheAgent(t *testi
 	if got := attrs["actor.id"]; len(got) != 1 || got[0] != "agent-a" {
 		t.Fatalf("actor.id = %v, want [agent-a]; it must not fall back to the user", got)
 	}
-	if got := attrs["actor.type"]; len(got) != 1 || got[0] != ports.ActorTypeAgent {
-		t.Fatalf("actor.type = %v, want [%s]", got, ports.ActorTypeAgent)
+	if got := attrs["actor.type"]; len(got) != 1 || got[0] != auditports.ActorTypeAgent {
+		t.Fatalf("actor.type = %v, want [%s]", got, auditports.ActorTypeAgent)
 	}
 	if got := attrs["target.id"]; len(got) != 1 || got[0] != "user-alice" {
 		t.Fatalf("target.id = %v, want [user-alice]", got)
@@ -173,7 +173,7 @@ func TestExtractSearchAttributesAgentActorWithoutAnActorSubUsesTheAgent(t *testi
 //
 //spec:covers REQ-AUDIT-005: Agent に束縛したクライアントの認証方式による拒否 (AgentClientAuthenticationRejected) は、行為者をその Agent として記録すること。
 func TestExtractSearchAttributesAgentClientAuthenticationRejectionIsTheAgentsAct(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type: "AgentClientAuthenticationRejected",
 		Payload: map[string]any{
 			"agentId": "agent-a", "clientId": "agent-app",
@@ -181,8 +181,8 @@ func TestExtractSearchAttributesAgentClientAuthenticationRejectionIsTheAgentsAct
 		},
 	}
 	attrs := ExtractSearchAttributes(rec)
-	if got := attrs["actor.type"]; len(got) != 1 || got[0] != ports.ActorTypeAgent {
-		t.Fatalf("actor.type = %v, want [%s]", got, ports.ActorTypeAgent)
+	if got := attrs["actor.type"]; len(got) != 1 || got[0] != auditports.ActorTypeAgent {
+		t.Fatalf("actor.type = %v, want [%s]", got, auditports.ActorTypeAgent)
 	}
 	if got := attrs["agent.id"]; len(got) != 1 || got[0] != "agent-a" {
 		t.Fatalf("agent.id = %v, want [agent-a]", got)
@@ -193,7 +193,7 @@ func TestExtractSearchAttributesAgentClientAuthenticationRejectionIsTheAgentsAct
 //
 //spec:covers REQ-AUDIT-005: エージェントを名指さないイベントの行為者は利用者であり、
 func TestExtractSearchAttributesUserActorKeepsTheExistingFallback(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type:    "UserAuthenticated",
 		Payload: map[string]any{"userId": "user-alice"},
 	}
@@ -201,8 +201,8 @@ func TestExtractSearchAttributesUserActorKeepsTheExistingFallback(t *testing.T) 
 	if got := attrs["actor.id"]; len(got) != 1 || got[0] != "user-alice" {
 		t.Fatalf("actor.id = %v, want [user-alice]", got)
 	}
-	if got := attrs["actor.type"]; len(got) != 1 || got[0] != ports.ActorTypeUser {
-		t.Fatalf("actor.type = %v, want [%s]", got, ports.ActorTypeUser)
+	if got := attrs["actor.type"]; len(got) != 1 || got[0] != auditports.ActorTypeUser {
+		t.Fatalf("actor.type = %v, want [%s]", got, auditports.ActorTypeUser)
 	}
 	if _, ok := attrs["agent.id"]; ok {
 		t.Fatalf("agent.id should be absent, got %v", attrs["agent.id"])
@@ -211,7 +211,7 @@ func TestExtractSearchAttributesUserActorKeepsTheExistingFallback(t *testing.T) 
 
 //spec:covers REQ-AUDIT-006: 委譲チェーンの参加者は多値の軸として並び、どの段からでも引ける。
 func TestExtractSearchAttributesDelegationChainIsMultiValued(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type: "TokenExchanged",
 		Payload: map[string]any{
 			"actorUserId":     "agent-b",
@@ -240,7 +240,7 @@ func TestExtractSearchAttributesDelegationChainIsMultiValued(t *testing.T) {
 //
 //spec:covers REQ-AUDIT-005: 委譲の軸を持たない過去のイベントは、その軸のどの値にも一致しない
 func TestExtractSearchAttributesLeavesDelegationAxesAbsent(t *testing.T) {
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		Type:    "ClientCreated",
 		Payload: map[string]any{"clientId": "client-1"},
 	}

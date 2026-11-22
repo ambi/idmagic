@@ -6,13 +6,13 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 func TestWsFedRelyingPartyRepository(t *testing.T) {
 	ctx := context.Background()
 	repo := NewWsFedRelyingPartyRepository()
-	rp := &domain.WsFedRelyingParty{Wtrealm: "urn:federation:MicrosoftOnline", ReplyURLs: []string{"https://login.microsoftonline.com/login.srf"}}
+	rp := &wsfeddomain.WsFedRelyingParty{Wtrealm: "urn:federation:MicrosoftOnline", ReplyURLs: []string{"https://login.microsoftonline.com/login.srf"}}
 	repo.Seed(rp)
 
 	got, err := repo.FindByWtrealm(ctx, tenancydomain.DefaultTenantID, rp.Wtrealm)
@@ -25,7 +25,7 @@ func TestWsFedRelyingPartyRepository(t *testing.T) {
 		t.Fatal("mutation leaked from returned clone")
 	}
 
-	if err := repo.Save(ctx, &domain.WsFedRelyingParty{Wtrealm: "urn:federation:Another"}); err != nil {
+	if err := repo.Save(ctx, &wsfeddomain.WsFedRelyingParty{Wtrealm: "urn:federation:Another"}); err != nil {
 		t.Fatal(err)
 	}
 	list, err := repo.ListAll(ctx, tenancydomain.DefaultTenantID)

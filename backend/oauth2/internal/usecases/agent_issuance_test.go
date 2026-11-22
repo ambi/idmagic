@@ -11,7 +11,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -23,7 +23,7 @@ func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	now := time.Now().UTC()
 
-	seed := func(t *testing.T, ownerStatus idmdomain.UserStatus, ownerExists bool) sharedusecases.AgentIssuanceDeps {
+	seed := func(t *testing.T, ownerStatus idmdomain.UserStatus, ownerExists bool) oauthusecases.AgentIssuanceDeps {
 		t.Helper()
 		agentRepo := idmanagement.NewMemoryModule().AgentRepo
 		if err := agentRepo.Save(context.Background(), &agentdomain.Agent{
@@ -48,11 +48,11 @@ func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {
 				t.Fatalf("seed owner: %v", err)
 			}
 		}
-		return sharedusecases.AgentIssuanceDeps{AgentRepo: agentRepo, UserRepo: userRepo}
+		return oauthusecases.AgentIssuanceDeps{AgentRepo: agentRepo, UserRepo: userRepo}
 	}
 
 	t.Run("ActiveOwnerIssues", func(t *testing.T) {
-		agent, err := sharedusecases.ResolveIssuableAgent(ctx, seed(t, idmdomain.UserStatusActive, true), "agent_client")
+		agent, err := oauthusecases.ResolveIssuableAgent(ctx, seed(t, idmdomain.UserStatusActive, true), "agent_client")
 		if err != nil {
 			t.Fatalf("expected an active owner to allow issuance: %v", err)
 		}
@@ -63,7 +63,7 @@ func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {
 
 	t.Run("DisabledOwnerRejects", func(t *testing.T) {
 		deps := seed(t, idmdomain.UserStatusDisabled, true)
-		_, err := sharedusecases.ResolveIssuableAgent(ctx, deps, "agent_client")
+		_, err := oauthusecases.ResolveIssuableAgent(ctx, deps, "agent_client")
 		assertInvalidClient(t, err)
 		// 所有者の状態は Agent の status を書き換えない。
 		agent, findErr := deps.AgentRepo.FindByID(ctx, tenancydomain.DefaultTenantID, "agent_1")
@@ -76,12 +76,12 @@ func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {
 	})
 
 	t.Run("DeletedOwnerRejects", func(t *testing.T) {
-		_, err := sharedusecases.ResolveIssuableAgent(ctx, seed(t, idmdomain.UserStatusActive, false), "agent_client")
+		_, err := oauthusecases.ResolveIssuableAgent(ctx, seed(t, idmdomain.UserStatusActive, false), "agent_client")
 		assertInvalidClient(t, err)
 	})
 
 	t.Run("UnboundClientIsUnaffected", func(t *testing.T) {
-		agent, err := sharedusecases.ResolveIssuableAgent(ctx, seed(t, idmdomain.UserStatusActive, false), "plain_client")
+		agent, err := oauthusecases.ResolveIssuableAgent(ctx, seed(t, idmdomain.UserStatusActive, false), "plain_client")
 		if err != nil {
 			t.Fatalf("expected a client with no bound agent to be unaffected: %v", err)
 		}
@@ -100,14 +100,14 @@ func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		_, err := sharedusecases.ResolveIssuableAgent(ctx, deps, "agent_client")
+		_, err := oauthusecases.ResolveIssuableAgent(ctx, deps, "agent_client")
 		assertInvalidClient(t, err)
 	})
 }
 
 func assertInvalidClient(t *testing.T, err error) {
 	t.Helper()
-	var oauthErr *sharedusecases.OAuthError
+	var oauthErr *oauthusecases.OAuthError
 	if !errors.As(err, &oauthErr) {
 		t.Fatalf("expected an OAuthError, got %v", err)
 	}

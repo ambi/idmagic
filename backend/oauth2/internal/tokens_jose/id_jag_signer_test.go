@@ -7,7 +7,7 @@ import (
 	"time"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
@@ -25,7 +25,7 @@ func TestVerifyIDTokenAssertion_REQ_OAUTH2_067(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.example", store)
-	client := &domain.OAuth2Client{ClientID: "client"}
+	client := &oauthdomain.OAuth2Client{ClientID: "client"}
 	user := &userdomain.User{ID: "user-1", TenantID: "t"}
 
 	idToken, err := signer.SignIDToken(ctx, oauthports.IDTokenInput{Client: client, User: user, AuthTime: 7, AMR: []string{"pwd"}, ACR: "acr"})

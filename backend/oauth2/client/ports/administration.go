@@ -6,7 +6,7 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -43,7 +43,7 @@ func StandaloneDeletionRefusal(firstParty, applicationOwned bool) error {
 // シークレットを管理する操作である。シークレットの上限、クォータ、発行するイベントは OAuth2 が保つ。
 type ClientAdministration interface {
 	Create(ctx context.Context, in CreateAdminOAuth2ClientInput) (*RegisterClientResult, error)
-	Update(ctx context.Context, in UpdateAdminOAuth2ClientInput) (*domain.OAuth2Client, error)
+	Update(ctx context.Context, in UpdateAdminOAuth2ClientInput) (*oauthdomain.OAuth2Client, error)
 	RotateSecret(ctx context.Context, in RotateClientSecretInput) (*RotateClientSecretResult, error)
 	IssueSecret(ctx context.Context, in IssueClientSecretInput) (*IssueClientSecretResult, error)
 	RevokeSecret(ctx context.Context, in RevokeClientSecretInput) (*RevokeClientSecretResult, error)
@@ -66,7 +66,7 @@ type RegisterClientInput struct {
 	RedirectURIs                      []string
 	GrantTypes                        []spec.GrantType
 	ResponseTypes                     []spec.ResponseType
-	TokenEndpointAuthMethod           domain.TokenEndpointAuthMethod
+	TokenEndpointAuthMethod           oauthdomain.TokenEndpointAuthMethod
 	Scope                             string
 	JWKS                              map[string]any
 	JwksURI                           *string
@@ -74,7 +74,7 @@ type RegisterClientInput struct {
 	RequirePAR                        bool
 	RequirePKCE                       bool
 	DpopBoundAccessTokens             bool
-	FapiProfile                       domain.FapiProfile
+	FapiProfile                       oauthdomain.FapiProfile
 	BackChannelLogoutURI              *string
 	BackChannelLogoutSessionRequired  bool
 	FrontChannelLogoutURI             *string
@@ -82,7 +82,7 @@ type RegisterClientInput struct {
 }
 
 type RegisterClientResult struct {
-	Client       *domain.OAuth2Client
+	Client       *oauthdomain.OAuth2Client
 	ClientSecret string // 平文。出力後は再表示されない (RFC 7591 §3.2.1)
 }
 
@@ -120,7 +120,7 @@ type RotateClientSecretInput struct {
 type RotateClientSecretResult struct {
 	ClientSecret string
 	GraceUntil   *time.Time
-	Credentials  []domain.ClientSecretCredential
+	Credentials  []oauthdomain.ClientSecretCredential
 }
 
 type IssueClientSecretInput struct {
@@ -132,8 +132,8 @@ type IssueClientSecretInput struct {
 
 type IssueClientSecretResult struct {
 	ClientSecret string
-	Credential   domain.ClientSecretCredential
-	Credentials  []domain.ClientSecretCredential
+	Credential   oauthdomain.ClientSecretCredential
+	Credentials  []oauthdomain.ClientSecretCredential
 }
 
 type RevokeClientSecretInput struct {
@@ -144,5 +144,5 @@ type RevokeClientSecretInput struct {
 }
 
 type RevokeClientSecretResult struct {
-	Credentials []domain.ClientSecretCredential
+	Credentials []oauthdomain.ClientSecretCredential
 }

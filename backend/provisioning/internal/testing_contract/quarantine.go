@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -28,10 +28,10 @@ func runQuarantineTasks(t *testing.T, f Fixture) {
 		if index == 2 {
 			at = at.Add(100 * time.Millisecond)
 		}
-		task := &domain.ProvisioningTask{
+		task := &provisioningdomain.ProvisioningTask{
 			ID: id, TenantID: f.TenantA, ConnectionID: f.Application,
-			SourceType: domain.SourceTypeUser, SourceID: newID(), SourceVersion: 1,
-			Operation: domain.OperationDelete, Status: domain.TaskPending, CreatedAt: at, UpdatedAt: at,
+			SourceType: provisioningdomain.SourceTypeUser, SourceID: newID(), SourceVersion: 1,
+			Operation: provisioningdomain.OperationDelete, Status: provisioningdomain.TaskPending, CreatedAt: at, UpdatedAt: at,
 		}
 		if created, err := f.Tasks.Save(ctx, task); err != nil || !created {
 			t.Fatalf("Save=%v error=%v", created, err)
@@ -42,7 +42,7 @@ func runQuarantineTasks(t *testing.T, f Fixture) {
 		t.Fatalf("AttachJob=%v error=%v", changed, err)
 	}
 	lastError := "previous downstream failure"
-	if err := f.Tasks.UpdateStatus(ctx, f.TenantA, ids[0], domain.TaskInFlight, &lastError); err != nil {
+	if err := f.Tasks.UpdateStatus(ctx, f.TenantA, ids[0], provisioningdomain.TaskInFlight, &lastError); err != nil {
 		t.Fatal(err)
 	}
 	for _, input := range []struct{ tenant, task, job string }{
@@ -59,7 +59,7 @@ func runQuarantineTasks(t *testing.T, f Fixture) {
 		t.Fatalf("repeated suspend=%v error=%v; want no change", changed, err)
 	}
 	stored, err := f.Tasks.Find(ctx, f.TenantA, ids[0])
-	if err != nil || stored.Status != domain.TaskPending || stored.JobID == nil || *stored.JobID != jobID || stored.LastError == nil || *stored.LastError != lastError || stored.CompletedAt != nil {
+	if err != nil || stored.Status != provisioningdomain.TaskPending || stored.JobID == nil || *stored.JobID != jobID || stored.LastError == nil || *stored.LastError != lastError || stored.CompletedAt != nil {
 		t.Fatalf("held task=%+v error=%v", stored, err)
 	}
 	// 同時刻の ID の順序と、小数秒を持たない時刻から持つ時刻への境界を同じカーソルで読む。
@@ -98,7 +98,7 @@ func runQuarantineTasks(t *testing.T, f Fixture) {
 		t.Fatalf("stale job suspended new dispatch: changed=%v error=%v", changed, err)
 	}
 	stored, err = f.Tasks.Find(ctx, f.TenantA, ids[0])
-	if err != nil || stored.Status != domain.TaskInFlight || stored.JobID == nil || *stored.JobID != otherJobID {
+	if err != nil || stored.Status != provisioningdomain.TaskInFlight || stored.JobID == nil || *stored.JobID != otherJobID {
 		t.Fatalf("reattached task=%+v error=%v", stored, err)
 	}
 }

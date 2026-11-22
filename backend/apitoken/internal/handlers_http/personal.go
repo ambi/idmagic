@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
 )
@@ -55,7 +55,7 @@ func (h handler) issuePersonal(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid API token request")
 	}
 	literal, metadata, err := h.deps.Service.IssuePersonal(c.Request().Context(), support.RequestTenantID(c), subject, input.Description, input.Scopes, input.ExpiryDays, input.DPoPJKT)
-	if errors.Is(err, usecases.ErrInvalidRequest) {
+	if errors.Is(err, apitokenusecases.ErrInvalidRequest) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid personal API token request")
 	}
 	if err != nil {

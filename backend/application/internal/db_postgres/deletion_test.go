@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -23,7 +23,7 @@ import (
 	"github.com/ambi/idmagic/backend/signinpolicy"
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -38,10 +38,10 @@ func TestDeleteApplicationWithRefreshTokens(t *testing.T) {
 	user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	repo := NewApplicationRepository(db, testProtocolLinkers())
 	now := pgfixtures.TestClock()
-	app := &domain.Application{
+	app := &appdomain.Application{
 		TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: "Deletable application",
-		Kind: domain.ApplicationFederated, Status: domain.ApplicationActive,
-		Protocol:  &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: client.ClientID},
+		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: client.ClientID},
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repo.Create(t.Context(), app); err != nil {
@@ -112,9 +112,9 @@ func TestApplicationDeletionRetainsAssignmentsOnFailure(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, db)
 	app := seedApplication(t, db, tenant.ID)
 	assignments := &ApplicationAssignmentRepository{Pool: db}
-	if err := assignments.Save(t.Context(), &domain.ApplicationAssignment{
-		TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser,
-		SubjectID: pgfixtures.NewUUID(t), Visibility: domain.AssignmentVisible,
+	if err := assignments.Save(t.Context(), &appdomain.ApplicationAssignment{
+		TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser,
+		SubjectID: pgfixtures.NewUUID(t), Visibility: appdomain.AssignmentVisible,
 		CreatedAt: pgfixtures.TestClock(), UpdatedAt: pgfixtures.TestClock(),
 	}); err != nil {
 		t.Fatal(err)
@@ -149,10 +149,10 @@ func TestApplicationDeletionAtomicState(t *testing.T) {
 				t.Fatal(err)
 			}
 			now := pgfixtures.TestClock()
-			app := &domain.Application{
+			app := &appdomain.Application{
 				TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: "Application deletion",
-				Kind: domain.ApplicationFederated, Status: domain.ApplicationActive,
-				Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: client.ClientID}, CreatedAt: now, UpdatedAt: now,
+				Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+				Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: client.ClientID}, CreatedAt: now, UpdatedAt: now,
 			}
 			repo := NewApplicationRepository(db, testProtocolLinkers())
 			if err := repo.Create(t.Context(), app); err != nil {
@@ -181,13 +181,13 @@ func TestApplicationDeletionAtomicState(t *testing.T) {
 				t.Fatal(err)
 			}
 			assignments := &ApplicationAssignmentRepository{Pool: db}
-			if err := assignments.Save(ctx, &domain.ApplicationAssignment{TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: domain.AssignmentVisible, CreatedAt: now, UpdatedAt: now}); err != nil {
+			if err := assignments.Save(ctx, &appdomain.ApplicationAssignment{TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: user.ID, Visibility: appdomain.AssignmentVisible, CreatedAt: now, UpdatedAt: now}); err != nil {
 				t.Fatal(err)
 			}
 			if err := signinpolicy.NewPostgresModule(db).ApplicationRepo.Save(ctx, &policydomain.AppSignInPolicy{TenantID: tenant.ID, ApplicationID: app.ID, Rules: []policydomain.SignInRule{}, CreatedAt: now, UpdatedAt: now}); err != nil {
 				t.Fatal(err)
 			}
-			if err := (&ApplicationIconStore{Pool: db}).Save(ctx, &domain.ApplicationIcon{TenantID: tenant.ID, ApplicationID: app.ID, ID: pgfixtures.NewUUID(t), ContentType: "image/png", SizeBytes: 1, Data: []byte{1}, CreatedAt: now, UpdatedAt: now}); err != nil {
+			if err := (&ApplicationIconStore{Pool: db}).Save(ctx, &appdomain.ApplicationIcon{TenantID: tenant.ID, ApplicationID: app.ID, ID: pgfixtures.NewUUID(t), ContentType: "image/png", SizeBytes: 1, Data: []byte{1}, CreatedAt: now, UpdatedAt: now}); err != nil {
 				t.Fatal(err)
 			}
 			agentID := pgfixtures.NewUUID(t)
@@ -198,7 +198,7 @@ func TestApplicationDeletionAtomicState(t *testing.T) {
 				t.Fatal(err)
 			}
 			quotas := tenancy.NewPostgresModule(db).QuotaRepo
-			for _, resource := range []string{tenantdomain.ResourceApplications, tenantdomain.ResourceOAuth2Clients, tenantdomain.ResourceConsents} {
+			for _, resource := range []string{tenancydomain.ResourceApplications, tenancydomain.ResourceOAuth2Clients, tenancydomain.ResourceConsents} {
 				if err := quotas.CheckAndIncrement(ctx, tenant.ID, resource, 1); err != nil {
 					t.Fatal(err)
 				}

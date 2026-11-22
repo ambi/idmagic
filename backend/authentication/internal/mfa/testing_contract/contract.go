@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
-	"github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 )
 
 type Fixture struct {
-	Repository ports.MfaEnrollmentBypassRepository
+	Repository mfaports.MfaEnrollmentBypassRepository
 	TenantA    string
 	TenantB    string
 	UserID     string
@@ -26,35 +26,35 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	for _, tc := range []struct {
 		name  string
-		act   func(context.Context, ports.MfaEnrollmentBypassRepository, Fixture) (*domain.MfaEnrollmentBypass, error)
-		field func(*domain.MfaEnrollmentBypass) *time.Time
+		act   func(context.Context, mfaports.MfaEnrollmentBypassRepository, Fixture) (*mfadomain.MfaEnrollmentBypass, error)
+		field func(*mfadomain.MfaEnrollmentBypass) *time.Time
 	}{
 		{
 			name: "consume active bypass once",
-			act: func(ctx context.Context, repository ports.MfaEnrollmentBypassRepository, f Fixture) (*domain.MfaEnrollmentBypass, error) {
+			act: func(ctx context.Context, repository mfaports.MfaEnrollmentBypassRepository, f Fixture) (*mfadomain.MfaEnrollmentBypass, error) {
 				return repository.ConsumeActive(ctx, f.TenantA, f.UserID, f.Now.Add(time.Second))
 			},
-			field: func(bypass *domain.MfaEnrollmentBypass) *time.Time { return bypass.ConsumedAt },
+			field: func(bypass *mfadomain.MfaEnrollmentBypass) *time.Time { return bypass.ConsumedAt },
 		},
 		{
 			name: "revoke active bypass once",
-			act: func(ctx context.Context, repository ports.MfaEnrollmentBypassRepository, f Fixture) (*domain.MfaEnrollmentBypass, error) {
+			act: func(ctx context.Context, repository mfaports.MfaEnrollmentBypassRepository, f Fixture) (*mfadomain.MfaEnrollmentBypass, error) {
 				return repository.RevokeActive(ctx, f.TenantA, f.UserID, f.Now.Add(time.Second))
 			},
-			field: func(bypass *domain.MfaEnrollmentBypass) *time.Time { return bypass.RevokedAt },
+			field: func(bypass *mfadomain.MfaEnrollmentBypass) *time.Time { return bypass.RevokedAt },
 		},
 		{
 			name: "expire open bypass once",
-			act: func(ctx context.Context, repository ports.MfaEnrollmentBypassRepository, f Fixture) (*domain.MfaEnrollmentBypass, error) {
+			act: func(ctx context.Context, repository mfaports.MfaEnrollmentBypassRepository, f Fixture) (*mfadomain.MfaEnrollmentBypass, error) {
 				return repository.ExpireOpen(ctx, f.TenantA, f.UserID, f.Now.Add(2*time.Minute))
 			},
-			field: func(bypass *domain.MfaEnrollmentBypass) *time.Time { return bypass.ExpiredAt },
+			field: func(bypass *mfadomain.MfaEnrollmentBypass) *time.Time { return bypass.ExpiredAt },
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
 			ctx := context.Background()
-			bypass := &domain.MfaEnrollmentBypass{
+			bypass := &mfadomain.MfaEnrollmentBypass{
 				ID: f.BypassID, TenantID: f.TenantA, UserID: f.UserID, IssuedBy: f.IssuedBy,
 				IssuedAt: f.Now, ExpiresAt: f.Now.Add(time.Minute),
 			}

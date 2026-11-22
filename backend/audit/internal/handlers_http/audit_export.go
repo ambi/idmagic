@@ -4,31 +4,31 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/ambi/idmagic/backend/audit/internal/usecases"
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/labstack/echo/v5"
 )
 
-func (d Deps) exportActor(c *echo.Context, system bool) (*support.Principal, usecases.ExportScope, error) {
+func (d Deps) exportActor(c *echo.Context, system bool) (*support.Principal, auditusecases.ExportScope, error) {
 	var actor *support.Principal
 	if system {
 		var err error
 		if actor, err = d.RequireControlPlaneUser(c); err != nil {
-			return nil, usecases.ExportScope{}, d.WriteControlPlaneAccessError(c, err)
+			return nil, auditusecases.ExportScope{}, d.WriteControlPlaneAccessError(c, err)
 		}
 	} else {
 		var err error
 		if actor, err = d.RequireAdministrator(c); err != nil {
-			return nil, usecases.ExportScope{}, d.WriteAdminAccessError(c, err)
+			return nil, auditusecases.ExportScope{}, d.WriteAdminAccessError(c, err)
 		}
 	}
 	if d.Exports.Jobs == nil || d.Exports.Artifacts == nil {
-		return nil, usecases.ExportScope{}, support.WriteProblem(c, 503, "temporarily_unavailable", "Audit export is unavailable.")
+		return nil, auditusecases.ExportScope{}, support.WriteProblem(c, 503, "temporarily_unavailable", "Audit export is unavailable.")
 	}
-	return actor, usecases.ExportScope{TenantID: actor.TenantID, RequestedBy: actor.ID, System: system}, nil
+	return actor, auditusecases.ExportScope{TenantID: actor.TenantID, RequestedBy: actor.ID, System: system}, nil
 }
 
 func (d Deps) startExport(c *echo.Context, system bool) error {
@@ -49,7 +49,7 @@ func (d Deps) startExport(c *echo.Context, system bool) error {
 	}
 	// 横断のレコード範囲と、ジョブと成果物の所属先を分ける。
 	query.TenantID = scope.TenantID
-	view, err := usecases.StartExport(c.Request().Context(), d.Exports, ports.ExportParams{Query: query, NoMatch: noMatch, RequestedBy: actor.ID, Format: "json", Policy: d.ExportPolicy})
+	view, err := auditusecases.StartExport(c.Request().Context(), d.Exports, auditports.ExportParams{Query: query, NoMatch: noMatch, RequestedBy: actor.ID, Format: "json", Policy: d.ExportPolicy})
 	if err != nil {
 		return exportProblem(c, err)
 	}
@@ -64,25 +64,25 @@ func (d Deps) readExport(c *echo.Context, system bool, operation string) error {
 	ctx := c.Request().Context()
 	switch operation {
 	case "list":
-		views, err := usecases.ListExports(ctx, d.Exports, scope)
+		views, err := auditusecases.ListExports(ctx, d.Exports, scope)
 		if err != nil {
 			return exportProblem(c, err)
 		}
 		return support.NoStoreJSON(c, 200, map[string]any{"exports": views})
 	case "get":
-		view, err := usecases.GetExport(ctx, d.Exports, scope, c.Param("export_id"))
+		view, err := auditusecases.GetExport(ctx, d.Exports, scope, c.Param("export_id"))
 		if err != nil {
 			return exportProblem(c, err)
 		}
 		return support.NoStoreJSON(c, 200, view)
 	case "cancel":
-		view, err := usecases.CancelExport(ctx, d.Exports, scope, c.Param("export_id"))
+		view, err := auditusecases.CancelExport(ctx, d.Exports, scope, c.Param("export_id"))
 		if err != nil {
 			return exportProblem(c, err)
 		}
 		return support.NoStoreJSON(c, 200, view)
 	case "download":
-		reader, artifact, err := usecases.DownloadExport(ctx, d.Exports, scope, c.Param("export_id"))
+		reader, artifact, err := auditusecases.DownloadExport(ctx, d.Exports, scope, c.Param("export_id"))
 		if err != nil {
 			return exportProblem(c, err)
 		}
@@ -96,13 +96,13 @@ func (d Deps) readExport(c *echo.Context, system bool, operation string) error {
 }
 
 func exportProblem(c *echo.Context, err error) error {
-	var exceeded *tenantdomain.QuotaExceededError
+	var exceeded *tenancydomain.QuotaExceededError
 	switch {
 	case errors.As(err, &exceeded):
 		return support.WriteProblem(c, 429, "active_job_quota_exceeded", "The active job quota has been reached.")
-	case errors.Is(err, usecases.ErrExportNotFound):
+	case errors.Is(err, auditusecases.ErrExportNotFound):
 		return support.WriteProblem(c, 404, "audit_export_not_found", "The audit export does not exist.")
-	case errors.Is(err, usecases.ErrExportUnavailable):
+	case errors.Is(err, auditusecases.ErrExportUnavailable):
 		return support.WriteProblem(c, 409, "audit_export_unavailable", "The audit export is not downloadable.")
 	case errors.Is(err, jobsports.ErrJobAlreadyTerminal):
 		return support.WriteProblem(c, 409, "job_not_cancelable", "The audit export is already terminal.")

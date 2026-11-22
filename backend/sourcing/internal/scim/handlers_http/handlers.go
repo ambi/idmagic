@@ -12,8 +12,8 @@ import (
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 type Handler struct {
@@ -76,7 +76,7 @@ func (h *Handler) writeInternalError(c *echo.Context, err error) error {
 
 func (h *Handler) writeScimError(c *echo.Context, status int, detail, scimType string) error {
 	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(status, domain.NewScimError(strconv.Itoa(status), detail, scimType))
+	return c.JSON(status, scimdomain.NewScimError(strconv.Itoa(status), detail, scimType))
 }
 
 // writeMutationError maps CreateUser/UpdateUser/PatchUser/CreateGroup/
@@ -91,13 +91,13 @@ func (h *Handler) writeMutationError(c *echo.Context, notFoundDetail string, err
 	}](err); ok && quota.IsQuotaExceeded() {
 		return h.writeScimError(c, http.StatusUnprocessableEntity, err.Error(), "")
 	}
-	if errors.Is(err, usecases.ErrNotFound) {
+	if errors.Is(err, scimusecases.ErrNotFound) {
 		return h.writeScimError(c, http.StatusNotFound, notFoundDetail, "")
 	}
-	if errors.Is(err, usecases.ErrDuplicate) {
+	if errors.Is(err, scimusecases.ErrDuplicate) {
 		return h.writeScimError(c, http.StatusConflict, err.Error(), "uniqueness")
 	}
-	if mutErr, ok := errors.AsType[*domain.MutationError](err); ok {
+	if mutErr, ok := errors.AsType[*scimdomain.MutationError](err); ok {
 		return h.writeScimError(c, http.StatusBadRequest, err.Error(), mutErr.ScimType)
 	}
 	return h.writeInternalError(c, err)
@@ -108,15 +108,15 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 		return h.writeScimAuthError(c, err)
 	}
 
-	config := domain.ServiceProviderConfig{
+	config := scimdomain.ServiceProviderConfig{
 		Schemas: []string{"urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"},
 		Patch: struct {
 			Supported bool `json:"supported"`
 		}{Supported: true},
-		Bulk: domain.BulkConfig{Supported: false},
-		Filter: domain.FilterConfig{
+		Bulk: scimdomain.BulkConfig{Supported: false},
+		Filter: scimdomain.FilterConfig{
 			Supported:  true,
-			MaxResults: domain.MaxResults,
+			MaxResults: scimdomain.MaxResults,
 		},
 		ChangePassword: struct {
 			Supported bool `json:"supported"`
@@ -127,7 +127,7 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 		Etag: struct {
 			Supported bool `json:"supported"`
 		}{Supported: false},
-		AuthenticationSchemes: []domain.AuthenticationScheme{
+		AuthenticationSchemes: []scimdomain.AuthenticationScheme{
 			{
 				Type:        "oauthbearertoken",
 				Name:        "OAuth Bearer Token",
@@ -146,7 +146,7 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 		return h.writeScimAuthError(c, err)
 	}
 
-	types := []domain.ResourceType{
+	types := []scimdomain.ResourceType{
 		{
 			Schemas:     []string{"urn:ietf:params:scim:schemas:core:2.0:ResourceType"},
 			ID:          "User",
@@ -154,8 +154,8 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 			Endpoint:    "/Users",
 			Description: "User Account",
 			Schema:      "urn:ietf:params:scim:schemas:core:2.0:User",
-			SchemaExtensions: []domain.SchemaExtension{
-				{Schema: domain.EnterpriseUserSchemaURN, Required: false},
+			SchemaExtensions: []scimdomain.SchemaExtension{
+				{Schema: scimdomain.EnterpriseUserSchemaURN, Required: false},
 			},
 		},
 		{
@@ -177,7 +177,7 @@ func (h *Handler) handleGetSchemas(c *echo.Context) error {
 		return h.writeScimAuthError(c, err)
 	}
 
-	schemas := []domain.Schema{domain.UserCoreSchema(), domain.EnterpriseUserSchema(), domain.GroupCoreSchema()}
+	schemas := []scimdomain.Schema{scimdomain.UserCoreSchema(), scimdomain.EnterpriseUserSchema(), scimdomain.GroupCoreSchema()}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
 	return c.JSON(http.StatusOK, schemas)
@@ -213,7 +213,7 @@ func (h *Handler) handleGetUser(c *echo.Context) error {
 	id := c.Param("id")
 	res, err := h.deps.Usecases.GetUser(c.Request().Context(), tenantID, id)
 	if err != nil {
-		if errors.Is(err, usecases.ErrNotFound) {
+		if errors.Is(err, scimusecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "user not found", "")
 		}
 		return h.writeInternalError(c, err)
@@ -303,13 +303,13 @@ func (h *Handler) handleListUsers(c *echo.Context) error {
 // Values that fail to parse as integers are a binding-level invalidValue
 // error; startIndex/count business rules (RFC 7644 §3.4.2.4) are enforced by
 // domain.NormalizePage inside the usecase.
-func (h *Handler) parseListQuery(c *echo.Context) (usecases.ListQuery, error) {
-	query := usecases.ListQuery{Filter: c.QueryParam("filter")}
+func (h *Handler) parseListQuery(c *echo.Context) (scimusecases.ListQuery, error) {
+	query := scimusecases.ListQuery{Filter: c.QueryParam("filter")}
 
 	if raw := c.QueryParam("startIndex"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil {
-			return usecases.ListQuery{}, fmt.Errorf("startIndex must be an integer")
+			return scimusecases.ListQuery{}, fmt.Errorf("startIndex must be an integer")
 		}
 		query.StartIndex = &n
 	}
@@ -317,7 +317,7 @@ func (h *Handler) parseListQuery(c *echo.Context) (usecases.ListQuery, error) {
 	if c.QueryParams().Has("count") {
 		n, err := strconv.Atoi(c.QueryParam("count"))
 		if err != nil {
-			return usecases.ListQuery{}, fmt.Errorf("count must be an integer")
+			return scimusecases.ListQuery{}, fmt.Errorf("count must be an integer")
 		}
 		query.Count = &n
 		query.HasCount = true
@@ -330,17 +330,17 @@ func (h *Handler) parseListQuery(c *echo.Context) (usecases.ListQuery, error) {
 // RFC 7644 §3.12 requires: invalid filters as invalidFilter, invalid
 // pagination as invalidValue, anything else as an internal error.
 func (h *Handler) writeListError(c *echo.Context, err error) error {
-	if _, ok := errors.AsType[*domain.FilterError](err); ok {
+	if _, ok := errors.AsType[*scimdomain.FilterError](err); ok {
 		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidFilter")
 	}
-	if _, ok := errors.AsType[*domain.PaginationError](err); ok {
+	if _, ok := errors.AsType[*scimdomain.PaginationError](err); ok {
 		return h.writeScimError(c, http.StatusBadRequest, err.Error(), "invalidValue")
 	}
 	return h.writeInternalError(c, err)
 }
 
-func (h *Handler) writeListResponse(c *echo.Context, result usecases.ListResult) error {
-	list := domain.ListResponse{
+func (h *Handler) writeListResponse(c *echo.Context, result scimusecases.ListResult) error {
+	list := scimdomain.ListResponse{
 		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
 		TotalResults: result.Total,
 		StartIndex:   result.StartIndex,
@@ -385,7 +385,7 @@ func (h *Handler) handleGetGroup(c *echo.Context) error {
 	id := c.Param("id")
 	res, err := h.deps.Usecases.GetGroup(c.Request().Context(), tenantID, id)
 	if err != nil {
-		if errors.Is(err, usecases.ErrNotFound) {
+		if errors.Is(err, scimusecases.ErrNotFound) {
 			return h.writeScimError(c, http.StatusNotFound, "group not found", "")
 		}
 		return h.writeInternalError(c, err)

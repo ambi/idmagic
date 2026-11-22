@@ -17,7 +17,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 //spec:covers REQ-AUDIT-011: Jobs の確定済みイベントを正式な配信点が Audit のライフサイクルへ写す。
@@ -27,8 +27,8 @@ func TestAuditExportLifecycleAndQuotaWiring(t *testing.T) {
 	now := time.Now().UTC()
 	sink := &recordingEventSink{}
 	deps := &Dependencies{Audit: audit.NewMemoryModule(100), Jobs: jobs.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
-	tenantID := tenantdomain.DefaultTenantID
-	if err := deps.Tenancy.TenantRepo.Save(ctx, &tenantdomain.Tenant{ID: tenantID, Realm: tenantdomain.DefaultRealm, Status: tenantdomain.TenantStatusActive}); err != nil {
+	tenantID := tenancydomain.DefaultTenantID
+	if err := deps.Tenancy.TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: tenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive}); err != nil {
 		t.Fatal(err)
 	}
 	emit := deps.NewEmitFunc(logging.New(io.Discard, slog.LevelInfo, "audit-test", "test"))

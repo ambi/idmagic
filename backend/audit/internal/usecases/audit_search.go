@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 // RawFilter は wire から切り出した未検証の filter 1 項 (field / operator / values)。
@@ -21,21 +21,21 @@ type RawFilter struct {
 
 // ParseAuditFilter は raw filter を registry allowlist で検証して式に変換する。
 // field が registry に無い / operator が属性で不許可 / 値の個数が operator と不一致なら error。
-func ParseAuditFilter(raw []RawFilter) ([]ports.AuditFilterExpression, error) {
-	exprs := make([]ports.AuditFilterExpression, 0, len(raw))
+func ParseAuditFilter(raw []RawFilter) ([]auditports.AuditFilterExpression, error) {
+	exprs := make([]auditports.AuditFilterExpression, 0, len(raw))
 	for _, rf := range raw {
-		attr, ok := ports.LookupSearchAttribute(rf.Field)
+		attr, ok := auditports.LookupSearchAttribute(rf.Field)
 		if !ok {
 			return nil, fmt.Errorf("unknown search field: %s", rf.Field)
 		}
-		op := ports.AuditFilterOperator(rf.Operator)
+		op := auditports.AuditFilterOperator(rf.Operator)
 		if !attr.AllowsOperator(op) {
 			return nil, fmt.Errorf("operator %s is not allowed for field %s", rf.Operator, rf.Field)
 		}
 		if err := validateCardinality(op, rf.Values); err != nil {
 			return nil, err
 		}
-		exprs = append(exprs, ports.AuditFilterExpression{
+		exprs = append(exprs, auditports.AuditFilterExpression{
 			Field:    rf.Field,
 			Operator: op,
 			Values:   rf.Values,
@@ -44,17 +44,17 @@ func ParseAuditFilter(raw []RawFilter) ([]ports.AuditFilterExpression, error) {
 	return exprs, nil
 }
 
-func validateCardinality(op ports.AuditFilterOperator, values []string) error {
+func validateCardinality(op auditports.AuditFilterOperator, values []string) error {
 	switch op {
-	case ports.OpEq, ports.OpContains:
+	case auditports.OpEq, auditports.OpContains:
 		if len(values) != 1 {
 			return fmt.Errorf("operator %s requires exactly one value", op)
 		}
-	case ports.OpIn:
+	case auditports.OpIn:
 		if len(values) == 0 {
 			return errors.New("operator in requires at least one value")
 		}
-	case ports.OpTimeRange:
+	case auditports.OpTimeRange:
 		if len(values) != 2 {
 			return errors.New("operator time_range requires exactly two values (after and before)")
 		}

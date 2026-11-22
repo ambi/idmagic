@@ -17,7 +17,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/provisioning"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
@@ -51,10 +51,10 @@ func (r *lifecycleRun) startFullResyncOverHTTP() {
 	}
 }
 
-func (r *lifecycleRun) completedResyncs() []*domain.FullResyncCompleted {
-	var completed []*domain.FullResyncCompleted
+func (r *lifecycleRun) completedResyncs() []*provisioningdomain.FullResyncCompleted {
+	var completed []*provisioningdomain.FullResyncCompleted
 	for _, event := range r.events {
-		if c, ok := event.(*domain.FullResyncCompleted); ok {
+		if c, ok := event.(*provisioningdomain.FullResyncCompleted); ok {
 			completed = append(completed, c)
 		}
 	}

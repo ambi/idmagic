@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 )
 
 const approvalURI = "https://id.example.test/realms/default/account/approvals?request=a1"
 
-var approvalKey = domain.RequestStateKey("gateway-secret")
+var approvalKey = mcpgatewaydomain.RequestStateKey("gateway-secret")
 
 func withApprovalKey(options *Options) { options.RequestStateKey = approvalKey }
 
@@ -46,11 +46,11 @@ func sealFor(t *testing.T, expires time.Time) string {
 	if err := json.Unmarshal([]byte(`{"amount":100}`), &decoded); err != nil {
 		t.Fatal(err)
 	}
-	digest, err := domain.OperationDigest("read", decoded)
+	digest, err := mcpgatewaydomain.OperationDigest("read", decoded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sealed, err := domain.SealRequestState(approvalKey, resourceURL, domain.RequestState{ApprovalRequestID: "a1", OperationDigest: digest, ExpiresAt: expires}, rand.Reader)
+	sealed, err := mcpgatewaydomain.SealRequestState(approvalKey, resourceURL, mcpgatewaydomain.RequestState{ApprovalRequestID: "a1", OperationDigest: digest, ExpiresAt: expires}, rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestApprovalPendingIsReturnedAsInputRequired(t *testing.T) {
 	params, _ := approval["params"].(map[string]any)
 	state, _ := result["requestState"].(string)
 	if body["id"] != "call-1" || result["resultType"] != "input_required" || approval["method"] != "elicitation/create" ||
-		params["mode"] != "url" || params["url"] != approvalURI || params["message"] == "" || !strings.HasPrefix(state, domain.RequestStatePrefix) {
+		params["mode"] != "url" || params["url"] != approvalURI || params["message"] == "" || !strings.HasPrefix(state, mcpgatewaydomain.RequestStatePrefix) {
 		t.Fatalf("body=%v", body)
 	}
 	log := h.auditLog()
@@ -152,7 +152,7 @@ func TestRetryStateIsCheckedBeforeEvaluation(t *testing.T) {
 	}{
 		{name: "tampered", arguments: `{"amount":100}`, retry: retryWith(valid[:len(valid)-2]+"AA", "accept")},
 		{name: "another key", arguments: `{"amount":100}`, retry: retryWith(func() string {
-			sealed, _ := domain.SealRequestState(domain.RequestStateKey("other"), resourceURL, domain.RequestState{ApprovalRequestID: "a1", OperationDigest: "d", ExpiresAt: time.Now().Add(time.Minute)}, rand.Reader)
+			sealed, _ := mcpgatewaydomain.SealRequestState(mcpgatewaydomain.RequestStateKey("other"), resourceURL, mcpgatewaydomain.RequestState{ApprovalRequestID: "a1", OperationDigest: "d", ExpiresAt: time.Now().Add(time.Minute)}, rand.Reader)
 			return sealed
 		}(), "accept")},
 		{name: "changed arguments", arguments: `{"amount":1000}`, retry: retryWith(valid, "accept")},

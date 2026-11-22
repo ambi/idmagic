@@ -16,11 +16,11 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalsdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
 	sharedsignalspush "github.com/ambi/idmagic/backend/sharedsignals/internal/push_http"
 	sharedsignalssign "github.com/ambi/idmagic/backend/sharedsignals/internal/sign_jose"
-	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
+	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -70,7 +70,7 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 	created := sharedSignalsAdminPost(t, e, "/api/admin/v1/shared-signals/streams/transmitter", csrf, cookie, map[string]any{
 		"delivery_endpoint": receiver.URL,
 		"audience":          "https://receiver.example",
-		"event_types":       []string{string(sharedsignalsdomain.CaepEventTypeSessionRevoked)},
+		"event_types":       []string{string(ssdomain.CaepEventTypeSessionRevoked)},
 	})
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
@@ -87,15 +87,15 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
-	if err := sharedsignalsusecases.ProjectAgentAccessRevoked(ctx, sharedsignalsusecases.ProjectorDeps{
+	if err := ssusecases.ProjectAgentAccessRevoked(ctx, ssusecases.ProjectorDeps{
 		StreamRepo: streams, TransmitterConfigRepo: configs, DeliveryRepo: deliveries,
 		Signer: &sharedsignalssign.Signer{KeyStore: keyStore}, Issuer: "https://idp.example/realms/default",
-	}, &sharedsignalsdomain.AgentAccessRevoked{
-		At: now, TenantID: tenancydomain.DefaultTenantID, AgentID: "agent-1", Reason: sharedsignalsdomain.RevocationReasonAgentKilled,
+	}, &ssdomain.AgentAccessRevoked{
+		At: now, TenantID: tenancydomain.DefaultTenantID, AgentID: "agent-1", Reason: ssdomain.RevocationReasonAgentKilled,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	processed, err := sharedsignalsusecases.ProcessDueDeliveries(ctx, sharedsignalsusecases.DeliverDeps{
+	processed, err := ssusecases.ProcessDueDeliveries(ctx, ssusecases.DeliverDeps{
 		DeliveryRepo: deliveries, TransmitterConfigRepo: configs,
 		Pusher: &sharedsignalspush.HTTPSecurityEventPusher{Client: receiver.Client()},
 	}, now.Add(time.Second), 10)
@@ -106,7 +106,7 @@ func TestTransmitterStreamLifecycleAndDelivery(t *testing.T) {
 		t.Fatalf("processed=%d received=%d body=%q", processed, received.Load(), receivedBody)
 	}
 	listed, err := deliveries.ListByStream(ctx, tenancydomain.DefaultTenantID, stream.ID)
-	if err != nil || len(listed) != 1 || listed[0].Status != sharedsignalsdomain.SecurityEventDeliveryStatusDelivered {
+	if err != nil || len(listed) != 1 || listed[0].Status != ssdomain.SecurityEventDeliveryStatusDelivered {
 		t.Fatalf("deliveries=%+v err=%v", listed, err)
 	}
 	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/shared-signals/streams/"+stream.ID+"/deliveries", http.NoBody)

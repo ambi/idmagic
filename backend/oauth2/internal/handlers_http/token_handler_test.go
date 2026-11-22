@@ -25,7 +25,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -49,8 +49,8 @@ func newTokenServer(t *testing.T) tokenFixture {
 	clientRepo := oauth2memory.NewClientRepository()
 
 	// confidential client
-	secretHash := domain.HashClientSecret("secret-conf")
-	clientRepo.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret("secret-conf")
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID:                tenancydomain.DefaultTenantID,
 		ClientID:                "client-conf",
 		ClientSecretHash:        &secretHash,
@@ -58,23 +58,23 @@ func newTokenServer(t *testing.T) tokenFixture {
 		RedirectURIs:            []string{"https://app.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretPost,
 		Scope:                   "openid profile",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 
 	// public client
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID:                tenancydomain.DefaultTenantID,
 		ClientID:                "client-pub",
 		ClientType:              spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
 		Scope:                   "openid profile",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 

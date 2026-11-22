@@ -17,7 +17,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
 
 const (
@@ -79,7 +79,7 @@ type Config struct {
 	Timeout            time.Duration
 	AllowedOrigins     []string
 	MaxBodyBytes       int64
-	Mapping            domain.Mapping
+	Mapping            mcpgatewaydomain.Mapping
 }
 
 // LoadConfig は設定ファイルを読み、どの誤りも起動前に拒否する。
@@ -235,48 +235,48 @@ func tlsConfig(caFile string) (*tls.Config, error) {
 	return config, nil
 }
 
-func mapping(file fileConfig) (domain.Mapping, error) {
-	result := domain.Mapping{Catalog: file.Mapping.Catalog, Methods: map[string]domain.OperationRule{}, Tools: map[string]domain.OperationRule{}}
+func mapping(file fileConfig) (mcpgatewaydomain.Mapping, error) {
+	result := mcpgatewaydomain.Mapping{Catalog: file.Mapping.Catalog, Methods: map[string]mcpgatewaydomain.OperationRule{}, Tools: map[string]mcpgatewaydomain.OperationRule{}}
 	for method, operation := range file.Mapping.Methods {
-		if method == domain.MethodToolsCall {
-			return domain.Mapping{}, errors.New("mapping.methods must not name tools/call; declare mapping.tools")
+		if method == mcpgatewaydomain.MethodToolsCall {
+			return mcpgatewaydomain.Mapping{}, errors.New("mapping.methods must not name tools/call; declare mapping.tools")
 		}
 		if operation.ResourceIDArgument != "" {
-			return domain.Mapping{}, fmt.Errorf("mapping.methods.%s must use resource_id", method)
+			return mcpgatewaydomain.Mapping{}, fmt.Errorf("mapping.methods.%s must use resource_id", method)
 		}
 		// 方法の要求は引数を持たない。
 		if operation.AttributeArguments != nil {
-			return domain.Mapping{}, fmt.Errorf("mapping.methods.%s must not declare attribute_arguments", method)
+			return mcpgatewaydomain.Mapping{}, fmt.Errorf("mapping.methods.%s must not declare attribute_arguments", method)
 		}
 		rule, err := operationRule("mapping.methods."+method, operation)
 		if err != nil {
-			return domain.Mapping{}, err
+			return mcpgatewaydomain.Mapping{}, err
 		}
 		result.Methods[method] = rule
 	}
 	for tool, operation := range file.Mapping.Tools {
 		rule, err := operationRule("mapping.tools."+tool, operation)
 		if err != nil {
-			return domain.Mapping{}, err
+			return mcpgatewaydomain.Mapping{}, err
 		}
 		result.Tools[tool] = rule
 	}
 	return result, nil
 }
 
-func operationRule(name string, operation fileOperation) (domain.OperationRule, error) {
+func operationRule(name string, operation fileOperation) (mcpgatewaydomain.OperationRule, error) {
 	if operation.ResourceType == "" || operation.Relation == "" {
-		return domain.OperationRule{}, fmt.Errorf("%s requires resource_type and relation", name)
+		return mcpgatewaydomain.OperationRule{}, fmt.Errorf("%s requires resource_type and relation", name)
 	}
 	if (operation.ResourceID == "") == (operation.ResourceIDArgument == "") {
-		return domain.OperationRule{}, fmt.Errorf("%s requires exactly one of resource_id and resource_id_argument", name)
+		return mcpgatewaydomain.OperationRule{}, fmt.Errorf("%s requires exactly one of resource_id and resource_id_argument", name)
 	}
 	for i, key := range operation.AttributeArguments {
 		if key == "" || slices.Contains(operation.AttributeArguments[:i], key) {
-			return domain.OperationRule{}, fmt.Errorf("%s.attribute_arguments must name distinct non-empty keys", name)
+			return mcpgatewaydomain.OperationRule{}, fmt.Errorf("%s.attribute_arguments must name distinct non-empty keys", name)
 		}
 	}
-	return domain.OperationRule{
+	return mcpgatewaydomain.OperationRule{
 		ResourceType: operation.ResourceType, Relation: operation.Relation,
 		ResourceID: operation.ResourceID, ResourceIDArgument: operation.ResourceIDArgument,
 		AttributeArguments: operation.AttributeArguments,

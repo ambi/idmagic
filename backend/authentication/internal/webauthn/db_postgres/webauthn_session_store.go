@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -18,7 +18,7 @@ import (
 // JSONB の列へそのまま持つ。
 type WebAuthnSessionStore struct{ Pool sharedpg.DB }
 
-func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, session ports.WebAuthnSession, expiresAt time.Time) error {
+func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, session webauthnports.WebAuthnSession, expiresAt time.Time) error {
 	return New(s.Pool).SaveWebauthnSession(ctx, SaveWebauthnSessionParams{
 		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
@@ -27,7 +27,7 @@ func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, session por
 	})
 }
 
-func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*ports.WebAuthnSession, error) {
+func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*webauthnports.WebAuthnSession, error) {
 	payload, err := New(s.Pool).TakeWebauthnSession(ctx, TakeWebauthnSessionParams{
 		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
@@ -39,7 +39,7 @@ func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*ports.Web
 	if err != nil {
 		return nil, err
 	}
-	return &ports.WebAuthnSession{Payload: payload}, nil
+	return &webauthnports.WebAuthnSession{Payload: payload}, nil
 }
 
 func (s *WebAuthnSessionStore) DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error) {

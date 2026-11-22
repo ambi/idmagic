@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -37,7 +37,7 @@ type usageCounter struct {
 }
 
 var usageCounters = map[string]usageCounter{
-	domain.ResourceUsers: {
+	tenancydomain.ResourceUsers: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageUsers(ctx, IncrementTenantUsageUsersParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -46,7 +46,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageUsers(ctx, DecrementTenantUsageUsersParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceGroups: {
+	tenancydomain.ResourceGroups: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageGroups(ctx, IncrementTenantUsageGroupsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -55,7 +55,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageGroups(ctx, DecrementTenantUsageGroupsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceAgents: {
+	tenancydomain.ResourceAgents: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageAgents(ctx, IncrementTenantUsageAgentsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -64,7 +64,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageAgents(ctx, DecrementTenantUsageAgentsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceApplications: {
+	tenancydomain.ResourceApplications: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageApplications(ctx, IncrementTenantUsageApplicationsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -73,7 +73,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageApplications(ctx, DecrementTenantUsageApplicationsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceOAuth2Clients: {
+	tenancydomain.ResourceOAuth2Clients: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageOAuth2Clients(ctx, IncrementTenantUsageOAuth2ClientsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -82,7 +82,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageOAuth2Clients(ctx, DecrementTenantUsageOAuth2ClientsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceActiveSessions: {
+	tenancydomain.ResourceActiveSessions: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageActiveSessions(ctx, IncrementTenantUsageActiveSessionsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -91,7 +91,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageActiveSessions(ctx, DecrementTenantUsageActiveSessionsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceConsents: {
+	tenancydomain.ResourceConsents: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageConsents(ctx, IncrementTenantUsageConsentsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -100,7 +100,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageConsents(ctx, DecrementTenantUsageConsentsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceActiveJobs: {
+	tenancydomain.ResourceActiveJobs: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageActiveJobs(ctx, IncrementTenantUsageActiveJobsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -109,7 +109,7 @@ var usageCounters = map[string]usageCounter{
 			return q.DecrementTenantUsageActiveJobs(ctx, DecrementTenantUsageActiveJobsParams{TenantID: tenantID, Delta: delta})
 		},
 	},
-	domain.ResourceSsfStreams: {
+	tenancydomain.ResourceSsfStreams: {
 		increment: func(ctx context.Context, q *Queries, tenantID string, delta, limit int32) error {
 			_, err := q.IncrementTenantUsageSsfStreams(ctx, IncrementTenantUsageSsfStreamsParams{TenantID: tenantID, Delta: delta, DefaultLimit: limit})
 			return err
@@ -122,7 +122,7 @@ var usageCounters = map[string]usageCounter{
 
 // CheckAndIncrement atomically increments the usage counter for the given resource.
 func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resource string, delta int) error {
-	if domain.IsSoftQuota(resource) {
+	if tenancydomain.IsSoftQuota(resource) {
 		if delta < 0 {
 			return errors.New("soft quota: negative increment")
 		}
@@ -130,7 +130,7 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 		if err := queries.EnsureTenantUsage(ctx, tenantID); err != nil {
 			return err
 		}
-		if resource == domain.ResourceAuditEventsRetained {
+		if resource == tenancydomain.ResourceAuditEventsRetained {
 			_, err := queries.IncrementTenantUsageAuditEventsRetained(ctx, IncrementTenantUsageAuditEventsRetainedParams{TenantID: tenantID, Delta: int64(delta)})
 			return err
 		}
@@ -148,18 +148,18 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 	//nolint:gosec // 利用量の列は INT であり、呼び出し側の delta と既定の上限はその範囲に収まる
 	err := counter.increment(ctx, queries, tenantID, int32(delta), int32(getDefaultQuota(resource)))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return &domain.QuotaExceededError{TenantID: tenantID, Resource: resource}
+		return &tenancydomain.QuotaExceededError{TenantID: tenantID, Resource: resource}
 	}
 	return err
 }
 
 // Decrement atomically decreases the usage counter for the given resource.
 func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource string, delta int) error {
-	if domain.IsSoftQuota(resource) {
+	if tenancydomain.IsSoftQuota(resource) {
 		if delta < 0 {
 			return errors.New("soft quota: negative decrement")
 		}
-		if resource == domain.ResourceAuditEventsRetained {
+		if resource == tenancydomain.ResourceAuditEventsRetained {
 			return New(r.db).DecrementTenantUsageAuditEventsRetained(ctx, DecrementTenantUsageAuditEventsRetainedParams{TenantID: tenantID, Delta: int64(delta)})
 		}
 		return New(r.db).DecrementTenantUsageExportArtifactsBytes(ctx, DecrementTenantUsageExportArtifactsBytesParams{TenantID: tenantID, Delta: int64(delta)})
@@ -174,11 +174,11 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 
 // getDefaultQuota は Hard の SQL に渡す既定値をドメインの同じ定義から解決する。
 func getDefaultQuota(resource string) int {
-	return domain.DefaultTenantQuota[resource]
+	return tenancydomain.DefaultTenantQuota[resource]
 }
 
 // SetQuota explicitly sets the quota for a tenant.
-func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *domain.TenantQuota) error {
+func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *tenancydomain.TenantQuota) error {
 	queries := New(r.db)
 	return queries.UpsertTenantQuota(ctx, UpsertTenantQuotaParams{
 		TenantID:             tenantID,
@@ -196,7 +196,7 @@ func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *
 	})
 }
 
-func (r *QuotaRepository) SetSoftUsage(ctx context.Context, tenantID string, measured domain.SoftQuotaUsage) error {
+func (r *QuotaRepository) SetSoftUsage(ctx context.Context, tenantID string, measured tenancydomain.SoftQuotaUsage) error {
 	if err := measured.Validate(); err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (r *QuotaRepository) SetSoftUsage(ctx context.Context, tenantID string, mea
 // RecountUsage は自分のトランザクションで使用量の行を固定するので、トランザクションを始められる
 // 接続で構築したリポジトリだけが受け付ける。count は別の接続で数えてよい。
 func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource string, count func(context.Context) (int, error)) (int, error) {
-	if resource != domain.ResourceUsers && resource != domain.ResourceActiveSessions {
+	if resource != tenancydomain.ResourceUsers && resource != tenancydomain.ResourceActiveSessions {
 		return 0, fmt.Errorf("usage recount is not supported for %s", resource)
 	}
 	beginner, ok := r.db.(interface {
@@ -227,7 +227,7 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 		return 0, err
 	}
 	var previous int32
-	if resource == domain.ResourceUsers {
+	if resource == tenancydomain.ResourceUsers {
 		previous, err = queries.LockTenantUsageUsers(ctx, tenantID)
 	} else {
 		previous, err = queries.LockTenantUsageActiveSessions(ctx, tenantID)
@@ -242,7 +242,7 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 	if counted < 0 || counted > math.MaxInt32 {
 		return 0, fmt.Errorf("usage recount: count %d is outside the usage column", counted)
 	}
-	if resource == domain.ResourceUsers {
+	if resource == tenancydomain.ResourceUsers {
 		err = queries.SetTenantUsageUsers(ctx, SetTenantUsageUsersParams{TenantID: tenantID, Users: int32(counted)})
 	} else {
 		err = queries.SetTenantUsageActiveSessions(ctx, SetTenantUsageActiveSessionsParams{TenantID: tenantID, ActiveSessions: int32(counted)})
@@ -279,12 +279,12 @@ func fromPgtypeInt8(v pgtype.Int8) *int {
 	return &value
 }
 
-func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domain.TenantQuota, error) {
+func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*tenancydomain.TenantQuota, error) {
 	queries := New(r.db)
 	row, err := queries.GetTenantQuota(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &domain.TenantQuota{}, nil
+			return &tenancydomain.TenantQuota{}, nil
 		}
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domai
 		return &val
 	}
 
-	return &domain.TenantQuota{
+	return &tenancydomain.TenantQuota{
 		Users:                fromPgtype(row.Users),
 		Groups:               fromPgtype(row.Groups),
 		Agents:               fromPgtype(row.Agents),
@@ -312,17 +312,17 @@ func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domai
 	}, nil
 }
 
-func (r *QuotaRepository) GetUsage(ctx context.Context, tenantID string) (*domain.TenantUsage, error) {
+func (r *QuotaRepository) GetUsage(ctx context.Context, tenantID string) (*tenancydomain.TenantUsage, error) {
 	queries := New(r.db)
 	row, err := queries.GetTenantUsage(ctx, tenantID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &domain.TenantUsage{}, nil
+			return &tenancydomain.TenantUsage{}, nil
 		}
 		return nil, err
 	}
 
-	return &domain.TenantUsage{
+	return &tenancydomain.TenantUsage{
 		Users:                int(row.Users),
 		Groups:               int(row.Groups),
 		Agents:               int(row.Agents),

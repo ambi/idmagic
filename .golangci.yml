@@ -32,6 +32,7 @@ linters:
     - fatcontext
     - gocheckcompilerdirectives
     - gocritic
+    - importas
     - makezero
     - modernize
     - revive
@@ -49,6 +50,52 @@ linters:
     - thelper
 
   settings:
+    importas:
+      no-unaliased: true
+      no-extra-aliases: false
+      alias:
+        # 略称と衝突回避を先に評価し、包括規則は最後に置く。
+        - pkg: github\.com/ambi/idmagic/backend/accesscontrol/internal/domain
+          alias: accessdomain
+        - pkg: github\.com/ambi/idmagic/backend/accesscontrol/internal/ports
+          alias: accessinternalports
+        - pkg: github\.com/ambi/idmagic/backend/accesscontrol/ports
+          alias: accessports
+        - pkg: github\.com/ambi/idmagic/backend/application/(domain|ports|usecases)
+          alias: app${1}
+        - pkg: github\.com/ambi/idmagic/backend/authentication/domain
+          alias: authdomain
+        - pkg: github\.com/ambi/idmagic/backend/authentication/internal/ports
+          alias: authnports
+        - pkg: github\.com/ambi/idmagic/backend/authentication/internal/usecases
+          alias: authusecases
+        - pkg: github\.com/ambi/idmagic/backend/claimmapping/(domain|ports)
+          alias: claim${1}
+        - pkg: github\.com/ambi/idmagic/backend/idgovernance/internal/(domain|ports|usecases)
+          alias: ig${1}
+        - pkg: github\.com/ambi/idmagic/backend/idmanagement/(?:internal/)?(domain|ports|usecases)
+          alias: idm${1}
+        - pkg: github\.com/ambi/idmagic/backend/oauth2/(?:internal/)?(domain|ports|usecases)
+          alias: oauth${1}
+        - pkg: github\.com/ambi/idmagic/backend/shared/ratelimit/ports
+          alias: rlports
+        - pkg: github\.com/ambi/idmagic/backend/sharedsignals/(?:internal/)?(domain|ports|usecases)
+          alias: ss${1}
+        - pkg: github\.com/ambi/idmagic/backend/signingkeys/(?:internal/)?(domain|ports|usecases)
+          alias: signing${1}
+        - pkg: github\.com/ambi/idmagic/backend/signinpolicy/(domain|ports|usecases)
+          alias: policy${1}
+        - pkg: github\.com/ambi/idmagic/backend/sourcing/internal/directory/ports
+          alias: directoryinternalports
+        - pkg: github\.com/ambi/idmagic/backend/tenancy/ports
+          alias: tenantports
+        - pkg: github\.com/ambi/idmagic/backend/workloadidentity/(?:internal/)?(domain|ports|usecases)
+          alias: workload${1}
+        - pkg: github\.com/ambi/idmagic/backend/wsfederation/(?:internal/)?(domain|ports|usecases)
+          alias: wsfed${1}
+        # internal を除いた層の所有名を、深さによらず使う。
+        - pkg: github\.com/ambi/idmagic/backend/(?:[a-z0-9_]+/)*?([a-z0-9_]+)/(?:internal/)?(domain|ports|usecases)
+          alias: ${1}${2}
     gocritic:
       enabled-tags:
         - diagnostic

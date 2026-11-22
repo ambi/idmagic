@@ -8,17 +8,17 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // EntraFederationObservationRepository は観測記録の PostgreSQL の保存先である。
 type EntraFederationObservationRepository struct{ Pool sharedpg.DB }
 
-var _ ports.EntraFederationObservationRepository = (*EntraFederationObservationRepository)(nil)
+var _ wsfedports.EntraFederationObservationRepository = (*EntraFederationObservationRepository)(nil)
 
-func observationRecordFromRow(row *WsfedEntraFederationObservation) (*domain.EntraFederationObservationRecord, error) {
-	record := &domain.EntraFederationObservationRecord{
+func observationRecordFromRow(row *WsfedEntraFederationObservation) (*wsfeddomain.EntraFederationObservationRecord, error) {
+	record := &wsfeddomain.EntraFederationObservationRecord{
 		TenantID: row.TenantID, Domain: row.Domain, ExpectedFingerprint: row.ExpectedFingerprint,
 		SigningCertificateThumbprint:     row.SigningCertificateThumbprint,
 		NextSigningCertificateThumbprint: row.NextSigningCertificateThumbprint,
@@ -34,7 +34,7 @@ func observationRecordFromRow(row *WsfedEntraFederationObservation) (*domain.Ent
 	return record, nil
 }
 
-func (r *EntraFederationObservationRepository) Find(ctx context.Context, tenantID, domainName string) (*domain.EntraFederationObservationRecord, error) {
+func (r *EntraFederationObservationRepository) Find(ctx context.Context, tenantID, domainName string) (*wsfeddomain.EntraFederationObservationRecord, error) {
 	row, err := New(r.Pool).GetEntraFederationObservation(ctx, GetEntraFederationObservationParams{TenantID: tenantID, Domain: domainName})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -45,12 +45,12 @@ func (r *EntraFederationObservationRepository) Find(ctx context.Context, tenantI
 	return observationRecordFromRow(row)
 }
 
-func (r *EntraFederationObservationRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.EntraFederationObservationRecord, error) {
+func (r *EntraFederationObservationRepository) ListAll(ctx context.Context, tenantID string) ([]*wsfeddomain.EntraFederationObservationRecord, error) {
 	rows, err := New(r.Pool).ListEntraFederationObservations(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.EntraFederationObservationRecord, 0, len(rows))
+	out := make([]*wsfeddomain.EntraFederationObservationRecord, 0, len(rows))
 	for _, row := range rows {
 		record, err := observationRecordFromRow(row)
 		if err != nil {
@@ -61,14 +61,14 @@ func (r *EntraFederationObservationRepository) ListAll(ctx context.Context, tena
 	return out, nil
 }
 
-func (r *EntraFederationObservationRepository) Save(ctx context.Context, record domain.EntraFederationObservationRecord) error {
+func (r *EntraFederationObservationRepository) Save(ctx context.Context, record wsfeddomain.EntraFederationObservationRecord) error {
 	observation, err := json.Marshal(record.Observation)
 	if err != nil {
 		return err
 	}
 	differences := record.Differences
 	if differences == nil {
-		differences = []domain.EntraSettingDifference{}
+		differences = []wsfeddomain.EntraSettingDifference{}
 	}
 	differencesJSON, err := json.Marshal(differences)
 	if err != nil {
@@ -86,7 +86,7 @@ func (r *EntraFederationObservationRepository) Save(ctx context.Context, record 
 		return err
 	}
 	if saved == 0 {
-		return ports.ErrEntraObservationOutdated
+		return wsfedports.ErrEntraObservationOutdated
 	}
 	return nil
 }

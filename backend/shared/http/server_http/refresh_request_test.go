@@ -11,7 +11,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -62,7 +62,7 @@ func TestRefreshRequestResourceCannotWidenTheOriginalGrant(t *testing.T) {
 	if err != nil || other == nil {
 		t.Fatalf("別のリソースの準備: %v", err)
 	}
-	other.State = domain.McpResourceServerActive
+	other.State = oauthdomain.McpResourceServerActive
 	if err := f.resourceServers.Save(ctx, other); err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestRefreshRequestResourceCannotWidenTheOriginalGrant(t *testing.T) {
 		name        string
 		bound       bool
 		resources   []string
-		changeState domain.McpResourceServerState
+		changeState oauthdomain.McpResourceServerState
 		remove      bool
 		wantError   bool
 	}{
@@ -84,7 +84,7 @@ func TestRefreshRequestResourceCannotWidenTheOriginalGrant(t *testing.T) {
 		{name: "複数", bound: true, resources: []string{tiResource, tiOtherResource}, wantError: true},
 		{name: "同じ値が二つ", bound: true, resources: []string{tiResource, tiResource}, wantError: true},
 		{name: "空値と対象", bound: true, resources: []string{"", tiResource}, wantError: true},
-		{name: "束縛先が無効", bound: true, resources: []string{tiResource}, changeState: domain.McpResourceServerDisabled, wantError: true},
+		{name: "束縛先が無効", bound: true, resources: []string{tiResource}, changeState: oauthdomain.McpResourceServerDisabled, wantError: true},
 		{name: "束縛先の登録削除", bound: true, resources: []string{tiResource}, remove: true, wantError: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestRefreshRequestResourceCannotWidenTheOriginalGrant(t *testing.T) {
 					}
 				}
 				t.Cleanup(func() {
-					r.State = domain.McpResourceServerActive
+					r.State = oauthdomain.McpResourceServerActive
 					if err := f.resourceServers.Save(ctx, r); err != nil {
 						t.Error(err)
 					}

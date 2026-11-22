@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 )
 
 // ProvisioningTrigger is the internal lifecycle event that may generate
@@ -38,5 +38,5 @@ type ProvisioningCapture interface {
 	// in-scope connection reachable from applicationID (assignment triggers) or
 	// from every connection in the tenant (user triggers, scope-checked per
 	// connection). now.UnixNano() is used as the monotonic source_version.
-	CaptureLifecycleEvent(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ProvisioningTrigger, applicationID string, now time.Time) error
+	CaptureLifecycleEvent(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, subjectID string, trigger ProvisioningTrigger, applicationID string, now time.Time) error
 }

@@ -13,7 +13,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
-	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -46,7 +46,7 @@ func TestAccessReviewRuntimeRevokesAssignmentsAndAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 	sender := &email_memory.NoopEmailSender{}
-	f.deps.Notification = notification.Module{Notifier: &template.Notifier{Sender: sender}}
+	f.deps.Notification = notificationports.Module{Notifier: &template.Notifier{Sender: sender}}
 	emit := func(e spec.DomainEvent) {
 		if err := f.sink.Emit(ctx, e); err != nil {
 			t.Error(err)

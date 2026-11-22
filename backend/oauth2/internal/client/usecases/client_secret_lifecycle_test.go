@@ -6,19 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthmemory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func secretClient(ctx context.Context, t *testing.T, repo *oauthmemory.OAuth2ClientRepository, now time.Time) *domain.OAuth2Client {
+func secretClient(ctx context.Context, t *testing.T, repo *oauthmemory.OAuth2ClientRepository, now time.Time) *oauthdomain.OAuth2Client {
 	t.Helper()
-	hash := domain.HashClientSecret("legacy-secret")
-	client := &domain.OAuth2Client{
+	hash := oauthdomain.HashClientSecret("legacy-secret")
+	client := &oauthdomain.OAuth2Client{
 		TenantID: "default", ClientID: "client", ClientSecretHash: &hash,
 		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
-		IDTokenSignedResponseAlg: "PS256", FapiProfile: domain.FapiNone,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		IDTokenSignedResponseAlg: "PS256", FapiProfile: oauthdomain.FapiNone,
 		CreatedAt: now.AddDate(0, -1, 0), UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, client); err != nil {
@@ -32,7 +32,7 @@ func TestIssueClientSecretAddsExpiringCredentialWithoutChangingExisting(t *testi
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	repo := oauthmemory.NewClientRepository()
 	client := secretClient(ctx, t, repo, now)
-	legacy := domain.ClientSecretCredential{
+	legacy := oauthdomain.ClientSecretCredential{
 		ID: "legacy", ClientID: client.ClientID,
 		SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt,
 	}
@@ -55,13 +55,13 @@ func TestIssueClientSecretAddsExpiringCredentialWithoutChangingExisting(t *testi
 	if len(result.Credentials) != 2 || result.Credentials[0].ExpiresAt != nil || result.Credentials[0].RevokedAt != nil {
 		t.Fatalf("existing credential changed: %#v", result.Credentials)
 	}
-	if !domain.VerifyClientSecret(result.ClientSecret, result.Credential.SecretHash) {
+	if !oauthdomain.VerifyClientSecret(result.ClientSecret, result.Credential.SecretHash) {
 		t.Fatal("issued secret was not stored as a hash")
 	}
 	if len(events) != 1 {
 		t.Fatalf("events=%d, want 1", len(events))
 	}
-	event, ok := events[0].(*domain.ClientSecretIssued)
+	event, ok := events[0].(*oauthdomain.ClientSecretIssued)
 	if !ok || event.ClientID != client.ClientID || event.CredentialID != result.Credential.ID ||
 		!event.ExpiresAt.Equal(*result.Credential.ExpiresAt) {
 		t.Fatalf("unexpected event: %#v", events[0])
@@ -89,8 +89,8 @@ func TestIssueClientSecretValidatesExpiryAndActiveLimit(t *testing.T) {
 	client := secretClient(ctx, t, repo, now)
 	future := now.Add(time.Hour)
 	for _, id := range []string{"one", "two"} {
-		if err := repo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
-			ID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(id),
+		if err := repo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{
+			ID: id, ClientID: client.ClientID, SecretHash: oauthdomain.HashClientSecret(id),
 			CreatedAt: now.Add(-time.Hour), ExpiresAt: &future,
 		}); err != nil {
 			t.Fatal(err)
@@ -127,7 +127,7 @@ func TestIssueClientSecretRejectsNonSecretClient(t *testing.T) {
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	repo := oauthmemory.NewClientRepository()
 	client := secretClient(ctx, t, repo, now)
-	client.TokenEndpointAuthMethod = domain.AuthMethodPrivateKeyJwt
+	client.TokenEndpointAuthMethod = oauthdomain.AuthMethodPrivateKeyJwt
 
 	_, err := IssueClientSecret(ctx, AdminOAuth2ClientDeps{ClientRepo: repo}, IssueClientSecretInput{
 		ClientID: client.ClientID, ExpiresInDays: 90, Now: now,
@@ -142,8 +142,8 @@ func TestRevokeClientSecretIsScopedAndIdempotent(t *testing.T) {
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	repo := oauthmemory.NewClientRepository()
 	client := secretClient(ctx, t, repo, now)
-	if err := repo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
-		ID: "old", ClientID: client.ClientID, SecretHash: domain.HashClientSecret("old"), CreatedAt: now.Add(-time.Hour),
+	if err := repo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{
+		ID: "old", ClientID: client.ClientID, SecretHash: oauthdomain.HashClientSecret("old"), CreatedAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestRevokeClientSecretIsScopedAndIdempotent(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("events=%d, want 1", len(events))
 	}
-	event, ok := events[0].(*domain.ClientSecretRevoked)
+	event, ok := events[0].(*oauthdomain.ClientSecretRevoked)
 	if !ok || event.CredentialID != "old" || event.ClientID != client.ClientID {
 		t.Fatalf("unexpected event: %#v", events[0])
 	}

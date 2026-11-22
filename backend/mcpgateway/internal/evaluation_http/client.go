@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
 
 const maxResponseBytes = 1 << 20
@@ -23,7 +23,7 @@ const maxResponseBytes = 1 << 20
 type Request struct {
 	CorrelationID       string
 	Token               string
-	Operation           domain.Operation
+	Operation           mcpgatewaydomain.Operation
 	OperationKey        string
 	OperationParameters string
 	// Attributes は規則の条件が読む JSON オブジェクトで、空なら送らない。

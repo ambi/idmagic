@@ -10,7 +10,7 @@ import (
 	"time"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	certificatesMTLS "github.com/ambi/idmagic/backend/shared/security/certificates_mtls"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -52,7 +52,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 		}
 	}
 	if methods > 1 {
-		return authedClient{}, usecases.NewOAuthError("invalid_request", "Multiple client authentication methods are mixed.")
+		return authedClient{}, oauthusecases.NewOAuthError("invalid_request", "Multiple client authentication methods are mixed.")
 	}
 
 	// 1. client_assertion (private_key_jwt / spiffe_jwt)
@@ -62,11 +62,11 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 	if hasAssertion {
 		const assertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 		if c.Request().PostFormValue("client_assertion_type") != assertionType {
-			return authedClient{}, usecases.NewOAuthError("invalid_request", "unsupported client_assertion_type")
+			return authedClient{}, oauthusecases.NewOAuthError("invalid_request", "unsupported client_assertion_type")
 		}
 		a := c.Request().PostFormValue("client_assertion")
 		if a == "" {
-			return authedClient{}, usecases.NewOAuthError("invalid_request", "client_assertion is required")
+			return authedClient{}, oauthusecases.NewOAuthError("invalid_request", "client_assertion is required")
 		}
 		clientID := c.Request().PostFormValue("client_id")
 		if clientID == "" {
@@ -131,19 +131,19 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 	case hasBasic:
 		raw, err := base64.StdEncoding.DecodeString(basicAuth)
 		if err != nil {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "failed to decode Basic auth")
+			return authedClient{}, oauthusecases.NewOAuthError("invalid_client", "failed to decode Basic auth")
 		}
 		parts := strings.SplitN(string(raw), ":", 2)
 		if len(parts) != 2 {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "The Basic authentication format is invalid.")
+			return authedClient{}, oauthusecases.NewOAuthError("invalid_client", "The Basic authentication format is invalid.")
 		}
 		clientID, err = url.QueryUnescape(parts[0])
 		if err != nil {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "The client_id format is invalid.")
+			return authedClient{}, oauthusecases.NewOAuthError("invalid_client", "The client_id format is invalid.")
 		}
 		secret, err = url.QueryUnescape(parts[1])
 		if err != nil {
-			return authedClient{}, usecases.NewOAuthError("invalid_client", "invalid client_secret format")
+			return authedClient{}, oauthusecases.NewOAuthError("invalid_client", "invalid client_secret format")
 		}
 		method = oauthdomain.AuthMethodClientSecretBasic
 	case hasSecret:
@@ -195,7 +195,7 @@ func (d Deps) authenticateTokenClient(c *echo.Context) (authedClient, error) {
 }
 
 func invalidClientError() error {
-	return usecases.NewOAuthError("invalid_client", invalidClientDescription)
+	return oauthusecases.NewOAuthError("invalid_client", invalidClientDescription)
 }
 
 func acceptableClientAssertionAudiences(issuer string, req *http.Request) []string {

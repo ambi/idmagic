@@ -6,7 +6,7 @@ import (
 	"time"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -18,7 +18,7 @@ func TestManagedAccessTokenUsesRFC9068ProfileAndExplicitExpiry(t *testing.T) {
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
 	exp := time.Now().Add(24 * time.Hour).Unix()
-	token, jti, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, jti, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "idmagic-api-token"}, Sub: "user-1", Scopes: []string{"account:read"},
 		Audiences: []string{"https://idp.test/realms/acme"}, ExpiresAt: exp, Managed: true,
 	})

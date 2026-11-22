@@ -15,15 +15,15 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
 	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func newScimUsecases() (*usecases.Usecases, userports.UserRepository) {
+func newScimUsecases() (*scimusecases.Usecases, userports.UserRepository) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	return usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})), userRepo
+	return scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})), userRepo
 }
 
 const scimTenant = tenancydomain.DefaultTenantID
@@ -35,7 +35,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "dup@example.com"})
-	if !errors.Is(err, usecases.ErrDuplicate) {
+	if !errors.Is(err, scimusecases.ErrDuplicate) {
 		t.Fatalf("err=%v, want ErrDuplicate", err)
 	}
 }
@@ -43,7 +43,7 @@ func TestCreateUserRejectsDuplicateUsername(t *testing.T) {
 func TestGetUserNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
-	if _, err := u.GetUser(ctx, scimTenant, "no-such-id"); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.GetUser(ctx, scimTenant, "no-such-id"); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
 }
@@ -121,15 +121,15 @@ func TestUpdateUserFullReplace(t *testing.T) {
 //spec:covers EX-SOURCING-007-03: UpdateUser と PatchUser は、テナントに存在しない manager で失敗したとき、先に適用しうる userName・email・active・employeeNumber の変更も保存先へ残さない。
 func TestWriteUserRefusedByAnUnresolvableManagerLeavesTheStoredUserUnchanged(t *testing.T) {
 	unknownManager := map[string]any{"manager": map[string]any{"value": "no-such-manager"}}
-	writes := map[string]func(*usecases.Usecases, string) error{
-		"UpdateUser": func(u *usecases.Usecases, scimID string) error {
+	writes := map[string]func(*scimusecases.Usecases, string) error{
+		"UpdateUser": func(u *scimusecases.Usecases, scimID string) error {
 			_, err := u.UpdateUser(context.Background(), scimTenant, scimID, map[string]any{
 				"userName": "renamed@example.com", "active": false,
 				scimdomain.EnterpriseUserSchemaURN: unknownManager,
 			})
 			return err
 		},
-		"PatchUser": func(u *usecases.Usecases, scimID string) error {
+		"PatchUser": func(u *scimusecases.Usecases, scimID string) error {
 			_, err := u.PatchUser(context.Background(), scimTenant, scimID, map[string]any{
 				"Operations": []any{
 					map[string]any{"op": "replace", "path": "userName", "value": "renamed@example.com"},
@@ -180,10 +180,10 @@ func TestWriteUserRefusedByAnUnresolvableManagerLeavesTheStoredUserUnchanged(t *
 func TestUpdateUserNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
-	if _, err := u.UpdateUser(ctx, scimTenant, "no-such-id", map[string]any{"userName": "x@example.com"}); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.UpdateUser(ctx, scimTenant, "no-such-id", map[string]any{"userName": "x@example.com"}); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
-	if _, err := u.GetUser(ctx, scimTenant, "no-such-id"); !errors.Is(err, usecases.ErrNotFound) {
+	if _, err := u.GetUser(ctx, scimTenant, "no-such-id"); !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("re-read err=%v, want the missing user to remain absent", err)
 	}
 }
@@ -199,7 +199,7 @@ func TestUpdateUserRejectsRenameToExistingUsername(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = u.UpdateUser(ctx, scimTenant, created["id"].(string), map[string]any{"userName": "taken@example.com"})
-	if !errors.Is(err, usecases.ErrDuplicate) {
+	if !errors.Is(err, scimusecases.ErrDuplicate) {
 		t.Fatalf("err=%v, want ErrDuplicate", err)
 	}
 }
@@ -357,7 +357,7 @@ func TestPatchUserOperations(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err := u.PatchUser(ctx, scimTenant, scimID, patchBody(patchOp("replace", "userName", "taken2@example.com")))
-		if !errors.Is(err, usecases.ErrDuplicate) {
+		if !errors.Is(err, scimusecases.ErrDuplicate) {
 			t.Fatalf("err=%v, want ErrDuplicate", err)
 		}
 	})
@@ -367,7 +367,7 @@ func TestPatchUserNotFound(t *testing.T) {
 	ctx := context.Background()
 	u, _ := newScimUsecases()
 	_, err := u.PatchUser(ctx, scimTenant, "no-such-id", patchBody(patchOp("replace", "active", true)))
-	if !errors.Is(err, usecases.ErrNotFound) {
+	if !errors.Is(err, scimusecases.ErrNotFound) {
 		t.Fatalf("err=%v, want ErrNotFound", err)
 	}
 }
@@ -414,7 +414,7 @@ func TestListUsersFiltersByUsername(t *testing.T) {
 	if _, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": "other@example.com"}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := u.ListUsers(ctx, scimTenant, usecases.ListQuery{Filter: `userName eq "findme@example.com"`})
+	result, err := u.ListUsers(ctx, scimTenant, scimusecases.ListQuery{Filter: `userName eq "findme@example.com"`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,7 +424,7 @@ func TestListUsersFiltersByUsername(t *testing.T) {
 }
 
 // scimDeletedFixture は User を 1 件作って SCIM の DELETE で削除し、その SCIM id を返す。
-func scimDeletedFixture(ctx context.Context, t *testing.T, u *usecases.Usecases, userName string) string {
+func scimDeletedFixture(ctx context.Context, t *testing.T, u *scimusecases.Usecases, userName string) string {
 	t.Helper()
 	created, err := u.CreateUser(ctx, scimTenant, map[string]any{"userName": userName})
 	if err != nil {
@@ -449,18 +449,18 @@ func TestScimDeletedUserIsGoneFromEveryUsecasePath(t *testing.T) {
 		u, _ := newScimUsecases()
 		scimID := scimDeletedFixture(ctx, t, u, "leaver@example.com")
 
-		if _, err := u.GetUser(ctx, scimTenant, scimID); !errors.Is(err, usecases.ErrNotFound) {
+		if _, err := u.GetUser(ctx, scimTenant, scimID); !errors.Is(err, scimusecases.ErrNotFound) {
 			t.Errorf("GetUser err=%v, want ErrNotFound", err)
 		}
-		if _, err := u.UpdateUser(ctx, scimTenant, scimID, map[string]any{"userName": "leaver@example.com"}); !errors.Is(err, usecases.ErrNotFound) {
+		if _, err := u.UpdateUser(ctx, scimTenant, scimID, map[string]any{"userName": "leaver@example.com"}); !errors.Is(err, scimusecases.ErrNotFound) {
 			t.Errorf("UpdateUser err=%v, want ErrNotFound", err)
 		}
-		if _, err := u.PatchUser(ctx, scimTenant, scimID, patchBody(patchOp("replace", "active", true))); !errors.Is(err, usecases.ErrNotFound) {
+		if _, err := u.PatchUser(ctx, scimTenant, scimID, patchBody(patchOp("replace", "active", true))); !errors.Is(err, scimusecases.ErrNotFound) {
 			t.Errorf("PatchUser err=%v, want ErrNotFound", err)
 		}
 		// 二重の削除も 404 にする。DeleteUser は削除前から ErrNotFound ではなく
 		// 素の error を返していたので、ここは判定の追加と同時に揃える。
-		if err := u.DeleteUser(ctx, scimTenant, scimID); !errors.Is(err, usecases.ErrNotFound) {
+		if err := u.DeleteUser(ctx, scimTenant, scimID); !errors.Is(err, scimusecases.ErrNotFound) {
 			t.Errorf("DeleteUser err=%v, want ErrNotFound", err)
 		}
 	})
@@ -473,7 +473,7 @@ func TestScimDeletedUserIsGoneFromEveryUsecasePath(t *testing.T) {
 		}
 		scimDeletedFixture(ctx, t, u, "removed@example.com")
 
-		result, err := u.ListUsers(ctx, scimTenant, usecases.ListQuery{})
+		result, err := u.ListUsers(ctx, scimTenant, scimusecases.ListQuery{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -588,7 +588,7 @@ func TestScimDeletedUserIsGoneFromEveryUsecasePath(t *testing.T) {
 		if read["active"] != false {
 			t.Errorf("active=%v, want false", read["active"])
 		}
-		result, err := u.ListUsers(ctx, scimTenant, usecases.ListQuery{})
+		result, err := u.ListUsers(ctx, scimTenant, scimusecases.ListQuery{})
 		if err != nil {
 			t.Fatal(err)
 		}

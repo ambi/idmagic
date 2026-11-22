@@ -3,7 +3,7 @@ package ldap_goldap
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 )
 
 //spec:covers REQ-DIRECTORYCONNECTOR-008: AD 固有の拒否を診断用に分類し、未知の原文を外へ返さない。
@@ -16,10 +16,10 @@ func TestADPasswordDiagnosticClassification(t *testing.T) {
 	if got := adPasswordRejection("unknown directory error with private data"); got != "invalid_credentials" {
 		t.Fatal(got)
 	}
-	if _, ok := identityFilter(domain.ActiveDirectory, "not-a-guid"); ok {
+	if _, ok := identityFilter(directoryconnectordomain.ActiveDirectory, "not-a-guid"); ok {
 		t.Fatal("invalid AD id accepted")
 	}
-	if _, ok := identityFilter(domain.OpenLDAP, "*)(uid=*)"); ok {
+	if _, ok := identityFilter(directoryconnectordomain.OpenLDAP, "*)(uid=*)"); ok {
 		t.Fatal("LDAP filter injection accepted")
 	}
 }

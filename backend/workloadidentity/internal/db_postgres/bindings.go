@@ -7,7 +7,7 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -68,7 +68,7 @@ func (r *AgentWorkloadBindingRepository) Save(ctx context.Context, b *workloaddo
 	})
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return ports.ErrBindingPatternConflict
+		return workloadports.ErrBindingPatternConflict
 	}
 	return err
 }
@@ -84,7 +84,7 @@ func (r *AgentWorkloadBindingRepository) UpdateMapping(ctx context.Context, tena
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return nil, ports.ErrBindingPatternConflict
+		return nil, workloadports.ErrBindingPatternConflict
 	}
 	if err != nil {
 		return nil, err

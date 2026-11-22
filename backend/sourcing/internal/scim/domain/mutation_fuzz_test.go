@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // scimBody は fuzz 入力の JSON を SCIM のボディ表現へ変換する。
@@ -39,11 +39,11 @@ func FuzzParseUserWrite(f *testing.F) {
 		if !ok {
 			return
 		}
-		write, err := domain.ParseUserWrite(body)
+		write, err := scimdomain.ParseUserWrite(body)
 		if err == nil {
 			return
 		}
-		if write != (domain.UserWrite{}) {
+		if write != (scimdomain.UserWrite{}) {
 			t.Fatalf("ParseUserWrite returned %+v together with an error", write)
 		}
 	})
@@ -66,7 +66,7 @@ func FuzzParseUserPatchOps(f *testing.F) {
 		if !ok {
 			return
 		}
-		ops, err := domain.ParseUserPatchOps(body)
+		ops, err := scimdomain.ParseUserPatchOps(body)
 		if err != nil {
 			if ops != nil {
 				t.Fatalf("ParseUserPatchOps returned %d operations together with an error", len(ops))
@@ -100,7 +100,7 @@ func FuzzParseGroupPatchOps(f *testing.F) {
 		if !ok {
 			return
 		}
-		ops, err := domain.ParseGroupPatchOps(body)
+		ops, err := scimdomain.ParseGroupPatchOps(body)
 		if err != nil {
 			if ops != nil {
 				t.Fatalf("ParseGroupPatchOps returned %d operations together with an error", len(ops))
@@ -133,7 +133,7 @@ func FuzzParseGroupWrite(f *testing.F) {
 		if !ok {
 			return
 		}
-		write, err := domain.ParseGroupWrite(body)
+		write, err := scimdomain.ParseGroupWrite(body)
 		if err == nil {
 			return
 		}

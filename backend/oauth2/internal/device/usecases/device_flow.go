@@ -15,8 +15,8 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -40,8 +40,8 @@ type DeviceAuthorizationResponse struct {
 }
 
 type DeviceAuthorizationDeps struct {
-	ClientRepo       ports.OAuth2ClientRepository
-	DeviceCodeStore  ports.DeviceCodeStore
+	ClientRepo       oauthports.OAuth2ClientRepository
+	DeviceCodeStore  oauthports.DeviceCodeStore
 	BaseVerification string // e.g., "https://idp/device"
 	Emit             func(spec.DomainEvent)
 }
@@ -63,11 +63,11 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 		return nil, NewOAuthError("unauthorized_client", "device_code grant not allowed")
 	}
 
-	deviceCode, err := domain.GenerateDeviceCode(entropy.Crypto())
+	deviceCode, err := oauthdomain.GenerateDeviceCode(entropy.Crypto())
 	if err != nil {
 		return nil, err
 	}
-	userCode, err := domain.GenerateUserCode(entropy.Crypto())
+	userCode, err := oauthdomain.GenerateUserCode(entropy.Crypto())
 	if err != nil {
 		return nil, err
 	}
@@ -81,16 +81,16 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 			return nil, NewOAuthError("invalid_scope", "contains undeclared scope")
 		}
 	}
-	rec := &domain.DeviceAuthorization{
+	rec := &oauthdomain.DeviceAuthorization{
 		TenantID:        tenantID,
-		DeviceCodeHash:  domain.HashDeviceCode(deviceCode),
-		UserCode:        domain.NormalizeUserCode(userCode),
+		DeviceCodeHash:  oauthdomain.HashDeviceCode(deviceCode),
+		UserCode:        oauthdomain.NormalizeUserCode(userCode),
 		ClientID:        client.ClientID,
 		Scopes:          scopes,
 		State:           spec.DeviceFlowIssued,
 		IntervalSeconds: 5,
 		IssuedAt:        now,
-		ExpiresAt:       now.Add(domain.DeviceCodeTTL),
+		ExpiresAt:       now.Add(oauthdomain.DeviceCodeTTL),
 	}
 	if err := rec.Validate(); err != nil {
 		return nil, err
@@ -98,13 +98,13 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 	if err := deps.DeviceCodeStore.Save(ctx, rec); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.DeviceAuthorizationRequested{At: now, TenantID: tenantID, ClientID: client.ClientID, Scopes: scopes})
+	emit(deps.Emit, &oauthdomain.DeviceAuthorizationRequested{At: now, TenantID: tenantID, ClientID: client.ClientID, Scopes: scopes})
 	return &DeviceAuthorizationResponse{
 		DeviceCode:              deviceCode,
 		UserCode:                userCode,
 		VerificationURI:         deps.BaseVerification,
 		VerificationURIComplete: deps.BaseVerification + "?user_code=" + userCode,
-		ExpiresIn:               int(domain.DeviceCodeTTL.Seconds()),
+		ExpiresIn:               int(oauthdomain.DeviceCodeTTL.Seconds()),
 		Interval:                5,
 	}, nil
 }
@@ -114,7 +114,7 @@ func RequestDeviceAuthorization(ctx context.Context, deps DeviceAuthorizationDep
 // =====================================================================
 
 type VerifyUserCodeDeps struct {
-	DeviceCodeStore ports.DeviceCodeStore
+	DeviceCodeStore oauthports.DeviceCodeStore
 	Emit            func(spec.DomainEvent)
 }
 
@@ -132,14 +132,14 @@ func ApproveUserCode(ctx context.Context, deps VerifyUserCodeDeps, gate devicepo
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	rec, err := deps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(in.UserCode))
+	rec, err := deps.DeviceCodeStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(in.UserCode))
 	if err != nil {
 		return refused, err
 	}
 	if rec == nil || rec.TenantID != tenantports.TenantID(ctx) {
 		return refused, NewOAuthError("invalid_request", "unknown user_code")
 	}
-	if domain.IsDeviceExpired(rec, now) {
+	if oauthdomain.IsDeviceExpired(rec, now) {
 		return refused, NewOAuthError("expired_token", "user_code expired")
 	}
 	// 遷移と関門の両方が成立するまで、保存したコードと本人を結び付けない。
@@ -181,7 +181,7 @@ func ApproveUserCode(ctx context.Context, deps VerifyUserCodeDeps, gate devicepo
 	if err := deps.DeviceCodeStore.Update(ctx, rec); err != nil {
 		return refused, err
 	}
-	emit(deps.Emit, &domain.DeviceAuthorizationApproved{At: now, TenantID: rec.TenantID, ClientID: rec.ClientID, UserID: sub})
+	emit(deps.Emit, &oauthdomain.DeviceAuthorizationApproved{At: now, TenantID: rec.TenantID, ClientID: rec.ClientID, UserID: sub})
 	return decision, nil
 }
 
@@ -189,7 +189,7 @@ func DenyUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub st
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	rec, err := deps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(userCode))
+	rec, err := deps.DeviceCodeStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(userCode))
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func DenyUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub st
 	if rec.TenantID != tenantports.TenantID(ctx) {
 		return NewOAuthError("invalid_request", "unknown user_code")
 	}
-	if domain.IsDeviceExpired(rec, now) {
+	if oauthdomain.IsDeviceExpired(rec, now) {
 		return NewOAuthError("expired_token", "user_code expired")
 	}
 	if rec.State == spec.DeviceFlowIssued {
@@ -215,7 +215,7 @@ func DenyUserCode(ctx context.Context, deps VerifyUserCodeDeps, userCode, sub st
 	if err := deps.DeviceCodeStore.Update(ctx, rec); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.DeviceAuthorizationDenied{At: now, TenantID: rec.TenantID, ClientID: rec.ClientID, UserID: sub})
+	emit(deps.Emit, &oauthdomain.DeviceAuthorizationDenied{At: now, TenantID: rec.TenantID, ClientID: rec.ClientID, UserID: sub})
 	return nil
 }
 
@@ -243,12 +243,12 @@ type ExchangeDeviceCodeResult struct {
 }
 
 type ExchangeDeviceCodeDeps struct {
-	ClientRepo            ports.OAuth2ClientRepository
+	ClientRepo            oauthports.OAuth2ClientRepository
 	UserRepo              userports.UserRepository
-	DeviceCodeStore       ports.DeviceCodeStore
-	RefreshStore          ports.RefreshTokenStore
-	TokenIssuer           ports.TokenIssuer
-	McpResourceServerRepo ports.McpResourceServerRepository
+	DeviceCodeStore       oauthports.DeviceCodeStore
+	RefreshStore          oauthports.RefreshTokenStore
+	TokenIssuer           oauthports.TokenIssuer
+	McpResourceServerRepo oauthports.McpResourceServerRepository
 	Emit                  func(spec.DomainEvent)
 	// ResolveAttributeDefs は ID Token の属性 claim 生成用 (wi-19)。nil 可。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
@@ -258,7 +258,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	hash := domain.HashDeviceCode(in.DeviceCode)
+	hash := oauthdomain.HashDeviceCode(in.DeviceCode)
 	rec, err := deps.DeviceCodeStore.FindByDeviceCodeHash(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	if rec.ClientID != in.ClientID {
 		return nil, NewOAuthError("invalid_grant", "device_code is not bound to the client")
 	}
-	if domain.IsDeviceExpired(rec, now) {
+	if oauthdomain.IsDeviceExpired(rec, now) {
 		return nil, NewOAuthError("expired_token", "The device_code has expired.")
 	}
 	switch rec.State {
@@ -330,13 +330,13 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 	if !user.IsActive() {
 		return nil, NewOAuthError("invalid_grant", "user is disabled")
 	}
-	scopes, issueRefresh := domain.ExchangeScopes(client.GrantTypes, rec.Scopes)
+	scopes, issueRefresh := oauthdomain.ExchangeScopes(client.GrantTypes, rec.Scopes)
 
-	var sc *domain.SenderConstraint
+	var sc *oauthdomain.SenderConstraint
 	if in.ProofJKT != "" {
-		sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
+		sc = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.ProofJKT}
 	} else if in.ProofX5TS256 != "" {
-		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
+		sc = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
 	}
 
 	// RFC 8707 resource indicator (wi-264) — 指定時は登録済み Active な
@@ -352,7 +352,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		audiences = []string{mcpResourceServer.Resource}
 	}
 
-	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
+	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client: client, Sub: user.ID, Scopes: scopes, SenderConstraint: sc, AuthTime: *rec.AuthTime,
 		Audiences: audiences,
 	})
@@ -360,11 +360,11 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		return nil, err
 	}
 	if mcpResourceServer != nil {
-		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
+		emit(deps.Emit, &oauthdomain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
 	}
-	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: scopes, SenderConstraint: senderConstraintTag(sc)})
+	emit(deps.Emit, &oauthdomain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: scopes, SenderConstraint: senderConstraintTag(sc)})
 
-	idTok, err := deps.TokenIssuer.SignIDToken(ctx, ports.IDTokenInput{
+	idTok, err := deps.TokenIssuer.SignIDToken(ctx, oauthports.IDTokenInput{
 		Client: client, User: user, Scopes: scopes, AuthTime: *rec.AuthTime, AtHashFor: access,
 		ResolveAttributeDefs: deps.ResolveAttributeDefs,
 	})
@@ -374,7 +374,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 
 	var refreshToken string
 	if issueRefresh {
-		refresh, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, scopes, sc, nil, resource, now, entropy.Crypto())
+		refresh, err := oauthdomain.GenerateInitialRefreshToken(client.ClientID, user.ID, scopes, sc, nil, resource, now, entropy.Crypto())
 		if err != nil {
 			return nil, err
 		}
@@ -383,14 +383,14 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		if err := deps.RefreshStore.Save(ctx, refresh.Record); err != nil {
 			return nil, err
 		}
-		emit(deps.Emit, &domain.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: refresh.Record.ID, FamilyID: refresh.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
+		emit(deps.Emit, &oauthdomain.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: refresh.Record.ID, FamilyID: refresh.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
 		fam := refresh.Record.FamilyID
 		rec.IssuedFamilyID = &fam
 		_ = deps.DeviceCodeStore.Update(ctx, rec)
 		refreshToken = refresh.Token
 	}
 
-	tokenType := domain.PresentationTokenType(sc)
+	tokenType := oauthdomain.PresentationTokenType(sc)
 	return &ExchangeDeviceCodeResult{
 		AccessToken:  access,
 		RefreshToken: refreshToken,

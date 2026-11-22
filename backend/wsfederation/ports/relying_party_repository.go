@@ -4,18 +4,18 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 // WsFedRelyingPartyRepository は WS-Federation relying party 登録の永続境界 (wi-61)。
 // wtrealm で識別し、許可 wreply・audience・claim policy を保持する。
 type WsFedRelyingPartyRepository interface {
 	// FindByWtrealm は wtrealm に一致する RP を返す。存在しなければ (nil, nil)。
-	FindByWtrealm(ctx context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error)
+	FindByWtrealm(ctx context.Context, tenantID, wtrealm string) (*wsfeddomain.WsFedRelyingParty, error)
 	// ListAll はテナント内の RP を wtrealm 昇順で返す。
-	ListAll(ctx context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error)
+	ListAll(ctx context.Context, tenantID string) ([]*wsfeddomain.WsFedRelyingParty, error)
 	// Save は RP を upsert する。
-	Save(ctx context.Context, rp *domain.WsFedRelyingParty) error
+	Save(ctx context.Context, rp *wsfeddomain.WsFedRelyingParty) error
 	// Delete は wtrealm に一致する RP を削除する (冪等)。
 	Delete(ctx context.Context, tenantID, wtrealm string) error
 	// Update は、wtrealm に一致する RP を、ほかの書き手を待たせて読み直し、change の結果を当てる。
@@ -24,7 +24,7 @@ type WsFedRelyingPartyRepository interface {
 }
 
 // RelyingPartyChange は、読み直した最新の RP への変更である。保存するなら rp を変えて RelyingPartySaved を返す。
-type RelyingPartyChange func(rp *domain.WsFedRelyingParty) (RelyingPartyOutcome, error)
+type RelyingPartyChange func(rp *wsfeddomain.WsFedRelyingParty) (RelyingPartyOutcome, error)
 
 // RelyingPartyOutcome は、Update が RP に当てる結果である。
 type RelyingPartyOutcome int

@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 // RunMcpCatalogCAS は操作の削除と再登録を挟んだ古い保存の拒否を両保存先で確認する。
-func RunMcpCatalogCAS(t *testing.T, repo ports.McpResourceServerRepository, tenantID, id string, now time.Time) {
+func RunMcpCatalogCAS(t *testing.T, repo oauthports.McpResourceServerRepository, tenantID, id string, now time.Time) {
 	t.Helper()
 	ctx := context.Background()
-	rule := domain.ResourceAccessRule{ResourceType: "idmagic_mcp_operation", Relation: "invoke", Scopes: []string{"read"}, Tool: &domain.ResourceAccessTool{ID: "operation-first", Name: "read", DisplayName: "閲覧"}}
-	server := &domain.McpResourceServer{TenantID: tenantID, ID: id, Resource: "https://" + id + ".example/", Name: "Catalog", Scopes: []string{"read"}, AccessRules: []domain.ResourceAccessRule{rule}, State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}
+	rule := oauthdomain.ResourceAccessRule{ResourceType: "idmagic_mcp_operation", Relation: "invoke", Scopes: []string{"read"}, Tool: &oauthdomain.ResourceAccessTool{ID: "operation-first", Name: "read", DisplayName: "閲覧"}}
+	server := &oauthdomain.McpResourceServer{TenantID: tenantID, ID: id, Resource: "https://" + id + ".example/", Name: "Catalog", Scopes: []string{"read"}, AccessRules: []oauthdomain.ResourceAccessRule{rule}, State: oauthdomain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}
 	if err := repo.Save(ctx, server); err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func RunMcpCatalogCAS(t *testing.T, repo ports.McpResourceServerRepository, tena
 	}
 	previous = server.UpdatedAt
 	rule.Tool.ID = "operation-second"
-	server.AccessRules = []domain.ResourceAccessRule{rule}
+	server.AccessRules = []oauthdomain.ResourceAccessRule{rule}
 	server.UpdatedAt = now.Add(2 * time.Microsecond)
 	if saved, err := repo.SaveIfUnchanged(ctx, server, previous); err != nil || !saved {
 		t.Fatalf("recreate: %v %v", saved, err)

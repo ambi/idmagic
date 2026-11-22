@@ -14,7 +14,7 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -41,7 +41,7 @@ func newAgentIssuanceFixture(t *testing.T) agentIssuanceFixture {
 	if err != nil || client == nil {
 		t.Fatalf("client=%v err=%v", client, err)
 	}
-	client.TokenEndpointAuthMethod = domain.AuthMethodPrivateKeyJwt
+	client.TokenEndpointAuthMethod = oauthdomain.AuthMethodPrivateKeyJwt
 	client.JWKS = key.JWKS()
 	client.GrantTypes = append(client.GrantTypes, spec.GrantTokenExchange, spec.GrantCiba, spec.GrantJWTBearer, spec.GrantJWTDPoP)
 	f.clients.Seed(client)
@@ -172,12 +172,12 @@ func TestStoppedAgentCannotExchangeValidGrants(t *testing.T) {
 						t.Fatalf("code consumed: %+v err=%v", record, err)
 					}
 				case spec.GrantRefreshToken:
-					record, err := f.refreshes.FindByHash(ctx, domain.HashRefreshToken(credential))
+					record, err := f.refreshes.FindByHash(ctx, oauthdomain.HashRefreshToken(credential))
 					if err != nil || record == nil || record.Rotated || record.Revoked {
 						t.Fatalf("refresh token consumed: %+v err=%v", record, err)
 					}
 				case spec.GrantDeviceCode:
-					record, err := f.devices.FindByDeviceCodeHash(ctx, domain.HashDeviceCode(credential))
+					record, err := f.devices.FindByDeviceCodeHash(ctx, oauthdomain.HashDeviceCode(credential))
 					if err != nil || record == nil || record.State != spec.DeviceFlowApproved {
 						t.Fatalf("device code consumed: %+v err=%v", record, err)
 					}

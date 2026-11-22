@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // runConnectionDeletion は削除する全状態と残すべき別接続を同時に置き、再登録後の冪等キーも検査する。
-func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.ProvisioningConnection) {
+func runConnectionDeletion(t *testing.T, f Fixture, connection *provisioningdomain.ProvisioningConnection) {
 	t.Helper()
 	ctx := t.Context()
 	newID := func() string {
@@ -25,11 +25,11 @@ func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.Provision
 		return id
 	}
 	type state struct {
-		conn        *domain.ProvisioningConnection
-		tasks       []*domain.ProvisioningTask
-		link        *domain.RemoteResourceLink
-		reservation *domain.ScheduledDeprovision
-		resync      *domain.FullResync
+		conn        *provisioningdomain.ProvisioningConnection
+		tasks       []*provisioningdomain.ProvisioningTask
+		link        *provisioningdomain.RemoteResourceLink
+		reservation *provisioningdomain.ScheduledDeprovision
+		resync      *provisioningdomain.FullResync
 	}
 	var states []state
 	for i, appID := range []string{f.Application, f.SiblingApplication, f.OtherApplication} {
@@ -43,15 +43,15 @@ func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.Provision
 				t.Fatal(err)
 			}
 		}
-		s := state{conn: &conn, resync: domain.NewFullResync(newID(), conn.TenantID, appID, 5, f.Now)}
+		s := state{conn: &conn, resync: provisioningdomain.NewFullResync(newID(), conn.TenantID, appID, 5, f.Now)}
 		if err := f.Tasks.SaveFullResync(ctx, s.resync); err != nil {
 			t.Fatal(err)
 		}
-		for j, status := range []domain.ProvisioningTaskStatus{domain.TaskPending, domain.TaskInFlight, domain.TaskPending, domain.TaskSucceeded, domain.TaskDeadLetter} {
-			task := &domain.ProvisioningTask{
+		for j, status := range []provisioningdomain.ProvisioningTaskStatus{provisioningdomain.TaskPending, provisioningdomain.TaskInFlight, provisioningdomain.TaskPending, provisioningdomain.TaskSucceeded, provisioningdomain.TaskDeadLetter} {
+			task := &provisioningdomain.ProvisioningTask{
 				ID: newID(), TenantID: conn.TenantID, ConnectionID: appID,
-				SourceType: domain.SourceTypeUser, SourceID: newID(), SourceVersion: 1,
-				Operation: domain.OperationCreate, Status: domain.TaskPending, CreatedAt: f.Now, UpdatedAt: f.Now,
+				SourceType: provisioningdomain.SourceTypeUser, SourceID: newID(), SourceVersion: 1,
+				Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending, CreatedAt: f.Now, UpdatedAt: f.Now,
 			}
 			if created, err := f.Tasks.SaveFullResyncTask(ctx, s.resync.ID, task); err != nil || !created {
 				t.Fatalf("SaveFullResyncTask = %v, %v", created, err)
@@ -66,22 +66,22 @@ func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.Provision
 						t.Fatalf("Suspend = %v, %v", held, err)
 					}
 				}
-			} else if status != domain.TaskPending {
+			} else if status != provisioningdomain.TaskPending {
 				if err := f.Tasks.UpdateStatus(ctx, conn.TenantID, task.ID, status, nil); err != nil {
 					t.Fatal(err)
 				}
 			}
 			s.tasks = append(s.tasks, task)
 		}
-		s.link = &domain.RemoteResourceLink{
-			TenantID: conn.TenantID, ConnectionID: appID, SourceType: domain.SourceTypeUser,
+		s.link = &provisioningdomain.RemoteResourceLink{
+			TenantID: conn.TenantID, ConnectionID: appID, SourceType: provisioningdomain.SourceTypeUser,
 			SourceID: s.tasks[0].SourceID, RemoteID: "old-remote", ExternalID: s.tasks[0].SourceID,
 			Active: true, LastSyncedVersion: 1, UpdatedAt: f.Now,
 		}
 		if err := f.Links.Upsert(ctx, s.link); err != nil {
 			t.Fatal(err)
 		}
-		s.reservation = domain.NewScheduledDeprovision(newID(), conn.TenantID, appID, newID(), 1, f.Now, 0)
+		s.reservation = provisioningdomain.NewScheduledDeprovision(newID(), conn.TenantID, appID, newID(), 1, f.Now, 0)
 		if created, err := f.Tasks.ScheduleDeprovision(ctx, s.reservation); err != nil || !created {
 			t.Fatalf("ScheduleDeprovision = %v, %v", created, err)
 		}
@@ -121,10 +121,10 @@ func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.Provision
 		if err != nil {
 			t.Fatal(err)
 		}
-		reservations = slices.DeleteFunc(reservations, func(s *domain.ScheduledDeprovision) bool {
+		reservations = slices.DeleteFunc(reservations, func(s *provisioningdomain.ScheduledDeprovision) bool {
 			return s.ConnectionID != f.Application && s.ConnectionID != f.SiblingApplication && s.ConnectionID != f.OtherApplication
 		})
-		slices.SortFunc(reservations, func(a, b *domain.ScheduledDeprovision) int { return strings.Compare(a.ID, b.ID) })
+		slices.SortFunc(reservations, func(a, b *provisioningdomain.ScheduledDeprovision) int { return strings.Compare(a.ID, b.ID) })
 		return append(result, reservations)
 	}
 	before := snapshot()
@@ -171,7 +171,7 @@ func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.Provision
 		}
 	}
 	due, err := f.Tasks.ListDueDeprovisions(ctx, f.Now, 100)
-	due = slices.DeleteFunc(due, func(s *domain.ScheduledDeprovision) bool {
+	due = slices.DeleteFunc(due, func(s *provisioningdomain.ScheduledDeprovision) bool {
 		return s.ConnectionID != f.Application && s.ConnectionID != f.SiblingApplication && s.ConnectionID != f.OtherApplication
 	})
 	if err != nil || len(due) != 2 {
@@ -184,7 +184,7 @@ func runConnectionDeletion(t *testing.T, f Fixture, connection *domain.Provision
 	}
 	// 関連付けだけ消してフル同期を残す故障も、完了の更新で区別する。
 	completed := *states[0].resync
-	completed.Status, completed.CompletedAt = domain.FullResyncStatusCompleted, &f.Now
+	completed.Status, completed.CompletedAt = provisioningdomain.FullResyncStatusCompleted, &f.Now
 	if changed, err := f.Tasks.CompleteFullResync(ctx, &completed); err != nil || changed {
 		t.Fatalf("deleted full resync completed=%v error=%v", changed, err)
 	}

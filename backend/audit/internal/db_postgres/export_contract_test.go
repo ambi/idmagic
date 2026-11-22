@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit/internal/testing_contract"
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -31,12 +31,12 @@ func TestExportArtifactContract(t *testing.T) {
 	}
 	store := &ExportArtifactStore{Pool: db}
 	baseline := db.Stat().AcquiredConns()
-	_, err = store.Write(context.Background(), a.ID, job.ID, func(w io.Writer) (ports.ExportCompletion, error) {
+	_, err = store.Write(context.Background(), a.ID, job.ID, func(w io.Writer) (auditports.ExportCompletion, error) {
 		if db.Stat().AcquiredConns() != baseline {
 			t.Error("generation holds a database connection")
 		}
 		_, err := w.Write(make([]byte, 2<<20))
-		return ports.ExportCompletion{ExpiresAt: now.Add(time.Hour), BeforePublish: func() error {
+		return auditports.ExportCompletion{ExpiresAt: now.Add(time.Hour), BeforePublish: func() error {
 			if db.Stat().AcquiredConns() != baseline {
 				t.Error("chunk writes hold a database connection")
 			}

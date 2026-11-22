@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -41,13 +41,13 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 	if !clientSecretManageable(client) {
 		return nil, ErrClientSecretNotManageable
 	}
-	var legacy *domain.ClientSecretCredential
+	var legacy *oauthdomain.ClientSecretCredential
 	if client.ClientSecretHash != nil {
 		legacyID, idErr := spec.NewUUIDv4()
 		if idErr != nil {
 			return nil, idErr
 		}
-		legacy = &domain.ClientSecretCredential{
+		legacy = &oauthdomain.ClientSecretCredential{
 			ID: legacyID, ClientID: client.ClientID,
 			SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt,
 		}
@@ -61,9 +61,9 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 		return nil, err
 	}
 	expiresAt := now.AddDate(0, 0, in.ExpiresInDays)
-	credential := domain.ClientSecretCredential{
+	credential := oauthdomain.ClientSecretCredential{
 		ID: credentialID, ClientID: client.ClientID,
-		SecretHash: domain.HashClientSecret(secret), CreatedAt: now, ExpiresAt: &expiresAt,
+		SecretHash: oauthdomain.HashClientSecret(secret), CreatedAt: now, ExpiresAt: &expiresAt,
 	}
 	if err := deps.ClientRepo.IssueClientSecretCredential(ctx, legacy, credential, MaxActiveClientSecrets, now); err != nil {
 		if errors.Is(err, oauthports.ErrClientSecretCredentialLimitExceeded) {
@@ -75,7 +75,7 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ClientSecretIssued{
+	emit(deps.Emit, &oauthdomain.ClientSecretIssued{
 		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID,
 		ClientID: client.ClientID, CredentialID: credential.ID, ExpiresAt: expiresAt,
 	})
@@ -118,7 +118,7 @@ func RevokeClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Revo
 		if err := deps.ClientRepo.UpdateClientSecretCredential(ctx, credentials[i]); err != nil {
 			return nil, err
 		}
-		emit(deps.Emit, &domain.ClientSecretRevoked{
+		emit(deps.Emit, &oauthdomain.ClientSecretRevoked{
 			At: now, TenantID: tenantID, ActorUserID: in.ActorUserID,
 			ClientID: client.ClientID, CredentialID: credentials[i].ID,
 		})
@@ -127,7 +127,7 @@ func RevokeClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Revo
 	return nil, ErrClientSecretCredentialNotFound
 }
 
-func clientSecretManageable(client *domain.OAuth2Client) bool {
-	return client.TokenEndpointAuthMethod == domain.AuthMethodClientSecretBasic ||
-		client.TokenEndpointAuthMethod == domain.AuthMethodClientSecretPost
+func clientSecretManageable(client *oauthdomain.OAuth2Client) bool {
+	return client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretBasic ||
+		client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretPost
 }

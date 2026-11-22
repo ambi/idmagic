@@ -8,18 +8,18 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
 type PasswordAPI interface {
 	RegisterEncryption(context.Context, map[string]any) (string, error)
-	PollPassword(context.Context) (*domain.PasswordChallenge, error)
+	PollPassword(context.Context) (*directoryconnectordomain.PasswordChallenge, error)
 	CompletePassword(context.Context, string, string) error
 }
 type PasswordDirectory interface {
-	VerifyPassword(context.Context, domain.Scope, string, string) string
+	VerifyPassword(context.Context, directoryconnectordomain.Scope, string, string) string
 }
 
 type PasswordReceiver struct {
@@ -27,7 +27,7 @@ type PasswordReceiver struct {
 	Directory   PasswordDirectory
 	Key         *ecdsa.PrivateKey
 	ConnectorID string
-	Scope       domain.Scope
+	Scope       directoryconnectordomain.Scope
 	Now         func() time.Time
 	Sleep       func(context.Context, time.Duration) error
 }
@@ -47,7 +47,7 @@ func (r PasswordReceiver) Run(ctx context.Context) {
 		if err == nil && got == kid {
 			break
 		}
-		if api, ok := errors.AsType[*ports.APIError](err); ok && (api.Status == 404 || api.Status == 405) {
+		if api, ok := errors.AsType[*directoryconnectorports.APIError](err); ok && (api.Status == 404 || api.Status == 405) {
 			return
 		}
 		if r.Sleep(ctx, time.Second) != nil {
@@ -79,7 +79,7 @@ func (r PasswordReceiver) Run(ctx context.Context) {
 		if err != nil {
 			continue
 		}
-		var payload domain.PasswordPayload
+		var payload directoryconnectordomain.PasswordPayload
 		if json.Unmarshal(plain, &payload) != nil || !payload.Matches(*challenge, r.ConnectorID, kid, now) {
 			continue
 		}
@@ -92,7 +92,7 @@ func (r PasswordReceiver) Run(ctx context.Context) {
 			if err == nil {
 				break
 			}
-			if api, ok := errors.AsType[*ports.APIError](err); ok && api.Status < 500 && api.Status != 408 && api.Status != 429 {
+			if api, ok := errors.AsType[*directoryconnectorports.APIError](err); ok && api.Status < 500 && api.Status != 408 && api.Status != 429 {
 				break
 			}
 			if r.Sleep(deadline, 100*time.Millisecond) != nil {

@@ -8,30 +8,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type fakeRepository struct {
-	saved   []*domain.ApiToken
-	byJTI   map[string]*domain.ApiToken
+	saved   []*apitokendomain.ApiToken
+	byJTI   map[string]*apitokendomain.ApiToken
 	revoked [][3]string
 }
 
-func (r *fakeRepository) Save(_ context.Context, token *domain.ApiToken) error {
+func (r *fakeRepository) Save(_ context.Context, token *apitokendomain.ApiToken) error {
 	clone := *token
-	clone.Scopes = append(domain.Scopes(nil), token.Scopes...)
+	clone.Scopes = append(apitokendomain.Scopes(nil), token.Scopes...)
 	r.saved = append(r.saved, &clone)
 	if r.byJTI == nil {
-		r.byJTI = map[string]*domain.ApiToken{}
+		r.byJTI = map[string]*apitokendomain.ApiToken{}
 	}
 	r.byJTI[token.JTI] = &clone
 	return nil
 }
 
-func (r *fakeRepository) FindByJTI(_ context.Context, tenantID, jti string) (*domain.ApiToken, error) {
+func (r *fakeRepository) FindByJTI(_ context.Context, tenantID, jti string) (*apitokendomain.ApiToken, error) {
 	token := r.byJTI[jti]
 	if token == nil || token.TenantID != tenantID {
 		return nil, nil //nolint:nilnil // repository absence is represented by a nil aggregate.
@@ -39,8 +39,8 @@ func (r *fakeRepository) FindByJTI(_ context.Context, tenantID, jti string) (*do
 	return token, nil
 }
 
-func (r *fakeRepository) List(_ context.Context, tenantID string) ([]*domain.ApiToken, error) {
-	var result []*domain.ApiToken
+func (r *fakeRepository) List(_ context.Context, tenantID string) ([]*apitokendomain.ApiToken, error) {
+	var result []*apitokendomain.ApiToken
 	for _, token := range r.saved {
 		if token.TenantID == tenantID {
 			result = append(result, token)
@@ -71,22 +71,24 @@ func (r *fakeRepository) RevokeByJTI(_ context.Context, tenantID, jti string, at
 	return nil
 }
 
-type fakeTokenIssuer struct{ input ports.AccessTokenInput }
+type fakeTokenIssuer struct{ input oauthports.AccessTokenInput }
 
-func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in ports.AccessTokenInput) (string, string, error) {
+func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	f.input = in
 	return "header.payload.signature", "jti-1", nil
 }
 
-func (*fakeTokenIssuer) SignIDToken(context.Context, ports.IDTokenInput) (string, error) {
+func (*fakeTokenIssuer) SignIDToken(context.Context, oauthports.IDTokenInput) (string, error) {
 	return "", nil
 }
 func (*fakeTokenIssuer) AccessTokenTTLSeconds() int { return 600 }
 func (*fakeTokenIssuer) IDTokenTTLSeconds() int     { return 3600 }
 
-type fakeIntrospector struct{ result *ports.IntrospectionResult }
+type fakeIntrospector struct {
+	result *oauthports.IntrospectionResult
+}
 
-func (f fakeIntrospector) IntrospectAccessToken(context.Context, string) (*ports.IntrospectionResult, error) {
+func (f fakeIntrospector) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
 	return f.result, nil
 }
 
@@ -97,24 +99,24 @@ func testService(now time.Time, repo *fakeRepository, issuer *fakeTokenIssuer) *
 func TestManagedTokenIntrospectionUsesLifecycleRecord(t *testing.T) {
 	now := time.Date(2026, 7, 23, 10, 0, 0, 0, time.UTC)
 	future := now.Add(time.Hour)
-	claims := &ports.IntrospectionResult{
+	claims := &oauthports.IntrospectionResult{
 		Active: true, Managed: true, JTI: "jti-1", ClientID: BuiltinClientID,
 		Sub: "admin", Scope: "account:read", Aud: []string{"https://idp.test/realms/acme"}, Iat: now.Unix(), Exp: future.Unix(),
 	}
-	record := &domain.ApiToken{
+	record := &apitokendomain.ApiToken{
 		ID: "token-1", TenantID: "tenant-1", UserID: "admin", JTI: "jti-1", ClientID: BuiltinClientID,
-		Scopes: domain.Scopes{domain.ScopeAccountRead}, Audience: claims.Aud[0], CreatedAt: now, ExpiresAt: &future,
+		Scopes: apitokendomain.Scopes{apitokendomain.ScopeAccountRead}, Audience: claims.Aud[0], CreatedAt: now, ExpiresAt: &future,
 	}
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-1"}, claims.Aud[0], "/realms/acme")
 	for _, tc := range []struct {
 		name   string
-		record *domain.ApiToken
+		record *apitokendomain.ApiToken
 		active bool
 	}{
 		{name: "active record", record: record, active: true}, {name: "missing record", active: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			repo := &fakeRepository{byJTI: map[string]*domain.ApiToken{}}
+			repo := &fakeRepository{byJTI: map[string]*apitokendomain.ApiToken{}}
 			if tc.record != nil {
 				repo.byJTI[tc.record.JTI] = tc.record
 			}
@@ -136,7 +138,7 @@ func TestIssueListAndRevokeApiToken(t *testing.T) {
 	repo, issuer := &fakeRepository{}, &fakeTokenIssuer{}
 	service := testService(now, repo, issuer)
 
-	literal, meta, err := service.Issue(context.Background(), "tenant-1", "admin-1", "CLI", []string{string(domain.ScopeAccountRead)}, 7, "")
+	literal, meta, err := service.Issue(context.Background(), "tenant-1", "admin-1", "CLI", []string{string(apitokendomain.ScopeAccountRead)}, 7, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,20 +177,20 @@ func TestIssueListAndRevokeApiToken(t *testing.T) {
 func TestAuthenticateManagedTokenFailClosed(t *testing.T) {
 	now := time.Date(2026, 7, 23, 10, 0, 0, 0, time.UTC)
 	future, past := now.Add(time.Hour), now.Add(-time.Hour)
-	base := domain.ApiToken{ID: "token-1", TenantID: "tenant-1", UserID: "admin", JTI: "jti-1", ClientID: "cli", Audience: "https://idp/realms/tenant-1", Scopes: domain.Scopes{domain.ScopeAccountRead}, CreatedAt: now, ExpiresAt: &future}
+	base := apitokendomain.ApiToken{ID: "token-1", TenantID: "tenant-1", UserID: "admin", JTI: "jti-1", ClientID: "cli", Audience: "https://idp/realms/tenant-1", Scopes: apitokendomain.Scopes{apitokendomain.ScopeAccountRead}, CreatedAt: now, ExpiresAt: &future}
 	for _, tc := range []struct {
 		name    string
-		record  *domain.ApiToken
-		claims  ports.IntrospectionResult
+		record  *apitokendomain.ApiToken
+		claims  oauthports.IntrospectionResult
 		wantErr bool
 	}{
-		{name: "valid", record: &base, claims: ports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1", ClientID: "cli", Sub: "admin", Scope: "account:read", Aud: []string{"https://idp/realms/tenant-1"}, Iat: now.Unix(), Exp: future.Unix()}},
-		{name: "missing record", claims: ports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1"}, wantErr: true},
-		{name: "expired record", record: func() *domain.ApiToken { x := base; x.ExpiresAt = &past; return &x }(), claims: ports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1"}, wantErr: true},
-		{name: "subject mismatch", record: &base, claims: ports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1", ClientID: "cli", Sub: "other", Scope: "account:read", Aud: []string{base.Audience}}, wantErr: true},
+		{name: "valid", record: &base, claims: oauthports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1", ClientID: "cli", Sub: "admin", Scope: "account:read", Aud: []string{"https://idp/realms/tenant-1"}, Iat: now.Unix(), Exp: future.Unix()}},
+		{name: "missing record", claims: oauthports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1"}, wantErr: true},
+		{name: "expired record", record: func() *apitokendomain.ApiToken { x := base; x.ExpiresAt = &past; return &x }(), claims: oauthports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1"}, wantErr: true},
+		{name: "subject mismatch", record: &base, claims: oauthports.IntrospectionResult{Active: true, Managed: true, JTI: "jti-1", ClientID: "cli", Sub: "other", Scope: "account:read", Aud: []string{base.Audience}}, wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			repo := &fakeRepository{byJTI: map[string]*domain.ApiToken{}}
+			repo := &fakeRepository{byJTI: map[string]*apitokendomain.ApiToken{}}
 			if tc.record != nil {
 				repo.byJTI[tc.record.JTI] = tc.record
 			}

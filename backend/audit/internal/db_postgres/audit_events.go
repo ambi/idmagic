@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -40,12 +40,12 @@ type AuditEventRepository struct {
 }
 
 // CaptureInTx は監査の記録と同時に確定する作用である。
-type CaptureInTx func(ctx context.Context, tx pgx.Tx, rec *ports.AuditEventRecord) error
+type CaptureInTx func(ctx context.Context, tx pgx.Tx, rec *auditports.AuditEventRecord) error
 
 const auditEventSelect = `SELECT id,tenant_id,type,occurred_at,payload FROM audit_events`
 
-func scanAuditEvent(row sharedpg.RowScanner) (*ports.AuditEventRecord, error) {
-	var rec ports.AuditEventRecord
+func scanAuditEvent(row sharedpg.RowScanner) (*auditports.AuditEventRecord, error) {
+	var rec auditports.AuditEventRecord
 	err := row.Scan(&rec.ID, &rec.TenantID, &rec.Type, &rec.OccurredAt, &rec.Payload)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -59,7 +59,7 @@ func scanAuditEvent(row sharedpg.RowScanner) (*ports.AuditEventRecord, error) {
 	return &rec, nil
 }
 
-func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEventRecord) error {
+func (r *AuditEventRepository) Append(ctx context.Context, rec *auditports.AuditEventRecord) error {
 	if rec == nil || rec.ID == "" || rec.Type == "" {
 		return nil
 	}
@@ -89,12 +89,12 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 
 // RecordWriterInTx は検索の対象を明示して、監査を呼び出し側と同時に確定する。
 // 通常の Append が持つ payload.userId の解釈を CSV の監査へ適用しない。
-func RecordWriterInTx(tx pgx.Tx) ports.AuditEventWriter {
+func RecordWriterInTx(tx pgx.Tx) auditports.AuditEventWriter {
 	return RecordWriterInTxCapturing(tx, nil)
 }
 
 // RecordWriterInTxCapturing は RecordWriterInTx に、記録と同時に確定する作用を加える。
-func RecordWriterInTxCapturing(tx pgx.Tx, capture CaptureInTx) ports.AuditEventWriter {
+func RecordWriterInTxCapturing(tx pgx.Tx, capture CaptureInTx) auditports.AuditEventWriter {
 	if tx == nil {
 		panic("audit: RecordWriterInTx requires a transaction")
 	}
@@ -106,7 +106,7 @@ type recordWriter struct {
 	capture CaptureInTx
 }
 
-func (w recordWriter) Append(ctx context.Context, rec ports.AuditEventRecord, indexedUserID string) error {
+func (w recordWriter) Append(ctx context.Context, rec auditports.AuditEventRecord, indexedUserID string) error {
 	var userID pgtype.UUID
 	if err := userID.Scan(indexedUserID); err != nil {
 		return err
@@ -121,7 +121,7 @@ func (w recordWriter) Append(ctx context.Context, rec ports.AuditEventRecord, in
 }
 
 // appendAuditRecord は記録を追記し、新しく作ったかを返す。
-func appendAuditRecord(ctx context.Context, queries *Queries, rec *ports.AuditEventRecord, userID pgtype.UUID, requireNew bool) (bool, error) {
+func appendAuditRecord(ctx context.Context, queries *Queries, rec *auditports.AuditEventRecord, userID pgtype.UUID, requireNew bool) (bool, error) {
 	payload := rec.Payload
 	if payload == nil {
 		payload = map[string]any{}
@@ -159,7 +159,7 @@ func appendAuditRecord(ctx context.Context, queries *Queries, rec *ports.AuditEv
 	return created > 0, nil
 }
 
-func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {
+func (r *AuditEventRepository) List(ctx context.Context, q auditports.AuditEventQuery) ([]*auditports.AuditEventRecord, error) {
 	limit := q.Limit
 	if limit <= 0 {
 		limit = auditDefaultListLimit
@@ -199,7 +199,7 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		return handleAuditListError(err)
 	}
 	defer rows.Close()
-	out := []*ports.AuditEventRecord{}
+	out := []*auditports.AuditEventRecord{}
 	for rows.Next() {
 		rec, err := scanAuditEvent(rows)
 		if err != nil {
@@ -216,7 +216,7 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	return out, nil
 }
 
-func auditEventPredicate(q ports.AuditEventQuery) ([]string, []any) {
+func auditEventPredicate(q auditports.AuditEventQuery) ([]string, []any) {
 	var conds []string
 	var args []any
 	add := func(expr string, val any) {
@@ -255,15 +255,15 @@ func auditEventPredicate(q ports.AuditEventQuery) ([]string, []any) {
 	// wi-145: registry allowlist の filter 式 (連言)。各式は sidecar への EXISTS 照合。
 	for _, expr := range q.Filters {
 		switch expr.Operator {
-		case ports.OpEq:
+		case auditports.OpEq:
 			if len(expr.Values) == 1 {
 				addExists("attr_name = $%d AND attr_value = $%d", expr.Field, expr.Values[0])
 			}
-		case ports.OpIn:
+		case auditports.OpIn:
 			if len(expr.Values) > 0 {
 				addExists("attr_name = $%d AND attr_value = ANY($%d)", expr.Field, expr.Values)
 			}
-		case ports.OpContains:
+		case auditports.OpContains:
 			if len(expr.Values) == 1 {
 				addExists("attr_name = $%d AND attr_value ILIKE $%d", expr.Field, "%"+expr.Values[0]+"%")
 			}
@@ -284,7 +284,7 @@ func auditEventPredicate(q ports.AuditEventQuery) ([]string, []any) {
 	return conds, args
 }
 
-func (r *AuditEventRepository) Count(ctx context.Context, q ports.AuditEventQuery) (int64, error) {
+func (r *AuditEventRepository) Count(ctx context.Context, q auditports.AuditEventQuery) (int64, error) {
 	conds, args := auditEventPredicate(q)
 	where := ""
 	if len(conds) > 0 {
@@ -305,10 +305,10 @@ func (r *AuditEventRepository) Count(ctx context.Context, q ports.AuditEventQuer
 // handleAuditListError は List のクエリ実行 / 走査で起きたエラーを扱う。pgx v5 の Query は
 // 遅延実行のため、型キャスト失敗 (例: user_id への不正な UUID) は Query() の戻り値ではなく
 // rows.Next()/rows.Err() 側で顕在化することがある。両方の箇所から呼べるよう共通化する (wi-147)。
-func handleAuditListError(err error) ([]*ports.AuditEventRecord, error) {
+func handleAuditListError(err error) ([]*auditports.AuditEventRecord, error) {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == pgInvalidTextRepresentation {
-		return []*ports.AuditEventRecord{}, nil
+		return []*auditports.AuditEventRecord{}, nil
 	}
 	return nil, err
 }
@@ -330,7 +330,7 @@ func (r *AuditEventRepository) LatestByAgent(ctx context.Context, tenantID strin
 	return latest, nil
 }
 
-func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.AuditEventRecord, error) {
+func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*auditports.AuditEventRecord, error) {
 	row, err := New(r.Pool).GetAuditEventByID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -341,8 +341,8 @@ func (r *AuditEventRepository) FindByID(ctx context.Context, id string) (*ports.
 	return auditEventFromRow(row)
 }
 
-func auditEventFromRow(row *AuditEvent) (*ports.AuditEventRecord, error) {
-	rec := &ports.AuditEventRecord{ID: row.ID, TenantID: row.TenantID, Type: row.Type, OccurredAt: row.OccurredAt}
+func auditEventFromRow(row *AuditEvent) (*auditports.AuditEventRecord, error) {
+	rec := &auditports.AuditEventRecord{ID: row.ID, TenantID: row.TenantID, Type: row.Type, OccurredAt: row.OccurredAt}
 	if err := json.Unmarshal(row.Payload, &rec.Payload); err != nil {
 		return nil, err
 	}
@@ -355,8 +355,8 @@ func auditEventFromRow(row *AuditEvent) (*ports.AuditEventRecord, error) {
 // rawStorableAttrNames は q フリーテキストの照合対象となる raw 保存属性の attr_name 一覧。
 // PII 属性 (hash / ip_truncate) は含めない。
 func rawStorableAttrNames() []string {
-	names := make([]string, 0, len(ports.AuditSearchRegistry))
-	for _, attr := range ports.AuditSearchRegistry {
+	names := make([]string, 0, len(auditports.AuditSearchRegistry))
+	for _, attr := range auditports.AuditSearchRegistry {
 		if attr.RawStorable {
 			names = append(names, attr.Field)
 		}
@@ -367,7 +367,7 @@ func rawStorableAttrNames() []string {
 // DeleteOlderThan は 保持期間 sweep。type 別 cutoff を個別 DELETE で消し、
 // それ以外は Default cutoff で消す。ByType に挙げた type は Default 削除から除外する。
 // (tenant_id, occurred_at) index が当たる。idempotent。
-func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports.RetentionCutoff) (int64, error) {
+func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff auditports.RetentionCutoff) (int64, error) {
 	var deleted int64
 	excluded := make([]string, 0, len(cutoff.ByType))
 	for t := range cutoff.ByType {

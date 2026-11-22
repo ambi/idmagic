@@ -6,7 +6,7 @@ import (
 	"time"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -20,7 +20,7 @@ func TestToolDiscoveryTokenIsInactiveAtIdMagic(t *testing.T) {
 	signer := NewJWTSigner("https://idp.test", ks)
 	ctx := testing_tenant.Default(context.Background())
 	exp := time.Now().Add(time.Minute).Unix()
-	token, _, err := signer.SignAccessToken(ctx, ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: oauthdomain.McpToolDiscoveryClientID}, Sub: oauthdomain.McpToolDiscoveryClientID,
 		Audiences: []string{"https://mcp.example.com/mcp"}, ExpiresAt: exp, ToolDiscovery: true,
 	})
@@ -36,7 +36,7 @@ func TestToolDiscoveryTokenIsInactiveAtIdMagic(t *testing.T) {
 		t.Fatalf("result=%+v err=%v; want inactive", result, err)
 	}
 
-	ordinary, _, err := signer.SignAccessToken(ctx, ports.AccessTokenInput{
+	ordinary, _, err := signer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "client-1"}, Sub: "client-1", Audiences: []string{"https://mcp.example.com/mcp"},
 	})
 	if err != nil {

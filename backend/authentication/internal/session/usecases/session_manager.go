@@ -12,20 +12,20 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
-	"github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 const (
-	SessionCookie     = domain.SessionCookie
+	SessionCookie     = sessiondomain.SessionCookie
 	SessionTTLSeconds = 3600
 )
 
 type SessionManager struct {
-	Store ports.SessionStore
+	Store sessionports.SessionStore
 	// QuotaRepo enforces the tenant's Hard Quota on active_sessions (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it. Settable directly (not a
 	// NewSessionManager param) so existing call sites are unaffected.
@@ -35,7 +35,7 @@ type SessionManager struct {
 	Emit func(spec.DomainEvent)
 }
 
-func NewSessionManager(s ports.SessionStore) *SessionManager {
+func NewSessionManager(s sessionports.SessionStore) *SessionManager {
 	return &SessionManager{Store: s}
 }
 
@@ -67,7 +67,7 @@ func (m *SessionManager) CreateWithPending(
 	if err != nil {
 		return nil, err
 	}
-	sess := &domain.LoginSession{
+	sess := &sessiondomain.LoginSession{
 		ID:                    id,
 		TenantID:              tenantID,
 		UserID:                sub,
@@ -75,7 +75,7 @@ func (m *SessionManager) CreateWithPending(
 		AMR:                   amr,
 		ACR:                   authdomain.DeriveACR(amr),
 		AuthenticationPending: authenticationPending,
-		PendingPurpose:        domain.LoginPendingNone,
+		PendingPurpose:        sessiondomain.LoginPendingNone,
 		ExpiresAt:             now.Add(SessionTTLSeconds * time.Second),
 	}
 	// 語彙の検査は保存の直前に置く。amr は ID トークンとアクセストークンの amr クレームと
@@ -124,7 +124,7 @@ func (m *SessionManager) CompleteFactor(
 	candidate.AMR = merged
 	candidate.ACR = authdomain.DeriveACR(merged)
 	candidate.AuthenticationPending = false
-	candidate.PendingPurpose = domain.LoginPendingNone
+	candidate.PendingPurpose = sessiondomain.LoginPendingNone
 	candidate.EnrollmentDeadline = nil
 	candidate.EnrollmentBypassID = ""
 	// 作成時と同じく、併合した amr が語彙の内側であることを保存の前に確かめる
@@ -160,7 +160,7 @@ func (m *SessionManager) RequireFactor(
 		return nil, nil //nolint:nilnil // A session from another tenant is intentionally treated as absent.
 	}
 	sess.AuthenticationPending = true
-	sess.PendingPurpose = domain.LoginPendingChallenge
+	sess.PendingPurpose = sessiondomain.LoginPendingChallenge
 	if err := m.Store.Save(ctx, sess); err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (m *SessionManager) RequireEnrollment(
 		return nil, nil //nolint:nilnil // A session from another tenant is intentionally treated as absent.
 	}
 	sess.AuthenticationPending = true
-	sess.PendingPurpose = domain.LoginPendingEnrollment
+	sess.PendingPurpose = sessiondomain.LoginPendingEnrollment
 	sess.EnrollmentDeadline = &deadline
 	sess.EnrollmentBypassID = bypassID
 	if err := m.Store.Save(ctx, sess); err != nil {
@@ -201,7 +201,7 @@ func (m *SessionManager) RequireEnrollment(
 	return authenticationContextFromSession(sess), nil
 }
 
-func authenticationContextFromSession(sess *domain.LoginSession) *authdomain.AuthenticationContext {
+func authenticationContextFromSession(sess *sessiondomain.LoginSession) *authdomain.AuthenticationContext {
 	return &authdomain.AuthenticationContext{
 		UserID: sess.UserID, AuthTime: sess.AuthTime, AMR: slices.Clone(sess.AMR), ACR: sess.ACR,
 		SessionID: sess.ID, AuthenticationPending: sess.AuthenticationPending,

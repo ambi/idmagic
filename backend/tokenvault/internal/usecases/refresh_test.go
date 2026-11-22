@@ -11,44 +11,46 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/db_memory"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 type fakeUpstream struct {
 	mu        sync.Mutex
 	refreshes []string
 	sent      []string
-	refresh   func(token string) (ports.TokenResponse, error)
-	send      func(ports.OutboundRequest) (ports.OutboundResponse, error)
+	refresh   func(token string) (tokenvaultports.TokenResponse, error)
+	send      func(tokenvaultports.OutboundRequest) (tokenvaultports.OutboundResponse, error)
 }
 
-func (f *fakeUpstream) Send(_ context.Context, request ports.OutboundRequest) (ports.OutboundResponse, error) {
+func (f *fakeUpstream) Send(_ context.Context, request tokenvaultports.OutboundRequest) (tokenvaultports.OutboundResponse, error) {
 	f.mu.Lock()
 	f.sent = append(f.sent, request.AccessToken)
 	f.mu.Unlock()
 	if f.send != nil {
 		return f.send(request)
 	}
-	return ports.OutboundResponse{Status: http.StatusOK}, nil
+	return tokenvaultports.OutboundResponse{Status: http.StatusOK}, nil
 }
 
-func (*fakeUpstream) ExchangeCode(context.Context, ports.OAuthClient, string, string, string) (ports.TokenResponse, error) {
-	return ports.TokenResponse{}, errors.New("unused")
+func (*fakeUpstream) ExchangeCode(context.Context, tokenvaultports.OAuthClient, string, string, string) (tokenvaultports.TokenResponse, error) {
+	return tokenvaultports.TokenResponse{}, errors.New("unused")
 }
 
-func (f *fakeUpstream) Refresh(_ context.Context, _ ports.OAuthClient, token string) (ports.TokenResponse, error) {
+func (f *fakeUpstream) Refresh(_ context.Context, _ tokenvaultports.OAuthClient, token string) (tokenvaultports.TokenResponse, error) {
 	f.mu.Lock()
 	f.refreshes = append(f.refreshes, token)
 	f.mu.Unlock()
 	return f.refresh(token)
 }
 
-func (*fakeUpstream) Revoke(context.Context, ports.OAuthClient, string, string) error { return nil }
+func (*fakeUpstream) Revoke(context.Context, tokenvaultports.OAuthClient, string, string) error {
+	return nil
+}
 
-type fixedVerifier struct{ token *domain.CallerToken }
+type fixedVerifier struct{ token *tokenvaultdomain.CallerToken }
 
-func (v fixedVerifier) Verify(context.Context, ports.CallerCredential) (*domain.CallerToken, error) {
+func (v fixedVerifier) Verify(context.Context, tokenvaultports.CallerCredential) (*tokenvaultdomain.CallerToken, error) {
 	return v.token, nil
 }
 
@@ -60,7 +62,7 @@ const (
 type fixture struct {
 	deps      Deps
 	upstream  *fakeUpstream
-	connector *domain.Connector
+	connector *tokenvaultdomain.Connector
 	now       time.Time
 	events    []spec.DomainEvent
 }
@@ -69,15 +71,15 @@ func newFixture(t *testing.T, access, refresh string, expiresIn time.Duration) *
 	t.Helper()
 	store := db_memory.NewStore()
 	f := &fixture{upstream: &fakeUpstream{}, now: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
-	f.connector = &domain.Connector{
-		ID: uuid.NewV4().String(), TenantID: testTenant, Name: "c", Status: domain.ConnectorActive,
+	f.connector = &tokenvaultdomain.Connector{
+		ID: uuid.NewV4().String(), TenantID: testTenant, Name: "c", Status: tokenvaultdomain.ConnectorActive,
 		TokenEndpoint: "https://idp.example.com/t", Version: 1,
-		Rules: []domain.ExecutionRule{{ID: "r", Method: "POST", Origin: "https://api.example.com", PathPrefix: "/"}},
+		Rules: []tokenvaultdomain.ExecutionRule{{ID: "r", Method: "POST", Origin: "https://api.example.com", PathPrefix: "/"}},
 	}
 	f.deps = Deps{
 		Connectors: store.Connectors(), Connections: store.Connections(), Attempts: store.Attempts(), Upstream: f.upstream,
-		Verifier: fixedVerifier{&domain.CallerToken{Delegated: true, Subject: testUser, AgentID: "agent", AuthorizationDetails: []spec.AuthorizationDetail{{
-			Type: domain.AuthorizationDetailType, Identifier: f.connector.ID, Actions: []string{"POST"}, Locations: []string{"https://api.example.com"},
+		Verifier: fixedVerifier{&tokenvaultdomain.CallerToken{Delegated: true, Subject: testUser, AgentID: "agent", AuthorizationDetails: []spec.AuthorizationDetail{{
+			Type: tokenvaultdomain.AuthorizationDetailType, Identifier: f.connector.ID, Actions: []string{"POST"}, Locations: []string{"https://api.example.com"},
 		}}}},
 		Now:  func() time.Time { return f.now },
 		Emit: func(event spec.DomainEvent) { f.events = append(f.events, event) },
@@ -89,8 +91,8 @@ func newFixture(t *testing.T, access, refresh string, expiresIn time.Duration) *
 		t.Fatal(err)
 	}
 	expires := f.now.Add(expiresIn)
-	if err := f.deps.Connections.SaveLinked(ctx, &domain.Connection{
-		ID: uuid.NewV4().String(), TenantID: testTenant, ConnectorID: f.connector.ID, UserID: testUser, Status: domain.ConnectionActive,
+	if err := f.deps.Connections.SaveLinked(ctx, &tokenvaultdomain.Connection{
+		ID: uuid.NewV4().String(), TenantID: testTenant, ConnectorID: f.connector.ID, UserID: testUser, Status: tokenvaultdomain.ConnectionActive,
 		AccessToken: access, RefreshToken: refresh, ExpiresAt: &expires, UpdatedAt: f.now,
 	}); err != nil {
 		t.Fatal(err)
@@ -98,13 +100,13 @@ func newFixture(t *testing.T, access, refresh string, expiresIn time.Duration) *
 	return f
 }
 
-func (f *fixture) execute() (ports.OutboundResponse, error) {
+func (f *fixture) execute() (tokenvaultports.OutboundResponse, error) {
 	return Execute(context.Background(), f.deps, ExecuteInput{
 		TenantID: testTenant, ConnectorID: f.connector.ID, Method: "POST", URL: "https://api.example.com/v1",
 	})
 }
 
-func (f *fixture) connection(t *testing.T) *domain.Connection {
+func (f *fixture) connection(t *testing.T) *tokenvaultdomain.Connection {
 	t.Helper()
 	connection, err := f.deps.Connections.Find(context.Background(), testTenant, f.connector.ID, testUser)
 	if err != nil {
@@ -129,17 +131,17 @@ func TestRefreshFailureClassification(t *testing.T) {
 		wantErr error
 		reauth  bool
 	}{
-		{"invalid_grant", &ports.TokenEndpointError{Status: 400, OAuthError: "invalid_grant"}, ErrReauthorizationRequired, true},
-		{"invalid_client", &ports.TokenEndpointError{Status: 401, OAuthError: "invalid_client"}, ErrTemporarilyUnavailable, false},
-		{"unauthorized_client", &ports.TokenEndpointError{Status: 400, OAuthError: "unauthorized_client"}, ErrTemporarilyUnavailable, false},
-		{"temporarily_unavailable", &ports.TokenEndpointError{Status: 503, OAuthError: "temporarily_unavailable"}, ErrTemporarilyUnavailable, false},
-		{"malformed", &ports.TokenEndpointError{Status: 200}, ErrTemporarilyUnavailable, false},
-		{"network", ports.ErrUpstreamUnreachable, ErrTemporarilyUnavailable, false},
+		{"invalid_grant", &tokenvaultports.TokenEndpointError{Status: 400, OAuthError: "invalid_grant"}, ErrReauthorizationRequired, true},
+		{"invalid_client", &tokenvaultports.TokenEndpointError{Status: 401, OAuthError: "invalid_client"}, ErrTemporarilyUnavailable, false},
+		{"unauthorized_client", &tokenvaultports.TokenEndpointError{Status: 400, OAuthError: "unauthorized_client"}, ErrTemporarilyUnavailable, false},
+		{"temporarily_unavailable", &tokenvaultports.TokenEndpointError{Status: 503, OAuthError: "temporarily_unavailable"}, ErrTemporarilyUnavailable, false},
+		{"malformed", &tokenvaultports.TokenEndpointError{Status: 200}, ErrTemporarilyUnavailable, false},
+		{"network", tokenvaultports.ErrUpstreamUnreachable, ErrTemporarilyUnavailable, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t, "old", "refresh", 0)
-			f.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{}, tc.err }
+			f.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) { return tokenvaultports.TokenResponse{}, tc.err }
 			if _, err := f.execute(); !errors.Is(err, tc.wantErr) {
 				t.Fatalf("err = %v", err)
 			}
@@ -148,7 +150,7 @@ func TestRefreshFailureClassification(t *testing.T) {
 			}
 			connection := f.connection(t)
 			if tc.reauth {
-				if connection.Status != domain.ConnectionReauthorizationRequired || connection.AccessToken != "" || connection.RefreshToken != "" {
+				if connection.Status != tokenvaultdomain.ConnectionReauthorizationRequired || connection.AccessToken != "" || connection.RefreshToken != "" {
 					t.Fatalf("connection: %+v", connection)
 				}
 				if types := f.eventTypes(); len(types) != 1 || types[0] != "TokenVaultConnectionReauthorizationRequired" {
@@ -156,11 +158,13 @@ func TestRefreshFailureClassification(t *testing.T) {
 				}
 				return
 			}
-			if connection.Status != domain.ConnectionActive || connection.RefreshToken != "refresh" {
+			if connection.Status != tokenvaultdomain.ConnectionActive || connection.RefreshToken != "refresh" {
 				t.Fatalf("connection changed: %+v", connection)
 			}
 			// リースを手放しているので、回復後の次の要求が更新できる。
-			f.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{AccessToken: "new"}, nil }
+			f.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+				return tokenvaultports.TokenResponse{AccessToken: "new"}, nil
+			}
 			if _, err := f.execute(); err != nil {
 				t.Fatalf("after recovery: %v", err)
 			}
@@ -174,22 +178,24 @@ func TestExpiredConnectionWithoutRefreshTokenRequiresReauthorization(t *testing.
 	if _, err := f.execute(); !errors.Is(err, ErrReauthorizationRequired) {
 		t.Fatalf("err = %v", err)
 	}
-	if status := f.connection(t).Status; status != domain.ConnectionReauthorizationRequired {
+	if status := f.connection(t).Status; status != tokenvaultdomain.ConnectionReauthorizationRequired {
 		t.Fatalf("status = %s", status)
 	}
 }
 
 //spec:covers REQ-TOKENVAULT-012: 期限の境界。60 秒未満は更新し、以上は更新しないこと
 func TestRefreshHappensWithinSkewOnly(t *testing.T) {
-	f := newFixture(t, "current", "refresh", domain.RefreshSkew)
-	f.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{AccessToken: "new"}, nil }
+	f := newFixture(t, "current", "refresh", tokenvaultdomain.RefreshSkew)
+	f.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+		return tokenvaultports.TokenResponse{AccessToken: "new"}, nil
+	}
 	if _, err := f.execute(); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.upstream.refreshes) != 1 {
 		t.Fatalf("at the skew boundary: %d refreshes", len(f.upstream.refreshes))
 	}
-	g := newFixture(t, "current", "refresh", domain.RefreshSkew+time.Second)
+	g := newFixture(t, "current", "refresh", tokenvaultdomain.RefreshSkew+time.Second)
 	if _, err := g.execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -201,8 +207,8 @@ func TestRefreshHappensWithinSkewOnly(t *testing.T) {
 //spec:covers REQ-TOKENVAULT-012: 回転した更新トークンを保存し、応答になければ維持すること
 func TestRefreshStoresRotationAndKeepsOmittedToken(t *testing.T) {
 	f := newFixture(t, "old", "r1", 0)
-	f.upstream.refresh = func(string) (ports.TokenResponse, error) {
-		return ports.TokenResponse{AccessToken: "a2", RefreshToken: "r2"}, nil
+	f.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+		return tokenvaultports.TokenResponse{AccessToken: "a2", RefreshToken: "r2"}, nil
 	}
 	if _, err := f.execute(); err != nil {
 		t.Fatal(err)
@@ -211,7 +217,9 @@ func TestRefreshStoresRotationAndKeepsOmittedToken(t *testing.T) {
 		t.Fatalf("rotation: %+v", got)
 	}
 	g := newFixture(t, "old", "r1", 0)
-	g.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{AccessToken: "a2"}, nil }
+	g.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+		return tokenvaultports.TokenResponse{AccessToken: "a2"}, nil
+	}
 	if _, err := g.execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +236,9 @@ func TestWaitingForAnotherRefreshGivesUp(t *testing.T) {
 	if err != nil || !acquired {
 		t.Fatal(err)
 	}
-	f.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{AccessToken: "x"}, nil }
+	f.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+		return tokenvaultports.TokenResponse{AccessToken: "x"}, nil
+	}
 	start := f.now
 	if _, err := f.execute(); !errors.Is(err, ErrTemporarilyUnavailable) {
 		t.Fatalf("err = %v", err)
@@ -241,12 +251,14 @@ func TestWaitingForAnotherRefreshGivesUp(t *testing.T) {
 //spec:covers REQ-TOKENVAULT-014: 上流の 401 で一度だけ更新して再送し、再送の 401 を返すこと
 func TestUnauthorizedRefreshesAndRetriesOnce(t *testing.T) {
 	f := newFixture(t, "old", "r1", time.Hour)
-	f.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{AccessToken: "new"}, nil }
-	f.upstream.send = func(request ports.OutboundRequest) (ports.OutboundResponse, error) {
+	f.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+		return tokenvaultports.TokenResponse{AccessToken: "new"}, nil
+	}
+	f.upstream.send = func(request tokenvaultports.OutboundRequest) (tokenvaultports.OutboundResponse, error) {
 		if request.AccessToken == "old" {
-			return ports.OutboundResponse{Status: http.StatusUnauthorized}, nil
+			return tokenvaultports.OutboundResponse{Status: http.StatusUnauthorized}, nil
 		}
-		return ports.OutboundResponse{Status: http.StatusOK}, nil
+		return tokenvaultports.OutboundResponse{Status: http.StatusOK}, nil
 	}
 	response, err := f.execute()
 	if err != nil || response.Status != http.StatusOK || len(f.upstream.sent) != 2 || len(f.upstream.refreshes) != 1 {
@@ -254,15 +266,17 @@ func TestUnauthorizedRefreshesAndRetriesOnce(t *testing.T) {
 	}
 
 	g := newFixture(t, "old", "r1", time.Hour)
-	g.upstream.refresh = func(string) (ports.TokenResponse, error) { return ports.TokenResponse{AccessToken: "new"}, nil }
-	g.upstream.send = func(ports.OutboundRequest) (ports.OutboundResponse, error) {
-		return ports.OutboundResponse{Status: http.StatusUnauthorized}, nil
+	g.upstream.refresh = func(string) (tokenvaultports.TokenResponse, error) {
+		return tokenvaultports.TokenResponse{AccessToken: "new"}, nil
+	}
+	g.upstream.send = func(tokenvaultports.OutboundRequest) (tokenvaultports.OutboundResponse, error) {
+		return tokenvaultports.OutboundResponse{Status: http.StatusUnauthorized}, nil
 	}
 	response, err = g.execute()
 	if err != nil || response.Status != http.StatusUnauthorized || len(g.upstream.sent) != 2 {
 		t.Fatalf("response %+v, err %v, sent %v", response, err, g.upstream.sent)
 	}
-	if status := g.connection(t).Status; status != domain.ConnectionActive {
+	if status := g.connection(t).Status; status != tokenvaultdomain.ConnectionActive {
 		t.Fatalf("status = %s", status)
 	}
 
@@ -277,13 +291,13 @@ func TestUnauthorizedRefreshesAndRetriesOnce(t *testing.T) {
 //spec:covers REQ-TOKENVAULT-015: 到達できない上流を状態コード 0 で記録すること
 func TestUnreachableUpstreamIsRecorded(t *testing.T) {
 	f := newFixture(t, "old", "", time.Hour)
-	f.upstream.send = func(ports.OutboundRequest) (ports.OutboundResponse, error) {
-		return ports.OutboundResponse{}, ports.ErrUpstreamUnreachable
+	f.upstream.send = func(tokenvaultports.OutboundRequest) (tokenvaultports.OutboundResponse, error) {
+		return tokenvaultports.OutboundResponse{}, tokenvaultports.ErrUpstreamUnreachable
 	}
-	if _, err := f.execute(); !errors.Is(err, ports.ErrUpstreamUnreachable) {
+	if _, err := f.execute(); !errors.Is(err, tokenvaultports.ErrUpstreamUnreachable) {
 		t.Fatalf("err = %v", err)
 	}
-	performed, ok := f.events[0].(*domain.TokenVaultExecutionPerformed)
+	performed, ok := f.events[0].(*tokenvaultdomain.TokenVaultExecutionPerformed)
 	if !ok || performed.UpstreamStatus != 0 {
 		t.Fatalf("event: %+v", f.events[0])
 	}

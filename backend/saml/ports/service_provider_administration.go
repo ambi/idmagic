@@ -6,7 +6,7 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	"github.com/ambi/idmagic/backend/saml/domain"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 // IdP プロファイルの規則違反は、保存のエラー（domain.ErrInvalidIDPProfile など）としてそのまま返す。
 type ServiceProviderAdministration interface {
 	// Find は entityID に一致する SP を返す。存在しなければ (nil, nil)。
-	Find(ctx context.Context, tenantID, entityID string) (*domain.SamlServiceProvider, error)
+	Find(ctx context.Context, tenantID, entityID string) (*samldomain.SamlServiceProvider, error)
 	// CreateForApplication は新しい SP を保存する。entityID が長さの上限を超えれば Validate のエラーを、
 	// 同じ entityID の SP があれば、どの Application に属するかを問わず ErrServiceProviderAlreadyRegistered を返す。
 	CreateForApplication(ctx context.Context, in CreateApplicationServiceProviderInput) error

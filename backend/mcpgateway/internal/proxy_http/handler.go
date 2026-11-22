@@ -21,7 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 )
@@ -86,7 +86,7 @@ type Options struct {
 	RealmURL       string
 	AllowedOrigins []string
 	MaxBodyBytes   int64
-	Mapping        domain.Mapping
+	Mapping        mcpgatewaydomain.Mapping
 	Evaluator      Evaluator
 	// DownstreamResource と Downstream があれば、転送ごとにトークンを差し替える (REQ-MCPGATEWAY-008)。
 	DownstreamResource string
@@ -137,7 +137,7 @@ func NewHandler(options Options) (*Handler, error) {
 
 type requestRecord struct {
 	correlationID, method, methodLabel, tool, toolLabel string
-	operation                                           domain.Operation
+	operation                                           mcpgatewaydomain.Operation
 	outcome, evaluationRequestID                        string
 	reasons                                             []string
 	downstream                                          exchange_http.Credential
@@ -207,7 +207,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		http.Error(w, "request body could not be read", http.StatusBadRequest)
 		return
 	}
-	message, violation := domain.Inspect(r.Header.Values, body)
+	message, violation := mcpgatewaydomain.Inspect(r.Header.Values, body)
 	if violation != nil {
 		writeViolation(w, violation)
 		return
@@ -215,15 +215,15 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 	record.method = message.Method
 	record.rpcID = message.ID
 	record.tool = truncateRunes(message.ToolName, maxLoggedValue)
-	evaluation := domain.Decide(message, h.options.Mapping)
+	evaluation := mcpgatewaydomain.Decide(message, h.options.Mapping)
 	record.toolLabel = evaluation.ToolLabel
 	record.operation = evaluation.Operation
 	switch evaluation.Kind {
-	case domain.MethodNotFound:
+	case mcpgatewaydomain.MethodNotFound:
 		record.reasons = []string{evaluation.Reason}
-		writeError(w, http.StatusNotFound, message.ID, domain.CodeMethodNotFound, "method not found", nil)
+		writeError(w, http.StatusNotFound, message.ID, mcpgatewaydomain.CodeMethodNotFound, "method not found", nil)
 		return
-	case domain.DenyWithoutEvaluation:
+	case mcpgatewaydomain.DenyWithoutEvaluation:
 		record.methodLabel, record.outcome, record.reasons = message.Method, outcomeDenied, []string{evaluation.Reason}
 		writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
 		return
@@ -240,7 +240,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		CorrelationID: record.correlationID, Token: token, Operation: evaluation.Operation, HTU: h.options.Resource.String(),
 		Attributes: evaluation.Attributes,
 	}
-	if message.Method == domain.MethodToolsCall && evaluation.Kind == domain.EvaluateAndForward {
+	if message.Method == mcpgatewaydomain.MethodToolsCall && evaluation.Kind == mcpgatewaydomain.EvaluateAndForward {
 		parameters, err := json.Marshal(message.Arguments)
 		if err != nil {
 			record.outcome = outcomeDenied
@@ -263,11 +263,11 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		in.DPoPProof = proof[0]
 	}
 	// 転送しない宣言のないツールには、下流へ渡す根拠を発行させない。
-	if evaluation.Kind == domain.EvaluateAndForward {
+	if evaluation.Kind == mcpgatewaydomain.EvaluateAndForward {
 		in.TokenExchangeResource = h.options.DownstreamResource
 	}
 	// Envoy は 200 を許可と読むので、InputRequiredResult を返せる proxy だけが承認へ導く。
-	guidesApproval := message.Method == domain.MethodToolsCall && evaluation.Kind == domain.EvaluateAndForward && !h.options.EnvoyExtAuthz
+	guidesApproval := message.Method == mcpgatewaydomain.MethodToolsCall && evaluation.Kind == mcpgatewaydomain.EvaluateAndForward && !h.options.EnvoyExtAuthz
 	if guidesApproval {
 		reference, ours, refusal := h.approvalReference(message, time.Now())
 		if refusal != "" {
@@ -280,7 +280,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 			stripped, err := withoutApprovalRetry(body)
 			if err != nil {
 				record.outcome, record.reasons = outcomeInvalid, []string{"request_state_unremovable"}
-				writeError(w, http.StatusBadRequest, message.ID, domain.CodeInvalidRequest, "the request could not be forwarded", nil)
+				writeError(w, http.StatusBadRequest, message.ID, mcpgatewaydomain.CodeInvalidRequest, "the request could not be forwarded", nil)
 				return
 			}
 			body = stripped
@@ -330,7 +330,7 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
 		return
 	}
-	if evaluation.Kind != domain.EvaluateAndForward {
+	if evaluation.Kind != mcpgatewaydomain.EvaluateAndForward {
 		record.outcome = outcomeDenied
 		record.reasons = []string{"tool_not_mapped"}
 		writeError(w, http.StatusForbidden, message.ID, codeForbidden, "forbidden", nil)
@@ -451,8 +451,8 @@ func (h *Handler) remediate(w http.ResponseWriter, id, remediation json.RawMessa
 
 // approvalReference は再送の requestState を読み、参照する承認リクエストを返す。ours はこのゲートウェイの
 // 状態を運ぶ再送であることを、refusal は評価せずに拒否する理由を表す。期限を過ぎた状態は参照を持たない要求にする。
-func (h *Handler) approvalReference(message domain.Message, now time.Time) (approvalRequestID string, ours bool, refusal string) {
-	if !strings.HasPrefix(message.RequestState, domain.RequestStatePrefix) {
+func (h *Handler) approvalReference(message mcpgatewaydomain.Message, now time.Time) (approvalRequestID string, ours bool, refusal string) {
+	if !strings.HasPrefix(message.RequestState, mcpgatewaydomain.RequestStatePrefix) {
 		return "", false, ""
 	}
 	if raw, answered := message.InputResponses[approvalInputKey]; answered {
@@ -463,14 +463,14 @@ func (h *Handler) approvalReference(message domain.Message, now time.Time) (appr
 			return "", true, "approval_declined"
 		}
 	}
-	state, err := domain.OpenRequestState(h.options.RequestStateKey, h.options.Resource.String(), message.RequestState, now)
-	if errors.Is(err, domain.ErrRequestStateExpired) {
+	state, err := mcpgatewaydomain.OpenRequestState(h.options.RequestStateKey, h.options.Resource.String(), message.RequestState, now)
+	if errors.Is(err, mcpgatewaydomain.ErrRequestStateExpired) {
 		return "", true, ""
 	}
 	if err != nil {
 		return "", true, "request_state_invalid"
 	}
-	digest, err := domain.OperationDigest(message.ToolName, message.Arguments)
+	digest, err := mcpgatewaydomain.OperationDigest(message.ToolName, message.Arguments)
 	if err != nil || digest != state.OperationDigest {
 		return "", true, "request_state_mismatch"
 	}
@@ -479,11 +479,11 @@ func (h *Handler) approvalReference(message domain.Message, now time.Time) (appr
 
 // requireApproval は MRTR の InputRequiredResult で、承認の URL を開くよう求める。状態には承認リクエストの
 // 参照だけを封じ、許可は再送の評価が IdMagic で決める。
-func (h *Handler) requireApproval(w http.ResponseWriter, record *requestRecord, message domain.Message, approval *evaluation_http.ApprovalRequest) {
-	digest, err := domain.OperationDigest(message.ToolName, message.Arguments)
+func (h *Handler) requireApproval(w http.ResponseWriter, record *requestRecord, message mcpgatewaydomain.Message, approval *evaluation_http.ApprovalRequest) {
+	digest, err := mcpgatewaydomain.OperationDigest(message.ToolName, message.Arguments)
 	if err == nil {
 		var sealed string
-		sealed, err = domain.SealRequestState(h.options.RequestStateKey, h.options.Resource.String(), domain.RequestState{
+		sealed, err = mcpgatewaydomain.SealRequestState(h.options.RequestStateKey, h.options.Resource.String(), mcpgatewaydomain.RequestState{
 			ApprovalRequestID: approval.ID, OperationDigest: digest, ExpiresAt: approval.ExpiresAt,
 		}, rand.Reader)
 		if err == nil {
@@ -626,10 +626,10 @@ type errorEnvelope struct {
 	Error   errorBody       `json:"error"`
 }
 
-func writeViolation(w http.ResponseWriter, violation *domain.Violation) {
+func writeViolation(w http.ResponseWriter, violation *mcpgatewaydomain.Violation) {
 	var data *errorData
 	if violation.UnsupportedVersionError {
-		data = &errorData{Supported: []string{domain.ProtocolVersion}}
+		data = &errorData{Supported: []string{mcpgatewaydomain.ProtocolVersion}}
 	}
 	writeError(w, http.StatusBadRequest, violation.ID, violation.Code, violation.Message, data)
 }

@@ -13,16 +13,16 @@ import (
 
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newJobHandlerDeps(client *fakeTargetClient, attrSource *fakeAttributeSource) (usecases.JobHandlerDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
+func newJobHandlerDeps(client *fakeTargetClient, attrSource *fakeAttributeSource) (provisioningusecases.JobHandlerDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
 	executeTaskDeps, connRepo, taskRepo, _ := newExecuteTaskDeps(client, attrSource)
-	return usecases.JobHandlerDeps{
+	return provisioningusecases.JobHandlerDeps{
 		ExecuteTaskDeps: executeTaskDeps,
 		ConnectionRepo:  connRepo,
 		TaskRepo:        taskRepo,
@@ -38,19 +38,19 @@ func newTestJob(t *testing.T, taskID string, attempts int) *jobsdomain.Job {
 	if err != nil {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
-	return &jobsdomain.Job{ID: "job-1", TenantID: testTenantID, Kind: usecases.KindProvisioningTask, Params: params, Attempts: attempts, MaxAttempts: testJobMaxAttempts}
+	return &jobsdomain.Job{ID: "job-1", TenantID: testTenantID, Kind: provisioningusecases.KindProvisioningTask, Params: params, Attempts: attempts, MaxAttempts: testJobMaxAttempts}
 }
 
 func TestProvisioningTaskHandler_SuccessReturnsNilAndResetsFailureCount(t *testing.T) {
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, provisioningdomain.OperationCreate)
 	conn, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
 	conn.ConsecutiveFailureCount = 3
 	_ = connRepo.Update(context.Background(), conn, nil)
 
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 	_, err := handler(context.Background(), newTestJob(t, d.ID, 1))
 	if err != nil {
 		t.Fatalf("handler() error = %v", err)
@@ -65,15 +65,15 @@ func TestProvisioningTaskHandler_NonTerminalFailureLeavesTaskInFlight(t *testing
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, provisioningdomain.OperationCreate)
 
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 	_, err := handler(context.Background(), newTestJob(t, d.ID, 1))
 	if err == nil {
 		t.Fatal("handler() should return the downstream error so Jobs retries")
 	}
 	got, _ := taskRepo.Find(context.Background(), testTenantID, d.ID)
-	if got.Status != domain.TaskInFlight {
+	if got.Status != provisioningdomain.TaskInFlight {
 		t.Errorf("task.Status = %v, want in_flight (non-terminal attempt)", got.Status)
 	}
 }
@@ -82,15 +82,15 @@ func TestProvisioningTaskHandler_TerminalFailureMarksDeadLetter(t *testing.T) {
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, provisioningdomain.OperationCreate)
 
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 	_, err := handler(context.Background(), newTestJob(t, d.ID, 8)) // attempts == max_attempts: terminal
 	if err == nil {
 		t.Fatal("handler() should still return the error (Jobs itself records JobFailed terminal)")
 	}
 	got, _ := taskRepo.Find(context.Background(), testTenantID, d.ID)
-	if got.Status != domain.TaskDeadLetter {
+	if got.Status != provisioningdomain.TaskDeadLetter {
 		t.Errorf("task.Status = %v, want dead_letter (terminal attempt)", got.Status)
 	}
 }
@@ -99,17 +99,17 @@ func TestProvisioningTaskHandler_QuarantinesConnectionAfterConsecutiveFailureThr
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	conn.QuarantineAfterConsecutiveFailure = 2
 	if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 
 	for i := range 2 {
-		d := &domain.ProvisioningTask{
-			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		d := &provisioningdomain.ProvisioningTask{
+			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser, SourceID: "user-1",
+			SourceVersion: int64(i + 1), Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		}
 		if _, err := taskRepo.Save(context.Background(), d); err != nil {
 			t.Fatalf("Save() error = %v", err)
@@ -122,7 +122,7 @@ func TestProvisioningTaskHandler_QuarantinesConnectionAfterConsecutiveFailureThr
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
-	if got.Health != domain.HealthQuarantined {
+	if got.Health != provisioningdomain.HealthQuarantined {
 		t.Errorf("connection.Health = %v, want quarantined after %d consecutive terminal failures", got.Health, conn.QuarantineAfterConsecutiveFailure)
 	}
 }
@@ -138,13 +138,13 @@ func (n *recordingNotifier) Notify(_ context.Context, notification notificationp
 }
 
 // failTerminally は接続 app-1 のプロビジョニングタスクを count 回、最終試行で失敗させる。
-func failTerminally(t *testing.T, deps usecases.JobHandlerDeps, taskRepo *memory.ProvisioningTaskRepository, count int) {
+func failTerminally(t *testing.T, deps provisioningusecases.JobHandlerDeps, taskRepo *memory.ProvisioningTaskRepository, count int) {
 	t.Helper()
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 	for i := range count {
-		task := &domain.ProvisioningTask{
-			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		task := &provisioningdomain.ProvisioningTask{
+			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser, SourceID: "user-1",
+			SourceVersion: int64(i + 1), Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		}
 		if _, err := taskRepo.Save(context.Background(), task); err != nil {
 			t.Fatalf("Save() error = %v", err)
@@ -164,7 +164,7 @@ func TestProvisioningTaskHandler_QuarantineNotifiesTheNotificationEmailOnce(t *t
 	deps.Notifier = notifier
 	quarantinedAt := time.Date(2026, 9, 26, 3, 4, 59, 0, time.UTC)
 	deps.Now = func() time.Time { return quarantinedAt }
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	conn.QuarantineAfterConsecutiveFailure = 2
 	conn.NotificationEmail = new("provisioning-alerts@example.test")
 	if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
@@ -172,14 +172,14 @@ func TestProvisioningTaskHandler_QuarantineNotifiesTheNotificationEmailOnce(t *t
 	}
 
 	failTerminally(t, deps, taskRepo, 2)
-	held := &domain.ProvisioningTask{
-		ID: idFor(2), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-		SourceVersion: 3, Operation: domain.OperationCreate, Status: domain.TaskInFlight, JobID: new("job-1"), CreatedAt: quarantinedAt, UpdatedAt: quarantinedAt,
+	held := &provisioningdomain.ProvisioningTask{
+		ID: idFor(2), TenantID: testTenantID, ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser, SourceID: "user-1",
+		SourceVersion: 3, Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskInFlight, JobID: new("job-1"), CreatedAt: quarantinedAt, UpdatedAt: quarantinedAt,
 	}
 	if _, err := taskRepo.Save(t.Context(), held); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.ProvisioningTaskHandler(deps)(t.Context(), newTestJob(t, held.ID, testJobMaxAttempts)); err != nil {
+	if _, err := provisioningusecases.ProvisioningTaskHandler(deps)(t.Context(), newTestJob(t, held.ID, testJobMaxAttempts)); err != nil {
 		t.Fatalf("quarantined task should be held: %v", err)
 	}
 
@@ -206,7 +206,7 @@ func TestProvisioningTaskHandler_QuarantineSendsNothingWithoutANotificationEmail
 		deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
 		notifier := &recordingNotifier{}
 		deps.Notifier = notifier
-		conn := activeConnection("app-1", domain.ScopeAllUsers)
+		conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 		conn.QuarantineAfterConsecutiveFailure = 1
 		conn.NotificationEmail = email
 		if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
@@ -216,7 +216,7 @@ func TestProvisioningTaskHandler_QuarantineSendsNothingWithoutANotificationEmail
 		failTerminally(t, deps, taskRepo, 1)
 
 		got, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
-		if got.Health != domain.HealthQuarantined {
+		if got.Health != provisioningdomain.HealthQuarantined {
 			t.Fatalf("connection.Health = %v, want quarantined", got.Health)
 		}
 		if len(notifier.sent) != 0 {
@@ -239,19 +239,19 @@ func (*retryableTestErr) Error() string { return "downstream unavailable" }
 // 発行が保存より先に動けば、ここに保存前の状態が残る。
 type emittedWith struct {
 	event      spec.DomainEvent
-	taskStatus domain.ProvisioningTaskStatus
-	health     domain.ProvisioningHealth
+	taskStatus provisioningdomain.ProvisioningTaskStatus
+	health     provisioningdomain.ProvisioningHealth
 }
 
-func recordEmissions(deps *usecases.JobHandlerDeps, connRepo *memory.ProvisioningConnectionRepository, taskRepo *memory.ProvisioningTaskRepository) *[]emittedWith {
+func recordEmissions(deps *provisioningusecases.JobHandlerDeps, connRepo *memory.ProvisioningConnectionRepository, taskRepo *memory.ProvisioningTaskRepository) *[]emittedWith {
 	var emitted []emittedWith
 	deps.Emit = func(event spec.DomainEvent) {
 		record := emittedWith{event: event}
 		var taskID string
 		switch e := event.(type) {
-		case *domain.UserProvisioned:
+		case *provisioningdomain.UserProvisioned:
 			taskID = e.TaskID
-		case *domain.UserProvisioningFailed:
+		case *provisioningdomain.UserProvisioningFailed:
 			taskID = e.TaskID
 		}
 		if taskID != "" {
@@ -270,9 +270,9 @@ func TestProvisioningTaskHandler_EmitsTheTransitionEventOnceAfterSucceeding(t *t
 	client := &fakeTargetClient{createUserID: "remote-1"}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, provisioningdomain.OperationCreate)
 	emitted := recordEmissions(&deps, connRepo, taskRepo)
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 
 	// Jobs はリースを失ったジョブを別の worker で再実行し得る。
 	for range 2 {
@@ -284,8 +284,8 @@ func TestProvisioningTaskHandler_EmitsTheTransitionEventOnceAfterSucceeding(t *t
 		t.Fatalf("emitted = %+v, createCalls = %d; want one event and one downstream create across two runs", *emitted, client.createCalls)
 	}
 	got := (*emitted)[0]
-	provisioned, ok := got.event.(*domain.UserProvisioned)
-	if !ok || provisioned.RemoteID != "remote-1" || provisioned.TaskID != d.ID || got.taskStatus != domain.TaskSucceeded {
+	provisioned, ok := got.event.(*provisioningdomain.UserProvisioned)
+	if !ok || provisioned.RemoteID != "remote-1" || provisioned.TaskID != d.ID || got.taskStatus != provisioningdomain.TaskSucceeded {
 		t.Fatalf("emitted %+v with task status %v, want UserProvisioned for %s/remote-1 after succeeded", got.event, got.taskStatus, d.ID)
 	}
 }
@@ -295,18 +295,18 @@ func TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t
 	client := &fakeTargetClient{createUserErr: someRetryableErr()}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	conn.QuarantineAfterConsecutiveFailure = 2
 	if err := connRepo.Register(context.Background(), conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
 	emitted := recordEmissions(&deps, connRepo, taskRepo)
-	handler := usecases.ProvisioningTaskHandler(deps)
+	handler := provisioningusecases.ProvisioningTaskHandler(deps)
 
 	for i := range 3 {
-		d := &domain.ProvisioningTask{
-			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-			SourceVersion: int64(i + 1), Operation: domain.OperationCreate, Status: domain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		d := &provisioningdomain.ProvisioningTask{
+			ID: idFor(i), TenantID: testTenantID, ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser, SourceID: "user-1",
+			SourceVersion: int64(i + 1), Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskInFlight, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 		}
 		if i == 2 {
 			d.JobID = new("job-1")
@@ -319,7 +319,7 @@ func TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t
 				t.Fatalf("quarantined task should not fail terminally: %v", err)
 			}
 			stored, err := taskRepo.Find(t.Context(), testTenantID, d.ID)
-			if err != nil || stored.Status != domain.TaskPending {
+			if err != nil || stored.Status != provisioningdomain.TaskPending {
 				t.Fatalf("held task=%+v error=%v", stored, err)
 			}
 			continue
@@ -341,31 +341,31 @@ func TestProvisioningTaskHandler_TerminalFailureEmitsFailedThenQuarantinedOnce(t
 		t.Fatalf("emitted = %v, want %v", gotTypes, wantTypes)
 	}
 	failed := (*emitted)[0]
-	if e := failed.event.(*domain.UserProvisioningFailed); e.TaskID != idFor(0) || e.SourceType != domain.SourceTypeUser ||
-		e.SourceID != "user-1" || e.Error != "downstream unavailable" || failed.taskStatus != domain.TaskDeadLetter {
+	if e := failed.event.(*provisioningdomain.UserProvisioningFailed); e.TaskID != idFor(0) || e.SourceType != provisioningdomain.SourceTypeUser ||
+		e.SourceID != "user-1" || e.Error != "downstream unavailable" || failed.taskStatus != provisioningdomain.TaskDeadLetter {
 		t.Errorf("first failure = %+v with task status %v, want task-a/user-1 after dead_letter", e, failed.taskStatus)
 	}
 	quarantined := (*emitted)[2]
-	if e := quarantined.event.(*domain.ConnectionQuarantined); e.ApplicationID != "app-1" || e.ConsecutiveFailures != 2 ||
-		e.Reason != "downstream unavailable" || quarantined.health != domain.HealthQuarantined {
+	if e := quarantined.event.(*provisioningdomain.ConnectionQuarantined); e.ApplicationID != "app-1" || e.ConsecutiveFailures != 2 ||
+		e.Reason != "downstream unavailable" || quarantined.health != provisioningdomain.HealthQuarantined {
 		t.Errorf("quarantine = %+v with health %v, want app-1 after 2 failures once quarantined", e, quarantined.health)
 	}
 }
 
 //spec:covers EX-PROVISIONING-018-01: 必須属性を解決できないプロビジョニングタスクは、試行回数が残っていても dead_letter になり UserProvisioningFailed を発行する。
 func TestProvisioningTaskHandler_UnresolvedRequiredMappingDeadLettersOnFirstAttempt(t *testing.T) {
-	client := &fakeTargetClient{createUserErr: fmt.Errorf("mapping emails: %w", ports.ErrRequiredAttributeUnresolved)}
+	client := &fakeTargetClient{createUserErr: fmt.Errorf("mapping emails: %w", provisioningports.ErrRequiredAttributeUnresolved)}
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "alice"}, exists: true}
 	deps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
-	d := setupConnectionAndTask(t, connRepo, taskRepo, domain.OperationCreate)
+	d := setupConnectionAndTask(t, connRepo, taskRepo, provisioningdomain.OperationCreate)
 	emitted := recordEmissions(&deps, connRepo, taskRepo)
 
-	if _, err := usecases.ProvisioningTaskHandler(deps)(context.Background(), newTestJob(t, d.ID, 1)); err != nil {
+	if _, err := provisioningusecases.ProvisioningTaskHandler(deps)(context.Background(), newTestJob(t, d.ID, 1)); err != nil {
 		t.Fatalf("handler() error = %v, want nil so Jobs does not retry a settled task", err)
 	}
 	got, _ := taskRepo.Find(context.Background(), testTenantID, d.ID)
 	conn, _ := connRepo.Find(context.Background(), testTenantID, "app-1")
-	if got.Status != domain.TaskDeadLetter || len(*emitted) != 1 || (*emitted)[0].event.EventType() != "UserProvisioningFailed" {
+	if got.Status != provisioningdomain.TaskDeadLetter || len(*emitted) != 1 || (*emitted)[0].event.EventType() != "UserProvisioningFailed" {
 		t.Fatalf("status = %v, emitted = %+v; want dead_letter and one UserProvisioningFailed on the first attempt", got.Status, *emitted)
 	}
 	// 属性の欠落は 1 人の User の問題であり、下流の健全性を表さない。

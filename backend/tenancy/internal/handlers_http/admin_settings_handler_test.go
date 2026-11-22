@@ -18,7 +18,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -30,7 +30,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func newSettingsServer(t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant) (*echo.Echo, *memory.TenantRepository, *[]spec.DomainEvent) {
+func newSettingsServer(t *testing.T, actor *userdomain.User, tenants ...*tenancydomain.Tenant) (*echo.Echo, *memory.TenantRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
@@ -69,13 +69,13 @@ func settingsActor(sub, tenantID string, roles []string) *userdomain.User {
 	}
 }
 
-func activeTenant(id, displayName string) *domain.Tenant {
+func activeTenant(id, displayName string) *tenancydomain.Tenant {
 	realm := id
-	if id == domain.DefaultTenantID {
-		realm = domain.DefaultRealm
+	if id == tenancydomain.DefaultTenantID {
+		realm = tenancydomain.DefaultRealm
 	}
-	return &domain.Tenant{
-		ID: id, Realm: realm, DisplayName: displayName, Status: domain.TenantStatusActive,
+	return &tenancydomain.Tenant{
+		ID: id, Realm: realm, DisplayName: displayName, Status: tenancydomain.TenantStatusActive,
 		CreatedAt: time.Now().UTC(),
 	}
 }
@@ -97,7 +97,7 @@ func TestAdminSettingsGetRejectsNonAdmin(t *testing.T) {
 func TestAdminSettingsGetReturnsCurrentTenant(t *testing.T) {
 	minLength := 16
 	tenant := activeTenant("acme", "Acme")
-	tenant.PasswordPolicyOverride = &domain.PasswordPolicyOverride{MinLength: &minLength}
+	tenant.PasswordPolicyOverride = &tenancydomain.PasswordPolicyOverride{MinLength: &minLength}
 	e, _, _ := newSettingsServer(t, settingsActor("admin", "acme", []string{"admin"}), tenant)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/settings", http.NoBody))
@@ -125,8 +125,8 @@ func TestAdminSettingsGetReturnsCurrentTenant(t *testing.T) {
 func TestAdminSettingsGetAllowsSystemAdmin(t *testing.T) {
 	e, _, _ := newSettingsServer(
 		t,
-		settingsActor("ops", domain.DefaultTenantID, []string{"system_admin"}),
-		activeTenant(domain.DefaultTenantID, "Default"),
+		settingsActor("ops", tenancydomain.DefaultTenantID, []string{"system_admin"}),
+		activeTenant(tenancydomain.DefaultTenantID, "Default"),
 	)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/settings", http.NoBody))
@@ -174,7 +174,7 @@ func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("events=%d want 1", len(*events))
 	}
-	updated, ok := (*events)[0].(*domain.TenantUpdated)
+	updated, ok := (*events)[0].(*tenancydomain.TenantUpdated)
 	if !ok {
 		t.Fatalf("event type=%T", (*events)[0])
 	}
@@ -204,9 +204,9 @@ func TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge(t *testing.T) {
 	if initial.TrustedDeviceMaxAgeSeconds != nil {
 		t.Fatalf("trusted_device_max_age_seconds=%v, want unset (disabled)", initial.TrustedDeviceMaxAgeSeconds)
 	}
-	if initial.TrustedDeviceMaxAgeSecondsCeiling != domain.TrustedDeviceMaxAgeCeilingSeconds {
+	if initial.TrustedDeviceMaxAgeSecondsCeiling != tenancydomain.TrustedDeviceMaxAgeCeilingSeconds {
 		t.Fatalf("ceiling=%d, want %d",
-			initial.TrustedDeviceMaxAgeSecondsCeiling, domain.TrustedDeviceMaxAgeCeilingSeconds)
+			initial.TrustedDeviceMaxAgeSecondsCeiling, tenancydomain.TrustedDeviceMaxAgeCeilingSeconds)
 	}
 
 	thirtyDays := 30 * 24 * 60 * 60
@@ -238,7 +238,7 @@ func TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge(t *testing.T) {
 	}
 
 	resp := patchSettings(t, e, map[string]any{
-		"trusted_device_max_age_seconds": domain.TrustedDeviceMaxAgeCeilingSeconds + 1,
+		"trusted_device_max_age_seconds": tenancydomain.TrustedDeviceMaxAgeCeilingSeconds + 1,
 	})
 	if resp.Code != http.StatusUnprocessableEntity || !bytes.Contains(resp.Body.Bytes(), []byte("urn:idmagic:error:policy_override_weaker")) {
 		t.Fatalf("above-ceiling status=%d body=%s", resp.Code, resp.Body.String())
@@ -262,7 +262,7 @@ func TestAdminSettingsExposeAndUpdateMaxDelegationDepth(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &initial); err != nil {
 		t.Fatal(err)
 	}
-	if initial.MaxDelegationDepth != nil || initial.MaxDelegationDepthDefault != domain.DefaultMaxDelegationDepth {
+	if initial.MaxDelegationDepth != nil || initial.MaxDelegationDepthDefault != tenancydomain.DefaultMaxDelegationDepth {
 		t.Fatalf("delegation settings=%+v", initial)
 	}
 
@@ -279,7 +279,7 @@ func TestAdminSettingsExposeAndUpdateMaxDelegationDepth(t *testing.T) {
 	}
 
 	resp = patchSettings(t, e, map[string]any{
-		"max_delegation_depth": domain.DefaultMaxDelegationDepth + 1,
+		"max_delegation_depth": tenancydomain.DefaultMaxDelegationDepth + 1,
 	})
 	if resp.Code != http.StatusUnprocessableEntity || !bytes.Contains(resp.Body.Bytes(), []byte("urn:idmagic:error:policy_override_weaker")) {
 		t.Fatalf("weaker override status=%d body=%s", resp.Code, resp.Body.String())

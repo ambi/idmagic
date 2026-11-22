@@ -7,21 +7,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 )
 
 // PreferenceRepository は受信設定の in-memory 実装。
 type PreferenceRepository struct {
 	mu          sync.Mutex
-	preferences map[string]domain.Preferences // key: user id
+	preferences map[string]securitynotificationdomain.Preferences // key: user id
 }
 
 func NewPreferenceRepository() *PreferenceRepository {
-	return &PreferenceRepository{preferences: map[string]domain.Preferences{}}
+	return &PreferenceRepository{preferences: map[string]securitynotificationdomain.Preferences{}}
 }
 
-func (r *PreferenceRepository) Find(_ context.Context, userID string) (*domain.Preferences, error) {
+func (r *PreferenceRepository) Find(_ context.Context, userID string) (*securitynotificationdomain.Preferences, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	stored, ok := r.preferences[userID]
@@ -32,7 +32,7 @@ func (r *PreferenceRepository) Find(_ context.Context, userID string) (*domain.P
 	return &stored, nil
 }
 
-func (r *PreferenceRepository) Save(_ context.Context, preferences domain.Preferences) error {
+func (r *PreferenceRepository) Save(_ context.Context, preferences securitynotificationdomain.Preferences) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	preferences.Disabled = slices.Clone(preferences.Disabled)
@@ -43,16 +43,16 @@ func (r *PreferenceRepository) Save(_ context.Context, preferences domain.Prefer
 // KnownDeviceRepository は既知の端末の in-memory 実装。
 type KnownDeviceRepository struct {
 	mu      sync.Mutex
-	devices map[string]ports.KnownDevice // key: user id + "\x00" + device hash
+	devices map[string]securitynotificationports.KnownDevice // key: user id + "\x00" + device hash
 }
 
 func NewKnownDeviceRepository() *KnownDeviceRepository {
-	return &KnownDeviceRepository{devices: map[string]ports.KnownDevice{}}
+	return &KnownDeviceRepository{devices: map[string]securitynotificationports.KnownDevice{}}
 }
 
 func knownDeviceKey(userID, deviceHash string) string { return userID + "\x00" + deviceHash }
 
-func (r *KnownDeviceRepository) Observe(_ context.Context, device ports.KnownDevice) (bool, error) {
+func (r *KnownDeviceRepository) Observe(_ context.Context, device securitynotificationports.KnownDevice) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := knownDeviceKey(device.UserID, device.DeviceHash)

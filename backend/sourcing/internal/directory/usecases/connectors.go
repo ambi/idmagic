@@ -15,8 +15,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 // EnrollmentTokenPrefix は登録トークンを、ほかの秘密と見分けられるようにする接頭辞。
@@ -36,12 +36,12 @@ var (
 
 // Grant は、作成と再発行が返す Connector と、一度だけ返す登録トークン。
 type Grant struct {
-	Connector domain.Connector
+	Connector directorydomain.Connector
 	Token     string
 }
 
 type Service struct {
-	repository ports.ConnectorRepository
+	repository directoryinternalports.ConnectorRepository
 	replay     tokens_jose.ReplayStore
 	emit       func(spec.DomainEvent)
 	now        func() time.Time
@@ -52,7 +52,7 @@ type Option func(*Service)
 func WithClock(now func() time.Time) Option { return func(s *Service) { s.now = now } }
 
 // New は Service を作る。replay は Connector の JWT の jti を一度だけ記録する。
-func New(repository ports.ConnectorRepository, replay tokens_jose.ReplayStore, emit func(spec.DomainEvent), options ...Option) *Service {
+func New(repository directoryinternalports.ConnectorRepository, replay tokens_jose.ReplayStore, emit func(spec.DomainEvent), options ...Option) *Service {
 	s := &Service{repository: repository, replay: replay, emit: emit, now: time.Now}
 	for _, option := range options {
 		option(s)
@@ -66,45 +66,45 @@ func (s *Service) Create(ctx context.Context, tenantID, displayName string) (Gra
 		return Grant{}, err
 	}
 	now := s.now().UTC()
-	connector, err := domain.NewConnector(tenantID, uuid.NewV4().String(), displayName, hash, now)
+	connector, err := directorydomain.NewConnector(tenantID, uuid.NewV4().String(), displayName, hash, now)
 	if err != nil {
 		return Grant{}, err
 	}
 	if err := s.repository.Create(ctx, connector); err != nil {
 		return Grant{}, err
 	}
-	s.publish(&domain.DirectoryConnectorCreated{At: now, TenantID: tenantID, ConnectorID: connector.ID})
+	s.publish(&directorydomain.DirectoryConnectorCreated{At: now, TenantID: tenantID, ConnectorID: connector.ID})
 	return Grant{Connector: connector, Token: token}, nil
 }
 
-func (s *Service) List(ctx context.Context, tenantID string) ([]domain.Connector, error) {
+func (s *Service) List(ctx context.Context, tenantID string) ([]directorydomain.Connector, error) {
 	return s.repository.List(ctx, tenantID)
 }
 
-func (s *Service) UpdateThresholds(ctx context.Context, tenantID, id string, thresholds domain.DisableThresholds) (domain.Connector, error) {
+func (s *Service) UpdateThresholds(ctx context.Context, tenantID, id string, thresholds directorydomain.DisableThresholds) (directorydomain.Connector, error) {
 	if err := thresholds.Validate(); err != nil {
-		return domain.Connector{}, err
+		return directorydomain.Connector{}, err
 	}
-	var result domain.Connector
-	err := s.update(ctx, tenantID, id, func(c domain.Connector, _ time.Time) (domain.Connector, bool, error) {
+	var result directorydomain.Connector
+	err := s.update(ctx, tenantID, id, func(c directorydomain.Connector, _ time.Time) (directorydomain.Connector, bool, error) {
 		c.Thresholds = thresholds
 		c.Revision++
 		result = c
 		return c, true, nil
 	})
 	if err == nil {
-		s.publish(&domain.DirectoryConnectorThresholdsUpdated{At: s.now().UTC(), TenantID: tenantID, ConnectorID: id, CountThreshold: thresholds.Count, PercentThreshold: thresholds.Percent})
+		s.publish(&directorydomain.DirectoryConnectorThresholdsUpdated{At: s.now().UTC(), TenantID: tenantID, ConnectorID: id, CountThreshold: thresholds.Count, PercentThreshold: thresholds.Percent})
 	}
 	return result, err
 }
 
-func (s *Service) Get(ctx context.Context, tenantID, id string) (domain.Connector, error) {
+func (s *Service) Get(ctx context.Context, tenantID, id string) (directorydomain.Connector, error) {
 	connector, err := s.repository.Find(ctx, tenantID, id)
 	if err != nil {
-		return domain.Connector{}, err
+		return directorydomain.Connector{}, err
 	}
 	if connector == nil {
-		return domain.Connector{}, ErrNotFound
+		return directorydomain.Connector{}, ErrNotFound
 	}
 	return *connector, nil
 }
@@ -114,9 +114,9 @@ func (s *Service) ReissueEnrollment(ctx context.Context, tenantID, id string) (G
 	if err != nil {
 		return Grant{}, err
 	}
-	var reissued domain.Connector
+	var reissued directorydomain.Connector
 	var at time.Time
-	err = s.update(ctx, tenantID, id, func(current domain.Connector, now time.Time) (domain.Connector, bool, error) {
+	err = s.update(ctx, tenantID, id, func(current directorydomain.Connector, now time.Time) (directorydomain.Connector, bool, error) {
 		next, err := current.ReissueEnrollment(hash, now)
 		reissued, at = next, now
 		return next, true, err
@@ -124,72 +124,72 @@ func (s *Service) ReissueEnrollment(ctx context.Context, tenantID, id string) (G
 	if err != nil {
 		return Grant{}, err
 	}
-	s.publish(&domain.DirectoryConnectorEnrollmentReissued{At: at, TenantID: tenantID, ConnectorID: id})
+	s.publish(&directorydomain.DirectoryConnectorEnrollmentReissued{At: at, TenantID: tenantID, ConnectorID: id})
 	return Grant{Connector: reissued, Token: token}, nil
 }
 
-func (s *Service) Disable(ctx context.Context, tenantID, id string) (domain.Connector, error) {
-	var result domain.Connector
+func (s *Service) Disable(ctx context.Context, tenantID, id string) (directorydomain.Connector, error) {
+	var result directorydomain.Connector
 	var changed bool
-	err := s.update(ctx, tenantID, id, func(current domain.Connector, now time.Time) (domain.Connector, bool, error) {
+	err := s.update(ctx, tenantID, id, func(current directorydomain.Connector, now time.Time) (directorydomain.Connector, bool, error) {
 		result, changed = current.Disable(now)
 		return result, changed, nil
 	})
 	if err != nil {
-		return domain.Connector{}, err
+		return directorydomain.Connector{}, err
 	}
 	if changed {
-		s.publish(&domain.DirectoryConnectorDisabled{At: *result.DisabledAt, TenantID: tenantID, ConnectorID: id})
+		s.publish(&directorydomain.DirectoryConnectorDisabled{At: *result.DisabledAt, TenantID: tenantID, ConnectorID: id})
 	}
 	return result, nil
 }
 
 // Enroll は登録トークンで Connector を引き、公開鍵を登録する。トークンの不一致、期限切れ、
 // 同時の登録に負けたことは、どれも ErrInvalidToken として区別せずに返す。
-func (s *Service) Enroll(ctx context.Context, tenantID, token string, jwk map[string]any) (domain.Connector, error) {
+func (s *Service) Enroll(ctx context.Context, tenantID, token string, jwk map[string]any) (directorydomain.Connector, error) {
 	connector, err := s.repository.FindByEnrollmentTokenHash(ctx, tenantID, hashToken(token))
 	if err != nil {
-		return domain.Connector{}, err
+		return directorydomain.Connector{}, err
 	}
 	now := s.now().UTC()
-	if connector == nil || connector.Status != domain.StatusAwaitingEnrollment || now.After(connector.EnrollmentExpiresAt) {
-		return domain.Connector{}, ErrInvalidToken
+	if connector == nil || connector.Status != directorydomain.StatusAwaitingEnrollment || now.After(connector.EnrollmentExpiresAt) {
+		return directorydomain.Connector{}, ErrInvalidToken
 	}
 	keyID, err := tokens_jose.ValidatePublicSigningJWK(jwk)
 	if err != nil {
-		return domain.Connector{}, ErrInvalidKey
+		return directorydomain.Connector{}, ErrInvalidKey
 	}
 	stored := publicMembers(jwk)
 	stored["kid"] = keyID
 	enrolled, err := connector.Enroll(stored, keyID, now)
 	if err != nil {
-		return domain.Connector{}, ErrInvalidToken
+		return directorydomain.Connector{}, ErrInvalidToken
 	}
 	if err := s.repository.Update(ctx, enrolled); err != nil {
-		if errors.Is(err, ports.ErrStaleConnector) {
-			return domain.Connector{}, ErrInvalidToken
+		if errors.Is(err, directoryinternalports.ErrStaleConnector) {
+			return directorydomain.Connector{}, ErrInvalidToken
 		}
-		return domain.Connector{}, err
+		return directorydomain.Connector{}, err
 	}
-	s.publish(&domain.DirectoryConnectorEnrolled{At: now, TenantID: tenantID, ConnectorID: enrolled.ID, KeyID: keyID})
+	s.publish(&directorydomain.DirectoryConnectorEnrolled{At: now, TenantID: tenantID, ConnectorID: enrolled.ID, KeyID: keyID})
 	return enrolled, nil
 }
 
 // Authenticate は Connector の JWT を検証し、要求したテナントの Active の Connector を返す。
 // どの検査に失敗しても ErrInvalidToken を返す。
-func (s *Service) Authenticate(ctx context.Context, tenantID, assertion, audience string) (domain.Connector, error) {
+func (s *Service) Authenticate(ctx context.Context, tenantID, assertion, audience string) (directorydomain.Connector, error) {
 	issuer, ok := unverifiedIssuer(assertion)
 	if !ok {
-		return domain.Connector{}, ErrInvalidToken
+		return directorydomain.Connector{}, ErrInvalidToken
 	}
-	var found domain.Connector
+	var found directorydomain.Connector
 	_, err := tokens_jose.VerifyClientAssertion(ctx, assertion, issuer, []string{audience},
 		func(ctx context.Context, id string) ([]map[string]any, error) {
 			connector, err := s.repository.Find(ctx, tenantID, id)
 			if err != nil {
 				return nil, err
 			}
-			if connector == nil || connector.Status != domain.StatusActive || connector.PublicKey == nil {
+			if connector == nil || connector.Status != directorydomain.StatusActive || connector.PublicKey == nil {
 				return nil, ErrInvalidToken
 			}
 			found = *connector
@@ -198,7 +198,7 @@ func (s *Service) Authenticate(ctx context.Context, tenantID, assertion, audienc
 		s.replay, s.now().UTC(), nil,
 	)
 	if err != nil {
-		return domain.Connector{}, ErrInvalidToken
+		return directorydomain.Connector{}, ErrInvalidToken
 	}
 	return found, nil
 }
@@ -215,7 +215,7 @@ func (s *Service) Heartbeat(ctx context.Context, tenantID, assertion, audience s
 // update は Connector を読んで change を適用し、同時の更新に負けたら読み直す。
 // change の二つ目の値が false なら保存しない。
 func (s *Service) update(ctx context.Context, tenantID, id string,
-	change func(domain.Connector, time.Time) (domain.Connector, bool, error),
+	change func(directorydomain.Connector, time.Time) (directorydomain.Connector, bool, error),
 ) error {
 	for attempt := 0; ; attempt++ {
 		current, err := s.Get(ctx, tenantID, id)
@@ -227,7 +227,7 @@ func (s *Service) update(ctx context.Context, tenantID, id string,
 			return err
 		}
 		err = s.repository.Update(ctx, next)
-		if !errors.Is(err, ports.ErrStaleConnector) || attempt+1 >= maxStaleRetries {
+		if !errors.Is(err, directoryinternalports.ErrStaleConnector) || attempt+1 >= maxStaleRetries {
 			return err
 		}
 	}

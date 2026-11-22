@@ -11,9 +11,9 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	"github.com/ambi/idmagic/backend/wsfederation/internal/db_memory"
-	"github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
+	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 )
 
 //spec:covers REQ-WSFEDERATION-002: 別方式の既存セッションは WIA の要求を満たさず、HTTP が Kerberos を試せるよう要求を引き渡す。
@@ -25,10 +25,10 @@ func TestWIAWithPasswordSessionRequiresKerberos(t *testing.T) {
 		t.Fatal(err)
 	}
 	parties := db_memory.NewWsFedRelyingPartyRepository()
-	parties.Seed(&feddomain.WsFedRelyingParty{TenantID: tenantID, Wtrealm: "urn:rp", ReplyURLs: []string{"https://rp.example/wsfed"}})
-	service := usecases.SignInService{RPRepo: parties, UserRepo: users}
-	outcome, err := service.Issue(ctx, usecases.SignInInput{TenantID: tenantID, Request: feddomain.WsFedSignInRequest{Wa: feddomain.WaSignIn, Wtrealm: "urn:rp", Wauth: "urn:federation:authentication:windows"}, Authn: &authdomain.AuthenticationContext{UserID: "alice", AMR: []string{"pwd"}, AuthTime: time.Now().Unix()}})
-	if err != nil || outcome.Kind != usecases.SignInNeedKerberos {
+	parties.Seed(&wsfeddomain.WsFedRelyingParty{TenantID: tenantID, Wtrealm: "urn:rp", ReplyURLs: []string{"https://rp.example/wsfed"}})
+	service := wsfedusecases.SignInService{RPRepo: parties, UserRepo: users}
+	outcome, err := service.Issue(ctx, wsfedusecases.SignInInput{TenantID: tenantID, Request: wsfeddomain.WsFedSignInRequest{Wa: wsfeddomain.WaSignIn, Wtrealm: "urn:rp", Wauth: "urn:federation:authentication:windows"}, Authn: &authdomain.AuthenticationContext{UserID: "alice", AMR: []string{"pwd"}, AuthTime: time.Now().Unix()}})
+	if err != nil || outcome.Kind != wsfedusecases.SignInNeedKerberos {
 		t.Fatalf("outcome=%+v err=%v", outcome, err)
 	}
 }

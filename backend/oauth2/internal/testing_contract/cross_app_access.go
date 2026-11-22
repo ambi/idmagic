@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 // CrossAppAccessFixture は ID-JAG の許可の保存先と、二つのテナントである。
 type CrossAppAccessFixture struct {
-	Policies ports.CrossAppAccessPolicyRepository
+	Policies oauthports.CrossAppAccessPolicyRepository
 	TenantA  string
 	TenantB  string
 	Now      time.Time
@@ -31,7 +31,7 @@ func RunCrossAppAccess(t *testing.T, fixture CrossAppAccessFixture) {
 		redeemDupID = "b0000000-0000-4000-8000-000000000002"
 		redeemOther = "b0000000-0000-4000-8000-000000000003"
 	)
-	issue := &domain.CrossAppAccessIssuePolicy{
+	issue := &oauthdomain.CrossAppAccessIssuePolicy{
 		TenantID: fixture.TenantA, ID: issueID, ClientID: "client", Audience: "https://as.example/",
 		RelyingPartyClientID: "rp", TargetClientID: "target", Resources: []string{"https://r.example/"},
 		Scopes: []string{"read"}, AuthorizationDetailTypes: []string{"payment"}, ReleaseEmail: true, CreatedAt: fixture.Now,
@@ -47,7 +47,7 @@ func RunCrossAppAccess(t *testing.T, fixture CrossAppAccessFixture) {
 	}
 	duplicate := *issue
 	duplicate.ID = issueDupID
-	if err := repo.CreateIssuePolicy(ctx, &duplicate); !errors.Is(err, ports.ErrCrossAppAccessPolicyExists) {
+	if err := repo.CreateIssuePolicy(ctx, &duplicate); !errors.Is(err, oauthports.ErrCrossAppAccessPolicyExists) {
 		t.Fatalf("duplicate CreateIssuePolicy = %v", err)
 	}
 	// 同じ組でも別のテナントなら別の許可である。
@@ -76,7 +76,7 @@ func RunCrossAppAccess(t *testing.T, fixture CrossAppAccessFixture) {
 		t.Fatalf("after delete = (%+v, %v)", gone, err)
 	}
 
-	redeem := &domain.CrossAppAccessRedeemPolicy{
+	redeem := &oauthdomain.CrossAppAccessRedeemPolicy{
 		TenantID: fixture.TenantA, ID: redeemID, ProviderID: "idp", ClientID: "client", Scopes: []string{"read"}, CreatedAt: fixture.Now,
 	}
 	if err := repo.CreateRedeemPolicy(ctx, redeem); err != nil {
@@ -96,7 +96,7 @@ func RunCrossAppAccess(t *testing.T, fixture CrossAppAccessFixture) {
 	}
 	duplicateRedeem := *redeem
 	duplicateRedeem.ID = redeemDupID
-	if err := repo.CreateRedeemPolicy(ctx, &duplicateRedeem); !errors.Is(err, ports.ErrCrossAppAccessPolicyExists) {
+	if err := repo.CreateRedeemPolicy(ctx, &duplicateRedeem); !errors.Is(err, oauthports.ErrCrossAppAccessPolicyExists) {
 		t.Fatalf("duplicate CreateRedeemPolicy = %v", err)
 	}
 	otherRedeem := *redeem

@@ -63,7 +63,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	emailmemory "github.com/ambi/idmagic/backend/shared/notification/email_memory"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -265,7 +265,7 @@ func newAuthRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *aut
 			FederationAttemptStore:   fixture.federation.Attempts,
 			FederationReplayStore:    fixture.federation.Replay,
 		},
-		Notification:      sharednotification.Module{EmailSender: fixture.emails},
+		Notification:      notificationports.Module{EmailSender: fixture.emails},
 		ApiTokens:         apitoken.Module{Repo: apiTokenRepo},
 		KeyStore:          keyStore,
 		TokenIssuer:       signer,

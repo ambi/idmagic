@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
-	"github.com/ambi/idmagic/backend/authentication/totp/ports"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -26,17 +26,17 @@ const (
 // (secret populated, secret_ciphertext NULL) until wi-97 T006 backfills them.
 type MfaFactorRepository struct {
 	Pool   sharedpg.DB
-	Cipher ports.SecretCipher
+	Cipher totpports.SecretCipher
 }
 
 func (r *MfaFactorRepository) queries() *Queries { return New(r.Pool) }
 
-func (r *MfaFactorRepository) ListBySub(ctx context.Context, sub string) ([]*domain.MfaFactor, error) {
+func (r *MfaFactorRepository) ListBySub(ctx context.Context, sub string) ([]*totpdomain.MfaFactor, error) {
 	rows, err := r.queries().ListMfaFactorsBySub(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.MfaFactor, 0, len(rows))
+	out := make([]*totpdomain.MfaFactor, 0, len(rows))
 	for _, row := range rows {
 		factor, err := r.mfaFactorFromRow(ctx, row.UserID, row.Type, row.Secret, row.SecretKeyVersion, row.SecretCiphertext, row.Label, row.CreatedAt, row.LastUsedAt)
 		if err != nil {
@@ -51,7 +51,7 @@ func (r *MfaFactorRepository) Find(
 	ctx context.Context,
 	sub string,
 	factorType spec.MfaFactorType,
-) (*domain.MfaFactor, error) {
+) (*totpdomain.MfaFactor, error) {
 	row, err := r.queries().GetMfaFactor(ctx, GetMfaFactorParams{UserID: sub, Type: string(factorType)})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -62,7 +62,7 @@ func (r *MfaFactorRepository) Find(
 	return r.mfaFactorFromRow(ctx, row.UserID, row.Type, row.Secret, row.SecretKeyVersion, row.SecretCiphertext, row.Label, row.CreatedAt, row.LastUsedAt)
 }
 
-func (r *MfaFactorRepository) Save(ctx context.Context, factor *domain.MfaFactor) error {
+func (r *MfaFactorRepository) Save(ctx context.Context, factor *totpdomain.MfaFactor) error {
 	params := UpsertMfaFactorParams{
 		UserID:     factor.UserID,
 		Type:       string(factor.Type),
@@ -101,8 +101,8 @@ func (r *MfaFactorRepository) mfaFactorFromRow(
 	label pgtype.Text,
 	createdAt time.Time,
 	lastUsedAt pgtype.Timestamptz,
-) (*domain.MfaFactor, error) {
-	factor := &domain.MfaFactor{
+) (*totpdomain.MfaFactor, error) {
+	factor := &totpdomain.MfaFactor{
 		UserID:     userID,
 		Type:       spec.MfaFactorType(factorType),
 		Label:      textPtr(label),

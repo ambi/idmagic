@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthpg "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/internal/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -22,7 +22,7 @@ func TestMcpToolCatalogRepository(t *testing.T) {
 	seedServer := func() string {
 		t.Helper()
 		id := newUUID(t)
-		if err := servers.Save(ctx, &domain.McpResourceServer{TenantID: tenantID, ID: id, Resource: "https://" + id + ".example/", Name: "Reports", Scopes: []string{"mcp"}, State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}); err != nil {
+		if err := servers.Save(ctx, &oauthdomain.McpResourceServer{TenantID: tenantID, ID: id, Resource: "https://" + id + ".example/", Name: "Reports", Scopes: []string{"mcp"}, State: oauthdomain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}); err != nil {
 			t.Fatal(err)
 		}
 		return id
@@ -30,7 +30,7 @@ func TestMcpToolCatalogRepository(t *testing.T) {
 	testing_contract.RunMcpToolCatalogs(t, catalogs, tenantID, otherTenantID, seedServer(), now)
 
 	cascaded := seedServer()
-	if err := catalogs.Save(ctx, &domain.McpToolCatalog{TenantID: tenantID, ResourceServerID: cascaded, Complete: true, ReceivedAt: now, Tools: []domain.CatalogTool{{Name: "read_document"}}}); err != nil {
+	if err := catalogs.Save(ctx, &oauthdomain.McpToolCatalog{TenantID: tenantID, ResourceServerID: cascaded, Complete: true, ReceivedAt: now, Tools: []oauthdomain.CatalogTool{{Name: "read_document"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := servers.Delete(ctx, tenantID, cascaded); err != nil {
@@ -48,14 +48,14 @@ func TestMcpToolCatalogWithoutAFingerprintDoesNotBecomeAPreviousList(t *testing.
 	tenantID := seedTenant(t, db).ID
 	now := testClock()
 	id := newUUID(t)
-	if err := (&oauthpg.McpResourceServerRepository{Pool: db}).Save(ctx, &domain.McpResourceServer{TenantID: tenantID, ID: id, Resource: "https://" + id + ".example/", Name: "Legacy", Scopes: []string{"mcp"}, State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}); err != nil {
+	if err := (&oauthpg.McpResourceServerRepository{Pool: db}).Save(ctx, &oauthdomain.McpResourceServer{TenantID: tenantID, ID: id, Resource: "https://" + id + ".example/", Name: "Legacy", Scopes: []string{"mcp"}, State: oauthdomain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(ctx, `INSERT INTO mcp_tool_catalogs (tenant_id, resource_server_id, tools, complete, received_at) VALUES ($1, $2, '[{"name":"old"}]', true, $3)`, tenantID, id, now); err != nil {
 		t.Fatal(err)
 	}
 	catalogs := &oauthpg.McpToolCatalogRepository{Pool: db}
-	if err := catalogs.Save(ctx, &domain.McpToolCatalog{TenantID: tenantID, ResourceServerID: id, Complete: true, ReceivedAt: now.Add(time.Minute), Tools: []domain.CatalogTool{{Name: "new"}}}); err != nil {
+	if err := catalogs.Save(ctx, &oauthdomain.McpToolCatalog{TenantID: tenantID, ResourceServerID: id, Complete: true, ReceivedAt: now.Add(time.Minute), Tools: []oauthdomain.CatalogTool{{Name: "new"}}}); err != nil {
 		t.Fatal(err)
 	}
 	found, err := catalogs.Find(ctx, tenantID, id)

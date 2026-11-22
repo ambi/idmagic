@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 // MappingOperation distinguishes create from update for AttributeMappingRule's
@@ -33,16 +33,16 @@ var multiValuedFilterPath = regexp.MustCompile(`^([A-Za-z0-9_]+)\[([A-Za-z0-9_]+
 // create vs update: create_only rules are skipped when op is ApplyOnUpdate.
 // A required rule that cannot resolve any value (no attribute, no constant, no
 // default) fails closed with an error rather than sending a partial resource.
-func BuildResource(rules []domain.AttributeMappingRule, resolve AttributeResolver, op MappingOperation) (map[string]any, error) {
+func BuildResource(rules []provisioningdomain.AttributeMappingRule, resolve AttributeResolver, op MappingOperation) (map[string]any, error) {
 	doc := map[string]any{}
 	for _, rule := range rules {
-		if rule.ApplyOn == domain.ApplyCreateOnly && op == ApplyOnUpdate {
+		if rule.ApplyOn == provisioningdomain.ApplyCreateOnly && op == ApplyOnUpdate {
 			continue
 		}
 		value, resolved := resolveRuleValue(rule, resolve)
 		if !resolved {
 			if rule.Required {
-				return nil, fmt.Errorf("provisioning/scim: target_path %q: %w", rule.TargetPath, ports.ErrRequiredAttributeUnresolved)
+				return nil, fmt.Errorf("provisioning/scim: target_path %q: %w", rule.TargetPath, provisioningports.ErrRequiredAttributeUnresolved)
 			}
 			continue
 		}
@@ -53,13 +53,13 @@ func BuildResource(rules []domain.AttributeMappingRule, resolve AttributeResolve
 	return doc, nil
 }
 
-func resolveRuleValue(rule domain.AttributeMappingRule, resolve AttributeResolver) (any, bool) {
+func resolveRuleValue(rule provisioningdomain.AttributeMappingRule, resolve AttributeResolver) (any, bool) {
 	switch rule.SourceKind {
-	case domain.SourceKindConstant:
+	case provisioningdomain.SourceKindConstant:
 		if rule.ConstantValue != nil {
 			return rule.ConstantValue, true
 		}
-	case domain.SourceKindAttribute:
+	case provisioningdomain.SourceKindAttribute:
 		if resolve != nil {
 			if value, ok := resolve(rule.SourceKey); ok && !isEmptyValue(value) {
 				return value, true

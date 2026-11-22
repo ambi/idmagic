@@ -41,7 +41,7 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
@@ -73,7 +73,7 @@ type countingApprovalStore struct {
 	saves atomic.Int64
 }
 
-func (s *countingApprovalStore) Save(ctx context.Context, rec *domain.ApprovalRequest) error {
+func (s *countingApprovalStore) Save(ctx context.Context, rec *oauthdomain.ApprovalRequest) error {
 	s.saves.Add(1)
 	return s.ApprovalRequestStore.Save(ctx, rec)
 }
@@ -126,8 +126,8 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	now := time.Now().UTC()
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	secretHash := domain.HashClientSecret(nigClientSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(nigClientSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: nigClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{nigRedirectURI},
@@ -136,10 +136,10 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 			spec.GrantDeviceCode, spec.GrantCiba,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    nigScope,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 
@@ -160,17 +160,17 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	// 併せて示す」ことを言っている。構造化された詳細を持てる型が登録されていないと、
 	// 4 つを併せて示していることを区別する事例が作れない。
 	detailTypes := oauth2.NewMemoryModule().AuthzDetailTypeRepo
-	_ = detailTypes.Save(context.Background(), &domain.AuthorizationDetailType{
+	_ = detailTypes.Save(context.Background(), &oauthdomain.AuthorizationDetailType{
 		TenantID: tenancydomain.DefaultTenantID, Type: nigDetailType,
 		Description: "支払いの開始", DisplayTemplate: "{actions} を実行する",
-		State: domain.DetailTypeEnabled,
-		Schema: domain.AuthorizationDetailsSchema{
-			Rules: []domain.AuthorizationDetailFieldRule{
+		State: oauthdomain.DetailTypeEnabled,
+		Schema: oauthdomain.AuthorizationDetailsSchema{
+			Rules: []oauthdomain.AuthorizationDetailFieldRule{
 				{
-					Name: "actions", Semantics: domain.DetailFieldSet, Required: true,
+					Name: "actions", Semantics: oauthdomain.DetailFieldSet, Required: true,
 					Allowed: []string{"initiate", "status"},
 				},
-				{Name: "instructedAmount", Semantics: domain.DetailFieldAtMost, Required: true},
+				{Name: "instructedAmount", Semantics: oauthdomain.DetailFieldAtMost, Required: true},
 			},
 		},
 		CreatedAt: now, UpdatedAt: now,
@@ -361,7 +361,7 @@ func (f *nigFixture) idToken(t *testing.T) string {
 func (f *nigFixture) advanceDeviceClock(t *testing.T, userCode string, d time.Duration) {
 	t.Helper()
 	ctx := f.tenantContext()
-	rec, err := f.devices.FindByUserCode(ctx, domain.NormalizeUserCode(userCode))
+	rec, err := f.devices.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(userCode))
 	if err != nil || rec == nil {
 		t.Fatalf("device record for %q: %v", userCode, err)
 	}
@@ -380,7 +380,7 @@ func (f *nigFixture) advanceDeviceClock(t *testing.T, userCode string, d time.Du
 func (f *nigFixture) advanceApprovalClock(t *testing.T, authReqID string, d time.Duration) {
 	t.Helper()
 	ctx := f.tenantContext()
-	rec, err := f.approvals.FindByAuthReqIDHash(ctx, domain.HashAuthReqID(authReqID))
+	rec, err := f.approvals.FindByAuthReqIDHash(ctx, oauthdomain.HashAuthReqID(authReqID))
 	if err != nil || rec == nil {
 		t.Fatalf("approval record: %v", err)
 	}
@@ -605,7 +605,7 @@ func TestDeviceCodePollingSemantics(t *testing.T) {
 	// 有効期限を過ぎれば expired_token。人が承認したあとであっても変わらない。
 	browser, _ := fixture.signIn(t)
 	fixture.decideUserCode(t, browser, userCode, "approve")
-	fixture.advanceDeviceClock(t, userCode, 2*domain.DeviceCodeTTL)
+	fixture.advanceDeviceClock(t, userCode, 2*oauthdomain.DeviceCodeTTL)
 	status, body = fixture.exchangeDeviceCode(t, deviceCode)
 	assertOAuthError(t, "期限切れの device_code", status, body, "expired_token")
 }
@@ -727,7 +727,7 @@ func TestCibaPollModeSemanticsAndSingleUseExchange(t *testing.T) {
 
 	// 期限切れは expired_token。判断が付く前に期限が来た場合である。
 	expiring := start(t)
-	fixture.advanceApprovalClock(t, expiring, 2*domain.ApprovalRequestMaxTTL)
+	fixture.advanceApprovalClock(t, expiring, 2*oauthdomain.ApprovalRequestMaxTTL)
 	status, body = fixture.exchangeAuthReqID(t, expiring)
 	assertOAuthError(t, "期限切れの auth_req_id", status, body, "expired_token")
 

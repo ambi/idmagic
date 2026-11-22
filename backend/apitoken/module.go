@@ -5,20 +5,20 @@ import (
 	"github.com/labstack/echo/v5"
 
 	apitokenhttp "github.com/ambi/idmagic/backend/apitoken/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
-	"github.com/ambi/idmagic/backend/apitoken/ports"
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/internal/usecases"
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 type Module struct {
-	Repo              ports.Repository
+	Repo              apitokenports.Repository
 	TokenIssuer       oauthports.TokenIssuer
 	TokenIntrospector oauthports.TokenIntrospector
 }
 
-func (m Module) Service() *usecases.Service {
-	return usecases.New(m.Repo, usecases.WithTokenIssuer(m.TokenIssuer), usecases.WithTokenIntrospector(m.TokenIntrospector))
+func (m Module) Service() *apitokenusecases.Service {
+	return apitokenusecases.New(m.Repo, apitokenusecases.WithTokenIssuer(m.TokenIssuer), apitokenusecases.WithTokenIntrospector(m.TokenIntrospector))
 }
 
 func (m Module) Register(group *echo.Group, deps support.Deps, authenticator *support.Authenticator, personalIdentity apitokenhttp.PersonalTokenIdentity) {

@@ -22,8 +22,8 @@ import (
 	"github.com/ambi/idmagic/backend/datakeys"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	jobdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	jobports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -50,8 +50,8 @@ func (r *observedTenantRepository) FindAll(ctx context.Context) ([]*tenancydomai
 type controlPlaneBoundaryServer struct {
 	e              *echo.Echo
 	tenants        *observedTenantRepository
-	jobs           jobports.JobRepository
-	otherJob       *jobdomain.Job
+	jobs           jobsports.JobRepository
+	otherJob       *jobsdomain.Job
 	dataKeys       datakeys.Module
 	events         *[]spec.DomainEvent
 	otherAuditID   string
@@ -99,19 +99,19 @@ func newControlPlaneBoundaryServer(t *testing.T, actor *userdomain.User) *contro
 	dataKeyModule.Migrators.Register("fixture", dataKeyMigrator{})
 
 	jobStore := jobs.NewJobRepository()
-	lane, ok := jobdomain.LaneFor(jobdomain.KindNoopEcho)
+	lane, ok := jobsdomain.LaneFor(jobsdomain.KindNoopEcho)
 	if !ok {
 		t.Fatal("noop_echo の実行レーンが登録されていない")
 	}
-	otherJob, _, err := jobStore.Enqueue(t.Context(), jobports.EnqueueInput{
-		TenantID: "acme", Kind: jobdomain.KindNoopEcho, Lane: lane,
+	otherJob, _, err := jobStore.Enqueue(t.Context(), jobsports.EnqueueInput{
+		TenantID: "acme", Kind: jobsdomain.KindNoopEcho, Lane: lane,
 		Params: json.RawMessage(`{"message":"other tenant"}`), MaxAttempts: 3, RunAt: now, Now: now,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := jobStore.Enqueue(t.Context(), jobports.EnqueueInput{
-		TenantID: tenancydomain.DefaultTenantID, Kind: jobdomain.KindNoopEcho, Lane: lane,
+	if _, _, err := jobStore.Enqueue(t.Context(), jobsports.EnqueueInput{
+		TenantID: tenancydomain.DefaultTenantID, Kind: jobsdomain.KindNoopEcho, Lane: lane,
 		Params: json.RawMessage(`{"message":"control plane"}`), MaxAttempts: 3, RunAt: now.Add(time.Minute), Now: now,
 	}); err != nil {
 		t.Fatal(err)
@@ -303,8 +303,8 @@ func TestControlPlaneJobOversightNeedsNoAdminRole(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != jobdomain.StatusCanceled {
-		t.Fatalf("cross-tenant job status = %q, want %q", got.Status, jobdomain.StatusCanceled)
+	if got.Status != jobsdomain.StatusCanceled {
+		t.Fatalf("cross-tenant job status = %q, want %q", got.Status, jobsdomain.StatusCanceled)
 	}
 }
 
@@ -324,7 +324,7 @@ func TestSystemJobCancelRefusesWithoutBrowserProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status == jobdomain.StatusCanceled {
+	if got.Status == jobsdomain.StatusCanceled {
 		t.Fatalf("refused cancel still canceled job %q", srv.otherJob.ID)
 	}
 }
@@ -424,7 +424,7 @@ func TestTenantAdminApisStayInsideRequestTenant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status == jobdomain.StatusCanceled {
+	if got.Status == jobsdomain.StatusCanceled {
 		t.Fatalf("tenant route canceled another tenant's job %q", srv.otherJob.ID)
 	}
 }
@@ -447,9 +447,9 @@ func (s *controlPlaneBoundaryServer) activeDataKeyVersion(t *testing.T, tenantID
 	return key.Version
 }
 
-func (s *controlPlaneBoundaryServer) reencryptionJobs(t *testing.T, tenantID string) []*jobdomain.Job {
+func (s *controlPlaneBoundaryServer) reencryptionJobs(t *testing.T, tenantID string) []*jobsdomain.Job {
 	t.Helper()
-	found, err := s.jobs.ListByTenantAndKinds(t.Context(), tenantID, []jobdomain.JobKind{jobdomain.KindDataKeyReencryption}, 10)
+	found, err := s.jobs.ListByTenantAndKinds(t.Context(), tenantID, []jobsdomain.JobKind{jobsdomain.KindDataKeyReencryption}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

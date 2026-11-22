@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 )
 
 // CredentialFixture は資格情報の保存先と、記録を持てる二人のユーザーを渡す。
 // PostgreSQL の user_id は users への外部キーなので、ユーザーは保存先ごとに用意する。
 type CredentialFixture struct {
-	Repo    ports.WebAuthnCredentialRepository
+	Repo    webauthnports.WebAuthnCredentialRepository
 	Context func(context.Context) context.Context
 	Owner   string
 	Other   string
@@ -31,7 +31,7 @@ func RunCredentialRepository(t *testing.T, newFixture NewCredentialFixture) {
 	f := newFixture(t)
 	ctx := f.Context(context.Background())
 	label := "Owner key"
-	original := &domain.WebAuthnCredential{
+	original := &webauthndomain.WebAuthnCredential{
 		CredentialID: "Y3JlZC0x",
 		UserID:       f.Owner,
 		PublicKey:    "b3duZXIta2V5",
@@ -46,7 +46,7 @@ func RunCredentialRepository(t *testing.T, newFixture NewCredentialFixture) {
 
 	for name, userID := range map[string]string{"another user": f.Other, "the owner": f.Owner} {
 		otherLabel := "Claimed key"
-		claim := &domain.WebAuthnCredential{
+		claim := &webauthndomain.WebAuthnCredential{
 			CredentialID: original.CredentialID,
 			UserID:       userID,
 			PublicKey:    "Y2xhaW1lZC1rZXk",
@@ -55,7 +55,7 @@ func RunCredentialRepository(t *testing.T, newFixture NewCredentialFixture) {
 			Label:        &otherLabel,
 			CreatedAt:    f.Now.Add(time.Minute),
 		}
-		if err := f.Repo.Save(ctx, claim); !errors.Is(err, ports.ErrWebAuthnCredentialExists) {
+		if err := f.Repo.Save(ctx, claim); !errors.Is(err, webauthnports.ErrWebAuthnCredentialExists) {
 			t.Fatalf("Save by %s: err=%v, want ErrWebAuthnCredentialExists", name, err)
 		}
 		stored, err := f.Repo.FindByCredentialID(ctx, original.CredentialID)

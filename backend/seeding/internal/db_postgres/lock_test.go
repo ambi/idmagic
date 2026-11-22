@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
@@ -19,7 +19,7 @@ func TestRequestLockSerializesIndependentConnections(t *testing.T) {
 	pgtest.Require(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	request := domain.Request{Environment: domain.EnvironmentTest, Profile: domain.ProfileTest, TenantID: "lock-test"}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentTest, Profile: seedingdomain.ProfileTest, TenantID: "lock-test"}
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	var once sync.Once

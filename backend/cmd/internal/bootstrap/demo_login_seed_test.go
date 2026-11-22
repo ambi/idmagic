@@ -16,21 +16,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func applySeedProfile(t *testing.T, profile domain.Profile) *Dependencies {
+func applySeedProfile(t *testing.T, profile seedingdomain.Profile) *Dependencies {
 	t.Helper()
 	deps, err := assembleMemory(SharedConfig{})
 	if err != nil {
 		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
-	request := domain.Request{
-		Environment: domain.EnvironmentDevelopment,
+	request := seedingdomain.Request{
+		Environment: seedingdomain.EnvironmentDevelopment,
 		Profile:     profile,
-		Mode:        domain.ModeApply,
+		Mode:        seedingdomain.ModeApply,
 	}
 	if _, err := Seed(context.Background(), deps, request, ""); err != nil {
 		t.Fatalf("Seed(%s) error = %v", profile, err)
@@ -45,7 +45,7 @@ func TestDemoLoginCredentialsExistOnlyInTheDevelopmentProfile(t *testing.T) {
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
 	ctx := context.Background()
 
-	development := applySeedProfile(t, domain.ProfileDevelopment)
+	development := applySeedProfile(t, seedingdomain.ProfileDevelopment)
 
 	client, err := development.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
 	if err != nil {
@@ -81,7 +81,7 @@ func TestDemoLoginCredentialsExistOnlyInTheDevelopmentProfile(t *testing.T) {
 	}
 
 	// 同じ環境で bootstrap を当てると、どちらも存在しない。
-	bootstrapped := applySeedProfile(t, domain.ProfileBootstrap)
+	bootstrapped := applySeedProfile(t, seedingdomain.ProfileBootstrap)
 
 	absentClient, err := bootstrapped.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
 	if err != nil {

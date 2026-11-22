@@ -29,14 +29,14 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -60,8 +60,8 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 	ctx := context.Background()
 
 	tenantRepo := memory.NewTenantRepository()
-	for _, tenant := range []*domain.Tenant{
-		activeTenant(domain.DefaultTenantID, "Default"),
+	for _, tenant := range []*tenancydomain.Tenant{
+		activeTenant(tenancydomain.DefaultTenantID, "Default"),
 		activeTenant("acme", "Acme"),
 		activeTenant("beta", "Beta"),
 	} {
@@ -102,7 +102,7 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 	// 「上書きが保存されていない」の効果を読めない。
 	notifier := &template.Notifier{
 		Sender: server.sender,
-		Tenant: tenantusecases.TenantNotificationSource{
+		Tenant: tenancyusecases.TenantNotificationSource{
 			TenantRepo: tenantRepo, BrandingRepo: server.branding, TemplateRepo: templates,
 		},
 	}
@@ -117,7 +117,7 @@ func newRefusalServer(t *testing.T, actors ...*userdomain.User) *refusalServer {
 		EmailSender:      server.sender,
 		AuthnResolver:    resolver,
 		FederationSigner: signingkeys.Module{KeyStore: keyStore}.FederationSigner(),
-		Notification:     sharednotification.Module{EmailSender: server.sender, Notifier: notifier},
+		Notification:     notificationports.Module{EmailSender: server.sender, Notifier: notifier},
 		Tenancy: tenancy.Module{
 			TenantRepo:            tenantRepo,
 			BrandingRepo:          server.branding,
@@ -228,8 +228,8 @@ func TestAdminIntegrationEndpointsRefuseCrossTenantTargetingAndLeakNoSecret(t *t
 //spec:covers EX-TENANCY-014-01: `admin` ロールだけを持つテナント管理者は、システムコンソールの
 func TestListTenantsRefusesTenantAdminAndReturnsNoOtherTenant(t *testing.T) {
 	server := newRefusalServer(t,
-		refusalAdmin(domain.DefaultTenantID),
-		settingsActor("sysadmin", domain.DefaultTenantID, []string{"system_admin"}),
+		refusalAdmin(tenancydomain.DefaultTenantID),
+		settingsActor("sysadmin", tenancydomain.DefaultTenantID, []string{"system_admin"}),
 	)
 
 	refused := server.get(t, "/realms/default/api/admin/v1/tenants")
@@ -251,7 +251,7 @@ func TestListTenantsRefusesTenantAdminAndReturnsNoOtherTenant(t *testing.T) {
 
 	// 対照: 制御面テナントの system_admin なら同じ経路で一覧が返る。
 	// 拒否がロールに由来し、一覧そのものが空だったのではないことを示す。
-	allowed := newRefusalServer(t, settingsActor("sysadmin", domain.DefaultTenantID, []string{"system_admin"}))
+	allowed := newRefusalServer(t, settingsActor("sysadmin", tenancydomain.DefaultTenantID, []string{"system_admin"}))
 	listed := allowed.get(t, "/realms/default/api/admin/v1/tenants")
 	if listed.Code != http.StatusOK {
 		t.Fatalf("対照 status=%d body=%s, want 200", listed.Code, listed.Body.String())
@@ -409,7 +409,7 @@ func (s *refusalServer) groupNames(t *testing.T, realm string) []string {
 // そのまま返すので、返り値を持ち越して前後を比べると必ず一致してしまう。
 func (s *refusalServer) groupUsage(t *testing.T) int {
 	t.Helper()
-	usage, err := s.quotas.GetUsage(context.Background(), domain.DefaultTenantID)
+	usage, err := s.quotas.GetUsage(context.Background(), tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,10 +424,10 @@ func (s *refusalServer) groupUsage(t *testing.T) int {
 //
 //spec:covers EX-TENANCY-013-01: 上限に達したテナントの Group 作成は `QuotaExceededError` で拒否され、
 func TestCreateGroupRefusesOverHardQuotaAndLeavesUsageUnchanged(t *testing.T) {
-	server := newRefusalServer(t, refusalAdmin(domain.DefaultTenantID))
+	server := newRefusalServer(t, refusalAdmin(tenancydomain.DefaultTenantID))
 	ctx := context.Background()
 	limit := 1
-	if err := server.quotas.SetQuota(ctx, domain.DefaultTenantID, &domain.TenantQuota{Groups: &limit}); err != nil {
+	if err := server.quotas.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -467,7 +467,7 @@ func TestCreateGroupRefusesOverHardQuotaAndLeavesUsageUnchanged(t *testing.T) {
 	// 対照 2: 上限を上げれば同じ要求が通る。拒否が Quota に由来し、
 	// 作成の経路そのものが塞がっていたのではないことを示す。
 	raised := 2
-	if err := server.quotas.SetQuota(ctx, domain.DefaultTenantID, &domain.TenantQuota{Groups: &raised}); err != nil {
+	if err := server.quotas.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Groups: &raised}); err != nil {
 		t.Fatal(err)
 	}
 	allowed := server.send(t, http.MethodPost, "/realms/default/api/admin/v1/groups",

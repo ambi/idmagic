@@ -11,7 +11,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -74,7 +74,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	})
 }
 
-func (d Deps) transactionRequest(c *echo.Context) (*domain.AuthorizationRequest, error) {
+func (d Deps) transactionRequest(c *echo.Context) (*oauthdomain.AuthorizationRequest, error) {
 	cookie, err := c.Cookie(support.TenantCookieName(c, authorizationTransactionCookie))
 	if err != nil || cookie.Value == "" {
 		return nil, &signinports.AuthorizationUnavailableError{Reason: "no authorization transaction is available"}

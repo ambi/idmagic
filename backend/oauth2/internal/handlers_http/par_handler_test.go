@@ -18,7 +18,7 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -35,17 +35,17 @@ const (
 func newPARTestServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(parClientSecret)
-	clientRepo.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(parClientSecret)
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{parRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                   "openid profile",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 	e := echo.New()
@@ -123,7 +123,7 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	// 投げる。handleAuthorize は consumed.TenantID != support.RequestTenantID(c) を理由に拒否する。
 	store := oauth2memory.NewPARStore()
 	// 別テナントの PAR レコードを直接 store に保存。
-	rec := &domain.PARRecord{
+	rec := &oauthdomain.PARRecord{
 		TenantID:   "acme",
 		RequestURI: "urn:ietf:params:oauth:request_uri:cross-tenant",
 		ClientID:   parClientID,
@@ -144,14 +144,14 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 	// PARStore を差し替えた Deps で再 Register。
 	e := echo.New()
 	clientRepo := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(parClientSecret)
-	clientRepo.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(parClientSecret)
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{parRedirectURI},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},
-		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: domain.FapiNone,
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "openid",
+		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: oauthdomain.FapiNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: "openid",
 		CreatedAt: time.Now().UTC(),
 	})
 	httpadapter.Register(e, httpadapter.Deps{
@@ -169,14 +169,14 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 
 func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing.T) {
 	clientRepo := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(parClientSecret)
-	clientRepo.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(parClientSecret)
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: parClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{parRedirectURI},
 		GrantTypes:    []spec.GrantType{spec.GrantAuthorizationCode},
-		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: domain.FapiNone,
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "openid",
+		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode}, FapiProfile: oauthdomain.FapiNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: "openid",
 		CreatedAt: time.Now().UTC(),
 	})
 	store := &ctxCheckingPARStore{PARStore: oauth2memory.NewPARStore()}
@@ -217,7 +217,7 @@ type ctxCheckingPARStore struct {
 	saveCtxErr error
 }
 
-func (s *ctxCheckingPARStore) Save(ctx context.Context, rec *domain.PARRecord) error {
+func (s *ctxCheckingPARStore) Save(ctx context.Context, rec *oauthdomain.PARRecord) error {
 	s.saveCtxErr = ctx.Err()
 	return s.PARStore.Save(ctx, rec)
 }

@@ -16,12 +16,12 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -44,11 +44,11 @@ const occurredAtLayout = "2006-01-02 15:04 UTC"
 // 通知の配線が無い構成 (一部のテストや最小構成) で認証や資格情報の変更を壊さないためである。
 type DispatchDeps struct {
 	UserRepo     userports.UserRepository
-	Preferences  ports.PreferenceRepository
-	KnownDevices ports.KnownDeviceRepository
-	Notifier     sharednotification.Notifier
+	Preferences  securitynotificationports.PreferenceRepository
+	KnownDevices securitynotificationports.KnownDeviceRepository
+	Notifier     notificationports.Notifier
 	// TenantSource はテナント既定 locale の解決に使う。nil ならシステム既定へ落とす。
-	TenantSource sharednotification.TenantNotificationSource
+	TenantSource notificationports.TenantNotificationSource
 	// SaltStore は device_hash のテナントごとのソルト。nil ならソルト無しの
 	// SHA-256 へ落ちる (login throttle の correlationHash と同じ扱い)。
 	SaltStore auditports.TenantSaltStore
@@ -64,7 +64,7 @@ type DispatchDeps struct {
 // 種類のエラーだけで、宛先が無い・設定で止まっている・既知の端末である、といった
 // 「送らない」判断はエラーではない。
 func Dispatch(ctx context.Context, deps DispatchDeps, event spec.DomainEvent) error {
-	trigger, ok := domain.TriggerFor(event.EventType())
+	trigger, ok := securitynotificationdomain.TriggerFor(event.EventType())
 	if !ok {
 		return nil
 	}
@@ -92,7 +92,7 @@ func Dispatch(ctx context.Context, deps DispatchDeps, event spec.DomainEvent) er
 		return nil
 	}
 
-	if trigger.Category == domain.CategoryNewDeviceSignIn {
+	if trigger.Category == securitynotificationdomain.CategoryNewDeviceSignIn {
 		firstSignIn, observeErr := observeDevice(ctx, deps, user, payload, event.OccurredAt())
 		if observeErr != nil {
 			return observeErr
@@ -112,10 +112,10 @@ func Dispatch(ctx context.Context, deps DispatchDeps, event spec.DomainEvent) er
 	}
 
 	locale := resolveLocale(ctx, deps, user, tenantID)
-	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
+	delivered := deps.Notifier.Notify(ctx, notificationports.Notification{
 		TenantID:        tenantID,
 		To:              *user.Email,
-		Key:             sharednotification.TemplateKeyAccountSecurityAlert,
+		Key:             notificationports.TemplateKeyAccountSecurityAlert,
 		RecipientLocale: user.LocaleAttribute(),
 		Vars: map[string]string{
 			"user_display_name":   user.DisplayName(),
@@ -126,7 +126,7 @@ func Dispatch(ctx context.Context, deps DispatchDeps, event spec.DomainEvent) er
 		},
 	})
 	if deps.Emit != nil {
-		deps.Emit(&domain.AccountSecurityNotificationSent{
+		deps.Emit(&securitynotificationdomain.AccountSecurityNotificationSent{
 			At: time.Now().UTC(), TenantID: tenantID, UserID: user.ID,
 			Category: trigger.Category, TriggerEventType: event.EventType(), Delivered: delivered,
 		})
@@ -167,7 +167,7 @@ func observeDevice(
 		return false, nil
 	}
 	userAgent := stringField(payload, "userAgent")
-	return deps.KnownDevices.Observe(ctx, ports.KnownDevice{
+	return deps.KnownDevices.Observe(ctx, securitynotificationports.KnownDevice{
 		UserID:     user.ID,
 		DeviceHash: deviceHash(ctx, deps, userAgent),
 		Label:      authdomain.DeviceLabel(userAgent),
@@ -191,7 +191,7 @@ func deviceHash(ctx context.Context, deps DispatchDeps, userAgent string) string
 // allowsCategory は本人の受信設定を見る。設定を読めない場合は送る方に倒すので、
 // エラーは返さない。通知は攻撃の検知に直結するため、設定ストアの障害で黙って止めない。
 func allowsCategory(
-	ctx context.Context, deps DispatchDeps, userID string, category domain.Category,
+	ctx context.Context, deps DispatchDeps, userID string, category securitynotificationdomain.Category,
 ) bool {
 	if category.Mandatory() || deps.Preferences == nil {
 		return true

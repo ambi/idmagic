@@ -3,7 +3,7 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // adopted attribute subset with correct mutability/required flags,
@@ -12,12 +12,12 @@ import (
 //
 //spec:covers RFC7643-CORE-RESOURCES (partial): UserCoreSchema advertises exactly the
 func TestUserCoreSchemaAttributes(t *testing.T) {
-	schema := domain.UserCoreSchema()
+	schema := scimdomain.UserCoreSchema()
 	if len(schema.Attributes) == 0 {
 		t.Fatal("expected non-empty attribute list")
 	}
 
-	byName := make(map[string]domain.SchemaAttribute, len(schema.Attributes))
+	byName := make(map[string]scimdomain.SchemaAttribute, len(schema.Attributes))
 	for _, attr := range schema.Attributes {
 		byName[attr.Name] = attr
 	}
@@ -69,7 +69,7 @@ func TestUserCoreSchemaAttributes(t *testing.T) {
 			t.Errorf("unsupported attribute %q must not be advertised", unsupported)
 		}
 	}
-	emailSubAttrs := make(map[string]domain.SchemaAttribute, len(emails.SubAttributes))
+	emailSubAttrs := make(map[string]scimdomain.SchemaAttribute, len(emails.SubAttributes))
 	for _, attr := range emails.SubAttributes {
 		emailSubAttrs[attr.Name] = attr
 	}
@@ -84,15 +84,15 @@ func TestUserCoreSchemaAttributes(t *testing.T) {
 //
 //spec:covers REQ-SOURCING-007: EnterpriseUserSchema advertises exactly the employeeNumber /
 func TestEnterpriseUserSchemaAttributes(t *testing.T) {
-	schema := domain.EnterpriseUserSchema()
-	if schema.ID != domain.EnterpriseUserSchemaURN {
-		t.Errorf("ID = %q, want %q", schema.ID, domain.EnterpriseUserSchemaURN)
+	schema := scimdomain.EnterpriseUserSchema()
+	if schema.ID != scimdomain.EnterpriseUserSchemaURN {
+		t.Errorf("ID = %q, want %q", schema.ID, scimdomain.EnterpriseUserSchemaURN)
 	}
 	if len(schema.Attributes) == 0 {
 		t.Fatal("expected non-empty attribute list")
 	}
 
-	byName := make(map[string]domain.SchemaAttribute, len(schema.Attributes))
+	byName := make(map[string]scimdomain.SchemaAttribute, len(schema.Attributes))
 	for _, attr := range schema.Attributes {
 		byName[attr.Name] = attr
 	}
@@ -110,7 +110,7 @@ func TestEnterpriseUserSchemaAttributes(t *testing.T) {
 	if len(manager.SubAttributes) == 0 {
 		t.Error("expected manager to declare subAttributes")
 	}
-	managerSubAttrs := make(map[string]domain.SchemaAttribute, len(manager.SubAttributes))
+	managerSubAttrs := make(map[string]scimdomain.SchemaAttribute, len(manager.SubAttributes))
 	for _, attr := range manager.SubAttributes {
 		managerSubAttrs[attr.Name] = attr
 	}
@@ -126,8 +126,8 @@ func TestEnterpriseUserSchemaAttributes(t *testing.T) {
 }
 
 func TestGroupCoreSchemaAttributes(t *testing.T) {
-	schema := domain.GroupCoreSchema()
-	byName := make(map[string]domain.SchemaAttribute, len(schema.Attributes))
+	schema := scimdomain.GroupCoreSchema()
+	byName := make(map[string]scimdomain.SchemaAttribute, len(schema.Attributes))
 	for _, attr := range schema.Attributes {
 		byName[attr.Name] = attr
 	}
@@ -147,7 +147,7 @@ func TestGroupCoreSchemaAttributes(t *testing.T) {
 	if !members.MultiValued {
 		t.Error("expected members to be multiValued")
 	}
-	memberSubAttrs := make(map[string]domain.SchemaAttribute, len(members.SubAttributes))
+	memberSubAttrs := make(map[string]scimdomain.SchemaAttribute, len(members.SubAttributes))
 	for _, attr := range members.SubAttributes {
 		memberSubAttrs[attr.Name] = attr
 	}

@@ -13,8 +13,8 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -27,20 +27,20 @@ const (
 )
 
 type stubAssertionVerifier struct {
-	assertion *ports.IDTokenAssertion
+	assertion *oauthports.IDTokenAssertion
 	err       error
 }
 
-func (s stubAssertionVerifier) VerifyIDTokenAssertion(context.Context, string) (*ports.IDTokenAssertion, error) {
+func (s stubAssertionVerifier) VerifyIDTokenAssertion(context.Context, string) (*oauthports.IDTokenAssertion, error) {
 	return s.assertion, s.err
 }
 
 type recordingIDJAGSigner struct {
 	calls int
-	last  ports.IDJAGInput
+	last  oauthports.IDJAGInput
 }
 
-func (s *recordingIDJAGSigner) SignIDJAG(_ context.Context, in ports.IDJAGInput) (string, string, error) {
+func (s *recordingIDJAGSigner) SignIDJAG(_ context.Context, in oauthports.IDJAGInput) (string, string, error) {
 	s.calls++
 	s.last = in
 	return "id-jag", "jti-1", nil
@@ -58,9 +58,9 @@ func newIDJAGIssueFixture(t *testing.T) *idJagIssueFixture {
 	t.Helper()
 	ctx := testing_tenant.Default(context.Background())
 	clients := oauth2memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{ClientID: "client", ClientType: spec.ClientConfidential, Scope: "openid", CreatedAt: time.Now().UTC()})
-	clients.Seed(&domain.OAuth2Client{ClientID: "other-client", ClientType: spec.ClientConfidential, Scope: "openid", CreatedAt: time.Now().UTC()})
-	clients.Seed(&domain.OAuth2Client{ClientID: "public-client", ClientType: spec.ClientPublic, Scope: "openid", CreatedAt: time.Now().UTC()})
+	clients.Seed(&oauthdomain.OAuth2Client{ClientID: "client", ClientType: spec.ClientConfidential, Scope: "openid", CreatedAt: time.Now().UTC()})
+	clients.Seed(&oauthdomain.OAuth2Client{ClientID: "other-client", ClientType: spec.ClientConfidential, Scope: "openid", CreatedAt: time.Now().UTC()})
+	clients.Seed(&oauthdomain.OAuth2Client{ClientID: "public-client", ClientType: spec.ClientPublic, Scope: "openid", CreatedAt: time.Now().UTC()})
 	users := idmanagement.NewMemoryModule().UserRepo
 	email := "user@example.com"
 	if err := users.Save(ctx, &userdomain.User{
@@ -70,7 +70,7 @@ func newIDJAGIssueFixture(t *testing.T) *idJagIssueFixture {
 		t.Fatal(err)
 	}
 	policies := oauth2memory.NewCrossAppAccessPolicyRepository()
-	if err := policies.CreateIssuePolicy(ctx, &domain.CrossAppAccessIssuePolicy{
+	if err := policies.CreateIssuePolicy(ctx, &oauthdomain.CrossAppAccessIssuePolicy{
 		TenantID: kernel.DefaultTenantID, ID: "p1", ClientID: "client", Audience: idJagAudience,
 		RelyingPartyClientID: "chat-rp", TargetClientID: "f53f191f9311af35",
 		Resources: []string{idJagResource}, Scopes: []string{"chat.read", "chat.history"},
@@ -81,8 +81,8 @@ func newIDJAGIssueFixture(t *testing.T) *idJagIssueFixture {
 	f := &idJagIssueFixture{signer: &recordingIDJAGSigner{}}
 	f.deps = IssueIDJAGDeps{
 		ClientRepo: clients, UserRepo: users, Policies: policies, Signer: f.signer,
-		Verifier:          stubAssertionVerifier{assertion: &ports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"client"}, AuthTime: 100, AMR: []string{"pwd"}}},
-		ApplicationAccess: func(context.Context, string, *ports.IDTokenAssertion) (bool, error) { return true, nil },
+		Verifier:          stubAssertionVerifier{assertion: &oauthports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"client"}, AuthTime: 100, AMR: []string{"pwd"}}},
+		ApplicationAccess: func(context.Context, string, *oauthports.IDTokenAssertion) (bool, error) { return true, nil },
 		Emit:              func(event spec.DomainEvent) { f.events = append(f.events, event) },
 	}
 	// 値は draft の 4.3.1 節の例から写す。製品の定数から作らない。
@@ -117,7 +117,7 @@ func TestIssueIDJAG_REQ_OAUTH2_066(t *testing.T) {
 	if len(got.AuthorizationDetails) != 1 || got.AuthorizationDetails[0].Type != "chat_read" {
 		t.Fatalf("details = %+v", got.AuthorizationDetails)
 	}
-	issued, ok := f.events[len(f.events)-1].(*domain.IdJagIssued)
+	issued, ok := f.events[len(f.events)-1].(*oauthdomain.IdJagIssued)
 	if !ok || issued.Audience != idJagAudience || issued.ClientID != "client" {
 		t.Fatalf("events = %+v", f.events)
 	}
@@ -147,24 +147,24 @@ func TestIssueIDJAGRefusals_REQ_OAUTH2_067(t *testing.T) {
 			f.deps.Verifier = stubAssertionVerifier{err: errors.New("typ identifies another kind")}
 		}, "invalid_grant"},
 		"ID Token of another client": {func(f *idJagIssueFixture) {
-			f.deps.Verifier = stubAssertionVerifier{assertion: &ports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"other-client"}}}
+			f.deps.Verifier = stubAssertionVerifier{assertion: &oauthports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"other-client"}}}
 		}, "invalid_grant"},
 		"ID Token with two audiences": {func(f *idJagIssueFixture) {
-			f.deps.Verifier = stubAssertionVerifier{assertion: &ports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"client", "other-client"}}}
+			f.deps.Verifier = stubAssertionVerifier{assertion: &oauthports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"client", "other-client"}}}
 		}, "invalid_grant"},
 		"unknown audience":    {func(f *idJagIssueFixture) { f.in.Audiences = []string{"https://unknown.example/"} }, "invalid_target"},
 		"no resource":         {func(f *idJagIssueFixture) { f.in.Resources = nil }, "invalid_target"},
 		"ungoverned resource": {func(f *idJagIssueFixture) { f.in.Resources = []string{idJagResource, "https://evil.example/"} }, "invalid_target"},
 		"client without a policy": {func(f *idJagIssueFixture) {
 			f.in.ClientID = "other-client"
-			f.deps.Verifier = stubAssertionVerifier{assertion: &ports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"other-client"}}}
+			f.deps.Verifier = stubAssertionVerifier{assertion: &oauthports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"other-client"}}}
 		}, "access_denied"},
 		"no permitted scope": {func(f *idJagIssueFixture) { f.in.Scope = "admin" }, "access_denied"},
 		"unknown user": {func(f *idJagIssueFixture) {
-			f.deps.Verifier = stubAssertionVerifier{assertion: &ports.IDTokenAssertion{Subject: "nobody", Audiences: []string{"client"}}}
+			f.deps.Verifier = stubAssertionVerifier{assertion: &oauthports.IDTokenAssertion{Subject: "nobody", Audiences: []string{"client"}}}
 		}, "access_denied"},
 		"application access denied": {func(f *idJagIssueFixture) {
-			f.deps.ApplicationAccess = func(context.Context, string, *ports.IDTokenAssertion) (bool, error) { return false, nil }
+			f.deps.ApplicationAccess = func(context.Context, string, *oauthports.IDTokenAssertion) (bool, error) { return false, nil }
 		}, "access_denied"},
 		"application gate not wired": {func(f *idJagIssueFixture) { f.deps.ApplicationAccess = nil }, "access_denied"},
 	}
@@ -180,7 +180,7 @@ func TestIssueIDJAGRefusals_REQ_OAUTH2_067(t *testing.T) {
 			if len(f.events) != 1 {
 				t.Fatalf("events = %+v", f.events)
 			}
-			rejected, ok := f.events[0].(*domain.IdJagRejected)
+			rejected, ok := f.events[0].(*oauthdomain.IdJagRejected)
 			if !ok || rejected.Reason != tc.code || rejected.Stage != "issue" {
 				t.Fatalf("event = %+v", f.events[0])
 			}
@@ -226,7 +226,7 @@ func TestIssueIDJAGReleasesVerifiedEmailOnly_REQ_OAUTH2_066(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	f := newIDJAGIssueFixture(t)
 	policies := oauth2memory.NewCrossAppAccessPolicyRepository()
-	if err := policies.CreateIssuePolicy(ctx, &domain.CrossAppAccessIssuePolicy{
+	if err := policies.CreateIssuePolicy(ctx, &oauthdomain.CrossAppAccessIssuePolicy{
 		TenantID: kernel.DefaultTenantID, ID: "p1", ClientID: "client", Audience: idJagAudience, RelyingPartyClientID: "rp",
 		TargetClientID: "t", Resources: []string{idJagResource}, Scopes: []string{"chat.read"}, ReleaseEmail: true,
 	}); err != nil {
@@ -264,11 +264,11 @@ func TestIDJAGChecksTheRequestingAgent_REQ_OAUTH2_067(t *testing.T) {
 		seedSupervisionAgent(t, agents, "agent_1", clientID, kind)
 		return agents
 	}
-	grant := func(t *testing.T, sub string, scopes ...string) ports.ConsentRepository {
+	grant := func(t *testing.T, sub string, scopes ...string) oauthports.ConsentRepository {
 		t.Helper()
 		consents := oauth2memory.NewConsentRepository()
-		if err := consents.SaveAgentDelegation(testing_tenant.Default(context.Background()), kernel.DefaultTenantID, &domain.Consent{
-			UserID: sub, AgentID: "agent_1", Scopes: scopes, State: domain.ConsentGranted,
+		if err := consents.SaveAgentDelegation(testing_tenant.Default(context.Background()), kernel.DefaultTenantID, &oauthdomain.Consent{
+			UserID: sub, AgentID: "agent_1", Scopes: scopes, State: oauthdomain.ConsentGranted,
 			GrantedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(time.Hour),
 		}); err != nil {
 			t.Fatal(err)
@@ -341,7 +341,7 @@ func TestIssueIDJAGRefusesAfterUserRevocation_REQ_OAUTH2_067(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			f := newIDJAGIssueFixture(t)
-			f.deps.Verifier = stubAssertionVerifier{assertion: &ports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"client"}, IssuedAt: issuedAt}}
+			f.deps.Verifier = stubAssertionVerifier{assertion: &oauthports.IDTokenAssertion{Subject: idJagUser, Audiences: []string{"client"}, IssuedAt: issuedAt}}
 			f.deps.UserEpochs = stubUserEpochs{epoch: &ssdomain.UserRevocationEpoch{TenantID: kernel.DefaultTenantID, UserID: idJagUser, Epoch: tc.epoch}}
 			_, err := f.issue()
 			if tc.refuse {

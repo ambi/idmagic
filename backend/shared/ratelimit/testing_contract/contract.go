@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/ratelimit/ports"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 )
 
 type Fixture struct {
-	Limiter ports.RateLimiter
+	Limiter rlports.RateLimiter
 	Context context.Context
 	Now     time.Time
 }
@@ -43,7 +43,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 func RunAllowWithin(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
-	config := ports.RateLimitPolicyConfig{MaxRequests: 1, WindowSeconds: 30}
+	config := rlports.RateLimitPolicyConfig{MaxRequests: 1, WindowSeconds: 30}
 	if result, err := f.Limiter.AllowWithin(f.Context, "unconfigured", "key", config, f.Now); err != nil || !result.Allowed {
 		t.Fatalf("AllowWithin before limit = (%+v, %v)", result, err)
 	}

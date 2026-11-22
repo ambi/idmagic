@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	jobusecases "github.com/ambi/idmagic/backend/jobs/internal/usecases"
-	jobports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/internal/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
 )
@@ -47,7 +47,7 @@ type adminJobProgressDTO struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func toAdminJobResponse(job *domain.Job) adminJobResponse {
+func toAdminJobResponse(job *jobsdomain.Job) adminJobResponse {
 	out := adminJobResponse{
 		ID: job.ID, TenantID: job.TenantID, Kind: string(job.Kind), Lane: string(job.Lane),
 		Status: string(job.Status), Attempts: job.Attempts, MaxAttempts: job.MaxAttempts,
@@ -72,17 +72,17 @@ func (d Deps) handleListJobs(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	return d.listJobs(c, jobusecases.TenantScope{TenantID: actor.TenantID})
+	return d.listJobs(c, jobsusecases.TenantScope{TenantID: actor.TenantID})
 }
 
 func (d Deps) handleListSystemJobs(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteControlPlaneAccessError(c, err)
 	}
-	return d.listJobs(c, jobusecases.TenantScope{AllTenants: true})
+	return d.listJobs(c, jobsusecases.TenantScope{AllTenants: true})
 }
 
-func (d Deps) listJobs(c *echo.Context, scope jobusecases.TenantScope) error {
+func (d Deps) listJobs(c *echo.Context, scope jobsusecases.TenantScope) error {
 	if d.Repo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, adminJobListResponse{Jobs: []adminJobResponse{}})
 	}
@@ -90,9 +90,9 @@ func (d Deps) listJobs(c *echo.Context, scope jobusecases.TenantScope) error {
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	page, err := jobusecases.ListJobsForAdmin(c.Request().Context(), d.adminDeps(), in)
+	page, err := jobsusecases.ListJobsForAdmin(c.Request().Context(), d.adminDeps(), in)
 	if err != nil {
-		if errors.Is(err, jobusecases.ErrJobCursorMismatch) {
+		if errors.Is(err, jobsusecases.ErrJobCursorMismatch) {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 				"The cursor was issued for a different tenant or filter. Start again from the first page.")
 		}
@@ -110,23 +110,23 @@ func (d Deps) handleGetJob(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	return d.getJob(c, jobusecases.TenantScope{TenantID: actor.TenantID})
+	return d.getJob(c, jobsusecases.TenantScope{TenantID: actor.TenantID})
 }
 
 func (d Deps) handleGetSystemJob(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneUser(c); err != nil {
 		return d.WriteControlPlaneAccessError(c, err)
 	}
-	return d.getJob(c, jobusecases.TenantScope{AllTenants: true})
+	return d.getJob(c, jobsusecases.TenantScope{AllTenants: true})
 }
 
-func (d Deps) getJob(c *echo.Context, scope jobusecases.TenantScope) error {
+func (d Deps) getJob(c *echo.Context, scope jobsusecases.TenantScope) error {
 	if d.Repo == nil {
 		return writeJobNotFound(c)
 	}
-	job, err := jobusecases.GetJobForAdmin(c.Request().Context(), d.adminDeps(), c.Param("job_id"), scope)
+	job, err := jobsusecases.GetJobForAdmin(c.Request().Context(), d.adminDeps(), c.Param("job_id"), scope)
 	if err != nil {
-		if errors.Is(err, jobports.ErrJobNotFound) {
+		if errors.Is(err, jobsports.ErrJobNotFound) {
 			return writeJobNotFound(c)
 		}
 		return err
@@ -143,7 +143,7 @@ func (d Deps) handleCancelJob(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	return d.cancelJob(c, jobusecases.TenantScope{TenantID: actor.TenantID})
+	return d.cancelJob(c, jobsusecases.TenantScope{TenantID: actor.TenantID})
 }
 
 func (d Deps) handleCancelSystemJob(c *echo.Context) error {
@@ -155,19 +155,19 @@ func (d Deps) handleCancelSystemJob(c *echo.Context) error {
 	if _, err := d.RequireControlPlaneChange(c); err != nil {
 		return d.WriteControlPlaneAccessError(c, err)
 	}
-	return d.cancelJob(c, jobusecases.TenantScope{AllTenants: true})
+	return d.cancelJob(c, jobsusecases.TenantScope{AllTenants: true})
 }
 
-func (d Deps) cancelJob(c *echo.Context, scope jobusecases.TenantScope) error {
+func (d Deps) cancelJob(c *echo.Context, scope jobsusecases.TenantScope) error {
 	if d.Repo == nil {
 		return writeJobNotFound(c)
 	}
-	job, err := jobusecases.CancelJobForAdmin(c.Request().Context(), d.adminDeps(),
+	job, err := jobsusecases.CancelJobForAdmin(c.Request().Context(), d.adminDeps(),
 		c.Param("job_id"), scope, time.Now().UTC())
 	switch {
-	case errors.Is(err, jobports.ErrJobNotFound):
+	case errors.Is(err, jobsports.ErrJobNotFound):
 		return writeJobNotFound(c)
-	case errors.Is(err, jobports.ErrJobAlreadyTerminal):
+	case errors.Is(err, jobsports.ErrJobAlreadyTerminal):
 		// 成功として黙認しない。止めるよう頼んだ運用者にとって、すでに終わっていたのか
 		// 止まったのかは別の事実である。
 		return support.WriteProblem(c, http.StatusConflict, "job_not_cancelable",
@@ -178,8 +178,8 @@ func (d Deps) cancelJob(c *echo.Context, scope jobusecases.TenantScope) error {
 	return support.NoStoreJSON(c, http.StatusOK, toAdminJobResponse(job))
 }
 
-func (d Deps) adminDeps() jobusecases.AdminJobDeps {
-	return jobusecases.AdminJobDeps{Repo: d.Repo, Canceler: d.Canceler}
+func (d Deps) adminDeps() jobsusecases.AdminJobDeps {
+	return jobsusecases.AdminJobDeps{Repo: d.Repo, Canceler: d.Canceler}
 }
 
 // writeJobNotFound は「他テナントの Job」と「存在しない Job」を同じ応答にする。
@@ -191,34 +191,34 @@ func writeJobNotFound(c *echo.Context) error {
 // parseListJobsQuery は query string を一覧の入力へ変換する。テナントの範囲は呼んだ経路が
 // 決めて引数で渡り、クエリが動かせるのは絞り込みだけである。未知の状態・種別・レーンは
 // 無視せず拒否する。黙って無視すると、運用者は絞り込んだつもりの一覧を絞り込みなしで読む。
-func parseListJobsQuery(c *echo.Context, scope jobusecases.TenantScope) (jobusecases.ListJobsInput, error) {
-	in := jobusecases.ListJobsInput{Scope: scope}
+func parseListJobsQuery(c *echo.Context, scope jobsusecases.TenantScope) (jobsusecases.ListJobsInput, error) {
+	in := jobsusecases.ListJobsInput{Scope: scope}
 	query := c.Request().URL.Query()
 	for _, raw := range query["status"] {
-		status := domain.JobStatus(raw)
+		status := jobsdomain.JobStatus(raw)
 		if !status.Valid() {
-			return jobusecases.ListJobsInput{}, errors.New("status is invalid")
+			return jobsusecases.ListJobsInput{}, errors.New("status is invalid")
 		}
 		in.Statuses = append(in.Statuses, status)
 	}
 	for _, raw := range query["kind"] {
-		kind := domain.JobKind(raw)
+		kind := jobsdomain.JobKind(raw)
 		if !kind.Valid() {
-			return jobusecases.ListJobsInput{}, errors.New("kind is invalid")
+			return jobsusecases.ListJobsInput{}, errors.New("kind is invalid")
 		}
 		in.Kinds = append(in.Kinds, kind)
 	}
 	if raw := c.QueryParam("lane"); raw != "" {
-		lane := domain.ExecutionLane(raw)
+		lane := jobsdomain.ExecutionLane(raw)
 		if !lane.Valid() {
-			return jobusecases.ListJobsInput{}, errors.New("lane is invalid")
+			return jobsusecases.ListJobsInput{}, errors.New("lane is invalid")
 		}
 		in.Lane = lane
 	}
 	if raw := c.QueryParam("limit"); raw != "" {
 		limit, err := strconv.Atoi(raw)
 		if err != nil || limit < 0 {
-			return jobusecases.ListJobsInput{}, errors.New("limit must be a non-negative integer")
+			return jobsusecases.ListJobsInput{}, errors.New("limit must be a non-negative integer")
 		}
 		in.Limit = limit
 	}

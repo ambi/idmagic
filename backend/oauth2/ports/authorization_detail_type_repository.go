@@ -3,15 +3,15 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // AuthorizationDetailTypeRepository はテナント登録済みの authorization_details
 // type 定義 (RFC 9396) の永続境界。受理する type のスキーマ・表示
 // テンプレート・運用状態を保持する。
 type AuthorizationDetailTypeRepository interface {
-	ListAll(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error)
-	FindByType(ctx context.Context, tenantID, detailType string) (*domain.AuthorizationDetailType, error)
-	Save(ctx context.Context, t *domain.AuthorizationDetailType) error
+	ListAll(ctx context.Context, tenantID string) ([]*oauthdomain.AuthorizationDetailType, error)
+	FindByType(ctx context.Context, tenantID, detailType string) (*oauthdomain.AuthorizationDetailType, error)
+	Save(ctx context.Context, t *oauthdomain.AuthorizationDetailType) error
 	Delete(ctx context.Context, tenantID, detailType string) error
 }

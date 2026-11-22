@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -33,7 +33,7 @@ func (d Deps) handleProtectedResourceMetadata(c *echo.Context) error {
 		if eventResource == "" {
 			eventResource = meta.Resource
 		}
-		d.Emit(&domain.ProtectedResourceMetadataServed{At: time.Now().UTC(), TenantID: tenantID, Resource: eventResource})
+		d.Emit(&oauthdomain.ProtectedResourceMetadataServed{At: time.Now().UTC(), TenantID: tenantID, Resource: eventResource})
 	}
 	return c.JSON(http.StatusOK, meta)
 }

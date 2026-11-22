@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 )
 
 type Config struct {
@@ -22,7 +22,7 @@ type Config struct {
 	StartTLS bool
 	// TLS は証明書の検証に使う。RootCAs が nil なら OS の信頼する CA を使う。
 	TLS          *tls.Config
-	Dialect      domain.Dialect
+	Dialect      directoryconnectordomain.Dialect
 	BindDN       string
 	BindPassword string
 	PageSize     uint32
@@ -67,7 +67,7 @@ func ValidateFilter(filter string) error {
 }
 
 // Connect は TLS を確立してから simple bind する。TLS の失敗では bind の要求を送らない。
-func (d *Directory) Connect(ctx context.Context) (ports.DirectorySession, error) {
+func (d *Directory) Connect(ctx context.Context) (directoryconnectorports.DirectorySession, error) {
 	return d.connect(ctx, d.config.BindDN, d.config.BindPassword)
 }
 
@@ -117,32 +117,32 @@ func (s *session) Close() error {
 	return s.conn.Close()
 }
 
-func (s *session) RootInfo(context.Context) (domain.RootInfo, error) {
-	if s.config.Dialect != domain.ActiveDirectory {
-		return domain.RootInfo{}, nil
+func (s *session) RootInfo(context.Context) (directoryconnectordomain.RootInfo, error) {
+	if s.config.Dialect != directoryconnectordomain.ActiveDirectory {
+		return directoryconnectordomain.RootInfo{}, nil
 	}
 	result, err := s.conn.Search(ldap.NewSearchRequest("", ldap.ScopeBaseObject, ldap.NeverDerefAliases, 1, 0, false,
 		"(objectClass=*)", []string{"highestCommittedUSN", "dsServiceName"}, nil))
 	if err != nil {
-		return domain.RootInfo{}, fmt.Errorf("root dse: %w", err)
+		return directoryconnectordomain.RootInfo{}, fmt.Errorf("root dse: %w", err)
 	}
 	if len(result.Entries) != 1 {
-		return domain.RootInfo{}, errors.New("root dse: no entry")
+		return directoryconnectordomain.RootInfo{}, errors.New("root dse: no entry")
 	}
 	root := result.Entries[0]
 	usn, err := strconv.ParseInt(root.GetAttributeValue("highestCommittedUSN"), 10, 64)
 	if err != nil {
-		return domain.RootInfo{}, fmt.Errorf("root dse highestCommittedUSN: %w", err)
+		return directoryconnectordomain.RootInfo{}, fmt.Errorf("root dse highestCommittedUSN: %w", err)
 	}
 	server := root.GetAttributeValue("dsServiceName")
 	if server == "" {
-		return domain.RootInfo{}, errors.New("root dse: no dsServiceName")
+		return directoryconnectordomain.RootInfo{}, errors.New("root dse: no dsServiceName")
 	}
-	return domain.RootInfo{Server: server, HighestUSN: usn}, nil
+	return directoryconnectordomain.RootInfo{Server: server, HighestUSN: usn}, nil
 }
 
 // Search は RFC 2696 のページングで検索し、受け取ったページごとに page を呼ぶ。
-func (s *session) Search(ctx context.Context, baseDN, filter string, attributes []string, page func([]domain.Entry) error) error {
+func (s *session) Search(ctx context.Context, baseDN, filter string, attributes []string, page func([]directoryconnectordomain.Entry) error) error {
 	paging := ldap.NewControlPaging(s.config.PageSize)
 	request := ldap.NewSearchRequest(baseDN, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		filter, attributes, []ldap.Control{paging})
@@ -154,11 +154,11 @@ func (s *session) Search(ctx context.Context, baseDN, filter string, attributes 
 		if err != nil {
 			return fmt.Errorf("search %s: %w", baseDN, err)
 		}
-		entries := make([]domain.Entry, 0, len(result.Entries))
+		entries := make([]directoryconnectordomain.Entry, 0, len(result.Entries))
 		for _, found := range result.Entries {
-			entry := domain.Entry{DN: found.DN}
+			entry := directoryconnectordomain.Entry{DN: found.DN}
 			for _, attribute := range found.Attributes {
-				entry.Attributes = append(entry.Attributes, domain.Attribute{Name: attribute.Name, Values: attribute.ByteValues})
+				entry.Attributes = append(entry.Attributes, directoryconnectordomain.Attribute{Name: attribute.Name, Values: attribute.ByteValues})
 			}
 			entries = append(entries, entry)
 		}

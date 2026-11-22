@@ -6,7 +6,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	keys "github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
-	ports "github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -25,7 +25,7 @@ func TestManagedMcpKeysAreIsolatedByTenantAndRegistration(t *testing.T) {
 		}
 		seen[signing.Kid] = true
 		for _, scope := range []string{"first", "second"} {
-			ctx := ports.WithKeyScope(ports.WithKeyUsage(base, signingdomain.KeyUsageMcpGatewayDPoP), scope)
+			ctx := signingports.WithKeyScope(signingports.WithKeyUsage(base, signingdomain.KeyUsageMcpGatewayDPoP), scope)
 			key, err := store.GetActiveKey(ctx)
 			if err != nil {
 				t.Fatal(err)

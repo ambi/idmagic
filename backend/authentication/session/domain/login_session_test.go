@@ -6,7 +6,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,12 +22,12 @@ func mustUUID(t *testing.T) string {
 func TestLoginSessionAndRequestValidateHappyAndFailure(t *testing.T) {
 	now := time.Now().UTC()
 
-	validSession := domain.LoginSession{ID: mustUUID(t), UserID: "user_1", AMR: []string{"pwd"}, ACR: "1", ExpiresAt: now}
+	validSession := sessiondomain.LoginSession{ID: mustUUID(t), UserID: "user_1", AMR: []string{"pwd"}, ACR: "1", ExpiresAt: now}
 	badSession := validSession
 	badSession.AMR = nil
 
-	validLoginReq := domain.LoginRequest{RequestID: mustUUID(t), Username: "alice", Password: "pw"}
-	badLoginReq := domain.LoginRequest{RequestID: "not-a-uuid", Username: "alice", Password: "pw"}
+	validLoginReq := sessiondomain.LoginRequest{RequestID: mustUUID(t), Username: "alice", Password: "pw"}
+	badLoginReq := sessiondomain.LoginRequest{RequestID: "not-a-uuid", Username: "alice", Password: "pw"}
 
 	cases := []struct {
 		name    string
@@ -60,13 +60,13 @@ func TestLoginSessionActive(t *testing.T) {
 
 	tests := []struct {
 		name string
-		sess domain.LoginSession
+		sess sessiondomain.LoginSession
 		want bool
 	}{
-		{"active", domain.LoginSession{ExpiresAt: now.Add(time.Hour)}, true},
-		{"expired", domain.LoginSession{ExpiresAt: now.Add(-time.Second)}, false},
-		{"revoked", domain.LoginSession{ExpiresAt: now.Add(time.Hour), RevokedAt: &revokedAt}, false},
-		{"revoked and expired", domain.LoginSession{ExpiresAt: now.Add(-time.Second), RevokedAt: &revokedAt}, false},
+		{"active", sessiondomain.LoginSession{ExpiresAt: now.Add(time.Hour)}, true},
+		{"expired", sessiondomain.LoginSession{ExpiresAt: now.Add(-time.Second)}, false},
+		{"revoked", sessiondomain.LoginSession{ExpiresAt: now.Add(time.Hour), RevokedAt: &revokedAt}, false},
+		{"revoked and expired", sessiondomain.LoginSession{ExpiresAt: now.Add(-time.Second), RevokedAt: &revokedAt}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestLoginSessionActive(t *testing.T) {
 // revoke_reason を保持したまま成功として扱う (tombstone)。
 func TestLoginSessionRevokeIdempotent(t *testing.T) {
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
-	sess := domain.LoginSession{ExpiresAt: now.Add(time.Hour)}
+	sess := sessiondomain.LoginSession{ExpiresAt: now.Add(time.Hour)}
 
 	sess.Revoke(spec.SessionEndSelfRevoke, now)
 	if sess.RevokedAt == nil || !sess.RevokedAt.Equal(now) {
@@ -108,7 +108,7 @@ func TestLoginSessionRevokeIdempotent(t *testing.T) {
 // 更新しない粗粒度な値 (idle timeout 判定はこの粒度で近似する、wi-253)。
 func TestLoginSessionTouch(t *testing.T) {
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
-	sess := domain.LoginSession{ExpiresAt: now.Add(time.Hour)}
+	sess := sessiondomain.LoginSession{ExpiresAt: now.Add(time.Hour)}
 
 	if !sess.Touch(now) {
 		t.Fatalf("first touch must update last_seen_at")
@@ -117,7 +117,7 @@ func TestLoginSessionTouch(t *testing.T) {
 		t.Fatalf("LastSeenAt = %v, want %v", sess.LastSeenAt, now)
 	}
 
-	soon := now.Add(domain.LoginSessionTouchInterval - time.Second)
+	soon := now.Add(sessiondomain.LoginSessionTouchInterval - time.Second)
 	if sess.Touch(soon) {
 		t.Fatalf("touch within interval must not update last_seen_at")
 	}
@@ -125,7 +125,7 @@ func TestLoginSessionTouch(t *testing.T) {
 		t.Fatalf("LastSeenAt changed within interval: got %v, want %v", sess.LastSeenAt, now)
 	}
 
-	later := now.Add(domain.LoginSessionTouchInterval + time.Second)
+	later := now.Add(sessiondomain.LoginSessionTouchInterval + time.Second)
 	if !sess.Touch(later) {
 		t.Fatalf("touch past interval must update last_seen_at")
 	}
@@ -141,8 +141,8 @@ func TestLoginSessionTouch(t *testing.T) {
 //spec:covers RFC8176-AMR-VOCABULARY: LoginSession の検証が amr の語彙を閉じていることを固定する。
 func TestLoginSessionClosesTheAMRVocabulary(t *testing.T) {
 	now := time.Now().UTC()
-	session := func(amr []string) domain.LoginSession {
-		return domain.LoginSession{ID: mustUUID(t), UserID: "user_1", AMR: amr, ACR: "1", ExpiresAt: now}
+	session := func(amr []string) sessiondomain.LoginSession {
+		return sessiondomain.LoginSession{ID: mustUUID(t), UserID: "user_1", AMR: amr, ACR: "1", ExpiresAt: now}
 	}
 
 	// 宣言された語彙は 1 語ずつ、そして全部まとめても通る。

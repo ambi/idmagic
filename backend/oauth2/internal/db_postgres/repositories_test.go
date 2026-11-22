@@ -18,7 +18,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -84,20 +84,20 @@ func seedUser(t *testing.T, db sharedpg.DB, tenantID string) *userdomain.User {
 	return user
 }
 
-func seedClient(t *testing.T, db sharedpg.DB, tenantID string) *domain.OAuth2Client {
+func seedClient(t *testing.T, db sharedpg.DB, tenantID string) *oauthdomain.OAuth2Client {
 	t.Helper()
 	now := testClock()
-	client := &domain.OAuth2Client{
+	client := &oauthdomain.OAuth2Client{
 		TenantID:                 tenantID,
 		ClientID:                 newUUID(t),
 		ClientType:               spec.ClientConfidential,
 		RedirectURIs:             []string{"https://client.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	}
@@ -148,7 +148,7 @@ func TestOAuth2ClientRepositoryIssuesSecretWithinActiveLimitAtomically(t *testin
 	client := seedClient(t, db, tenant.ID)
 	now := testClock()
 	firstExpiry := now.Add(24 * time.Hour)
-	first := domain.ClientSecretCredential{
+	first := oauthdomain.ClientSecretCredential{
 		ID: newUUID(t), ClientID: client.ClientID, SecretHash: "first",
 		CreatedAt: now, ExpiresAt: &firstExpiry,
 	}
@@ -166,7 +166,7 @@ func TestOAuth2ClientRepositoryIssuesSecretWithinActiveLimitAtomically(t *testin
 			ready.Done()
 			<-start
 			expiresAt := now.Add(48 * time.Hour)
-			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
+			errs <- repo.IssueClientSecretCredential(ctx, nil, oauthdomain.ClientSecretCredential{
 				ID: id, ClientID: client.ClientID, SecretHash: id,
 				CreatedAt: now, ExpiresAt: &expiresAt,
 			}, 2, now)
@@ -209,7 +209,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	consent := &domain.Consent{
+	consent := &oauthdomain.Consent{
 		UserID:   user.ID,
 		ClientID: client.ClientID,
 		Scopes:   []string{"openid", "profile"},
@@ -225,7 +225,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
-	if got.State != domain.ConsentGranted || len(got.Scopes) != 2 {
+	if got.State != oauthdomain.ConsentGranted || len(got.Scopes) != 2 {
 		t.Fatalf("unexpected consent: %+v", got)
 	}
 
@@ -238,7 +238,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("revoke: %v", err)
 	}
 	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)
-	if err != nil || got == nil || got.State != domain.ConsentRevoked {
+	if err != nil || got == nil || got.State != oauthdomain.ConsentRevoked {
 		t.Fatalf("expected revoked: %v %+v", err, got)
 	}
 
@@ -258,15 +258,15 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := testClock()
-	detailType := &domain.AuthorizationDetailType{
+	detailType := &oauthdomain.AuthorizationDetailType{
 		TenantID:        tenant.ID,
 		Type:            "payment_initiation",
 		Description:     "Payment initiation details",
 		DisplayTemplate: "Pay {{.amount}}",
-		State:           domain.DetailTypeEnabled,
-		Schema: domain.AuthorizationDetailsSchema{
-			Rules: []domain.AuthorizationDetailFieldRule{
-				{Name: "currency", Semantics: domain.DetailFieldEnum, Allowed: []string{"USD", "JPY"}},
+		State:           oauthdomain.DetailTypeEnabled,
+		Schema: oauthdomain.AuthorizationDetailsSchema{
+			Rules: []oauthdomain.AuthorizationDetailFieldRule{
+				{Name: "currency", Semantics: oauthdomain.DetailFieldEnum, Allowed: []string{"USD", "JPY"}},
 			},
 		},
 		CreatedAt: now,
@@ -280,10 +280,10 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("find by type: %v %+v", err, got)
 	}
-	if got.DisplayTemplate != "Pay {{.amount}}" || got.State != domain.DetailTypeEnabled {
+	if got.DisplayTemplate != "Pay {{.amount}}" || got.State != oauthdomain.DetailTypeEnabled {
 		t.Fatalf("unexpected detail type: %+v", got)
 	}
-	if len(got.Schema.Rules) != 1 || got.Schema.Rules[0].Semantics != domain.DetailFieldEnum {
+	if len(got.Schema.Rules) != 1 || got.Schema.Rules[0].Semantics != oauthdomain.DetailFieldEnum {
 		t.Fatalf("schema not round-tripped: %+v", got.Schema)
 	}
 
@@ -309,17 +309,17 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 
 	now := testClock()
 	resourceServerID := newUUID(t)
-	m := &domain.McpResourceServer{
+	m := &oauthdomain.McpResourceServer{
 		TenantID: tenant.ID,
 		ID:       resourceServerID,
 		Resource: "https://mcp.example.com/tools/github",
 		Name:     "GitHub MCP Tools",
 		Scopes:   []string{"mcp.read", "mcp.write"},
 		ClientID: "rs-client",
-		AccessRules: []domain.ResourceAccessRule{{
+		AccessRules: []oauthdomain.ResourceAccessRule{{
 			ResourceType: "document", Relation: "viewer", Scopes: []string{"mcp.read"}, AuthorizationDetailType: "doc",
 		}},
-		State:     domain.McpResourceServerActive,
+		State:     oauthdomain.McpResourceServerActive,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -345,7 +345,7 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	if err := repo.Save(ctx, &duplicate); err == nil {
 		t.Fatal("同じテナントの別の登録へ同じ client_id を束縛できた")
 	}
-	if got.Resource != m.Resource || got.State != domain.McpResourceServerActive {
+	if got.Resource != m.Resource || got.State != oauthdomain.McpResourceServerActive {
 		t.Fatalf("unexpected resource server: %+v", got)
 	}
 	if len(got.Scopes) != 2 {
@@ -383,7 +383,7 @@ func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 
 	now := testClock()
 	resource := "https://mcp.example.com/tools/github"
-	gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, &resource, now, entropy.Crypto())
+	gen, err := oauthdomain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, &resource, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 		t.Fatalf("expected resource to round-trip, got %v", found.Resource)
 	}
 
-	rotated, err := domain.RotateRefreshToken(found, now.Add(time.Hour), entropy.Crypto())
+	rotated, err := oauthdomain.RotateRefreshToken(found, now.Add(time.Hour), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("rotate: %v", err)
 	}
@@ -430,7 +430,7 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 	ctx := context.Background()
 	now := testClock()
 
-	first, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
+	first, err := oauthdomain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 	if err := store.Save(ctx, first.Record); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	rotated, err := domain.RotateRefreshToken(first.Record, now.Add(time.Minute), entropy.Crypto())
+	rotated, err := oauthdomain.RotateRefreshToken(first.Record, now.Add(time.Minute), entropy.Crypto())
 	if err != nil {
 		t.Fatalf("rotate: %v", err)
 	}
@@ -447,7 +447,7 @@ func TestRefreshTokenStoreRevokeFamily_ReportsNewlyRevokedIDs(t *testing.T) {
 		t.Fatalf("store rotate: %v", err)
 	}
 
-	otherFamily, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
+	otherFamily, err := oauthdomain.GenerateInitialRefreshToken(client.ClientID, user.ID, []string{"openid", "offline_access"}, nil, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatalf("generate other family: %v", err)
 	}
@@ -489,7 +489,7 @@ func TestTokenExchangeGrantStoreClaimsOnce(t *testing.T) {
 	store := &oauth2postgres.TokenExchangeGrantStore{Pool: db}
 	ctx := tenantports.WithTenantID(context.Background(), tenant.ID)
 	now := testClock()
-	grant := domain.TokenExchangeGrant{ClientID: "gateway", SubjectTokenID: "jti", Resource: "https://down.example/mcp", ExpiresAt: now.Add(domain.TokenExchangeGrantTTL)}
+	grant := oauthdomain.TokenExchangeGrant{ClientID: "gateway", SubjectTokenID: "jti", Resource: "https://down.example/mcp", ExpiresAt: now.Add(oauthdomain.TokenExchangeGrantTTL)}
 	if err := store.Save(ctx, "hash", grant); err != nil {
 		t.Fatalf("save: %v", err)
 	}

@@ -14,7 +14,7 @@ import (
 
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -28,8 +28,8 @@ func workflowContext() context.Context {
 	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 }
 
-func workflowInput() usecases.CreateLifecycleWorkflowInput {
-	return usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)}
+func workflowInput() igusecases.CreateLifecycleWorkflowInput {
+	return igusecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)}
 }
 
 type orderedWorkflowRepository struct {
@@ -75,7 +75,7 @@ func (r *orderedWorkflowRepository) SaveRevision(_ context.Context, revision *ig
 
 func TestCreateLifecycleWorkflowStoresDefinitionBeforeRevision(t *testing.T) {
 	repo := &orderedWorkflowRepository{workflows: map[string]*igdomain.LifecycleWorkflow{}}
-	if _, err := usecases.CreateLifecycleWorkflow(workflowContext(), usecases.LifecycleWorkflowDeps{Repo: repo}, workflowInput()); err != nil {
+	if _, err := igusecases.CreateLifecycleWorkflow(workflowContext(), igusecases.LifecycleWorkflowDeps{Repo: repo}, workflowInput()); err != nil {
 		t.Fatalf("CreateLifecycleWorkflow: %v", err)
 	}
 	if len(repo.order) != 2 || repo.order[0] != "workflow" || repo.order[1] != "revision" {
@@ -84,39 +84,39 @@ func TestCreateLifecycleWorkflowStoresDefinitionBeforeRevision(t *testing.T) {
 }
 
 func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
-	deps := usecases.LifecycleWorkflowDeps{Repo: igmemory.NewLifecycleWorkflowRepository()}
-	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
+	deps := igusecases.LifecycleWorkflowDeps{Repo: igmemory.NewLifecycleWorkflowRepository()}
+	workflow, err := igusecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
 	if err != nil {
 		t.Fatalf("CreateLifecycleWorkflow: %v", err)
 	}
-	updated, err := usecases.UpdateLifecycleWorkflow(workflowContext(), deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}})
+	updated, err := igusecases.UpdateLifecycleWorkflow(workflowContext(), deps, igusecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}})
 	if err != nil || updated.CurrentRevision != 2 {
 		t.Fatalf("UpdateLifecycleWorkflow = %#v, %v", updated, err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin", time.Time{}); !errors.Is(err, usecases.ErrWorkflowRevisionConflict) {
+	if _, err := igusecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin", time.Time{}); !errors.Is(err, igusecases.ErrWorkflowRevisionConflict) {
 		t.Fatalf("stale enable error = %v", err)
 	}
 	if stored, err := deps.Repo.Find(workflowContext(), "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != igdomain.LifecycleWorkflowDraft || stored.CurrentRevision != 2 {
 		t.Fatalf("stale enable changed workflow = %#v, %v", stored, err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin", time.Time{}); err != nil {
+	if _, err := igusecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin", time.Time{}); err != nil {
 		t.Fatalf("EnableLifecycleWorkflow: %v", err)
 	}
 	var emitted spec.DomainEvent
 	deps.Emit = func(event spec.DomainEvent) error { emitted = event; return nil }
-	if err := usecases.DeleteLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, "admin", time.Time{}); err != nil {
+	if err := igusecases.DeleteLifecycleWorkflow(workflowContext(), deps, workflow.ID, updated.CurrentRevision, "admin", time.Time{}); err != nil {
 		t.Fatalf("DeleteLifecycleWorkflow: %v", err)
 	}
 	if emitted == nil || emitted.EventType() != "LifecycleWorkflowDeleted" {
 		t.Fatalf("delete event = %#v", emitted)
 	}
-	if _, err := usecases.UpdateLifecycleWorkflow(workflowContext(), deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
+	if _, err := igusecases.UpdateLifecycleWorkflow(workflowContext(), deps, igusecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID}); !errors.Is(err, igusecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("update deleted workflow error = %v", err)
 	}
 	if stored, err := deps.Repo.Find(workflowContext(), "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != igdomain.LifecycleWorkflowArchived {
 		t.Fatalf("rejected update changed archived workflow = %#v, %v", stored, err)
 	}
-	if _, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner v2", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}}); err != nil {
+	if _, err := igusecases.CreateLifecycleWorkflow(workflowContext(), deps, igusecases.CreateLifecycleWorkflowInput{Name: "Joiner v2", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}}); err != nil {
 		t.Fatalf("reuse deleted workflow name: %v", err)
 	}
 }
@@ -124,21 +124,21 @@ func TestLifecycleWorkflowCreateUpdateAndTransitions(t *testing.T) {
 // wi-221: Create/Update/Enable/Disable がそれぞれ対応する audit event を発行する
 // こと。以前は DeleteLifecycleWorkflow 以外の操作が一切 event を発行していなかった。
 func TestLifecycleWorkflowCreateUpdateEnableDisableEmitAuditEvents(t *testing.T) {
-	deps := usecases.LifecycleWorkflowDeps{Repo: igmemory.NewLifecycleWorkflowRepository(), RunRepo: igmemory.NewLifecycleWorkflowRunRepository()}
+	deps := igusecases.LifecycleWorkflowDeps{Repo: igmemory.NewLifecycleWorkflowRepository(), RunRepo: igmemory.NewLifecycleWorkflowRunRepository()}
 	var events []spec.DomainEvent
 	deps.Emit = func(event spec.DomainEvent) error { events = append(events, event); return nil }
 
-	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", ActorUserID: "admin-1", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)})
+	workflow, err := igusecases.CreateLifecycleWorkflow(workflowContext(), deps, igusecases.CreateLifecycleWorkflowInput{Name: "Joiner", ActorUserID: "admin-1", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)})
 	if err != nil {
 		t.Fatalf("CreateLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.UpdateLifecycleWorkflow(workflowContext(), deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", ActorUserID: "admin-1", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}}); err != nil {
+	if _, err := igusecases.UpdateLifecycleWorkflow(workflowContext(), deps, igusecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", ActorUserID: "admin-1", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}}); err != nil {
 		t.Fatalf("UpdateLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin-1", time.Time{}); err != nil {
+	if _, err := igusecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin-1", time.Time{}); err != nil {
 		t.Fatalf("EnableLifecycleWorkflow: %v", err)
 	}
-	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin-1", time.Time{}); err != nil {
+	if _, err := igusecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 2, "admin-1", time.Time{}); err != nil {
 		t.Fatalf("DisableLifecycleWorkflow: %v", err)
 	}
 
@@ -158,12 +158,12 @@ func TestLifecycleWorkflowCreateUpdateEnableDisableEmitAuditEvents(t *testing.T)
 func TestDisableLifecycleWorkflowEmitsRunCanceledForQueuedRuns(t *testing.T) {
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	runRepo := igmemory.NewLifecycleWorkflowRunRepository()
-	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo, RunRepo: runRepo}
-	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
+	deps := igusecases.LifecycleWorkflowDeps{Repo: workflowRepo, RunRepo: runRepo}
+	workflow, err := igusecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin-1", time.Time{}); err != nil {
+	if _, err := igusecases.EnableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin-1", time.Time{}); err != nil {
 		t.Fatal(err)
 	}
 	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: workflow.ID, Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: "user-1", TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Status: igdomain.WorkflowRunQueued, TriggeredAt: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)}
@@ -174,7 +174,7 @@ func TestDisableLifecycleWorkflowEmitsRunCanceledForQueuedRuns(t *testing.T) {
 
 	var events []spec.DomainEvent
 	deps.Emit = func(event spec.DomainEvent) error { events = append(events, event); return nil }
-	if _, err := usecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin-1", time.Time{}); err != nil {
+	if _, err := igusecases.DisableLifecycleWorkflow(workflowContext(), deps, workflow.ID, 1, "admin-1", time.Time{}); err != nil {
 		t.Fatalf("DisableLifecycleWorkflow: %v", err)
 	}
 	if len(events) != 2 || events[0].EventType() != "LifecycleWorkflowDisabled" || events[1].EventType() != "LifecycleWorkflowRunCanceled" {
@@ -187,13 +187,13 @@ func TestDisableLifecycleWorkflowEmitsRunCanceledForQueuedRuns(t *testing.T) {
 }
 
 func TestLifecycleWorkflowTenantIsolation(t *testing.T) {
-	deps := usecases.LifecycleWorkflowDeps{Repo: igmemory.NewLifecycleWorkflowRepository()}
-	workflow, err := usecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
+	deps := igusecases.LifecycleWorkflowDeps{Repo: igmemory.NewLifecycleWorkflowRepository()}
+	workflow, err := igusecases.CreateLifecycleWorkflow(workflowContext(), deps, workflowInput())
 	if err != nil {
 		t.Fatal(err)
 	}
 	other := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
-	if _, err := usecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, "admin", time.Time{}); !errors.Is(err, usecases.ErrLifecycleWorkflowNotFound) {
+	if _, err := igusecases.DisableLifecycleWorkflow(other, deps, workflow.ID, workflow.CurrentRevision, "admin", time.Time{}); !errors.Is(err, igusecases.ErrLifecycleWorkflowNotFound) {
 		t.Fatalf("cross-tenant access error = %v", err)
 	}
 	if stored, err := deps.Repo.Find(workflowContext(), "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != workflow.Status {
@@ -209,26 +209,26 @@ func TestDryRunLifecycleWorkflowUsesEnabledRevisionNotDraft(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	users := idmanagement.NewMemoryModule().UserRepo
-	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	deps := igusecases.LifecycleWorkflowDeps{Repo: workflowRepo}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}, Now: now})
+	workflow, err := igusecases.CreateLifecycleWorkflow(ctx, deps, igusecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}}, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(ctx, deps, workflow.ID, 1, "admin", now); err != nil {
+	if _, err := igusecases.EnableLifecycleWorkflow(ctx, deps, workflow.ID, 1, "admin", now); err != nil {
 		t.Fatal(err)
 	}
 	// Draft edit after enable: current_revision moves to 2 but enabled_revision stays 1.
 	// 下書きのフィルターは disabled の対象 User に一致しないので、反映されれば trigger_not_matched になる。
 	draftTrigger := igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated, Filters: []igdomain.WorkflowFilter{{Field: "status", Operator: igdomain.WorkflowFilterEqual, Value: "active"}}}
-	if _, err := usecases.UpdateLifecycleWorkflow(ctx, deps, usecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: draftTrigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: now}); err != nil {
+	if _, err := igusecases.UpdateLifecycleWorkflow(ctx, deps, igusecases.UpdateLifecycleWorkflowInput{WorkflowID: workflow.ID, ExpectedRevision: 1, Name: "Joiner v2", Trigger: draftTrigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: now}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
+	result, err := igusecases.DryRunLifecycleWorkflow(ctx, igusecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
 	if err != nil {
 		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	users := idmanagement.NewMemoryModule().UserRepo
 	groups := idmanagement.NewMemoryModule().GroupRepo
-	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo, GroupRepo: groups}
+	deps := igusecases.LifecycleWorkflowDeps{Repo: workflowRepo, GroupRepo: groups}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: now, UpdatedAt: now}
 	if err := users.Save(ctx, user); err != nil {
@@ -263,11 +263,11 @@ func TestDryRunLifecycleWorkflowNoOpWhenUserAlreadyAtGoalState(t *testing.T) {
 	if ok, err := groups.AddMember(ctx, &groupdomain.GroupMember{GroupID: group.ID, UserID: user.ID, CreatedAt: now}); err != nil || !ok {
 		t.Fatalf("seed AddMember = %v, %v", ok, err)
 	}
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: group.ID}}, Now: now})
+	workflow, err := igusecases.CreateLifecycleWorkflow(ctx, deps, igusecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated}, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: group.ID}}, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users, GroupRepo: groups}, workflow.ID, user.ID, now)
+	result, err := igusecases.DryRunLifecycleWorkflow(ctx, igusecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users, GroupRepo: groups}, workflow.ID, user.ID, now)
 	if err != nil {
 		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
 	}
@@ -288,7 +288,7 @@ func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	users := idmanagement.NewMemoryModule().UserRepo
-	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	deps := igusecases.LifecycleWorkflowDeps{Repo: workflowRepo}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	department := "sales"
 	user := &userdomain.User{ID: "user-1", TenantID: "tenant-a", PreferredUsername: "alice", PasswordHash: "hash", Roles: []string{"member"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, Attributes: map[string]userdomain.AttributeValue{"department": {Type: idmdomain.AttributeTypeString, String: &department}}, CreatedAt: now, UpdatedAt: now}
@@ -297,11 +297,11 @@ func TestDryRunLifecycleWorkflowBlockedWhenTriggerFiltersDoNotMatch(t *testing.T
 	}
 	trigger := igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated, Filters: []igdomain.WorkflowFilter{{Field: "department", Operator: igdomain.WorkflowFilterEqual, Value: "engineering"}}}
 	// enable_user は active の対象 User にとって既に目的の状態であり、フィルターが一致すれば no_op になる。
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: trigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}, {Kind: igdomain.WorkflowActionDisableUser}}, Now: now})
+	workflow, err := igusecases.CreateLifecycleWorkflow(ctx, deps, igusecases.CreateLifecycleWorkflowInput{Name: "Joiner", Trigger: trigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionEnableUser}, {Kind: igdomain.WorkflowActionDisableUser}}, Now: now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
+	result, err := igusecases.DryRunLifecycleWorkflow(ctx, igusecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, user.ID, now)
 	if err != nil {
 		t.Fatalf("DryRunLifecycleWorkflow: %v", err)
 	}
@@ -319,13 +319,13 @@ func TestDryRunLifecycleWorkflowTargetUserNotFound(t *testing.T) {
 	ctx := workflowContext()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	users := idmanagement.NewMemoryModule().UserRepo
-	deps := usecases.LifecycleWorkflowDeps{Repo: workflowRepo}
+	deps := igusecases.LifecycleWorkflowDeps{Repo: workflowRepo}
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, deps, workflowInput())
+	workflow, err := igusecases.CreateLifecycleWorkflow(ctx, deps, workflowInput())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.DryRunLifecycleWorkflow(ctx, usecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, "missing-user", now); !errors.Is(err, usecases.ErrLifecycleWorkflowTargetUserNotFound) {
+	if _, err := igusecases.DryRunLifecycleWorkflow(ctx, igusecases.DryRunLifecycleWorkflowDeps{Repo: workflowRepo, UserRepo: users}, workflow.ID, "missing-user", now); !errors.Is(err, igusecases.ErrLifecycleWorkflowTargetUserNotFound) {
 		t.Fatalf("error = %v, want ErrLifecycleWorkflowTargetUserNotFound", err)
 	}
 	if stored, err := workflowRepo.Find(ctx, "tenant-a", workflow.ID); err != nil || stored == nil || stored.Status != workflow.Status || stored.CurrentRevision != workflow.CurrentRevision {
@@ -342,11 +342,11 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 		{Kind: igdomain.WorkflowTriggerUserAttributesChanged, WatchedAttributes: []string{"department"}},
 		{Kind: igdomain.WorkflowTriggerUserStatusChanged, FromStatus: &active, ToStatus: &disabled},
 	} {
-		workflow, err := usecases.CreateLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflowRepo}, usecases.CreateLifecycleWorkflowInput{Name: string(trigger.Kind), Trigger: trigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)})
+		workflow, err := igusecases.CreateLifecycleWorkflow(ctx, igusecases.LifecycleWorkflowDeps{Repo: workflowRepo}, igusecases.CreateLifecycleWorkflowInput{Name: string(trigger.Kind), Trigger: trigger, Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, Now: time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflowRepo}, workflow.ID, 1, "admin", time.Time{}); err != nil {
+		if _, err := igusecases.EnableLifecycleWorkflow(ctx, igusecases.LifecycleWorkflowDeps{Repo: workflowRepo}, workflow.ID, 1, "admin", time.Time{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -354,7 +354,7 @@ func TestUserMutationsCaptureMatchingWorkflowRuns(t *testing.T) {
 	runs := igmemory.NewLifecycleWorkflowRunRepository()
 	adminUsers := idmanagement.Module{
 		UserRepo: users,
-		UserMutationCommitter: usecases.UserMutationCommitter{
+		UserMutationCommitter: igusecases.UserMutationCommitter{
 			WorkflowRepo: workflowRepo, RunRepo: runs, UserRepo: users,
 			Capture: &igmemory.UserWorkflowCapture{Users: users, Runs: runs},
 		},

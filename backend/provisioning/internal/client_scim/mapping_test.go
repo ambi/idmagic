@@ -5,14 +5,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: 単純パスは同名の属性になる。
 func TestBuildResource_SimplePath(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	doc, err := BuildResource(rules, resolverFromMap(map[string]any{"preferred_username": "alice"}), ApplyOnCreate)
 	if err != nil {
@@ -25,9 +25,9 @@ func TestBuildResource_SimplePath(t *testing.T) {
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: `.` 区切りのパスは入れ子のオブジェクトになる。
 func TestBuildResource_NestedPath(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: "name.givenName", SourceKind: domain.SourceKindAttribute, SourceKey: "given_name", ApplyOn: domain.ApplyCreateAndUpdate},
-		{TargetPath: "name.familyName", SourceKind: domain.SourceKindAttribute, SourceKey: "family_name", ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "name.givenName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "given_name", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
+		{TargetPath: "name.familyName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "family_name", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	doc, err := BuildResource(rules, resolverFromMap(map[string]any{"given_name": "Alice", "family_name": "Smith"}), ApplyOnCreate)
 	if err != nil {
@@ -44,8 +44,8 @@ func TestBuildResource_NestedPath(t *testing.T) {
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: 多値フィルターパスは `emails[type eq "work"].value` の 1 段だけを解釈する。
 func TestBuildResource_MultiValuedFilterPath(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: `emails[type eq "work"].value`, SourceKind: domain.SourceKindAttribute, SourceKey: "email", ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: `emails[type eq "work"].value`, SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "email", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	doc, err := BuildResource(rules, resolverFromMap(map[string]any{"email": "alice@example.com"}), ApplyOnCreate)
 	if err != nil {
@@ -63,8 +63,8 @@ func TestBuildResource_MultiValuedFilterPath(t *testing.T) {
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: 定数の対応付けは属性の解決を経ずに値になる。
 func TestBuildResource_ConstantSource(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: "active", SourceKind: domain.SourceKindConstant, ConstantValue: true, ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "active", SourceKind: provisioningdomain.SourceKindConstant, ConstantValue: true, ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	doc, err := BuildResource(rules, resolverFromMap(nil), ApplyOnCreate)
 	if err != nil {
@@ -77,8 +77,8 @@ func TestBuildResource_ConstantSource(t *testing.T) {
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: 属性が空のときは既定値が入る。
 func TestBuildResource_DefaultValueWhenSourceEmpty(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: "displayName", SourceKind: domain.SourceKindAttribute, SourceKey: "display_name", DefaultValue: "unknown", ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "displayName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "display_name", DefaultValue: "unknown", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	doc, err := BuildResource(rules, resolverFromMap(nil), ApplyOnCreate)
 	if err != nil {
@@ -91,21 +91,21 @@ func TestBuildResource_DefaultValueWhenSourceEmpty(t *testing.T) {
 
 //spec:covers RFC7643-OUT-CORE-RESOURCES: required の対応付けが解決できないプロビジョニングタスクは、部分的な本文を送らずに失敗する。
 func TestBuildResource_RequiredMissingFailsClosed(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", Required: true, ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", Required: true, ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	_, err := BuildResource(rules, resolverFromMap(nil), ApplyOnCreate)
 	// プロビジョニングエンジンはこの種類を見分けて、再試行せずにプロビジョニングタスクを失敗させる。
-	if !errors.Is(err, ports.ErrRequiredAttributeUnresolved) {
+	if !errors.Is(err, provisioningports.ErrRequiredAttributeUnresolved) {
 		t.Errorf("BuildResource() error = %v, want ports.ErrRequiredAttributeUnresolved", err)
 	}
 }
 
 //spec:covers RFC7643-OUT-EXTERNAL-ID: externalId は作成時だけ送り、更新では送り直さない。
 func TestBuildResource_CreateOnlySkippedOnUpdate(t *testing.T) {
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: "externalId", SourceKind: domain.SourceKindAttribute, SourceKey: "id", ApplyOn: domain.ApplyCreateOnly},
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "externalId", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "id", ApplyOn: provisioningdomain.ApplyCreateOnly},
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	values := map[string]any{"id": "user-1", "preferred_username": "alice"}
 	doc, err := BuildResource(rules, resolverFromMap(values), ApplyOnUpdate)
@@ -126,8 +126,8 @@ func TestBuildResource_CreateOnlySkippedOnUpdate(t *testing.T) {
 //spec:covers RFC7643-OUT-SCHEMA-EXTENSIONS: 拡張スキーマの属性を送らない。
 func TestBuildResource_OmitsExtensionSchemaAttributes(t *testing.T) {
 	const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
-	rules := []domain.AttributeMappingRule{
-		{TargetPath: enterpriseURN + ":employeeNumber", SourceKind: domain.SourceKindAttribute, SourceKey: "employee_number", ApplyOn: domain.ApplyCreateAndUpdate},
+	rules := []provisioningdomain.AttributeMappingRule{
+		{TargetPath: enterpriseURN + ":employeeNumber", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "employee_number", ApplyOn: provisioningdomain.ApplyCreateAndUpdate},
 	}
 	doc, err := BuildResource(rules, resolverFromMap(map[string]any{"employee_number": "E-1"}), ApplyOnCreate)
 	if err != nil {

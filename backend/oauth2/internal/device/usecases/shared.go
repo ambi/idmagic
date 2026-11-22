@@ -1,12 +1,12 @@
 package usecases
 
-import sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+import oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 
-type OAuthError = sharedusecases.OAuthError
+type OAuthError = oauthusecases.OAuthError
 
 var (
-	NewOAuthError            = sharedusecases.NewOAuthError
-	emit                     = sharedusecases.Emit
-	ResolveResourceIndicator = sharedusecases.ResolveResourceIndicator
-	senderConstraintTag      = sharedusecases.SenderConstraintTag
+	NewOAuthError            = oauthusecases.NewOAuthError
+	emit                     = oauthusecases.Emit
+	ResolveResourceIndicator = oauthusecases.ResolveResourceIndicator
+	senderConstraintTag      = oauthusecases.SenderConstraintTag
 )

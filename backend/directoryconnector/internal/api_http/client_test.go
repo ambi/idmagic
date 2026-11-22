@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/api_http"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
@@ -53,14 +53,14 @@ func TestClientSignsAFreshJWTForEveryRequest(t *testing.T) {
 	}
 	s, seen := server(t, http.StatusOK, `{"id":"run-7"}`)
 	now := time.Now().Truncate(time.Second)
-	enrollment := ports.Enrollment{ConnectorID: "c1", KeyID: "k1", Audience: s.URL + "/realms/acme/directory-connector/v1"}
+	enrollment := directoryconnectorports.Enrollment{ConnectorID: "c1", KeyID: "k1", Audience: s.URL + "/realms/acme/directory-connector/v1"}
 	client := api_http.NewClient(s.URL+"/realms/acme/", s.Client(), key, enrollment, func() time.Time { return now })
 
-	runID, err := client.StartRun(context.Background(), domain.ModeFull)
+	runID, err := client.StartRun(context.Background(), directoryconnectordomain.ModeFull)
 	if err != nil || runID != "run-7" {
 		t.Fatalf("run=%q err=%v", runID, err)
 	}
-	items := []domain.Item{{ExternalID: "g1", Enabled: false, PreferredUsername: "alice"}}
+	items := []directoryconnectordomain.Item{{ExternalID: "g1", Enabled: false, PreferredUsername: "alice"}}
 	if err := client.SendBatch(context.Background(), "run-7", "run-7-1", items); err != nil {
 		t.Fatal(err)
 	}
@@ -116,9 +116,9 @@ func TestClientSignsAFreshJWTForEveryRequest(t *testing.T) {
 func TestClientReportsTheStatusAndErrorType(t *testing.T) {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	s, _ := server(t, http.StatusConflict, `{"type":"urn:idmagic:error:ingestion_run_closed","status":409}`)
-	client := api_http.NewClient(s.URL, s.Client(), key, ports.Enrollment{ConnectorID: "c1"}, time.Now)
-	err := client.SendBatch(context.Background(), "r", "r-1", []domain.Item{{ExternalID: "g", PreferredUsername: "u"}})
-	var api *ports.APIError
+	client := api_http.NewClient(s.URL, s.Client(), key, directoryconnectorports.Enrollment{ConnectorID: "c1"}, time.Now)
+	err := client.SendBatch(context.Background(), "r", "r-1", []directoryconnectordomain.Item{{ExternalID: "g", PreferredUsername: "u"}})
+	var api *directoryconnectorports.APIError
 	if !errors.As(err, &api) || api.Status != 409 || api.Type != "ingestion_run_closed" {
 		t.Fatalf("error = %v", err)
 	}

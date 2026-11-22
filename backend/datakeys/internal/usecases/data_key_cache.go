@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 )
 
@@ -22,11 +22,11 @@ type tenantVersion struct {
 type DataKeyCache struct {
 	mu         sync.RWMutex
 	byVersion  map[tenantVersion][]byte
-	repository ports.DataKeyRepository
+	repository datakeysports.DataKeyRepository
 	crypto     envelope_crypto.EnvelopeCrypto
 }
 
-func NewDataKeyCache(repository ports.DataKeyRepository, crypto envelope_crypto.EnvelopeCrypto) *DataKeyCache {
+func NewDataKeyCache(repository datakeysports.DataKeyRepository, crypto envelope_crypto.EnvelopeCrypto) *DataKeyCache {
 	return &DataKeyCache{
 		byVersion:  map[tenantVersion][]byte{},
 		repository: repository,
@@ -56,7 +56,7 @@ func (c *DataKeyCache) GetByVersion(ctx context.Context, tenantID string, versio
 	if err != nil {
 		return nil, err
 	}
-	if key.Status == domain.DataKeyStatusDisabled || key.Status == domain.DataKeyStatusDestroyed {
+	if key.Status == datakeysdomain.DataKeyStatusDisabled || key.Status == datakeysdomain.DataKeyStatusDestroyed {
 		c.mu.Lock()
 		delete(c.byVersion, tenantVersion{tenantID, version})
 		c.mu.Unlock()
@@ -66,7 +66,7 @@ func (c *DataKeyCache) GetByVersion(ctx context.Context, tenantID string, versio
 }
 
 // plaintext は、保存先から読んだ版の平文 DEK を、保持になければアンラップして返す。
-func (c *DataKeyCache) plaintext(ctx context.Context, key *domain.TenantDataEncryptionKey) ([]byte, error) {
+func (c *DataKeyCache) plaintext(ctx context.Context, key *datakeysdomain.TenantDataEncryptionKey) ([]byte, error) {
 	cacheKey := tenantVersion{key.TenantID, key.Version}
 	c.mu.RLock()
 	plaintextDEK, ok := c.byVersion[cacheKey]

@@ -18,13 +18,13 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newWebAuthnDeps(t *testing.T, rp *usecases.RelyingParty) (usecases.WebAuthnDeps, userports.UserRepository, *[]spec.DomainEvent) {
+func newWebAuthnDeps(t *testing.T, rp *webauthnusecases.RelyingParty) (webauthnusecases.WebAuthnDeps, userports.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	now := time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC)
@@ -33,7 +33,7 @@ func newWebAuthnDeps(t *testing.T, rp *usecases.RelyingParty) (usecases.WebAuthn
 		MfaEnrolled: true, CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
-	deps := usecases.WebAuthnDeps{
+	deps := webauthnusecases.WebAuthnDeps{
 		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		RP:             rp,
 		UserRepo:       userRepo,
@@ -45,10 +45,10 @@ func newWebAuthnDeps(t *testing.T, rp *usecases.RelyingParty) (usecases.WebAuthn
 	return deps, userRepo, &events
 }
 
-func seedCredential(t *testing.T, deps usecases.WebAuthnDeps, credentialID string) {
+func seedCredential(t *testing.T, deps webauthnusecases.WebAuthnDeps, credentialID string) {
 	t.Helper()
 	ctx := testing_tenant.Default(context.Background())
-	err := deps.CredentialRepo.Save(ctx, &domain.WebAuthnCredential{
+	err := deps.CredentialRepo.Save(ctx, &webauthndomain.WebAuthnCredential{
 		CredentialID: base64.RawURLEncoding.EncodeToString([]byte(credentialID)),
 		UserID:       "user-alice",
 		PublicKey:    base64.RawURLEncoding.EncodeToString([]byte("cose-key")),
@@ -65,13 +65,13 @@ func TestWebAuthnUseCasesRequireConfiguration(t *testing.T) {
 	deps, _, _ := newWebAuthnDeps(t, nil) // RP=nil → 未設定
 	now := time.Now()
 
-	if _, err := usecases.StartWebAuthnRegistration(ctx, deps, "user-alice"); !errors.Is(err, usecases.ErrWebAuthnNotConfigured) {
+	if _, err := webauthnusecases.StartWebAuthnRegistration(ctx, deps, "user-alice"); !errors.Is(err, webauthnusecases.ErrWebAuthnNotConfigured) {
 		t.Fatalf("start err=%v, want ErrWebAuthnNotConfigured", err)
 	}
-	if err := usecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", []byte("{}"), nil, now); !errors.Is(err, usecases.ErrWebAuthnNotConfigured) {
+	if err := webauthnusecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", []byte("{}"), nil, now); !errors.Is(err, webauthnusecases.ErrWebAuthnNotConfigured) {
 		t.Fatalf("finish err=%v, want ErrWebAuthnNotConfigured", err)
 	}
-	if _, err := usecases.BeginWebAuthnAssertion(ctx, deps, "session-1", "user-alice"); !errors.Is(err, usecases.ErrWebAuthnNotConfigured) {
+	if _, err := webauthnusecases.BeginWebAuthnAssertion(ctx, deps, "session-1", "user-alice"); !errors.Is(err, webauthnusecases.ErrWebAuthnNotConfigured) {
 		t.Fatalf("begin err=%v, want ErrWebAuthnNotConfigured", err)
 	}
 }
@@ -82,7 +82,7 @@ func TestListWebAuthnCredentials(t *testing.T) {
 	seedCredential(t, deps, "cred-1")
 	seedCredential(t, deps, "cred-2")
 
-	creds, err := usecases.ListWebAuthnCredentials(ctx, deps, "user-alice")
+	creds, err := webauthnusecases.ListWebAuthnCredentials(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestRemoveWebAuthnCredentialKeepsMfaWhenTotpRemains(t *testing.T) {
 	}
 
 	credID := base64.RawURLEncoding.EncodeToString([]byte("cred-1"))
-	if err := usecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", credID, time.Now()); err != nil {
+	if err := webauthnusecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", credID, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	stored, _ := userRepo.FindBySub(ctx, "user-alice")
@@ -122,7 +122,7 @@ func TestRemoveLastWebAuthnCredentialClearsMfa(t *testing.T) {
 	seedCredential(t, deps, "cred-only")
 
 	credID := base64.RawURLEncoding.EncodeToString([]byte("cred-only"))
-	if err := usecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", credID, time.Now()); err != nil {
+	if err := webauthnusecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", credID, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	stored, _ := userRepo.FindBySub(ctx, "user-alice")
@@ -135,11 +135,11 @@ func TestRemoveUnknownWebAuthnCredential(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newWebAuthnDeps(t, nil)
 	seedCredential(t, deps, "existing")
-	err := usecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", "nonexistent", time.Now())
-	if !errors.Is(err, usecases.ErrWebAuthnCredentialNotFound) {
+	err := webauthnusecases.RemoveWebAuthnCredential(ctx, deps, "user-alice", "nonexistent", time.Now())
+	if !errors.Is(err, webauthnusecases.ErrWebAuthnCredentialNotFound) {
 		t.Fatalf("err=%v, want ErrWebAuthnCredentialNotFound", err)
 	}
-	remaining, err := usecases.ListWebAuthnCredentials(ctx, deps, "user-alice")
+	remaining, err := webauthnusecases.ListWebAuthnCredentials(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestRemoveUnknownWebAuthnCredential(t *testing.T) {
 
 func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
-	rp, err := usecases.NewRelyingParty(usecases.WebAuthnConfig{
+	rp, err := webauthnusecases.NewRelyingParty(webauthnusecases.WebAuthnConfig{
 		RPID: "localhost", RPDisplayName: "idmagic", RPOrigins: []string{"http://localhost"},
 	})
 	if err != nil {
@@ -158,7 +158,7 @@ func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
 	}
 	deps, _, _ := newWebAuthnDeps(t, rp)
 
-	creation, err := usecases.StartWebAuthnRegistration(ctx, deps, "user-alice")
+	creation, err := webauthnusecases.StartWebAuthnRegistration(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,22 +167,22 @@ func TestStartWebAuthnRegistrationIssuesChallenge(t *testing.T) {
 	}
 	// challenge はサーバー側に保存済み。壊れた attestation body は検証エラーになる
 	// (未設定 / challenge 欠落ではないことを確認する)。
-	err = usecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", []byte("not-json"), nil, time.Now())
-	if !errors.Is(err, usecases.ErrWebAuthnVerification) {
+	err = webauthnusecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", []byte("not-json"), nil, time.Now())
+	if !errors.Is(err, webauthnusecases.ErrWebAuthnVerification) {
 		t.Fatalf("finish with broken body err=%v, want ErrWebAuthnVerification", err)
 	}
 }
 
 func TestBeginWebAuthnAssertionRequiresCredential(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
-	rp, err := usecases.NewRelyingParty(usecases.WebAuthnConfig{
+	rp, err := webauthnusecases.NewRelyingParty(webauthnusecases.WebAuthnConfig{
 		RPID: "localhost", RPOrigins: []string{"http://localhost"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	deps, _, _ := newWebAuthnDeps(t, rp)
-	if _, err := usecases.BeginWebAuthnAssertion(ctx, deps, "session-1", "user-alice"); !errors.Is(err, usecases.ErrWebAuthnNoCredential) {
+	if _, err := webauthnusecases.BeginWebAuthnAssertion(ctx, deps, "session-1", "user-alice"); !errors.Is(err, webauthnusecases.ErrWebAuthnNoCredential) {
 		t.Fatalf("err=%v, want ErrWebAuthnNoCredential", err)
 	}
 }

@@ -15,10 +15,10 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	provisioningscim "github.com/ambi/idmagic/backend/provisioning/internal/client_scim"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -31,28 +31,28 @@ import (
 // obtained: bearer_token presents the stored secret, oauth2_client_credentials
 // exchanges it for an access token (RFC 6749 §4.4) and refreshes it. secret is
 // the decrypted credential — a bearer token, or the OAuth2 client secret.
-func NewTargetClient(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
+func NewTargetClient(conn *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error) {
 	return provisioningscim.NewClient(conn.BaseURL, conn.Credential, secret)
 }
 
 // TargetClientFactory は、worker の通信先をテストで差し替えるために使う。
-type TargetClientFactory = func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error)
+type TargetClientFactory = func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error)
 
 // Module holds the Provisioning module's persistence dependencies.
 type Module struct {
-	ConnectionRepo ports.ProvisioningConnectionRepository
-	RemoteLinkRepo ports.RemoteResourceLinkRepository
-	TaskRepo       ports.ProvisioningTaskRepository
+	ConnectionRepo provisioningports.ProvisioningConnectionRepository
+	RemoteLinkRepo provisioningports.RemoteResourceLinkRepository
+	TaskRepo       provisioningports.ProvisioningTaskRepository
 }
 
-func (m Module) captureDeps(assignmentRepo appports.AssignmentRepository) usecases.CaptureDeps {
-	return usecases.CaptureDeps{ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, AssignmentRepo: assignmentRepo}
+func (m Module) captureDeps(assignmentRepo appports.AssignmentRepository) provisioningusecases.CaptureDeps {
+	return provisioningusecases.CaptureDeps{ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, AssignmentRepo: assignmentRepo}
 }
 
 // UserNotifier builds the userports.ProvisioningNotifier IdManagement calls
 // after committing a User mutation (decision 4).
 func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) userports.ProvisioningNotifier {
-	return usecases.UserMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
+	return provisioningusecases.UserMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }
 
 // GroupNotifier builds the groupports.ProvisioningNotifier IdManagement calls
@@ -60,13 +60,13 @@ func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) userp
 // connection's push_groups flag inside capture, so wiring this unconditionally
 // does not start writing downstream for connections that have it off.
 func (m Module) GroupNotifier(assignmentRepo appports.AssignmentRepository) groupports.ProvisioningNotifier {
-	return usecases.GroupMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
+	return provisioningusecases.GroupMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }
 
 // AssignmentNotifier builds the appports.ProvisioningNotifier Application calls
 // after committing an assignment change.
 func (m Module) AssignmentNotifier(assignmentRepo appports.AssignmentRepository) appports.ProvisioningNotifier {
-	return usecases.AssignmentMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
+	return provisioningusecases.AssignmentMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }
 
 // jobEnqueuer implements usecases.Enqueuer against the Jobs module.
@@ -81,7 +81,7 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 	}
 	now := time.Now().UTC()
 	job, err := e.Jobs.Enqueue(ctx, jobsports.EnqueueInput{
-		TenantID: tenantID, Kind: usecases.KindProvisioningTask, Params: params, DedupKey: &dedupKey, Now: now,
+		TenantID: tenantID, Kind: provisioningusecases.KindProvisioningTask, Params: params, DedupKey: &dedupKey, Now: now,
 	}, now)
 	if err != nil {
 		return "", err
@@ -92,15 +92,15 @@ func (e jobEnqueuer) EnqueueProvisioningTask(ctx context.Context, tenantID, dedu
 // DispatcherDeps builds DispatchPendingTasks's dependencies. emit receives
 // ProvisioningTaskStarted; it is a parameter rather than an optional field so
 // that the worker cannot build the dispatcher without deciding where it goes.
-func (m Module) DispatcherDeps(jobs jobsports.Enqueuer, emit func(spec.DomainEvent)) usecases.DispatcherDeps {
-	return usecases.DispatcherDeps{TaskRepo: m.TaskRepo, ConnectionRepo: m.ConnectionRepo, Enqueuer: jobEnqueuer{Jobs: jobs}, Emit: emit}
+func (m Module) DispatcherDeps(jobs jobsports.Enqueuer, emit func(spec.DomainEvent)) provisioningusecases.DispatcherDeps {
+	return provisioningusecases.DispatcherDeps{TaskRepo: m.TaskRepo, ConnectionRepo: m.ConnectionRepo, Enqueuer: jobEnqueuer{Jobs: jobs}, Emit: emit}
 }
 
 // ReconcileDeps はインクリメンタル同期の依存を組み立てる。User と割り当ては、インクリメンタル同期があるべき状態として読む記録の正である。
 // emit は誤削除ガードによる ConnectionQuarantined を、notifier はその隔離を notification_email へ知らせるメールを受け取る。
 // worker が発行先と送信手段を決めずに組み立てられないよう引数にする。
-func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository, emit func(spec.DomainEvent), notifier notificationports.Notifier) usecases.ReconcileDeps {
-	return usecases.ReconcileDeps{
+func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo appports.AssignmentRepository, emit func(spec.DomainEvent), notifier notificationports.Notifier) provisioningusecases.ReconcileDeps {
+	return provisioningusecases.ReconcileDeps{
 		ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
 		AssignmentRepo: assignmentRepo, UserRepo: userRepo, Emit: emit, Notifier: notifier,
 	}
@@ -112,14 +112,14 @@ func (m Module) ReconcileDeps(userRepo userports.UserRepository, assignmentRepo 
 // the task's terminal transition and the connection's quarantine, and notifier
 // receives the mail that tells notification_email about the quarantine.
 func (m Module) JobHandlerDeps(
-	attrSource ports.AttributeSource,
-	memberSource ports.GroupMemberSource,
-	newTargetClient func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error),
+	attrSource provisioningports.AttributeSource,
+	memberSource provisioningports.GroupMemberSource,
+	newTargetClient func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error),
 	emit func(spec.DomainEvent),
 	notifier notificationports.Notifier,
-) usecases.JobHandlerDeps {
-	return usecases.JobHandlerDeps{
-		ExecuteTaskDeps: usecases.ExecuteTaskDeps{
+) provisioningusecases.JobHandlerDeps {
+	return provisioningusecases.JobHandlerDeps{
+		ExecuteTaskDeps: provisioningusecases.ExecuteTaskDeps{
 			ConnectionRepo: m.ConnectionRepo, TaskRepo: m.TaskRepo, LinkRepo: m.RemoteLinkRepo,
 			AttributeSource: attrSource, GroupMemberSource: memberSource, NewTargetClient: newTargetClient,
 		},
@@ -141,9 +141,9 @@ func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *suppor
 // KindProvisioningTask re-exports usecases.KindProvisioningTask so
 // bootstrap/worker code doesn't need to import backend/provisioning/usecases
 // directly just for the Jobs handler registry key.
-const KindProvisioningTask = usecases.KindProvisioningTask
+const KindProvisioningTask = provisioningusecases.KindProvisioningTask
 
 // Handler re-exports usecases.ProvisioningTaskHandler for worker wiring.
-func Handler(deps usecases.JobHandlerDeps) jobsports.Handler {
-	return usecases.ProvisioningTaskHandler(deps)
+func Handler(deps provisioningusecases.JobHandlerDeps) jobsports.Handler {
+	return provisioningusecases.ProvisioningTaskHandler(deps)
 }

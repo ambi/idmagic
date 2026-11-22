@@ -13,30 +13,30 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/keys_vault"
 	"github.com/ambi/idmagic/backend/signingkeys/internal/signers_saml"
-	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingusecases "github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
 // KeyStore は組み立て地点が選択する署名鍵の契約である。
-type KeyStore = ports.KeyStore
+type KeyStore = signingports.KeyStore
 
 func NewInMemoryKeyStore() (*keys_memory.InMemoryKeyStore, error) {
 	return keys_memory.NewInMemoryKeyStore()
 }
 
-func NewKeyStore(ctx context.Context, pool postgres.DB) (ports.KeyStore, error) {
+func NewKeyStore(ctx context.Context, pool postgres.DB) (signingports.KeyStore, error) {
 	return db_postgres.NewKeyStore(ctx, pool)
 }
 
-func NewVaultKeyStore(address, token, mount, prefix string) ports.KeyStore {
+func NewVaultKeyStore(address, token, mount, prefix string) signingports.KeyStore {
 	return keys_vault.NewVaultKeyStore(keys_vault.NewHTTPTransitEngine(address, token, mount), prefix)
 }
 
 // NewPostgresVaultKeyStore は秘密鍵を Vault に保ったまま、XML の公開と選択を永続化する。
-func NewPostgresVaultKeyStore(pool postgres.DB, address, token, mount, prefix string) ports.KeyStore {
+func NewPostgresVaultKeyStore(pool postgres.DB, address, token, mount, prefix string) signingports.KeyStore {
 	return keys_vault.NewVaultKeyStoreWithState(keys_vault.NewHTTPTransitEngine(address, token, mount), prefix, db_postgres.VaultKeyStateStore{Pool: pool})
 }
 
@@ -53,7 +53,7 @@ func (m Module) RegisterRoutes(g *echo.Group, d RouteDeps) {
 // RunLifecycle は ctx のテナントの鍵の集合すべてに、定期実行のローテーション、XML 鍵の準備、
 // アーカイブを 1 回適用する。
 func (m Module) RunLifecycle(ctx context.Context, emit func(spec.DomainEvent), now time.Time, cadence, grace time.Duration) error {
-	return usecases.RunSigningKeyLifecycle(ctx, usecases.SigningKeyLifecycleDeps{KeyStore: m.KeyStore, Emit: emit}, now, cadence, grace)
+	return signingusecases.RunSigningKeyLifecycle(ctx, signingusecases.SigningKeyLifecycleDeps{KeyStore: m.KeyStore, Emit: emit}, now, cadence, grace)
 }
 
 // FederationSigner は、要求の鍵のスコープで有効な XML 連携署名の鍵から SAML assertion の署名器を

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 // docs/modules/provisioning/standards.md が宣言する外向き SCIM の準拠範囲のうち、
@@ -80,7 +80,7 @@ func fullLifecycleRequests(t *testing.T) []recordedRequest {
 	t.Helper()
 	client, recorded := newRecordingClient(t)
 	ctx := context.Background()
-	rules := []domain.AttributeMappingRule{simpleRule("userName", "username")}
+	rules := []provisioningdomain.AttributeMappingRule{simpleRule("userName", "username")}
 	attrs := map[string]any{"username": "alice"}
 
 	if _, err := client.Discover(ctx); err != nil {
@@ -227,20 +227,20 @@ func TestClient_UnknownErrorStatusIsNotRetryable(t *testing.T) {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]any{"detail": "invalidValue", "scimType": "invalidValue"})
 	})
-	_, _, err := client.CreateUser(context.Background(), []domain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
+	_, _, err := client.CreateUser(context.Background(), []provisioningdomain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
 	if err == nil {
 		t.Fatal("CreateUser() on 400 should fail")
 	}
-	var retryable *ports.RetryableError
-	if ports.AsRetryableError(err, &retryable) {
+	var retryable *provisioningports.RetryableError
+	if provisioningports.AsRetryableError(err, &retryable) {
 		t.Errorf("CreateUser() on 400 error = %v, 再試行可能として扱ってはならない", err)
 	}
-	var conflict *ports.ConflictError
-	if ports.AsConflictError(err, &conflict) {
+	var conflict *provisioningports.ConflictError
+	if provisioningports.AsConflictError(err, &conflict) {
 		t.Errorf("CreateUser() on 400 error = %v, 衝突として扱ってはならない", err)
 	}
-	var notFound *ports.NotFoundError
-	if ports.AsNotFoundError(err, &notFound) {
+	var notFound *provisioningports.NotFoundError
+	if provisioningports.AsNotFoundError(err, &notFound) {
 		t.Errorf("CreateUser() on 400 error = %v, 消失として扱ってはならない", err)
 	}
 	if !strings.Contains(err.Error(), "invalidValue") {
@@ -314,7 +314,7 @@ func groupPushRequests(t *testing.T) []recordedRequest {
 	t.Helper()
 	client, recorded := newRecordingClient(t)
 	ctx := context.Background()
-	rules := []domain.AttributeMappingRule{simpleRule("displayName", "display_name")}
+	rules := []provisioningdomain.AttributeMappingRule{simpleRule("displayName", "display_name")}
 	attrs := map[string]any{
 		"display_name": "engineering",
 		"members":      []any{map[string]any{"value": "remote-user-1"}},

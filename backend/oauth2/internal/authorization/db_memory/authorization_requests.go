@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -19,14 +19,14 @@ import (
 
 type AuthorizationRequestStore struct {
 	mu       sync.RWMutex
-	requests map[string]*domain.AuthorizationRequest
+	requests map[string]*oauthdomain.AuthorizationRequest
 }
 
 func NewAuthorizationRequestStore() *AuthorizationRequestStore {
-	return &AuthorizationRequestStore{requests: map[string]*domain.AuthorizationRequest{}}
+	return &AuthorizationRequestStore{requests: map[string]*oauthdomain.AuthorizationRequest{}}
 }
 
-func (s *AuthorizationRequestStore) Save(_ context.Context, req *domain.AuthorizationRequest) error {
+func (s *AuthorizationRequestStore) Save(_ context.Context, req *oauthdomain.AuthorizationRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&req.TenantID, kernel.DefaultTenantID)
@@ -34,7 +34,7 @@ func (s *AuthorizationRequestStore) Save(_ context.Context, req *domain.Authoriz
 	return nil
 }
 
-func (s *AuthorizationRequestStore) Find(_ context.Context, id string) (*domain.AuthorizationRequest, error) {
+func (s *AuthorizationRequestStore) Find(_ context.Context, id string) (*oauthdomain.AuthorizationRequest, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.requests[id], nil

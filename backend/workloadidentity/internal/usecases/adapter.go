@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
 // WorkloadTokenVerifierAdapter satisfies oauth2/ports.WorkloadTokenVerifier
@@ -17,7 +17,7 @@ type WorkloadTokenVerifierAdapter struct {
 
 func (a WorkloadTokenVerifierAdapter) VerifyWorkloadToken(
 	ctx context.Context, tenantID, clientID, subjectToken string, now time.Time,
-) (*domain.WorkloadIdentityGrant, error) {
+) (*workloaddomain.WorkloadIdentityGrant, error) {
 	return VerifyWorkloadAttestation(ctx, a.Deps, tenantID, VerifyWorkloadAttestationInput{
 		ClientID: clientID, SubjectToken: subjectToken,
 	}, now)
@@ -25,7 +25,7 @@ func (a WorkloadTokenVerifierAdapter) VerifyWorkloadToken(
 
 func (a WorkloadTokenVerifierAdapter) VerifyClientAssertion(
 	ctx context.Context, tenantID, clientID, assertion, expectedAudience string, now time.Time,
-) (*domain.WorkloadClientAuthentication, error) {
+) (*workloaddomain.WorkloadClientAuthentication, error) {
 	return VerifyWorkloadClientAssertion(ctx, a.Deps, tenantID, VerifyWorkloadClientAssertionInput{
 		ClientID: clientID, Assertion: assertion, ExpectedAudience: expectedAudience,
 	}, now)

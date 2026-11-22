@@ -10,10 +10,10 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -23,12 +23,12 @@ import (
 // =====================================================================
 
 type ExchangeCodeDeps struct {
-	ClientRepo         ports.OAuth2ClientRepository
+	ClientRepo         oauthports.OAuth2ClientRepository
 	UserRepo           userports.UserRepository
-	RequestStore       ports.AuthorizationRequestStore
-	CodeStore          ports.AuthorizationCodeStore
-	RefreshStore       ports.RefreshTokenStore
-	TokenIssuer        ports.TokenIssuer
+	RequestStore       oauthports.AuthorizationRequestStore
+	CodeStore          oauthports.AuthorizationCodeStore
+	RefreshStore       oauthports.RefreshTokenStore
+	TokenIssuer        oauthports.TokenIssuer
 	ClientSessionStore logoutports.ClientSessionStore
 	Emit               func(spec.DomainEvent)
 	// ResolveAttributeDefs は ID Token の属性 claim 生成用 (wi-19)。nil 可。
@@ -102,14 +102,14 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if rec.CodeChallenge == "" && in.CodeVerifier != "" {
 		return nil, NewOAuthError("invalid_grant", "code_verifier was not bound to the authorization code")
 	}
-	if rec.CodeChallenge != "" && !domain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
+	if rec.CodeChallenge != "" && !oauthdomain.VerifyPKCES256(in.CodeVerifier, rec.CodeChallenge) {
 		return nil, NewOAuthError("invalid_grant", "PKCE verification failed")
 	}
 	// RFC 8707 §2 — /token に resource が再指定された場合、/authorize 時に束縛された
 	// resource と一致しなければならない。新規 resource の後付け指定は拒否する。
 	if requested := nonEmpty(in.Resource); len(requested) > 0 {
 		if len(requested) > 1 || rec.Resource == nil || requested[0] != *rec.Resource {
-			emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: "invalid_target"})
+			emit(deps.Emit, &oauthdomain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: "invalid_target"})
 			return nil, NewOAuthError("invalid_target", "token request resource does not match authorization request")
 		}
 	}
@@ -143,20 +143,20 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, NewOAuthError("invalid_grant", "The authorization code was used by a concurrent request.")
 	}
 	rec = redeemed
-	scopes, issueRefresh := domain.ExchangeScopes(client.GrantTypes, rec.Scopes)
+	scopes, issueRefresh := oauthdomain.ExchangeScopes(client.GrantTypes, rec.Scopes)
 
-	var sc *domain.SenderConstraint
+	var sc *oauthdomain.SenderConstraint
 	if in.DpopJKT != "" {
-		sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.DpopJKT}
+		sc = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: in.DpopJKT}
 	} else if in.MTLSX5TS256 != "" {
-		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.MTLSX5TS256}
+		sc = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.MTLSX5TS256}
 	}
 
 	var audiences []string
 	if rec.Resource != nil {
 		audiences = []string{*rec.Resource}
 	}
-	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
+	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client:               client,
 		Sub:                  user.ID,
 		Scopes:               scopes,
@@ -170,15 +170,15 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: scopes, SenderConstraint: senderConstraintTag(sc)})
-	emit(deps.Emit, &domain.AuthorizationCodeRedeemed{At: now, TenantID: tenantID, ClientID: client.ClientID, UserID: user.ID})
+	emit(deps.Emit, &oauthdomain.AccessTokenIssued{At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: user.ID, Scopes: scopes, SenderConstraint: senderConstraintTag(sc)})
+	emit(deps.Emit, &oauthdomain.AuthorizationCodeRedeemed{At: now, TenantID: tenantID, ClientID: client.ClientID, UserID: user.ID})
 	if rec.Resource != nil {
-		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *rec.Resource, Scopes: scopes})
+		emit(deps.Emit, &oauthdomain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: *rec.Resource, Scopes: scopes})
 	}
 
 	var idToken string
 	if slices.Contains(scopes, "openid") {
-		idToken, err = deps.TokenIssuer.SignIDToken(ctx, ports.IDTokenInput{
+		idToken, err = deps.TokenIssuer.SignIDToken(ctx, oauthports.IDTokenInput{
 			Client:    client,
 			User:      user,
 			Scopes:    scopes,
@@ -198,7 +198,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 
 	var refreshToken string
 	if deps.RefreshStore != nil && issueRefresh {
-		gen, err := domain.GenerateInitialRefreshToken(client.ClientID, user.ID, scopes, sc, rec.Sid, rec.Resource, now, entropy.Crypto())
+		gen, err := oauthdomain.GenerateInitialRefreshToken(client.ClientID, user.ID, scopes, sc, rec.Sid, rec.Resource, now, entropy.Crypto())
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +208,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		if err := deps.RefreshStore.Save(ctx, gen.Record); err != nil {
 			return nil, err
 		}
-		emit(deps.Emit, &domain.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: gen.Record.ID, FamilyID: gen.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
+		emit(deps.Emit, &oauthdomain.RefreshTokenIssued{At: now, TenantID: tenantID, TokenID: gen.Record.ID, FamilyID: gen.Record.FamilyID, ClientID: client.ClientID, UserID: user.ID})
 		if err := deps.CodeStore.LinkFamily(ctx, rec.Code, gen.Record.FamilyID); err != nil {
 			return nil, err
 		}
@@ -227,7 +227,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		}
 	}
 
-	tokenType := domain.PresentationTokenType(sc)
+	tokenType := oauthdomain.PresentationTokenType(sc)
 	return &ExchangeCodeOutput{
 		AccessToken:  access,
 		IDToken:      idToken,
@@ -252,14 +252,14 @@ func optionalValue(value *string) string {
 // 組み立ては revokeFamilyAndNotify (refresh_tokens.go) を共有する。RefreshTokenReuseDetected
 // はこの経路固有の検出通知としてここで発行する。
 func revokeReplayedFamily(
-	ctx context.Context, deps ExchangeCodeDeps, rec *domain.AuthorizationCodeRecord,
+	ctx context.Context, deps ExchangeCodeDeps, rec *oauthdomain.AuthorizationCodeRecord,
 	now time.Time, tenantID string,
 ) {
 	if rec.IssuedFamilyID == nil || deps.RefreshStore == nil {
 		return
 	}
 	revokeFamilyAndNotify(ctx, deps.RefreshStore, deps.Emit, *rec.IssuedFamilyID, tenantID, now)
-	emit(deps.Emit, &domain.RefreshTokenReuseDetected{
+	emit(deps.Emit, &oauthdomain.RefreshTokenReuseDetected{
 		At: now, TenantID: tenantID, FamilyID: *rec.IssuedFamilyID, ClientID: rec.ClientID, UserID: rec.UserID,
 	})
 }

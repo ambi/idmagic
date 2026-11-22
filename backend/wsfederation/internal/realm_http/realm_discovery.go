@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/security/safehttp"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -86,38 +86,38 @@ func isLoopback(host string) bool {
 }
 
 // Discover は、ドメインの送り先を問い合わせる。無効なら wsfedports.ErrEntraRealmDiscoveryDisabled を返す。
-func (d Discovery) Discover(ctx context.Context, domain string) (feddomain.EntraDomainRealm, error) {
+func (d Discovery) Discover(ctx context.Context, domain string) (wsfeddomain.EntraDomainRealm, error) {
 	if d.endpoint == nil {
-		return feddomain.EntraDomainRealm{}, wsfedports.ErrEntraRealmDiscoveryDisabled
+		return wsfeddomain.EntraDomainRealm{}, wsfedports.ErrEntraRealmDiscoveryDisabled
 	}
 	target := *d.endpoint
 	target.RawQuery = url.Values{"login": {realmCheckLocalPart + "@" + domain}, "json": {"1"}}.Encode()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), http.NoBody)
 	if err != nil {
-		return feddomain.EntraDomainRealm{}, err
+		return wsfeddomain.EntraDomainRealm{}, err
 	}
 	request.Header.Set("Accept", "application/json")
 	response, err := d.client.Do(request)
 	if err != nil {
-		return feddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: %w", err)
+		return wsfeddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: %w", err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
-		return feddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: status %d", response.StatusCode)
+		return wsfeddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: status %d", response.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
-		return feddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: %w", err)
+		return wsfeddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: %w", err)
 	}
 	if len(body) > maxResponseBytes {
-		return feddomain.EntraDomainRealm{}, errors.New("entra realm discovery: the response is too large")
+		return wsfeddomain.EntraDomainRealm{}, errors.New("entra realm discovery: the response is too large")
 	}
 	var realm struct {
 		NameSpaceType string `json:"NameSpaceType"`
 		AuthURL       string `json:"AuthURL"`
 	}
 	if err := json.Unmarshal(body, &realm); err != nil {
-		return feddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: %w", err)
+		return wsfeddomain.EntraDomainRealm{}, fmt.Errorf("entra realm discovery: %w", err)
 	}
-	return feddomain.EntraDomainRealm{NamespaceType: realm.NameSpaceType, AuthURL: realm.AuthURL}, nil
+	return wsfeddomain.EntraDomainRealm{NamespaceType: realm.NameSpaceType, AuthURL: realm.AuthURL}, nil
 }

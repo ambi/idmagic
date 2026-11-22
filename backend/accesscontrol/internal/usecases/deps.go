@@ -3,18 +3,18 @@ package usecases
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // Deps は関係の評価が必要とする境界。Authorizer は AuthZEN ポートで、
 // ローカル評価器にもリモート PDP にも差し替えられる。
 type Deps struct {
-	Tuples     ports.RelationTupleRepository
-	Models     ports.AuthorizationModelRepository
-	Principals ports.PrincipalStatusResolver
-	Authorizer policyports.Authorizer
+	Tuples     accessinternalports.RelationTupleRepository
+	Models     accessinternalports.AuthorizationModelRepository
+	Principals accessinternalports.PrincipalStatusResolver
+	Authorizer accessports.Authorizer
 	Emit       func(spec.DomainEvent)
 	// MaxDepth は関係グラフをたどる深さの上限。0 なら domain の既定を使う。
 	MaxDepth int

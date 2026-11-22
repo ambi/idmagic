@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 )
 
@@ -33,13 +33,13 @@ func provisioningAPIRequestInRealm(t *testing.T, s *stack.Stack, realm, method, 
 //spec:covers EX-PROVISIONING-001-01: provisioning:read は接続一覧を参照でき、provisioning:write は接続を登録できる。
 func TestProvisioningScopesAllowOnlyTheirNamedOperations(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithProvisioning())
-	readToken, _ := s.IssueApiToken(t, "default", domain.ScopeProvisioningRead)
+	readToken, _ := s.IssueApiToken(t, "default", apitokendomain.ScopeProvisioningRead)
 	read := provisioningAPIRequest(t, s, http.MethodGet, "/api/admin/v1/provisioning/connections", readToken, "")
 	if read.Code != http.StatusOK {
 		t.Fatalf("read status=%d body=%s, want 200", read.Code, read.Body.String())
 	}
 
-	writeToken, _ := s.IssueApiToken(t, "default", domain.ScopeProvisioningWrite)
+	writeToken, _ := s.IssueApiToken(t, "default", apitokendomain.ScopeProvisioningWrite)
 	created := provisioningAPIRequest(t, s, http.MethodPost, "/api/admin/v1/applications/app-1/provisioning", writeToken,
 		`{"base_url":"https://downstream.example/scim/v2","credential":{"auth_method":"bearer_token","bearer_token":"secret"}}`)
 	if created.Code != http.StatusCreated {
@@ -54,7 +54,7 @@ func TestProvisioningScopesAllowOnlyTheirNamedOperations(t *testing.T) {
 //spec:covers EX-PROVISIONING-001-02: provisioning:read だけのトークンは接続登録を拒否し、接続を作らない。
 func TestProvisioningReadScopeCannotRegisterAConnection(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithProvisioning())
-	readToken, _ := s.IssueApiToken(t, "default", domain.ScopeProvisioningRead)
+	readToken, _ := s.IssueApiToken(t, "default", apitokendomain.ScopeProvisioningRead)
 	refused := provisioningAPIRequest(t, s, http.MethodPost, "/api/admin/v1/applications/app-1/provisioning", readToken,
 		`{"base_url":"https://downstream.example/scim/v2","credential":{"auth_method":"bearer_token","bearer_token":"secret"}}`)
 	if refused.Code != http.StatusForbidden {
@@ -75,8 +75,8 @@ func TestProvisioningReadScopeCannotRegisterAConnection(t *testing.T) {
 //spec:covers EX-PROVISIONING-001-03: トークンのテナントとリクエスト先のテナントが一致しないとき、接続とプロビジョニングタスクの操作を 401 の InvalidAccessTokenError で拒否し、接続を作らない。
 func TestForeignTenantProvisioningTokenIsRejectedAsInvalid(t *testing.T) {
 	s := stack.New(t, stack.WithApiTokens(), stack.WithProvisioning())
-	foreignRead, _ := s.IssueApiToken(t, stack.OtherRealm, domain.ScopeProvisioningRead)
-	foreignWrite, _ := s.IssueApiToken(t, stack.OtherRealm, domain.ScopeProvisioningWrite)
+	foreignRead, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeProvisioningRead)
+	foreignWrite, _ := s.IssueApiToken(t, stack.OtherRealm, apitokendomain.ScopeProvisioningWrite)
 
 	// テナントの接続一覧とプロビジョニングタスク一覧の参照は届かない。
 	assertProvisioningInvalidToken(t, provisioningAPIRequest(t, s, http.MethodGet, "/api/admin/v1/provisioning/connections", foreignRead, ""))
@@ -93,7 +93,7 @@ func TestForeignTenantProvisioningTokenIsRejectedAsInvalid(t *testing.T) {
 
 	// 対照: 同じテナントで発行したトークンなら接続一覧を参照できる。拒否したのがテナントの
 	// 食い違いであって、スタックの配線そのものではないと示す。
-	sameRealmRead, _ := s.IssueApiToken(t, "default", domain.ScopeProvisioningRead)
+	sameRealmRead, _ := s.IssueApiToken(t, "default", apitokendomain.ScopeProvisioningRead)
 	if allowed := provisioningAPIRequest(t, s, http.MethodGet, "/api/admin/v1/provisioning/connections", sameRealmRead, ""); allowed.Code != http.StatusOK {
 		t.Fatalf("前提が壊れている: 同一テナントの参照が status=%d body=%s", allowed.Code, allowed.Body.String())
 	}

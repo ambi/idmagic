@@ -6,11 +6,11 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
 type ArchiveExpiredSigningKeysDeps struct {
-	KeyStore ports.KeyStore
+	KeyStore signingports.KeyStore
 	Emit     func(spec.DomainEvent)
 }
 

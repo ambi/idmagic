@@ -28,7 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	cryptoadapter "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -113,7 +113,7 @@ func (s hintTestServer) seedRefreshToken(t *testing.T, clientID, sid string) {
 
 func (s hintTestServer) signIDTokenHint(t *testing.T, clientID, sub, sid string) string {
 	t.Helper()
-	token, err := s.signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
+	token, err := s.signer.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: clientID}, User: &userdomain.User{ID: sub},
 		Scopes: []string{"openid"}, Sid: sid,
 	})
@@ -256,7 +256,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	otherSigner := oauth2.NewJWTSigner("http://not-this-idp", otherKS)
-	forged, err := otherSigner.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
+	forged, err := otherSigner.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: hintClientID}, User: &userdomain.User{ID: "alice"},
 		Scopes: []string{"openid"}, Sid: sid,
 	})

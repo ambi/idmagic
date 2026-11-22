@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -25,11 +25,11 @@ func TestQuotaReservationReleasesUnlessKept(t *testing.T) {
 	const tenantID = "acme"
 	repo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
-	if err := repo.SetQuota(ctx, tenantID, &domain.TenantQuota{Groups: &limit}); err != nil {
+	if err := repo.SetQuota(ctx, tenantID, &tenancydomain.TenantQuota{Groups: &limit}); err != nil {
 		t.Fatal(err)
 	}
 
-	failed, err := tenantports.ReserveQuota(ctx, repo, tenantID, domain.ResourceGroups, 1)
+	failed, err := tenantports.ReserveQuota(ctx, repo, tenantID, tenancydomain.ResourceGroups, 1)
 	if err != nil {
 		t.Fatalf("ReserveQuota: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestQuotaReservationReleasesUnlessKept(t *testing.T) {
 		t.Fatalf("usage after releasing an unkept reservation = %d, want 0", got)
 	}
 
-	created, err := tenantports.ReserveQuota(ctx, repo, tenantID, domain.ResourceGroups, 1)
+	created, err := tenantports.ReserveQuota(ctx, repo, tenantID, tenancydomain.ResourceGroups, 1)
 	if err != nil {
 		t.Fatalf("ReserveQuota after the release: %v", err)
 	}
@@ -49,8 +49,8 @@ func TestQuotaReservationReleasesUnlessKept(t *testing.T) {
 		t.Fatalf("usage after a kept reservation = %d, want 1", got)
 	}
 
-	over, err := tenantports.ReserveQuota(ctx, repo, tenantID, domain.ResourceGroups, 1)
-	if qErr, ok := errors.AsType[*domain.QuotaExceededError](err); !ok || over != nil {
+	over, err := tenantports.ReserveQuota(ctx, repo, tenantID, tenancydomain.ResourceGroups, 1)
+	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); !ok || over != nil {
 		t.Fatalf("ReserveQuota over the limit = (%v, %v), want (nil, QuotaExceededError)", over, qErr)
 	}
 	over.Release(ctx) // 予約のない Release は何もしない。
@@ -62,7 +62,7 @@ func TestQuotaReservationReleasesUnlessKept(t *testing.T) {
 // 上限を強制しない構成では、予約は何も加算せず、戻す操作も何もしない。
 func TestQuotaReservationWithoutRepositoryDoesNothing(t *testing.T) {
 	ctx := context.Background()
-	reservation, err := tenantports.ReserveQuota(ctx, nil, "acme", domain.ResourceGroups, 1)
+	reservation, err := tenantports.ReserveQuota(ctx, nil, "acme", tenancydomain.ResourceGroups, 1)
 	if err != nil || reservation == nil {
 		t.Fatalf("ReserveQuota without a repository = (%v, %v), want a no-op reservation", reservation, err)
 	}

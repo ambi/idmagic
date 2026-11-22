@@ -9,18 +9,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 )
 
 // Syncer は一回の同期を行う。Now と Sleep は時刻と待ちの作用である。
 type Syncer struct {
-	Directory    ports.Directory
-	API          ports.IngestionAPI
-	Cursors      ports.CursorStore
-	Dialect      domain.Dialect
-	Scope        domain.Scope
-	Mapping      domain.Mapping
+	Directory    directoryconnectorports.Directory
+	API          directoryconnectorports.IngestionAPI
+	Cursors      directoryconnectorports.CursorStore
+	Dialect      directoryconnectordomain.Dialect
+	Scope        directoryconnectordomain.Scope
+	Mapping      directoryconnectordomain.Mapping
 	FullInterval time.Duration
 	Now          func() time.Time
 	Sleep        func(context.Context, time.Duration) error
@@ -28,7 +28,7 @@ type Syncer struct {
 }
 
 type Result struct {
-	Mode    domain.Mode
+	Mode    directoryconnectordomain.Mode
 	RunID   string
 	Items   int
 	Skipped int
@@ -58,7 +58,7 @@ func (s Syncer) SyncOnce(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("read root dse: %w", err)
 	}
-	plan := domain.PlanRun(s.Dialect, s.Scope, prev, root, s.Now(), s.FullInterval)
+	plan := directoryconnectordomain.PlanRun(s.Dialect, s.Scope, prev, root, s.Now(), s.FullInterval)
 
 	result := Result{Mode: plan.Mode}
 	if err := s.retry(ctx, func() (err error) {
@@ -69,7 +69,7 @@ func (s Syncer) SyncOnce(ctx context.Context) (Result, error) {
 	}
 
 	sender := batchSender{syncer: s, ctx: ctx, runID: result.RunID}
-	err = readItems(ctx, session, s.Dialect, s.Scope.BaseDNs, plan.Filter, s.Mapping, sender.add, func(incomplete *domain.IncompleteEntryError) {
+	err = readItems(ctx, session, s.Dialect, s.Scope.BaseDNs, plan.Filter, s.Mapping, sender.add, func(incomplete *directoryconnectordomain.IncompleteEntryError) {
 		result.Skipped++
 		s.Log.Warn("skipped an ldap entry", "dn", incomplete.DN, "missing_attribute", incomplete.Attribute)
 	})
@@ -93,15 +93,15 @@ func (s Syncer) SyncOnce(ctx context.Context) (Result, error) {
 
 // readItems は起点を並べた順に検索し、写せたエントリを emit へ、写せないエントリを skip へ渡す
 // (REQ-DIRECTORYCONNECTOR-004)。
-func readItems(ctx context.Context, session ports.DirectorySession, dialect domain.Dialect, baseDNs []string, filter string,
-	mapping domain.Mapping, emit func(domain.Item) error, skip func(*domain.IncompleteEntryError),
+func readItems(ctx context.Context, session directoryconnectorports.DirectorySession, dialect directoryconnectordomain.Dialect, baseDNs []string, filter string,
+	mapping directoryconnectordomain.Mapping, emit func(directoryconnectordomain.Item) error, skip func(*directoryconnectordomain.IncompleteEntryError),
 ) error {
-	attributes := domain.RequestedAttributes(dialect, mapping)
+	attributes := directoryconnectordomain.RequestedAttributes(dialect, mapping)
 	for _, baseDN := range baseDNs {
-		err := session.Search(ctx, baseDN, filter, attributes, func(entries []domain.Entry) error {
+		err := session.Search(ctx, baseDN, filter, attributes, func(entries []directoryconnectordomain.Entry) error {
 			for _, entry := range entries {
-				item, err := domain.MapEntry(dialect, mapping, entry)
-				if incomplete, ok := errors.AsType[*domain.IncompleteEntryError](err); ok {
+				item, err := directoryconnectordomain.MapEntry(dialect, mapping, entry)
+				if incomplete, ok := errors.AsType[*directoryconnectordomain.IncompleteEntryError](err); ok {
 					skip(incomplete)
 					continue
 				}
@@ -139,14 +139,14 @@ type batchSender struct {
 	syncer  Syncer
 	ctx     context.Context
 	runID   string
-	pending []domain.Item
+	pending []directoryconnectordomain.Item
 	batches int
 	sent    int
 }
 
-func (b *batchSender) add(item domain.Item) error {
+func (b *batchSender) add(item directoryconnectordomain.Item) error {
 	b.pending = append(b.pending, item)
-	if len(b.pending) < domain.MaxBatchItems {
+	if len(b.pending) < directoryconnectordomain.MaxBatchItems {
 		return nil
 	}
 	return b.flush()
@@ -190,7 +190,7 @@ func (s Syncer) retry(ctx context.Context, call func() error) error {
 
 // retryable は一時的な失敗かどうかである。応答のない接続の失敗と、408、429、5xx を送り直す。
 func retryable(err error) bool {
-	var api *ports.APIError
+	var api *directoryconnectorports.APIError
 	if !errors.As(err, &api) {
 		return !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded)
 	}

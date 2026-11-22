@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // QuotaRepository provides atomic usage counters for Tenant resources (wi-160).
@@ -17,16 +17,16 @@ type QuotaRepository interface {
 	Decrement(ctx context.Context, tenantID, resource string, delta int) error
 
 	// SetQuota explicitly sets the quota for a tenant.
-	SetQuota(ctx context.Context, tenantID string, quota *domain.TenantQuota) error
+	SetQuota(ctx context.Context, tenantID string, quota *tenancydomain.TenantQuota) error
 
 	// GetQuota retrieves the quota for a tenant.
-	GetQuota(ctx context.Context, tenantID string) (*domain.TenantQuota, error)
+	GetQuota(ctx context.Context, tenantID string) (*tenancydomain.TenantQuota, error)
 
 	// GetUsage retrieves the current usage for a tenant.
-	GetUsage(ctx context.Context, tenantID string) (*domain.TenantUsage, error)
+	GetUsage(ctx context.Context, tenantID string) (*tenancydomain.TenantUsage, error)
 
 	// SetSoftUsage は測定した二列だけを同時に置換し、Hard の使用量を維持する。
-	SetSoftUsage(ctx context.Context, tenantID string, usage domain.SoftQuotaUsage) error
+	SetSoftUsage(ctx context.Context, tenantID string, usage tenancydomain.SoftQuotaUsage) error
 
 	// RecountUsage は resource の使用量を固定したまま count を呼び、返った件数で使用量を置き換え、
 	// 置き換える前の使用量を返す。固定している間の加算と減算は、置き換えの後に適用される。

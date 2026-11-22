@@ -22,7 +22,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalsdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/internal/db_memory"
 
 	"github.com/labstack/echo/v5"
@@ -30,14 +30,14 @@ import (
 
 type recordingReceivedEventRepository struct {
 	delegate *sharedsignalsmemory.ReceivedSecurityEventRepository
-	Saved    []sharedsignalsdomain.ReceivedSecurityEvent
+	Saved    []ssdomain.ReceivedSecurityEvent
 }
 
 func (r *recordingReceivedEventRepository) ExistsByJTI(ctx context.Context, tenantID, streamID, setJTI string) (bool, error) {
 	return r.delegate.ExistsByJTI(ctx, tenantID, streamID, setJTI)
 }
 
-func (r *recordingReceivedEventRepository) Save(ctx context.Context, event *sharedsignalsdomain.ReceivedSecurityEvent) error {
+func (r *recordingReceivedEventRepository) Save(ctx context.Context, event *ssdomain.ReceivedSecurityEvent) error {
 	r.Saved = append(r.Saved, *event)
 	return r.delegate.Save(ctx, event)
 }

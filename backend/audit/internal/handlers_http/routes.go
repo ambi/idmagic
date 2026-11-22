@@ -7,8 +7,8 @@
 package handlers_http
 
 import (
-	"github.com/ambi/idmagic/backend/audit/domain"
-	"github.com/ambi/idmagic/backend/audit/internal/usecases"
+	auditdomain "github.com/ambi/idmagic/backend/audit/domain"
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -25,8 +25,8 @@ type Deps struct {
 	// LookupUsername は username -> user_id 解決に使う。実アカウントが常に確定する
 	// イベントの検索は、payload に username/hash を持たせず検索時にここで解決する。
 	LookupUsername auditports.UsernameLookup
-	Exports        usecases.ExportDeps
-	ExportPolicy   domain.ExportPolicy
+	Exports        auditusecases.ExportDeps
+	ExportPolicy   auditdomain.ExportPolicy
 }
 
 // RegisterRoutes はテナント解決済みグループに audit コンテキストのエンドポイントを

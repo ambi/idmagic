@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -14,7 +14,7 @@ import (
 const mcpMethodResourceType = "idmagic_mcp_method"
 
 type resourceOperation struct {
-	Rule        domain.ResourceAccessRule
+	Rule        oauthdomain.ResourceAccessRule
 	Request     ResourceAccessRequest
 	Registered  bool
 	Preparation bool
@@ -22,9 +22,9 @@ type resourceOperation struct {
 	Target string
 }
 
-func resolveResourceOperation(server *domain.McpResourceServer, in ResourceAccessRequest) resourceOperation {
+func resolveResourceOperation(server *oauthdomain.McpResourceServer, in ResourceAccessRequest) resourceOperation {
 	if in.ResourceType == mcpMethodResourceType && in.Relation == "access" {
-		registered := slices.Contains([]string{"server/discover", "initialize", "notifications/initialized", "ping", "tools/list"}, in.ResourceID) && slices.ContainsFunc(server.AccessRules, func(r domain.ResourceAccessRule) bool { return r.Tool != nil })
+		registered := slices.Contains([]string{"server/discover", "initialize", "notifications/initialized", "ping", "tools/list"}, in.ResourceID) && slices.ContainsFunc(server.AccessRules, func(r oauthdomain.ResourceAccessRule) bool { return r.Tool != nil })
 		return resourceOperation{Request: in, Registered: registered, Preparation: true}
 	}
 	if in.ResourceType != spec.ResourceTypeMcpOperation || in.Relation != spec.RelationMcpInvoke {
@@ -59,10 +59,10 @@ func resolveResourceOperation(server *domain.McpResourceServer, in ResourceAcces
 
 // checkTargetRange は組み込みの型で対象ごとの権限を持つツールに、全対象か指定した対象の範囲を要求する。
 // 範囲のない操作割当は、どの対象も許可しない (REQ-OAUTH2-083)。
-func checkTargetRange(ctx context.Context, checker policyports.RelationChecker, server *domain.McpResourceServer, operation resourceOperation, subject policyports.PrincipalRef, actors []policyports.PrincipalRef, scopes []string) (policyports.RelationDecision, error) {
+func checkTargetRange(ctx context.Context, checker accessports.RelationChecker, server *oauthdomain.McpResourceServer, operation resourceOperation, subject accessports.PrincipalRef, actors []accessports.PrincipalRef, scopes []string) (accessports.RelationDecision, error) {
 	rule := operation.Rule
 	operationID := server.OperationResourceID(rule)
-	check := policyports.RelationCheck{TenantID: server.TenantID, ResourceType: spec.ResourceTypeMcpOperation, ResourceID: operationID, Relation: spec.RelationMcpInvokeAnyTarget, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes}
+	check := accessports.RelationCheck{TenantID: server.TenantID, ResourceType: spec.ResourceTypeMcpOperation, ResourceID: operationID, Relation: spec.RelationMcpInvokeAnyTarget, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes}
 	decision, err := checker.CheckRelation(ctx, check)
 	if err != nil || decision.Permitted {
 		return decision, err
@@ -75,9 +75,9 @@ func checkTargetRange(ctx context.Context, checker policyports.RelationChecker, 
 	return checker.CheckRelation(ctx, check)
 }
 
-func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, operation resourceOperation, subject policyports.PrincipalRef, actors []policyports.PrincipalRef, scopes []string) (policyports.RelationDecision, error) {
+func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, operation resourceOperation, subject accessports.PrincipalRef, actors []accessports.PrincipalRef, scopes []string) (accessports.RelationDecision, error) {
 	rule, in := operation.Rule, operation.Request
-	check := policyports.RelationCheck{TenantID: in.TenantID, ResourceType: in.ResourceType, ResourceID: in.ResourceID, Relation: in.Relation, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes}
+	check := accessports.RelationCheck{TenantID: in.TenantID, ResourceType: in.ResourceType, ResourceID: in.ResourceID, Relation: in.Relation, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes}
 	if operation.Preparation {
 		for _, operation := range server.AccessRules {
 			if operation.Tool == nil {
@@ -85,13 +85,13 @@ func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *d
 			}
 			decision, err := checkToolAssignment(ctx, deps.Relations, server, operation, subject, actors, scopes)
 			if err != nil {
-				return policyports.RelationDecision{}, err
+				return accessports.RelationDecision{}, err
 			}
 			if decision.Permitted {
 				return decision, nil
 			}
 		}
-		return policyports.RelationDecision{Reasons: []string{"operation_assignment_required"}}, nil
+		return accessports.RelationDecision{Reasons: []string{"operation_assignment_required"}}, nil
 	}
 	if rule.Tool != nil {
 		decision, err := checkToolAssignment(ctx, deps.Relations, server, rule, subject, actors, scopes)
@@ -108,25 +108,25 @@ func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *d
 	return deps.Relations.CheckRelation(ctx, check)
 }
 
-func checkToolAssignment(ctx context.Context, checker policyports.RelationChecker, server *domain.McpResourceServer, rule domain.ResourceAccessRule, subject policyports.PrincipalRef, actors []policyports.PrincipalRef, scopes []string) (policyports.RelationDecision, error) {
+func checkToolAssignment(ctx context.Context, checker accessports.RelationChecker, server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule, subject accessports.PrincipalRef, actors []accessports.PrincipalRef, scopes []string) (accessports.RelationDecision, error) {
 	if rule.Tool == nil || rule.Tool.ID == "" {
-		return policyports.RelationDecision{Reasons: []string{domain.ReasonOperationNotRegistered}}, nil
+		return accessports.RelationDecision{Reasons: []string{oauthdomain.ReasonOperationNotRegistered}}, nil
 	}
 	if checker == nil {
-		return policyports.RelationDecision{}, ErrResourceAccessNotConfigured
+		return accessports.RelationDecision{}, ErrResourceAccessNotConfigured
 	}
-	return checker.CheckRelation(ctx, policyports.RelationCheck{TenantID: server.TenantID, ResourceType: spec.ResourceTypeMcpOperation, ResourceID: server.OperationResourceID(rule), Relation: spec.RelationMcpInvoke, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes})
+	return checker.CheckRelation(ctx, accessports.RelationCheck{TenantID: server.TenantID, ResourceType: spec.ResourceTypeMcpOperation, ResourceID: server.OperationResourceID(rule), Relation: spec.RelationMcpInvoke, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes})
 }
 
 // AssignedToolScopes は発行時も現在の割当を読み、資格情報の上限から権限を増やさない。
 // 対象別の権限は実際の対象が分かる実行時に再判定する。
-func AssignedToolScopes(ctx context.Context, checker policyports.RelationChecker, server *domain.McpResourceServer, agentID string, ceiling []string) ([]string, error) {
+func AssignedToolScopes(ctx context.Context, checker accessports.RelationChecker, server *oauthdomain.McpResourceServer, agentID string, ceiling []string) ([]string, error) {
 	allowed := []string{}
 	for _, rule := range server.AccessRules {
 		if rule.Tool == nil {
 			continue
 		}
-		decision, err := checkToolAssignment(ctx, checker, server, rule, policyports.PrincipalRef{Type: "agent", ID: agentID}, nil, ceiling)
+		decision, err := checkToolAssignment(ctx, checker, server, rule, accessports.PrincipalRef{Type: "agent", ID: agentID}, nil, ceiling)
 		if err != nil {
 			return nil, err
 		}

@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
@@ -45,8 +45,8 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	snap := authusecases.ResolveTenantPolicy(ctx)
-	_, err = authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
+	snap := passwordusecases.ResolveTenantPolicy(ctx)
+	_, err = passwordusecases.ChangePassword(ctx, passwordusecases.ChangePasswordDeps{
 		UserRepo:                d.UserRepo,
 		PasswordDelegation:      d.PasswordDelegation,
 		PasswordHasher:          d.PasswordHasher,
@@ -55,7 +55,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		TrustedDevices:          d.TrustedDeviceRevoker(),
 		Emit:                    d.LegacyEmit(),
 		Policy:                  snap,
-	}, authusecases.ChangePasswordInput{
+	}, passwordusecases.ChangePasswordInput{
 		Sub:             authn.UserID,
 		CurrentPassword: input.CurrentPassword,
 		NewPassword:     input.NewPassword,
@@ -67,14 +67,14 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	case err == nil:
 		c.Response().Header().Set("Cache-Control", "no-store")
 		return c.NoContent(http.StatusNoContent)
-	case errors.Is(err, authusecases.ErrUserNotFound):
+	case errors.Is(err, passwordusecases.ErrUserNotFound):
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authenticated session is invalid.")
-	case errors.Is(err, authusecases.ErrCurrentPasswordMismatch):
+	case errors.Is(err, passwordusecases.ErrCurrentPasswordMismatch):
 		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "The current password does not match.")
-	case errors.Is(err, authusecases.ErrPasswordReused):
+	case errors.Is(err, passwordusecases.ErrPasswordReused):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "password_reuse", "The new password cannot reuse a recently used password.")
 	default:
-		if policyErr, ok := errors.AsType[*authusecases.PasswordPolicyError](err); ok {
+		if policyErr, ok := errors.AsType[*passwordusecases.PasswordPolicyError](err); ok {
 			return writePasswordPolicyProblem(c, policyErr)
 		}
 		return err

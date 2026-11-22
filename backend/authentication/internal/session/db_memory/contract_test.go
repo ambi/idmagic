@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/session/testing_contract"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(*testing.T) testing_contract.Fixture {
-		tenant := &tenantdomain.Tenant{ID: "tenant-a"}
-		other := &tenantdomain.Tenant{ID: "tenant-b"}
+		tenant := &tenancydomain.Tenant{ID: "tenant-a"}
+		other := &tenancydomain.Tenant{ID: "tenant-b"}
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		store := NewSessionStore()
 		store.Clock = func() time.Time { return now }

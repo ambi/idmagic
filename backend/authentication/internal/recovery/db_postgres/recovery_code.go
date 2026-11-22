@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/recovery/domain"
+	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
@@ -13,14 +13,14 @@ type RecoveryCodeRepository struct{ Pool sharedpg.DB }
 
 func (r *RecoveryCodeRepository) queries() *Queries { return New(r.Pool) }
 
-func (r *RecoveryCodeRepository) ListBySub(ctx context.Context, sub string) ([]*domain.RecoveryCode, error) {
+func (r *RecoveryCodeRepository) ListBySub(ctx context.Context, sub string) ([]*recoverydomain.RecoveryCode, error) {
 	rows, err := r.queries().ListRecoveryCodesBySub(ctx, sub)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.RecoveryCode, 0, len(rows))
+	out := make([]*recoverydomain.RecoveryCode, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, &domain.RecoveryCode{
+		out = append(out, &recoverydomain.RecoveryCode{
 			UserID:      row.UserID,
 			CodeHash:    row.CodeHash,
 			GeneratedAt: row.GeneratedAt,
@@ -35,7 +35,7 @@ func (r *RecoveryCodeRepository) ListBySub(ctx context.Context, sub string) ([]*
 func (r *RecoveryCodeRepository) ReplaceAll(
 	ctx context.Context,
 	sub string,
-	codes []*domain.RecoveryCode,
+	codes []*recoverydomain.RecoveryCode,
 ) error {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -25,7 +25,7 @@ type ConsentGrant struct {
 // GrantConsent は、利用者がクライアントへ許可した同意を保存する。同じ利用者とクライアントの同意は
 // 置き換える。新しい同意と撤回済みの同意の再付与だけが consents の使用量を一つ使い、
 // 保存に失敗した付与の分は戻す（REQ-TENANCY-050）。
-func GrantConsent(ctx context.Context, deps ConsentDeps, tenantID string, in ConsentGrant, now time.Time) (*domain.Consent, error) {
+func GrantConsent(ctx context.Context, deps ConsentDeps, tenantID string, in ConsentGrant, now time.Time) (*oauthdomain.Consent, error) {
 	var reservation *tenantports.QuotaReservation
 	if deps.QuotaRepo != nil {
 		existing, err := deps.ConsentRepo.Find(ctx, tenantID, in.UserID, in.ClientID)
@@ -43,9 +43,9 @@ func GrantConsent(ctx context.Context, deps ConsentDeps, tenantID string, in Con
 			defer reservation.Release(ctx)
 		}
 	}
-	consent := &domain.Consent{
+	consent := &oauthdomain.Consent{
 		UserID: in.UserID, ClientID: in.ClientID,
-		Scopes: in.Scopes, State: domain.ConsentGranted,
+		Scopes: in.Scopes, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(ConsentLifetime),
 		AuthorizationDetails: in.AuthorizationDetails,
 	}
@@ -53,11 +53,11 @@ func GrantConsent(ctx context.Context, deps ConsentDeps, tenantID string, in Con
 		return nil, err
 	}
 	reservation.Keep()
-	emit(deps.Emit, &domain.ConsentGrantedEvent{At: now, TenantID: tenantID, UserID: in.UserID, ClientID: in.ClientID, Scopes: in.Scopes})
+	emit(deps.Emit, &oauthdomain.ConsentGrantedEvent{At: now, TenantID: tenantID, UserID: in.UserID, ClientID: in.ClientID, Scopes: in.Scopes})
 	if len(in.AuthorizationDetails) > 0 {
-		emit(deps.Emit, &domain.AuthorizationDetailsConsented{
+		emit(deps.Emit, &oauthdomain.AuthorizationDetailsConsented{
 			At: now, TenantID: tenantID, UserID: in.UserID, ClientID: in.ClientID,
-			DetailTypes: domain.DetailTypes(in.AuthorizationDetails),
+			DetailTypes: oauthdomain.DetailTypes(in.AuthorizationDetails),
 		})
 	}
 	return consent, nil
@@ -66,6 +66,6 @@ func GrantConsent(ctx context.Context, deps ConsentDeps, tenantID string, in Con
 // consumesConsentQuota は、同意の付与が consents の使用量を一つ使うかを返す。保存は
 // (テナント, 利用者, クライアント) の upsert なので、新しい同意と撤回済みの同意の再付与だけが使い、
 // 付与済みの同意のスコープの変更は二重に数えない（wi-160）。期限切れの行は枠を持ったままなので使わない。
-func consumesConsentQuota(existing *domain.Consent) bool {
-	return existing == nil || existing.State == domain.ConsentRevoked
+func consumesConsentQuota(existing *oauthdomain.Consent) bool {
+	return existing == nil || existing.State == oauthdomain.ConsentRevoked
 }

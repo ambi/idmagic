@@ -5,25 +5,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 )
 
 type Repository struct {
 	mu    sync.RWMutex
-	byID  map[string]*domain.ApiToken
+	byID  map[string]*apitokendomain.ApiToken
 	byJTI map[string]string
 }
 
 func NewRepository() *Repository {
-	return &Repository{byID: map[string]*domain.ApiToken{}, byJTI: map[string]string{}}
+	return &Repository{byID: map[string]*apitokendomain.ApiToken{}, byJTI: map[string]string{}}
 }
 
-func cloneToken(token *domain.ApiToken) *domain.ApiToken {
+func cloneToken(token *apitokendomain.ApiToken) *apitokendomain.ApiToken {
 	if token == nil {
 		return nil
 	}
 	clone := *token
-	clone.Scopes = append(domain.Scopes(nil), token.Scopes...)
+	clone.Scopes = append(apitokendomain.Scopes(nil), token.Scopes...)
 	if token.ExpiresAt != nil {
 		value := *token.ExpiresAt
 		clone.ExpiresAt = &value
@@ -35,7 +35,7 @@ func cloneToken(token *domain.ApiToken) *domain.ApiToken {
 	return &clone
 }
 
-func (r *Repository) Save(_ context.Context, token *domain.ApiToken) error {
+func (r *Repository) Save(_ context.Context, token *apitokendomain.ApiToken) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if previous := r.byID[token.ID]; previous != nil {
@@ -46,7 +46,7 @@ func (r *Repository) Save(_ context.Context, token *domain.ApiToken) error {
 	return nil
 }
 
-func (r *Repository) FindByJTI(_ context.Context, tenantID, jti string) (*domain.ApiToken, error) {
+func (r *Repository) FindByJTI(_ context.Context, tenantID, jti string) (*apitokendomain.ApiToken, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	token := r.byID[r.byJTI[jti]]
@@ -56,10 +56,10 @@ func (r *Repository) FindByJTI(_ context.Context, tenantID, jti string) (*domain
 	return cloneToken(token), nil
 }
 
-func (r *Repository) List(_ context.Context, tenantID string) ([]*domain.ApiToken, error) {
+func (r *Repository) List(_ context.Context, tenantID string) ([]*apitokendomain.ApiToken, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	result := make([]*domain.ApiToken, 0)
+	result := make([]*apitokendomain.ApiToken, 0)
 	for _, token := range r.byID {
 		if token.TenantID == tenantID {
 			result = append(result, cloneToken(token))

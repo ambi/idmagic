@@ -22,7 +22,7 @@ import (
 
 	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
-	"github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -192,9 +192,9 @@ func hashOf(value []byte) []byte {
 	return sum[:]
 }
 
-func testRP(t *testing.T) *usecases.RelyingParty {
+func testRP(t *testing.T) *webauthnusecases.RelyingParty {
 	t.Helper()
-	rp, err := usecases.NewRelyingParty(usecases.WebAuthnConfig{
+	rp, err := webauthnusecases.NewRelyingParty(webauthnusecases.WebAuthnConfig{
 		RPID: testRPID, RPDisplayName: "idmagic", RPOrigins: []string{testOrigin},
 	})
 	if err != nil {
@@ -204,9 +204,9 @@ func testRP(t *testing.T) *usecases.RelyingParty {
 }
 
 // startRegistration は challenge を発行し、その base64url 値を返す。
-func startRegistration(ctx context.Context, t *testing.T, deps usecases.WebAuthnDeps) string {
+func startRegistration(ctx context.Context, t *testing.T, deps webauthnusecases.WebAuthnDeps) string {
 	t.Helper()
-	creation, err := usecases.StartWebAuthnRegistration(ctx, deps, "user-alice")
+	creation, err := webauthnusecases.StartWebAuthnRegistration(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,21 +215,21 @@ func startRegistration(ctx context.Context, t *testing.T, deps usecases.WebAuthn
 
 // registerCredential は渡された deps へ正当な登録を 1 件済ませ、その鍵を持つ認証器を返す。
 func registerCredential(
-	ctx context.Context, t *testing.T, deps usecases.WebAuthnDeps, now time.Time,
+	ctx context.Context, t *testing.T, deps webauthnusecases.WebAuthnDeps, now time.Time,
 ) *softwareAuthenticator {
 	t.Helper()
 	authenticator := newSoftwareAuthenticator(t)
 	body := authenticator.register(t, startRegistration(ctx, t, deps), testRPID, testOrigin)
-	if err := usecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, now); err != nil {
+	if err := webauthnusecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, now); err != nil {
 		t.Fatal(err)
 	}
 	return authenticator
 }
 
 // beginAssertion は assertion challenge を発行し、その base64url 値を返す。
-func beginAssertion(ctx context.Context, t *testing.T, deps usecases.WebAuthnDeps) string {
+func beginAssertion(ctx context.Context, t *testing.T, deps webauthnusecases.WebAuthnDeps) string {
 	t.Helper()
-	assertion, err := usecases.BeginWebAuthnAssertion(ctx, deps, "login-1", "user-alice")
+	assertion, err := webauthnusecases.BeginWebAuthnAssertion(ctx, deps, "login-1", "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +301,7 @@ func TestWebAuthnRegistrationVerifiesTheCeremonyAndStoresTheCOSEKey(t *testing.T
 			challenge = forge.challenge
 		}
 		body := authenticator.register(t, challenge, forge.rpID, forge.origin)
-		if err := usecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, now); !errors.Is(err, usecases.ErrWebAuthnVerification) {
+		if err := webauthnusecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, now); !errors.Is(err, webauthnusecases.ErrWebAuthnVerification) {
 			t.Fatalf("%s: err=%v, want ErrWebAuthnVerification", name, err)
 		}
 		stored, err := deps.CredentialRepo.ListBySub(ctx, "user-alice")
@@ -318,7 +318,7 @@ func TestWebAuthnRegistrationVerifiesTheCeremonyAndStoresTheCOSEKey(t *testing.T
 	authenticator.signCount = 7
 	challenge := startRegistration(ctx, t, deps)
 	body := authenticator.register(t, challenge, testRPID, testOrigin)
-	if err := usecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, now); err != nil {
+	if err := webauthnusecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, now); err != nil {
 		t.Fatalf("legitimate registration rejected: %v", err)
 	}
 	stored, err := deps.CredentialRepo.ListBySub(ctx, "user-alice")
@@ -368,7 +368,7 @@ func TestWebAuthnAuthenticationVerifiesTheOriginAndRelyingPartyScopedCredential(
 		authenticator := registerCredential(ctx, t, deps, now)
 		challenge := beginAssertion(ctx, t, deps)
 		body := authenticator.assert(t, challenge, forge.rpID, forge.origin, "user-alice", forge.signer)
-		if _, err := usecases.FinishWebAuthnAssertion(ctx, deps, "login-1", "user-alice", body, now); !errors.Is(err, usecases.ErrWebAuthnVerification) {
+		if _, err := webauthnusecases.FinishWebAuthnAssertion(ctx, deps, "login-1", "user-alice", body, now); !errors.Is(err, webauthnusecases.ErrWebAuthnVerification) {
 			t.Fatalf("%s: err=%v, want ErrWebAuthnVerification", name, err)
 		}
 		credential, err := deps.CredentialRepo.FindByCredentialID(
@@ -389,7 +389,7 @@ func TestWebAuthnAuthenticationVerifiesTheOriginAndRelyingPartyScopedCredential(
 	authenticator := registerCredential(ctx, t, deps, now)
 	challenge := beginAssertion(ctx, t, deps)
 	body := authenticator.assert(t, challenge, testRPID, testOrigin, "user-alice", nil)
-	verified, err := usecases.FinishWebAuthnAssertion(ctx, deps, "login-1", "user-alice", body, now)
+	verified, err := webauthnusecases.FinishWebAuthnAssertion(ctx, deps, "login-1", "user-alice", body, now)
 	if err != nil {
 		t.Fatalf("legitimate assertion rejected: %v", err)
 	}

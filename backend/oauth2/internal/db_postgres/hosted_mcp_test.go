@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthpg "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
@@ -18,14 +18,18 @@ func TestManagedMcpConfigurationPersistsInPostgres(t *testing.T) {
 	tenant, other := seedTenant(t, db).ID, seedTenant(t, db).ID
 	repo := &oauthpg.McpResourceServerRepository{Pool: db}
 	now := testClock()
-	server := &domain.McpResourceServer{TenantID: tenant, ID: newUUID(t), Resource: "https://managed.example/mcp", Name: "Managed", Scopes: []string{"mcp"}, ClientID: "evaluator", Hosting: &domain.HostedMcpConfiguration{UpstreamURL: "https://upstream.example/mcp", Authentication: "token_vault", ConnectorID: "external", AllowedOrigins: []string{"https://agent.example"}}, State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}
+	server := &oauthdomain.McpResourceServer{TenantID: tenant, ID: newUUID(t), Resource: "https://managed.example/mcp", Name: "Managed", Scopes: []string{"mcp"}, ClientID: "evaluator", Hosting: &oauthdomain.HostedMcpConfiguration{UpstreamURL: "https://upstream.example/mcp", Authentication: "token_vault", ConnectorID: "external", AllowedOrigins: []string{"https://agent.example"}}, State: oauthdomain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now}
 	if err := repo.Save(ctx, server); err != nil {
 		t.Fatal(err)
 	}
-	for name, load := range map[string]func() (*domain.McpResourceServer, error){
-		"id":       func() (*domain.McpResourceServer, error) { return repo.FindByID(ctx, tenant, server.ID) },
-		"resource": func() (*domain.McpResourceServer, error) { return repo.FindByResource(ctx, tenant, server.Resource) },
-		"client":   func() (*domain.McpResourceServer, error) { return repo.FindByClientID(ctx, tenant, server.ClientID) },
+	for name, load := range map[string]func() (*oauthdomain.McpResourceServer, error){
+		"id": func() (*oauthdomain.McpResourceServer, error) { return repo.FindByID(ctx, tenant, server.ID) },
+		"resource": func() (*oauthdomain.McpResourceServer, error) {
+			return repo.FindByResource(ctx, tenant, server.Resource)
+		},
+		"client": func() (*oauthdomain.McpResourceServer, error) {
+			return repo.FindByClientID(ctx, tenant, server.ClientID)
+		},
 	} {
 		loaded, err := load()
 		if err != nil || loaded == nil || !reflect.DeepEqual(loaded.Hosting, server.Hosting) {

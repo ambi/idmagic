@@ -11,16 +11,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // Fixture は 1 回の契約テストが使う Repository の組。Tenants は契約が使う
 // 記号名から実際のテナント識別子への対応で、PostgreSQL 版では実在する UUID を指す。
 type Fixture struct {
-	Tuples  ports.RelationTupleRepository
-	Models  ports.AuthorizationModelRepository
+	Tuples  accessinternalports.RelationTupleRepository
+	Models  accessinternalports.AuthorizationModelRepository
 	Tenants map[string]string
 }
 
@@ -45,11 +45,11 @@ func newModelID(t *testing.T) string {
 	return id
 }
 
-func tuple(resourceID, relation, subjectID string) domain.RelationTuple {
-	return domain.RelationTuple{
-		Resource: domain.ObjectRef{Type: "document", ID: resourceID},
+func tuple(resourceID, relation, subjectID string) accessdomain.RelationTuple {
+	return accessdomain.RelationTuple{
+		Resource: accessdomain.ObjectRef{Type: "document", ID: resourceID},
 		Relation: relation,
-		Subject:  domain.SubjectRef{Type: "user", ID: subjectID},
+		Subject:  accessdomain.SubjectRef{Type: "user", ID: subjectID},
 	}
 }
 
@@ -61,7 +61,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		f := newFixture(t, "tenant-a")
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
-		first, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{Writes: []domain.RelationTuple{
+		first, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{Writes: []accessdomain.RelationTuple{
 			tuple("d1", "viewer", "alice"),
 			tuple("d1", "viewer", "bob"),
 		}})
@@ -72,7 +72,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 			t.Fatalf("WrittenCount = %d, want 2", first.WrittenCount)
 		}
 		// 同じ組の再書き込みは冪等 (件数に数えないが、バージョンは進む)。
-		second, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{Writes: []domain.RelationTuple{
+		second, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{Writes: []accessdomain.RelationTuple{
 			tuple("d1", "viewer", "alice"),
 		}})
 		if err != nil {
@@ -85,7 +85,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 			t.Fatalf("Version must advance on every write: %d -> %d", first.Version, second.Version)
 		}
 
-		subjects, err := f.Tuples.ListSubjects(ctx, tenantA, domain.ObjectRef{Type: "document", ID: "d1"}, "viewer")
+		subjects, err := f.Tuples.ListSubjects(ctx, tenantA, accessdomain.ObjectRef{Type: "document", ID: "d1"}, "viewer")
 		if err != nil {
 			t.Fatalf("ListSubjects returned error: %v", err)
 		}
@@ -98,12 +98,12 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		f := newFixture(t, "tenant-a")
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
-		if _, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{Writes: []domain.RelationTuple{
+		if _, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{Writes: []accessdomain.RelationTuple{
 			tuple("d1", "viewer", "alice"), tuple("d1", "viewer", "bob"),
 		}}); err != nil {
 			t.Fatalf("Write returned error: %v", err)
 		}
-		result, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{Deletes: []domain.RelationTuple{
+		result, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{Deletes: []accessdomain.RelationTuple{
 			tuple("d1", "viewer", "alice"),
 			// 存在しない組の削除は 0 件として扱い、失敗させない。
 			tuple("d9", "viewer", "zoe"),
@@ -114,7 +114,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		if result.DeletedCount != 1 {
 			t.Fatalf("DeletedCount = %d, want 1", result.DeletedCount)
 		}
-		subjects, err := f.Tuples.ListSubjects(ctx, tenantA, domain.ObjectRef{Type: "document", ID: "d1"}, "viewer")
+		subjects, err := f.Tuples.ListSubjects(ctx, tenantA, accessdomain.ObjectRef{Type: "document", ID: "d1"}, "viewer")
 		if err != nil {
 			t.Fatalf("ListSubjects returned error: %v", err)
 		}
@@ -128,22 +128,22 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		f := newFixture(t, "tenant-a")
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
-		asResource := domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "group", ID: "eng"}, Relation: "member",
-			Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+		asResource := accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "group", ID: "eng"}, Relation: "member",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 		}
-		asSubject := domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "group", ID: "eng", Relation: "member"},
+		asSubject := accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "group", ID: "eng", Relation: "member"},
 		}
 		unrelated := tuple("d2", "viewer", "bob")
-		if _, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{
-			Writes: []domain.RelationTuple{asResource, asSubject, unrelated},
+		if _, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{
+			Writes: []accessdomain.RelationTuple{asResource, asSubject, unrelated},
 		}); err != nil {
 			t.Fatalf("Write returned error: %v", err)
 		}
-		result, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{
-			DeleteObjects: []domain.ObjectRef{{Type: "group", ID: "eng"}},
+		result, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{
+			DeleteObjects: []accessdomain.ObjectRef{{Type: "group", ID: "eng"}},
 		})
 		if err != nil {
 			t.Fatalf("Write returned error: %v", err)
@@ -151,7 +151,7 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		if result.DeletedCount != 2 {
 			t.Fatalf("DeletedCount = %d, want 2 (resource side and subject side)", result.DeletedCount)
 		}
-		remaining, err := f.Tuples.List(ctx, tenantA, ports.RelationTupleFilter{}, 0)
+		remaining, err := f.Tuples.List(ctx, tenantA, accessinternalports.RelationTupleFilter{}, 0)
 		if err != nil {
 			t.Fatalf("List returned error: %v", err)
 		}
@@ -165,12 +165,12 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		f := newFixture(t, "tenant-a", "tenant-b")
 		ctx := context.Background()
 		tenantA, tenantB := f.Tenant("tenant-a"), f.Tenant("tenant-b")
-		if _, err := f.Tuples.Write(ctx, tenantB, ports.TupleWrite{
-			Writes: []domain.RelationTuple{tuple("d1", "viewer", "alice")},
+		if _, err := f.Tuples.Write(ctx, tenantB, accessinternalports.TupleWrite{
+			Writes: []accessdomain.RelationTuple{tuple("d1", "viewer", "alice")},
 		}); err != nil {
 			t.Fatalf("Write returned error: %v", err)
 		}
-		subjects, err := f.Tuples.ListSubjects(ctx, tenantA, domain.ObjectRef{Type: "document", ID: "d1"}, "viewer")
+		subjects, err := f.Tuples.ListSubjects(ctx, tenantA, accessdomain.ObjectRef{Type: "document", ID: "d1"}, "viewer")
 		if err != nil {
 			t.Fatalf("ListSubjects returned error: %v", err)
 		}
@@ -190,14 +190,14 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 		f := newFixture(t, "tenant-a")
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
-		writes := []domain.RelationTuple{
+		writes := []accessdomain.RelationTuple{
 			tuple("d1", "viewer", "alice"), tuple("d1", "editor", "alice"),
 			tuple("d2", "viewer", "alice"), tuple("d3", "viewer", "bob"),
 		}
-		if _, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{Writes: writes}); err != nil {
+		if _, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{Writes: writes}); err != nil {
 			t.Fatalf("Write returned error: %v", err)
 		}
-		filtered, err := f.Tuples.List(ctx, tenantA, ports.RelationTupleFilter{Relation: "viewer", SubjectID: "alice"}, 0)
+		filtered, err := f.Tuples.List(ctx, tenantA, accessinternalports.RelationTupleFilter{Relation: "viewer", SubjectID: "alice"}, 0)
 		if err != nil {
 			t.Fatalf("List returned error: %v", err)
 		}
@@ -225,11 +225,11 @@ func RunRelationTupleRepositoryContract(t *testing.T, newFixture NewFixture) {
 func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 
-	minimalTypes := []domain.ResourceTypeDefinition{
+	minimalTypes := []accessdomain.ResourceTypeDefinition{
 		{Name: "user"},
-		{Name: "document", Relations: []domain.RelationDefinition{
-			{Name: "viewer", Rewrites: []domain.RelationRewrite{
-				{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
+		{Name: "document", Relations: []accessdomain.RelationDefinition{
+			{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+				{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
 			}},
 		}},
 	}
@@ -241,7 +241,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		if latest, err := f.Models.Latest(ctx, tenantA); err != nil || latest != nil {
 			t.Fatalf("Latest on an empty tenant = (%v, %v), want (nil, nil)", latest, err)
 		}
-		first, version, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+		first, version, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
 		}, 0)
 		if err != nil {
@@ -250,7 +250,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		if first.Version != 1 || version == 0 {
 			t.Fatalf("Publish = (version %d, consistency %d), want (1, > 0)", first.Version, version)
 		}
-		second, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+		second, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
 		}, 1)
 		if err != nil {
@@ -281,7 +281,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		f := newFixture(t, "tenant-a")
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
-		_, published, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+		_, published, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
 		}, 0)
 		if err != nil {
@@ -290,8 +290,8 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		if current, err := f.Tuples.Version(ctx, tenantA); err != nil || current < published {
 			t.Fatalf("Tuples.Version after Publish = (%d, %v), want >= %d", current, err, published)
 		}
-		written, err := f.Tuples.Write(ctx, tenantA, ports.TupleWrite{
-			Writes: []domain.RelationTuple{tuple("d1", "viewer", "alice")},
+		written, err := f.Tuples.Write(ctx, tenantA, accessinternalports.TupleWrite{
+			Writes: []accessdomain.RelationTuple{tuple("d1", "viewer", "alice")},
 		})
 		if err != nil {
 			t.Fatalf("Write returned error: %v", err)
@@ -306,12 +306,12 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		f := newFixture(t, "tenant-a", "tenant-b")
 		ctx := context.Background()
 		tenantA, tenantB := f.Tenant("tenant-a"), f.Tenant("tenant-b")
-		if _, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+		if _, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
 		}, 0); err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
-		other, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+		other, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 			ID: newModelID(t), TenantID: tenantB, ResourceTypes: minimalTypes,
 		}, 0)
 		if err != nil {
@@ -332,19 +332,19 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
 		publish := func(expected int) error {
-			_, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
+			_, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 				ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
 			}, expected)
 			return err
 		}
-		if err := publish(1); !errors.Is(err, domain.ErrModelVersionConflict) {
+		if err := publish(1); !errors.Is(err, accessdomain.ErrModelVersionConflict) {
 			t.Fatalf("Publish from 1 on an empty tenant = %v, want ErrModelVersionConflict", err)
 		}
 		if err := publish(0); err != nil {
 			t.Fatalf("Publish from 0 = %v", err)
 		}
 		for _, stale := range []int{0, 2} {
-			if err := publish(stale); !errors.Is(err, domain.ErrModelVersionConflict) {
+			if err := publish(stale); !errors.Is(err, accessdomain.ErrModelVersionConflict) {
 				t.Fatalf("Publish from %d with latest 1 = %v, want ErrModelVersionConflict", stale, err)
 			}
 		}
@@ -368,7 +368,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 			// ID はテストのゴルーチンで作る。失敗時の t.Fatalf を別のゴルーチンから呼ばないため。
 			id := newModelID(t)
 			wg.Go(func() {
-				_, _, errs[i] = f.Models.Publish(context.Background(), &domain.AuthorizationModel{
+				_, _, errs[i] = f.Models.Publish(context.Background(), &accessdomain.AuthorizationModel{
 					ID: id, TenantID: tenantA, ResourceTypes: minimalTypes,
 				}, 0)
 			})
@@ -380,7 +380,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 			switch {
 			case err == nil:
 				accepted++
-			case errors.Is(err, domain.ErrModelVersionConflict):
+			case errors.Is(err, accessdomain.ErrModelVersionConflict):
 			default:
 				t.Fatalf("concurrent Publish returned %v, want nil or ErrModelVersionConflict", err)
 			}

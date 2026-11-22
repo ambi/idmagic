@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -26,10 +26,10 @@ type PARResult struct {
 }
 
 type PARDeps struct {
-	ClientRepo            ports.OAuth2ClientRepository
-	Store                 ports.PARStore
-	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
-	McpResourceServerRepo ports.McpResourceServerRepository
+	ClientRepo            oauthports.OAuth2ClientRepository
+	Store                 oauthports.PARStore
+	AuthzDetailTypeRepo   oauthports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo oauthports.McpResourceServerRepository
 	Emit                  func(spec.DomainEvent)
 }
 
@@ -54,7 +54,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 	// RFC 8707 resource indicator — push 時点で早期に fail-closed 検証する。
 	// 確定検証は /authorize 消費時・/token 発行時にも再度行う (registry 状態変化への防御)。
 	if _, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, strings.Fields(in.Parameters["scope"])); err != nil {
-		emit(deps.Emit, &domain.ResourceAudienceRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})
+		emit(deps.Emit, &oauthdomain.ResourceAudienceRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})
 		return nil, err
 	}
 	id, err := generateOpaqueToken()
@@ -62,7 +62,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 		return nil, err
 	}
 	requestURI := "urn:ietf:params:oauth:request_uri:" + id
-	rec := &domain.PARRecord{
+	rec := &oauthdomain.PARRecord{
 		TenantID:   tenantID,
 		RequestURI: requestURI,
 		ClientID:   in.ClientID,
@@ -76,6 +76,6 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 	if err := deps.Store.Save(ctx, rec); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.PARStored{At: now, TenantID: tenantID, RequestURI: requestURI, ClientID: in.ClientID})
+	emit(deps.Emit, &oauthdomain.PARStored{At: now, TenantID: tenantID, RequestURI: requestURI, ClientID: in.ClientID})
 	return &PARResult{RequestURI: requestURI, ExpiresIn: 90}, nil
 }

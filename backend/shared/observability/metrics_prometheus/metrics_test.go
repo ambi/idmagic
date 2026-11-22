@@ -8,7 +8,7 @@ import (
 	"time"
 
 	jobsmodule "github.com/ambi/idmagic/backend/jobs"
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
@@ -45,10 +45,10 @@ func TestCharacterizeMetricsExposition(t *testing.T) {
 	m.RecordTokenIssuance("client_credentials", "success", 42*time.Millisecond)
 	m.IncHTTPAbort(support.HTTPAbortClientAborted)
 	m.IncDetachedCompletionFailure()
-	m.RecordJobClaimLatency(domain.LaneBulk, 250*time.Millisecond)
-	m.RecordJobOutcome(domain.LaneBulk, "succeeded")
-	m.RecordJobRetry(domain.LaneDefault)
-	m.RecordJobQueueDepth(t.Context(), domain.LaneLatencySensitive, "queued", 3)
+	m.RecordJobClaimLatency(jobsdomain.LaneBulk, 250*time.Millisecond)
+	m.RecordJobOutcome(jobsdomain.LaneBulk, "succeeded")
+	m.RecordJobRetry(jobsdomain.LaneDefault)
+	m.RecordJobQueueDepth(t.Context(), jobsdomain.LaneLatencySensitive, "queued", 3)
 
 	body := scrape(t, m)
 
@@ -100,10 +100,10 @@ func TestMetricsForbidsHighCardinalityLabels(t *testing.T) {
 	m.RecordLoginOutcome("success", "", "password")
 	m.RecordLoginThrottle("ip", "allowed")
 	m.RecordTokenIssuance("authorization_code", "success", time.Millisecond)
-	m.RecordJobClaimLatency(domain.LaneBulk, time.Second)
-	m.RecordJobOutcome(domain.LaneBulk, "succeeded")
-	m.RecordJobRetry(domain.LaneDefault)
-	m.RecordJobQueueDepth(t.Context(), domain.LaneBulk, "running", 1)
+	m.RecordJobClaimLatency(jobsdomain.LaneBulk, time.Second)
+	m.RecordJobOutcome(jobsdomain.LaneBulk, "succeeded")
+	m.RecordJobRetry(jobsdomain.LaneDefault)
+	m.RecordJobQueueDepth(t.Context(), jobsdomain.LaneBulk, "running", 1)
 
 	body := scrape(t, m)
 

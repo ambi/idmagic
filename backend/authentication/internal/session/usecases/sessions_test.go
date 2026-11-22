@@ -18,14 +18,14 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func seedSession(t *testing.T, store *memory.SessionStore, id, sub string, authTime time.Time) {
 	t.Helper()
-	if err := store.Save(testing_tenant.Default(context.Background()), &domain.LoginSession{
+	if err := store.Save(testing_tenant.Default(context.Background()), &sessiondomain.LoginSession{
 		ID: id, TenantID: tenancydomain.DefaultTenantID, UserID: sub, AuthTime: authTime.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver",
 		ExpiresAt: authTime.Add(time.Hour),
@@ -43,7 +43,7 @@ func TestListSessionsMarksCurrentAndSortsDesc(t *testing.T) {
 	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
 	seedSession(t, store, "s3", "bob", base.Add(2*time.Minute))
 
-	views, err := usecases.ListSessions(ctx, store, "alice", "s2")
+	views, err := sessionusecases.ListSessions(ctx, store, "alice", "s2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,8 +68,8 @@ func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 	seedSession(t, store, "s2", "bob", base)
 
 	// alice が bob のセッションを失効しようとしても拒否される。
-	if err := usecases.RevokeOwnSession(ctx, usecases.SessionDeps{Store: store},
-		"alice", "s2", base); !errors.Is(err, usecases.ErrSessionNotFound) {
+	if err := sessionusecases.RevokeOwnSession(ctx, sessionusecases.SessionDeps{Store: store},
+		"alice", "s2", base); !errors.Is(err, sessionusecases.ErrSessionNotFound) {
 		t.Fatalf("error=%v, want ErrSessionNotFound", err)
 	}
 	if sess, _ := store.Find(ctx, "s2"); sess == nil {
@@ -78,7 +78,7 @@ func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 
 	// 自分のセッションは失効でき、SessionEnded が発火する。
 	var events []spec.DomainEvent
-	if err := usecases.RevokeOwnSession(ctx, usecases.SessionDeps{
+	if err := sessionusecases.RevokeOwnSession(ctx, sessionusecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "alice", "s1", base); err != nil {
 		t.Fatal(err)
@@ -101,14 +101,14 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 	seedSession(t, store, "s3", "alice", base.Add(2*time.Minute))
 
 	var events []spec.DomainEvent
-	revokedIDs, err := usecases.RevokeOtherSessions(ctx, usecases.SessionDeps{
+	revokedIDs, err := sessionusecases.RevokeOtherSessions(ctx, sessionusecases.SessionDeps{
 		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		Store:          store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "alice", "s2", base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	remaining, _ := usecases.ListSessions(ctx, store, "alice", "s2")
+	remaining, _ := sessionusecases.ListSessions(ctx, store, "alice", "s2")
 	if len(remaining) != 1 || remaining[0].ID != "s2" {
 		t.Fatalf("remaining=%#v, want only s2", remaining)
 	}
@@ -132,7 +132,7 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 	seedSession(t, store, "s1", "alice", base)
 
 	var events []spec.DomainEvent
-	if err := usecases.EndSession(ctx, usecases.SessionDeps{
+	if err := sessionusecases.EndSession(ctx, sessionusecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "s1", base); err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 	// idempotent: 2 回目 (Find は有効セッションのみ返すため) の呼び出しはイベントを
 	// 再発行しない。
 	events = nil
-	if err := usecases.EndSession(ctx, usecases.SessionDeps{
+	if err := sessionusecases.EndSession(ctx, sessionusecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "s1", base); err != nil {
 		t.Fatal(err)
@@ -170,7 +170,7 @@ func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
 	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
 	seedSession(t, store, "s3", "bob", base)
 
-	views, err := usecases.AdminListSessions(ctx, store, "alice")
+	views, err := sessionusecases.AdminListSessions(ctx, store, "alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,8 +194,8 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 	seedSession(t, store, "s1", "alice", base)
 
 	// admin が bob 向けのURLで alice のセッションを失効しようとしても対象不一致で拒否。
-	if err := usecases.AdminRevokeSession(ctx, usecases.SessionDeps{Store: store},
-		"admin-1", "bob", "s1", base); !errors.Is(err, usecases.ErrSessionNotFound) {
+	if err := sessionusecases.AdminRevokeSession(ctx, sessionusecases.SessionDeps{Store: store},
+		"admin-1", "bob", "s1", base); !errors.Is(err, sessionusecases.ErrSessionNotFound) {
 		t.Fatalf("error=%v, want ErrSessionNotFound", err)
 	}
 	if sess, _ := store.Find(ctx, "s1"); sess == nil {
@@ -203,7 +203,7 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 	}
 
 	var events []spec.DomainEvent
-	if err := usecases.AdminRevokeSession(ctx, usecases.SessionDeps{
+	if err := sessionusecases.AdminRevokeSession(ctx, sessionusecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "admin-1", "alice", "s1", base); err != nil {
 		t.Fatal(err)
@@ -240,7 +240,7 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 	seedSession(t, store, "s3", "bob", base)
 
 	var events []spec.DomainEvent
-	revokedIDs, err := usecases.AdminRevokeUserSessions(ctx, usecases.SessionDeps{
+	revokedIDs, err := sessionusecases.AdminRevokeUserSessions(ctx, sessionusecases.SessionDeps{
 		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		Store:          store, Emit: func(event spec.DomainEvent) { events = append(events, event) },
 	}, "admin-1", "alice", base)
@@ -250,7 +250,7 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 	if len(revokedIDs) != 2 || !slices.Contains(revokedIDs, "s1") || !slices.Contains(revokedIDs, "s2") {
 		t.Fatalf("revokedIDs=%#v, want [s1 s2]", revokedIDs)
 	}
-	remaining, _ := usecases.AdminListSessions(ctx, store, "alice")
+	remaining, _ := sessionusecases.AdminListSessions(ctx, store, "alice")
 	if len(remaining) != 0 {
 		t.Fatalf("remaining=%#v, want none", remaining)
 	}
@@ -285,7 +285,7 @@ func TestEndSessionUnknownSidIsNoop(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	store := memory.NewSessionStore()
 	var events []spec.DomainEvent
-	if err := usecases.EndSession(ctx, usecases.SessionDeps{
+	if err := sessionusecases.EndSession(ctx, sessionusecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "unknown-sid", time.Now().UTC()); err != nil {
 		t.Fatal(err)
@@ -307,7 +307,7 @@ func TestRevokeOwnSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
 	base := time.Now().UTC().Truncate(time.Second)
 	seedSession(t, store, "s1", "alice", base)
 
-	if err := usecases.RevokeOwnSession(ctx, usecases.SessionDeps{Store: store}, "alice", "s1", base); err != nil {
+	if err := sessionusecases.RevokeOwnSession(ctx, sessionusecases.SessionDeps{Store: store}, "alice", "s1", base); err != nil {
 		t.Fatal(err)
 	}
 	first, err := store.FindOwned(ctx, "s1", "alice")
@@ -317,7 +317,7 @@ func TestRevokeOwnSessionIsIdempotentAndKeepsTheFirstRevokedAt(t *testing.T) {
 	firstRevokedAt := *first.RevokedAt
 
 	var events []spec.DomainEvent
-	if err := usecases.RevokeOwnSession(ctx, usecases.SessionDeps{
+	if err := sessionusecases.RevokeOwnSession(ctx, sessionusecases.SessionDeps{
 		Store: store, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, "alice", "s1", base.Add(time.Minute)); err != nil {
 		t.Fatalf("再送が失敗した: %v", err)

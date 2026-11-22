@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/testing_contract"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -95,8 +95,8 @@ func TestPublishThatLosesTheInsertRaceIsAVersionConflict(t *testing.T) {
 	}
 	result := make(chan error, 1)
 	go func() {
-		_, _, err := f.Models.Publish(ctx, &domain.AuthorizationModel{
-			ID: secondID, TenantID: tenantA, ResourceTypes: []domain.ResourceTypeDefinition{{Name: "user"}},
+		_, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
+			ID: secondID, TenantID: tenantA, ResourceTypes: []accessdomain.ResourceTypeDefinition{{Name: "user"}},
 		}, 0)
 		result <- err
 	}()
@@ -121,7 +121,7 @@ func TestPublishThatLosesTheInsertRaceIsAVersionConflict(t *testing.T) {
 		t.Fatalf("commit the first insert: %v", err)
 	}
 
-	if err := <-result; !errors.Is(err, domain.ErrModelVersionConflict) {
+	if err := <-result; !errors.Is(err, accessdomain.ErrModelVersionConflict) {
 		t.Fatalf("Publish that lost the race = %v, want ErrModelVersionConflict", err)
 	}
 	latest, err := f.Models.Latest(ctx, tenantA)

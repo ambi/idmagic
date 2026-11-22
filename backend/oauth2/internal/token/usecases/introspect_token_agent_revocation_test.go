@@ -10,7 +10,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -56,7 +56,7 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 	}
 
 	t.Run("IssuedBeforeEpochIsInactive", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active: true, JTI: "jti-before", ClientID: "agent_client", Sub: "agent_client",
 			Scope: "openid", Iat: epoch.Add(-time.Minute).Unix(), Exp: epoch.Add(time.Hour).Unix(),
 		}
@@ -68,7 +68,7 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 	})
 
 	t.Run("IssuedAfterEpochStaysActive", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active: true, JTI: "jti-after", ClientID: "agent_client", Sub: "agent_client",
 			Scope: "openid", Iat: epoch.Add(time.Minute).Unix(), Exp: epoch.Add(time.Hour).Unix(),
 		}
@@ -85,7 +85,7 @@ func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
 	})
 
 	t.Run("NonAgentClientIsUnaffected", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active: true, JTI: "jti-non-agent", ClientID: "not_bound_to_any_agent",
 			Iat: epoch.Add(-time.Hour).Unix(), Exp: epoch.Add(time.Hour).Unix(),
 		}

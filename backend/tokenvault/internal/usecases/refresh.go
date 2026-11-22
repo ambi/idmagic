@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 const (
@@ -19,8 +19,8 @@ const (
 // トークンを 401 で拒否したことを表し、より新しい版が得られるまで更新する。単一飛行は行の
 // リースで全プロセスに効かせ、HTTP の間トランザクションを保持しない (REQ-TOKENVAULT-012)。
 func usableConnection(
-	ctx context.Context, deps Deps, connector *domain.Connector, userID string, staleVersion int64,
-) (*domain.Connection, error) {
+	ctx context.Context, deps Deps, connector *tokenvaultdomain.Connector, userID string, staleVersion int64,
+) (*tokenvaultdomain.Connection, error) {
 	deadline := deps.now().Add(refreshWait)
 	for {
 		now := deps.now()
@@ -31,7 +31,7 @@ func usableConnection(
 		if connection == nil {
 			return nil, ErrConnectionNotFound
 		}
-		if connection.Status != domain.ConnectionActive {
+		if connection.Status != tokenvaultdomain.ConnectionActive {
 			return nil, ErrReauthorizationRequired
 		}
 		stale := staleVersion != 0 && connection.TokenVersion <= staleVersion
@@ -68,8 +68,8 @@ func usableConnection(
 var errRefreshRaced = errors.New("connection changed during refresh")
 
 func refreshConnection(
-	ctx context.Context, deps Deps, connector *domain.Connector, connection *domain.Connection,
-) (*domain.Connection, error) {
+	ctx context.Context, deps Deps, connector *tokenvaultdomain.Connector, connection *tokenvaultdomain.Connection,
+) (*tokenvaultdomain.Connection, error) {
 	// 回転した更新トークンを失うと接続が壊れるので、呼び出し元の切断で更新と保存を止めない。
 	refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), refreshLease)
 	defer cancel()
@@ -99,9 +99,9 @@ func refreshConnection(
 	return &updated, nil
 }
 
-func handleRefreshFailure(ctx context.Context, deps Deps, connection *domain.Connection, cause error) (*domain.Connection, error) {
-	if refused, ok := errors.AsType[*ports.TokenEndpointError](cause); ok &&
-		domain.ClassifyRefreshFailure(refused.OAuthError) == domain.RefreshRequiresReauthorization {
+func handleRefreshFailure(ctx context.Context, deps Deps, connection *tokenvaultdomain.Connection, cause error) (*tokenvaultdomain.Connection, error) {
+	if refused, ok := errors.AsType[*tokenvaultports.TokenEndpointError](cause); ok &&
+		tokenvaultdomain.ClassifyRefreshFailure(refused.OAuthError) == tokenvaultdomain.RefreshRequiresReauthorization {
 		return nil, requireReauthorization(ctx, deps, connection, deps.now())
 	}
 	if err := deps.Connections.ReleaseRefreshLease(ctx, connection.TenantID, connection.ID, connection.TokenVersion); err != nil {
@@ -110,7 +110,7 @@ func handleRefreshFailure(ctx context.Context, deps Deps, connection *domain.Con
 	return nil, ErrTemporarilyUnavailable
 }
 
-func requireReauthorization(ctx context.Context, deps Deps, connection *domain.Connection, now time.Time) error {
+func requireReauthorization(ctx context.Context, deps Deps, connection *tokenvaultdomain.Connection, now time.Time) error {
 	changed, err := deps.Connections.MarkReauthorizationRequired(ctx, connection.TenantID, connection.ID, connection.TokenVersion, now)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func requireReauthorization(ctx context.Context, deps Deps, connection *domain.C
 		// 再連携か別の更新が先に確定した。古い判断で新しいトークンを消さない。
 		return ErrTemporarilyUnavailable
 	}
-	deps.emit(&domain.TokenVaultConnectionReauthorizationRequired{
+	deps.emit(&tokenvaultdomain.TokenVaultConnectionReauthorizationRequired{
 		At: now, TenantID: connection.TenantID, ConnectorID: connection.ConnectorID, UserID: connection.UserID,
 	})
 	return ErrReauthorizationRequired

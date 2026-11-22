@@ -7,27 +7,27 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 // OAuth2ClientRepository (OAuth2)
 type OAuth2ClientRepository struct {
 	mu          sync.RWMutex
-	clients     map[string]*domain.OAuth2Client
-	credentials map[string][]domain.ClientSecretCredential
+	clients     map[string]*oauthdomain.OAuth2Client
+	credentials map[string][]oauthdomain.ClientSecretCredential
 }
 
 func NewClientRepository() *OAuth2ClientRepository {
-	return &OAuth2ClientRepository{clients: map[string]*domain.OAuth2Client{}, credentials: map[string][]domain.ClientSecretCredential{}}
+	return &OAuth2ClientRepository{clients: map[string]*oauthdomain.OAuth2Client{}, credentials: map[string][]oauthdomain.ClientSecretCredential{}}
 }
 
-func (r *OAuth2ClientRepository) Seed(c *domain.OAuth2Client) {
+func (r *OAuth2ClientRepository) Seed(c *oauthdomain.OAuth2Client) {
 	_ = r.Save(context.Background(), c)
 }
 
-func (r *OAuth2ClientRepository) FindByID(_ context.Context, tenantID, clientID string) (*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) FindByID(_ context.Context, tenantID, clientID string) (*oauthdomain.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.clients[sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID)], nil
@@ -41,7 +41,7 @@ func (r *OAuth2ClientRepository) LookupBindableClient(ctx context.Context, tenan
 	return true, client.AgentClientAuthMethodAllowed(), nil
 }
 
-func (r *OAuth2ClientRepository) Save(_ context.Context, c *domain.OAuth2Client) error {
+func (r *OAuth2ClientRepository) Save(_ context.Context, c *oauthdomain.OAuth2Client) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	sharedmem.DefaultScope(&c.TenantID, kernel.DefaultTenantID)
@@ -57,10 +57,10 @@ func (r *OAuth2ClientRepository) Delete(_ context.Context, tenantID, clientID st
 	return nil
 }
 
-func (r *OAuth2ClientRepository) FindAll(_ context.Context, tenantID string) ([]*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) FindAll(_ context.Context, tenantID string) ([]*oauthdomain.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.OAuth2Client, 0, len(r.clients))
+	out := make([]*oauthdomain.OAuth2Client, 0, len(r.clients))
 	for _, c := range r.clients {
 		if c.TenantID == tenantID {
 			out = append(out, c)
@@ -73,46 +73,46 @@ func (r *OAuth2ClientRepository) FindAll(_ context.Context, tenantID string) ([]
 // : keyset pagination ordered by ClientID ascending — matching the
 // admin handler's pre-existing re-sort of FindAll's rows — strictly after
 // afterClientID ("" for the first page).
-func (r *OAuth2ClientRepository) ListPage(_ context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) ListPage(_ context.Context, tenantID, afterClientID string, limit int) ([]*oauthdomain.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.OAuth2Client, 0, len(r.clients))
+	out := make([]*oauthdomain.OAuth2Client, 0, len(r.clients))
 	for _, c := range r.clients {
 		if c.TenantID == tenantID {
 			out = append(out, c)
 		}
 	}
-	key := func(c *domain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }
+	key := func(c *oauthdomain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }
 	return sharedmem.KeysetPage(out, key, false, afterClientID, afterClientID, limit), nil
 }
 
-func (r *OAuth2ClientRepository) ListPageBefore(_ context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) ListPageBefore(_ context.Context, tenantID, beforeClientID string, limit int) ([]*oauthdomain.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.OAuth2Client, 0, len(r.clients))
+	out := make([]*oauthdomain.OAuth2Client, 0, len(r.clients))
 	for _, c := range r.clients {
 		if c.TenantID == tenantID {
 			out = append(out, c)
 		}
 	}
-	key := func(c *domain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }
+	key := func(c *oauthdomain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }
 	return sharedmem.KeysetPageBefore(out, key, false, beforeClientID, beforeClientID, limit), nil
 }
 
-func (r *OAuth2ClientRepository) ListClientSecretCredentials(_ context.Context, clientID string) ([]domain.ClientSecretCredential, error) {
+func (r *OAuth2ClientRepository) ListClientSecretCredentials(_ context.Context, clientID string) ([]oauthdomain.ClientSecretCredential, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return append([]domain.ClientSecretCredential(nil), r.credentials[clientID]...), nil
+	return append([]oauthdomain.ClientSecretCredential(nil), r.credentials[clientID]...), nil
 }
 
-func (r *OAuth2ClientRepository) SaveClientSecretCredential(_ context.Context, credential domain.ClientSecretCredential) error {
+func (r *OAuth2ClientRepository) SaveClientSecretCredential(_ context.Context, credential oauthdomain.ClientSecretCredential) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.credentials[credential.ClientID] = append(r.credentials[credential.ClientID], credential)
 	return nil
 }
 
-func (r *OAuth2ClientRepository) IssueClientSecretCredential(_ context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error {
+func (r *OAuth2ClientRepository) IssueClientSecretCredential(_ context.Context, legacy *oauthdomain.ClientSecretCredential, credential oauthdomain.ClientSecretCredential, maxActive int, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	credentials := r.credentials[credential.ClientID]
@@ -126,13 +126,13 @@ func (r *OAuth2ClientRepository) IssueClientSecretCredential(_ context.Context, 
 		}
 	}
 	if active >= maxActive {
-		return ports.ErrClientSecretCredentialLimitExceeded
+		return oauthports.ErrClientSecretCredentialLimitExceeded
 	}
 	r.credentials[credential.ClientID] = append(credentials, credential)
 	return nil
 }
 
-func (r *OAuth2ClientRepository) UpdateClientSecretCredential(_ context.Context, credential domain.ClientSecretCredential) error {
+func (r *OAuth2ClientRepository) UpdateClientSecretCredential(_ context.Context, credential oauthdomain.ClientSecretCredential) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for i := range r.credentials[credential.ClientID] {

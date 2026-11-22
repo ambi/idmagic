@@ -7,10 +7,10 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
-	"github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 )
 
-func cloneSignInPolicy(policy *domain.AppSignInPolicy) *domain.AppSignInPolicy {
+func cloneSignInPolicy(policy *policydomain.AppSignInPolicy) *policydomain.AppSignInPolicy {
 	cloned := *policy
 	cloned.Rules = slices.Clone(policy.Rules)
 	return &cloned
@@ -22,14 +22,14 @@ func cloneSignInPolicy(policy *domain.AppSignInPolicy) *domain.AppSignInPolicy {
 
 type SignInPolicyRepository struct {
 	mu       sync.RWMutex
-	policies map[string]*domain.AppSignInPolicy // key: sharedmem.TenantKey(tenant_id, application_id)
+	policies map[string]*policydomain.AppSignInPolicy // key: sharedmem.TenantKey(tenant_id, application_id)
 }
 
 func NewSignInPolicyRepository() *SignInPolicyRepository {
-	return &SignInPolicyRepository{policies: map[string]*domain.AppSignInPolicy{}}
+	return &SignInPolicyRepository{policies: map[string]*policydomain.AppSignInPolicy{}}
 }
 
-func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*domain.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID string) (*policydomain.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	policy := r.policies[sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID)]
@@ -39,10 +39,10 @@ func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID 
 	return cloneSignInPolicy(policy), nil
 }
 
-func (r *SignInPolicyRepository) ListAll(_ context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) ListAll(_ context.Context, tenantID string) ([]*policydomain.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.AppSignInPolicy, 0)
+	out := make([]*policydomain.AppSignInPolicy, 0)
 	for _, policy := range r.policies {
 		if policy.TenantID == tenantID {
 			out = append(out, cloneSignInPolicy(policy))
@@ -51,7 +51,7 @@ func (r *SignInPolicyRepository) ListAll(_ context.Context, tenantID string) ([]
 	return out, nil
 }
 
-func (r *SignInPolicyRepository) Save(_ context.Context, policy *domain.AppSignInPolicy) error {
+func (r *SignInPolicyRepository) Save(_ context.Context, policy *policydomain.AppSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := sharedmem.ScopedKey(policy.TenantID, policy.ApplicationID, kernel.DefaultTenantID)
@@ -74,7 +74,7 @@ func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, application
 // DefaultSignInPolicyRepository (wi-115)
 // =====================================================================
 
-func cloneDefaultSignInPolicy(policy *domain.TenantDefaultSignInPolicy) *domain.TenantDefaultSignInPolicy {
+func cloneDefaultSignInPolicy(policy *policydomain.TenantDefaultSignInPolicy) *policydomain.TenantDefaultSignInPolicy {
 	cloned := *policy
 	cloned.Rules = slices.Clone(policy.Rules)
 	return &cloned
@@ -82,14 +82,14 @@ func cloneDefaultSignInPolicy(policy *domain.TenantDefaultSignInPolicy) *domain.
 
 type DefaultSignInPolicyRepository struct {
 	mu       sync.RWMutex
-	policies map[string]*domain.TenantDefaultSignInPolicy // key: tenant_id
+	policies map[string]*policydomain.TenantDefaultSignInPolicy // key: tenant_id
 }
 
 func NewDefaultSignInPolicyRepository() *DefaultSignInPolicyRepository {
-	return &DefaultSignInPolicyRepository{policies: map[string]*domain.TenantDefaultSignInPolicy{}}
+	return &DefaultSignInPolicyRepository{policies: map[string]*policydomain.TenantDefaultSignInPolicy{}}
 }
 
-func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) (*domain.TenantDefaultSignInPolicy, error) {
+func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) (*policydomain.TenantDefaultSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	policy := r.policies[tenantID]
@@ -99,7 +99,7 @@ func (r *DefaultSignInPolicyRepository) Get(_ context.Context, tenantID string) 
 	return cloneDefaultSignInPolicy(policy), nil
 }
 
-func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *domain.TenantDefaultSignInPolicy) error {
+func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *policydomain.TenantDefaultSignInPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := cloneDefaultSignInPolicy(policy)

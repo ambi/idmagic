@@ -15,7 +15,7 @@ import (
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -28,7 +28,7 @@ type RequestPasswordResetDeps struct {
 	TokenStore passwordports.PasswordResetTokenStore
 	// Notifier は文面 (件名 / テキスト / HTML) と locale を通知テンプレートカタログから
 	// 解決する。use case は文面を組み立てない。
-	Notifier sharednotification.Notifier
+	Notifier notificationports.Notifier
 	Emit     func(spec.DomainEvent)
 	Issuer   string
 	TokenTTL time.Duration
@@ -91,10 +91,10 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	// Send to the verified address stored on the account, not the raw request
 	// input, so untrusted request data never reaches the email content (CWE-640).
-	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
+	delivered := deps.Notifier.Notify(ctx, notificationports.Notification{
 		TenantID:        tenantports.TenantID(ctx),
 		To:              *user.Email,
-		Key:             sharednotification.TemplateKeyPasswordReset,
+		Key:             notificationports.TemplateKeyPasswordReset,
 		RecipientLocale: user.LocaleAttribute(),
 		Vars: map[string]string{
 			"user_display_name":  user.DisplayName(),

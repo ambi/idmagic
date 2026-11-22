@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 )
 
 const (
@@ -177,14 +177,14 @@ func (s *oauth2TokenSource) fetch(ctx context.Context) (grant, error) {
 // newTokenSource は接続の認証方式から供給元を組み立てる。認証方式による分岐は
 // ここ 1 か所に閉じ、送出の 6 経路はどれも供給元の違いを知らない。
 func newTokenSource(
-	credential domain.ProvisioningConnectionCredentialMetadata,
+	credential provisioningdomain.ProvisioningConnectionCredentialMetadata,
 	secret string,
 	httpClient *http.Client,
 	now func() time.Time,
 ) (tokenSource, error) {
 	switch credential.AuthMethod {
-	case domain.AuthOAuth2ClientCredentials:
-		if err := domain.ValidateOutboundBaseURL(credential.OAuth2TokenURL); err != nil {
+	case provisioningdomain.AuthOAuth2ClientCredentials:
+		if err := provisioningdomain.ValidateOutboundBaseURL(credential.OAuth2TokenURL); err != nil {
 			return nil, fmt.Errorf("provisioning/scim: oauth2 token URL: %w", err)
 		}
 		return newOAuth2TokenSource(oauth2ClientCredentials{
@@ -193,7 +193,7 @@ func newTokenSource(
 			ClientSecret: secret,
 			Scope:        credential.OAuth2Scope,
 		}, httpClient, now)
-	case domain.AuthBearerToken:
+	case provisioningdomain.AuthBearerToken:
 		return staticToken(secret), nil
 	default:
 		// fail-closed: 知らない認証方式で秘密をそのまま送らない。

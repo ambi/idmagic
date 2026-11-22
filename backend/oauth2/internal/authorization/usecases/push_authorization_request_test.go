@@ -9,7 +9,7 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -35,7 +35,7 @@ func TestPushAuthorizationRequest(t *testing.T) {
 	now := time.Now().UTC()
 
 	// テスト用クライアントを登録
-	client := &domain.OAuth2Client{
+	client := &oauthdomain.OAuth2Client{
 		TenantID:      tenancydomain.DefaultTenantID,
 		ClientID:      "client-1",
 		RedirectURIs:  []string{"https://example.com/cb"},
@@ -65,7 +65,7 @@ func TestPushAuthorizationRequest(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*domain.PARStored)
+		ev, ok := emitted[0].(*oauthdomain.PARStored)
 		if !ok {
 			t.Fatalf("expected PARStored, got %T", emitted[0])
 		}

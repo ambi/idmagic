@@ -10,7 +10,7 @@ import (
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/internal/approval/usecases"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/internal/device/usecases"
 	policytenancy "github.com/ambi/idmagic/backend/oauth2/internal/policy_tenancy"
@@ -48,7 +48,7 @@ func (d Deps) handleToken(c *echo.Context) error {
 
 // prepareTokenIssuance は公開 token と内部の交換に同じ発行前の条件を適用する。
 // 発行器は値のコピーに載せ、別の要求へ Agent やガードレールを持ち越さない。
-func (d Deps) prepareTokenIssuance(ctx context.Context, client *domain.OAuth2Client, grantType string) (Deps, *agentdomain.Agent, error) {
+func (d Deps) prepareTokenIssuance(ctx context.Context, client *oauthdomain.OAuth2Client, grantType string) (Deps, *agentdomain.Agent, error) {
 	if err := tokenusecases.RejectAgentClientWithoutKeyProof(ctx, tokenusecases.AgentIssuanceDeps{AgentRepo: d.AgentRepo, Emit: d.Emit}, client, grantType, time.Now().UTC()); err != nil {
 		return d, nil, err
 	}
@@ -230,11 +230,11 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		if mcpResourceServer != nil {
 			audiences = []string{mcpResourceServer.Resource}
 		}
-		var sc *domain.SenderConstraint
+		var sc *oauthdomain.SenderConstraint
 		if dpopJKT != "" {
-			sc = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: dpopJKT}
+			sc = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: dpopJKT}
 		} else if clientStub.MTLSThumbprintS256 != "" {
-			sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
+			sc = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
 		}
 		// client_credentials は人間の承認を記録しないため、Autonomous と確認できた
 		// Agent だけが通る (REQ-OAUTH2-050)。
@@ -269,12 +269,12 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			if sc != nil {
 				tag = string(sc.Type)
 			}
-			d.Emit(&domain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag, AgentID: requestingAgentID})
+			d.Emit(&oauthdomain.AccessTokenIssued{At: now, TenantID: support.RequestTenantID(c), JTI: jti, ClientID: client.ClientID, UserID: client.ClientID, Scopes: scopes, SenderConstraint: tag, AgentID: requestingAgentID})
 			if mcpResourceServer != nil {
-				d.Emit(&domain.ResourceScopedTokenIssued{At: now, TenantID: support.RequestTenantID(c), ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
+				d.Emit(&oauthdomain.ResourceScopedTokenIssued{At: now, TenantID: support.RequestTenantID(c), ClientID: client.ClientID, Resource: mcpResourceServer.Resource, Scopes: scopes})
 			}
 		}
-		tokenType := domain.PresentationTokenType(sc)
+		tokenType := oauthdomain.PresentationTokenType(sc)
 		return c.JSON(http.StatusOK, map[string]any{
 			"access_token": token, "token_type": tokenType,
 			"expires_in": d.TokenIssuer.AccessTokenTTLSeconds(), "scope": strings.Join(scopes, " "),
@@ -434,7 +434,7 @@ func (d Deps) handleIntrospect(c *echo.Context) error {
 		return writeOAuthError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TokenIntrospected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), RSClientID: clientStub.ID, TokenID: resp.JTI, Active: resp.Active})
+		d.Emit(&oauthdomain.TokenIntrospected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), RSClientID: clientStub.ID, TokenID: resp.JTI, Active: resp.Active})
 	}
 	return c.JSON(http.StatusOK, resp)
 }

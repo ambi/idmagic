@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 func TestTokenClientCredentials_unregisteredResource_rejectedAsInvalidTarget(t *testing.T) {
@@ -40,12 +40,12 @@ func TestTokenClientCredentials_unregisteredResource_rejectedAsInvalidTarget(t *
 
 func TestTokenClientCredentials_registeredResource_boundAudience(t *testing.T) {
 	f := newTokenServer(t)
-	f.mcpResourceServerRepo.Seed(&domain.McpResourceServer{
+	f.mcpResourceServerRepo.Seed(&oauthdomain.McpResourceServer{
 		ID:       "rs-1",
 		Resource: "https://mcp.example.com/tools",
 		Name:     "Tools",
 		Scopes:   []string{"openid", "profile"},
-		State:    domain.McpResourceServerActive,
+		State:    oauthdomain.McpResourceServerActive,
 	})
 	form := url.Values{
 		"client_id":     {"client-conf"},

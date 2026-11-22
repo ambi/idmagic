@@ -19,11 +19,11 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, userports.UserRepository, *[]spec.DomainEvent) {
+func newMfaDeps(t *testing.T) (mfausecases.AccountMfaDeps, userports.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
@@ -32,7 +32,7 @@ func newMfaDeps(t *testing.T) (usecases.AccountMfaDeps, userports.UserRepository
 		CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
-	deps := usecases.AccountMfaDeps{
+	deps := mfausecases.AccountMfaDeps{
 		TrustedDevices: trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:       userRepo, MfaFactorRepo: totpmemory.NewMfaFactorRepository(),
 		Emit:   func(e spec.DomainEvent) { events = append(events, e) },
@@ -47,7 +47,7 @@ func TestTOTPEnrollmentConfirmPersistsFactorAndFlag(t *testing.T) {
 	deps, userRepo, events := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 
-	start, err := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
+	start, err := mfausecases.StartTOTPEnrollment(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestTOTPEnrollmentConfirmPersistsFactorAndFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := usecases.ConfirmTOTPEnrollment(ctx, deps, usecases.ConfirmTOTPEnrollmentInput{
+	if err := mfausecases.ConfirmTOTPEnrollment(ctx, deps, mfausecases.ConfirmTOTPEnrollmentInput{
 		Sub: "user-alice", Secret: start.Secret, Code: code, Now: now,
 	}); err != nil {
 		t.Fatal(err)
@@ -87,13 +87,13 @@ func TestTOTPEnrollmentConfirmRejectsWrongCode(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	start, err := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
+	start, err := mfausecases.StartTOTPEnrollment(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := usecases.ConfirmTOTPEnrollment(ctx, deps, usecases.ConfirmTOTPEnrollmentInput{
+	if err := mfausecases.ConfirmTOTPEnrollment(ctx, deps, mfausecases.ConfirmTOTPEnrollmentInput{
 		Sub: "user-alice", Secret: start.Secret, Code: "000000", Now: now,
-	}); !errors.Is(err, usecases.ErrInvalidTOTPCode) {
+	}); !errors.Is(err, mfausecases.ErrInvalidTOTPCode) {
 		t.Fatalf("error=%v, want ErrInvalidTOTPCode", err)
 	}
 	factor, _ := deps.MfaFactorRepo.Find(ctx, "user-alice", spec.MfaFactorTOTP)
@@ -106,14 +106,14 @@ func TestTOTPEnrollmentStartRejectsWhenAlreadyEnrolled(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	start, _ := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
+	start, _ := mfausecases.StartTOTPEnrollment(ctx, deps, "user-alice")
 	code, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
-	if err := usecases.ConfirmTOTPEnrollment(ctx, deps, usecases.ConfirmTOTPEnrollmentInput{
+	if err := mfausecases.ConfirmTOTPEnrollment(ctx, deps, mfausecases.ConfirmTOTPEnrollmentInput{
 		Sub: "user-alice", Secret: start.Secret, Code: code, Now: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.StartTOTPEnrollment(ctx, deps, "user-alice"); !errors.Is(err, usecases.ErrMfaAlreadyEnrolled) {
+	if _, err := mfausecases.StartTOTPEnrollment(ctx, deps, "user-alice"); !errors.Is(err, mfausecases.ErrMfaAlreadyEnrolled) {
 		t.Fatalf("error=%v, want ErrMfaAlreadyEnrolled", err)
 	}
 }
@@ -123,18 +123,18 @@ func TestRemoveTOTPFactorRequiresValidCode(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, userRepo, events := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	start, _ := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
+	start, _ := mfausecases.StartTOTPEnrollment(ctx, deps, "user-alice")
 	code, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
-	if err := usecases.ConfirmTOTPEnrollment(ctx, deps, usecases.ConfirmTOTPEnrollmentInput{
+	if err := mfausecases.ConfirmTOTPEnrollment(ctx, deps, mfausecases.ConfirmTOTPEnrollmentInput{
 		Sub: "user-alice", Secret: start.Secret, Code: code, Now: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	// wrong code keeps the factor.
-	if err := usecases.RemoveTOTPFactor(ctx, deps, usecases.RemoveTOTPFactorInput{
+	if err := mfausecases.RemoveTOTPFactor(ctx, deps, mfausecases.RemoveTOTPFactorInput{
 		Sub: "user-alice", Code: "000000", Now: now,
-	}); !errors.Is(err, usecases.ErrInvalidTOTPCode) {
+	}); !errors.Is(err, mfausecases.ErrInvalidTOTPCode) {
 		t.Fatalf("error=%v, want ErrInvalidTOTPCode", err)
 	}
 	if factor, _ := deps.MfaFactorRepo.Find(ctx, "user-alice", spec.MfaFactorTOTP); factor == nil {
@@ -143,7 +143,7 @@ func TestRemoveTOTPFactorRequiresValidCode(t *testing.T) {
 
 	// valid code removes the factor and clears the flag.
 	removeCode, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
-	if err := usecases.RemoveTOTPFactor(ctx, deps, usecases.RemoveTOTPFactorInput{
+	if err := mfausecases.RemoveTOTPFactor(ctx, deps, mfausecases.RemoveTOTPFactorInput{
 		Sub: "user-alice", Code: removeCode, Now: now,
 	}); err != nil {
 		t.Fatal(err)
@@ -172,9 +172,9 @@ func TestRemoveTOTPFactorWhenNoneEnrolled(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newMfaDeps(t)
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
-	if err := usecases.RemoveTOTPFactor(ctx, deps, usecases.RemoveTOTPFactorInput{
+	if err := mfausecases.RemoveTOTPFactor(ctx, deps, mfausecases.RemoveTOTPFactorInput{
 		Sub: "user-alice", Code: "000000", Now: now,
-	}); !errors.Is(err, usecases.ErrMfaNotEnrolled) {
+	}); !errors.Is(err, mfausecases.ErrMfaNotEnrolled) {
 		t.Fatalf("error=%v, want ErrMfaNotEnrolled", err)
 	}
 }
@@ -222,13 +222,13 @@ func TestTOTPEnrollmentAndRemovalKeepADisableMadeWhileTheyRecordTheFlag(t *testi
 	deps.UserRepo = race
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
 
-	start, err := usecases.StartTOTPEnrollment(ctx, deps, "user-alice")
+	start, err := mfausecases.StartTOTPEnrollment(ctx, deps, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
 	code, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
 	race.armed = true
-	if err := usecases.ConfirmTOTPEnrollment(ctx, deps, usecases.ConfirmTOTPEnrollmentInput{
+	if err := mfausecases.ConfirmTOTPEnrollment(ctx, deps, mfausecases.ConfirmTOTPEnrollmentInput{
 		Sub: "user-alice", Secret: start.Secret, Code: code, Now: now,
 	}); err != nil {
 		t.Fatal(err)
@@ -245,7 +245,7 @@ func TestTOTPEnrollmentAndRemovalKeepADisableMadeWhileTheyRecordTheFlag(t *testi
 	}
 	removeCode, _ := totpusecases.GenerateTOTP(start.Secret, now.Unix())
 	race.armed = true
-	if err := usecases.RemoveTOTPFactor(ctx, deps, usecases.RemoveTOTPFactorInput{
+	if err := mfausecases.RemoveTOTPFactor(ctx, deps, mfausecases.RemoveTOTPFactorInput{
 		Sub: "user-alice", Code: removeCode, Now: now,
 	}); err != nil {
 		t.Fatal(err)

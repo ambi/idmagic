@@ -4,16 +4,16 @@ import (
 	"context"
 	"uuid"
 
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 )
 
 // CreateConnector はコネクタを作る (REQ-TOKENVAULT-001)。
-func CreateConnector(ctx context.Context, deps Deps, connector domain.Connector) (*domain.Connector, error) {
+func CreateConnector(ctx context.Context, deps Deps, connector tokenvaultdomain.Connector) (*tokenvaultdomain.Connector, error) {
 	now := deps.now()
 	connector.ID = uuid.NewV4().String()
-	connector.Status = domain.ConnectorActive
+	connector.Status = tokenvaultdomain.ConnectorActive
 	if connector.TokenEndpointAuthMethod == "" {
-		connector.TokenEndpointAuthMethod = domain.AuthMethodClientSecretBasic
+		connector.TokenEndpointAuthMethod = tokenvaultdomain.AuthMethodClientSecretBasic
 	}
 	connector.Version, connector.CreatedAt, connector.UpdatedAt = 1, now, now
 	if err := connector.Validate(); err != nil {
@@ -22,20 +22,20 @@ func CreateConnector(ctx context.Context, deps Deps, connector domain.Connector)
 	if err := deps.Connectors.Create(ctx, &connector); err != nil {
 		return nil, err
 	}
-	deps.emit(&domain.TokenVaultConnectorCreated{At: now, TenantID: connector.TenantID, ConnectorID: connector.ID})
+	deps.emit(&tokenvaultdomain.TokenVaultConnectorCreated{At: now, TenantID: connector.TenantID, ConnectorID: connector.ID})
 	return &connector, nil
 }
 
 // ConnectorChanges はコネクタの更新である。nil の項目は保存の値を維持する。
 type ConnectorChanges struct {
 	Name, AuthorizationEndpoint, TokenEndpoint, RevocationEndpoint, ClientID, ClientSecret *string
-	Status                                                                                 *domain.ConnectorStatus
-	TokenEndpointAuthMethod                                                                *domain.TokenEndpointAuthMethod
+	Status                                                                                 *tokenvaultdomain.ConnectorStatus
+	TokenEndpointAuthMethod                                                                *tokenvaultdomain.TokenEndpointAuthMethod
 	AllowedScopes                                                                          *[]string
-	Rules                                                                                  *[]domain.ExecutionRule
+	Rules                                                                                  *[]tokenvaultdomain.ExecutionRule
 }
 
-func (c ConnectorChanges) apply(connector *domain.Connector) {
+func (c ConnectorChanges) apply(connector *tokenvaultdomain.Connector) {
 	assign(&connector.Name, c.Name)
 	assign(&connector.AuthorizationEndpoint, c.AuthorizationEndpoint)
 	assign(&connector.TokenEndpoint, c.TokenEndpoint)
@@ -55,7 +55,7 @@ func assign[T any](destination, value *T) {
 }
 
 // UpdateConnector はコネクタを更新する (REQ-TOKENVAULT-001、REQ-TOKENVAULT-002)。
-func UpdateConnector(ctx context.Context, deps Deps, tenantID, id string, changes ConnectorChanges) (*domain.Connector, error) {
+func UpdateConnector(ctx context.Context, deps Deps, tenantID, id string, changes ConnectorChanges) (*tokenvaultdomain.Connector, error) {
 	connector, err := GetConnector(ctx, deps, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -68,12 +68,12 @@ func UpdateConnector(ctx context.Context, deps Deps, tenantID, id string, change
 	if err := deps.Connectors.Update(ctx, connector); err != nil {
 		return nil, err
 	}
-	deps.emit(&domain.TokenVaultConnectorUpdated{At: connector.UpdatedAt, TenantID: tenantID, ConnectorID: id, Status: connector.Status})
+	deps.emit(&tokenvaultdomain.TokenVaultConnectorUpdated{At: connector.UpdatedAt, TenantID: tenantID, ConnectorID: id, Status: connector.Status})
 	return connector, nil
 }
 
 // GetConnector は自テナントのコネクタを返す。
-func GetConnector(ctx context.Context, deps Deps, tenantID, id string) (*domain.Connector, error) {
+func GetConnector(ctx context.Context, deps Deps, tenantID, id string) (*tokenvaultdomain.Connector, error) {
 	connector, err := deps.Connectors.Find(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -93,11 +93,11 @@ func DeleteConnector(ctx context.Context, deps Deps, tenantID, id string) error 
 	if !deleted {
 		return ErrConnectorNotFound
 	}
-	deps.emit(&domain.TokenVaultConnectorDeleted{At: deps.now(), TenantID: tenantID, ConnectorID: id})
+	deps.emit(&tokenvaultdomain.TokenVaultConnectorDeleted{At: deps.now(), TenantID: tenantID, ConnectorID: id})
 	return nil
 }
 
-func oauthClient(connector *domain.Connector) oauthClientConfig {
+func oauthClient(connector *tokenvaultdomain.Connector) oauthClientConfig {
 	return oauthClientConfig{
 		TokenEndpoint: connector.TokenEndpoint, RevocationEndpoint: connector.RevocationEndpoint,
 		ClientID: connector.ClientID, ClientSecret: connector.ClientSecret, AuthMethod: connector.TokenEndpointAuthMethod,

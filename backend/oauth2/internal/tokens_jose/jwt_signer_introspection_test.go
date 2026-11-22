@@ -6,7 +6,7 @@ import (
 	"time"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -31,7 +31,7 @@ func TestSignIDTokenIncludesAtHash(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, AtHashFor: "the-access-token",
 	})
@@ -50,7 +50,7 @@ func TestSignAccessTokenIncludesAMRACRAndAgentBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "agent-client",
 		Scopes: []string{"account:read"}, AMR: []string{"agent"}, ACR: "urn:agent",
 		AgentID: "agent-1",
@@ -77,7 +77,7 @@ func TestSignAccessTokenMultiAudienceAndCnf(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 		Audiences:        []string{"https://rs1.example", "https://rs2.example"},
 		SenderConstraint: &oauthdomain.SenderConstraint{Type: oauthdomain.SenderConstraintDPoP, JKT: "jkt-1"},
@@ -113,7 +113,7 @@ func TestSignAccessTokenMTLSCnf(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 		SenderConstraint: &oauthdomain.SenderConstraint{Type: oauthdomain.SenderConstraintMTLS, X5TS256: "thumb-1"},
 	})
@@ -135,7 +135,7 @@ func TestSignAccessTokenActAndAgentIntrospection(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "agent-client", Scopes: []string{"account:read"},
 		AgentID: "agent-1", Act: map[string]any{"sub": "human-1"},
 	})
@@ -173,7 +173,7 @@ func TestIntrospectAccessTokenInactiveCases(t *testing.T) {
 
 	t.Run("wrong issuer is inactive", func(t *testing.T) {
 		other := NewJWTSigner("https://other.test", ks)
-		token, _, err := other.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+		token, _, err := other.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 			Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 		})
 		if err != nil {
@@ -189,7 +189,7 @@ func TestIntrospectAccessTokenInactiveCases(t *testing.T) {
 	})
 
 	t.Run("expired token is inactive", func(t *testing.T) {
-		token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+		token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 			Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"account:read"},
 			ExpiresAt: time.Now().Add(-time.Hour).Unix(),
 		})

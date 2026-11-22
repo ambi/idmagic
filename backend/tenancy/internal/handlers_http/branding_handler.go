@@ -6,8 +6,8 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -16,18 +16,18 @@ import (
 // 安全な projection (SCL TenantBrandingResponse の双子定義)。未設定フィールドは省略し、
 // クライアント側でシステム既定 (IdMagic) に解決する。
 type BrandingResponse struct {
-	ProductName  string                   `json:"product_name,omitempty"`
-	LogoURL      string                   `json:"logo_url,omitempty"`
-	FaviconURL   string                   `json:"favicon_url,omitempty"`
-	PrimaryColor string                   `json:"primary_color,omitempty"`
-	AccentColor  string                   `json:"accent_color,omitempty"`
-	FooterLink1  *domain.TenantFooterLink `json:"footer_link_1,omitempty"`
-	FooterLink2  *domain.TenantFooterLink `json:"footer_link_2,omitempty"`
-	FooterText   string                   `json:"footer_text,omitempty"`
-	UpdatedAt    *time.Time               `json:"updated_at,omitempty"`
+	ProductName  string                          `json:"product_name,omitempty"`
+	LogoURL      string                          `json:"logo_url,omitempty"`
+	FaviconURL   string                          `json:"favicon_url,omitempty"`
+	PrimaryColor string                          `json:"primary_color,omitempty"`
+	AccentColor  string                          `json:"accent_color,omitempty"`
+	FooterLink1  *tenancydomain.TenantFooterLink `json:"footer_link_1,omitempty"`
+	FooterLink2  *tenancydomain.TenantFooterLink `json:"footer_link_2,omitempty"`
+	FooterText   string                          `json:"footer_text,omitempty"`
+	UpdatedAt    *time.Time                      `json:"updated_at,omitempty"`
 }
 
-func toBrandingResponse(b *domain.TenantBranding) BrandingResponse {
+func toBrandingResponse(b *tenancydomain.TenantBranding) BrandingResponse {
 	resp := BrandingResponse{
 		ProductName: b.ProductName, LogoURL: b.LogoURL, FaviconURL: b.FaviconURL,
 		PrimaryColor: b.PrimaryColor, AccentColor: b.AccentColor,
@@ -51,7 +51,7 @@ func toBrandingResponse(b *domain.TenantBranding) BrandingResponse {
 // brandingETag は branding の version を ETag にする。未設定テナントは全テナント共通の
 // 固定値を返し、cross-tenant のキャッシュ混同は URL (tenant 解決済み path) 側で防ぐ。
 // 担保するルールは docs/design/application/api-guidelines.md の「キャッシュ検証」。
-func brandingETag(b *domain.TenantBranding) string {
+func brandingETag(b *tenancydomain.TenantBranding) string {
 	if b == nil || !b.IsConfigured() || b.UpdatedAt.IsZero() {
 		return `"branding-default"`
 	}
@@ -62,7 +62,7 @@ func brandingETag(b *domain.TenantBranding) string {
 // 認証を要求しない (login / consent / device 画面が未認証のうちに読む)。branding 未設定
 // でも例外を投げず空の projection を返し、hosted login エンドポイントを止めない。
 func (d Deps) handleGetBranding(c *echo.Context) error {
-	branding, err := tenantusecases.GetBranding(c.Request().Context(), d.BrandingRepo, support.RequestTenantID(c))
+	branding, err := tenancyusecases.GetBranding(c.Request().Context(), d.BrandingRepo, support.RequestTenantID(c))
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (d Deps) handleGetBrandingAsset(c *echo.Context) error {
 	if d.BrandingAssetStore == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The image does not exist.")
 	}
-	kind := domain.TenantBrandingAssetKind(c.Param("kind"))
+	kind := tenancydomain.TenantBrandingAssetKind(c.Param("kind"))
 	if !kind.Valid() {
 		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The image does not exist.")
 	}

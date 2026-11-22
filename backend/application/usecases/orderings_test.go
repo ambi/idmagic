@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 )
 
@@ -21,7 +21,7 @@ func newOrderingDeps() appusecases.AssignmentDeps {
 }
 
 func TestApplyManualOrderOverlaysAndAppendsRemainder(t *testing.T) {
-	apps := []*domain.Application{
+	apps := []*appdomain.Application{
 		{ID: "a", Name: "Alpha"},
 		{ID: "b", Name: "Beta"},
 		{ID: "g", Name: "Gamma"},
@@ -39,7 +39,7 @@ func TestApplyManualOrderOverlaysAndAppendsRemainder(t *testing.T) {
 }
 
 func TestApplyManualOrderIgnoresUnknownAndEmpty(t *testing.T) {
-	apps := []*domain.Application{{ID: "a", Name: "Alpha"}, {ID: "b", Name: "Beta"}}
+	apps := []*appdomain.Application{{ID: "a", Name: "Alpha"}, {ID: "b", Name: "Beta"}}
 	// 空の order は元の並びを保つ。
 	if got := appusecases.ApplyManualOrder(apps, nil); len(got) != 2 || got[0].ID != "a" {
 		t.Fatalf("empty order should keep input order")
@@ -54,20 +54,20 @@ func TestApplyManualOrderIgnoresUnknownAndEmpty(t *testing.T) {
 func TestSaveAndGetMyApplicationOrder(t *testing.T) {
 	ctx := tenantContext()
 	deps := newOrderingDeps()
-	subjects := []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}}
+	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: "alice"}}
 
 	ids := map[string]string{}
 	for _, name := range []string{"Alpha", "Beta", "Gamma"} {
 		app, err := appusecases.CreateApplication(ctx,
 			appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
-			appusecases.CreateApplicationInput{ActorUserID: "admin", Name: name, Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"}})
+			appusecases.CreateApplicationInput{ActorUserID: "admin", Name: name, Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"}})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
 		ids[name] = app.ID
 		if _, err := appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
 			ActorUserID: "admin", ApplicationID: app.ID,
-			SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+			SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 		}); err != nil {
 			t.Fatalf("assign %s: %v", name, err)
 		}
@@ -105,7 +105,7 @@ func TestSaveAndGetMyApplicationOrder(t *testing.T) {
 func TestSaveMyApplicationOrderRejectsUnassigned(t *testing.T) {
 	ctx := tenantContext()
 	deps := newOrderingDeps()
-	subjects := []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}}
+	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: "alice"}}
 
 	_, err := appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{"not-assigned"}, time.Time{})
 	if !errors.Is(err, appusecases.ErrUnassignedInOrder) {
@@ -116,14 +116,14 @@ func TestSaveMyApplicationOrderRejectsUnassigned(t *testing.T) {
 func TestSaveMyApplicationOrderUpdatesExisting(t *testing.T) {
 	ctx := tenantContext()
 	deps := newOrderingDeps()
-	subjects := []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}}
+	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: "alice"}}
 
 	app, _ := appusecases.CreateApplication(ctx,
 		appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
-		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"}})
+		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "App", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"}})
 	_, _ = appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: app.ID,
-		SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
 	// 1回目

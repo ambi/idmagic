@@ -6,8 +6,8 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
-	"github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -25,7 +25,7 @@ type MfaEnrollmentDeps struct {
 	UserRepo               userports.UserRepository
 	MfaFactorRepo          totpports.MfaFactorRepository
 	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
-	BypassRepo             ports.MfaEnrollmentBypassRepository
+	BypassRepo             mfaports.MfaEnrollmentBypassRepository
 	Emit                   func(spec.DomainEvent)
 }
 
@@ -44,7 +44,7 @@ func HasMfaEnrollment(ctx context.Context, deps MfaEnrollmentDeps, userID string
 	return len(credentials) > 0, err
 }
 
-func IssueMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, actorID, userID string, ttl time.Duration, now time.Time) (*domain.MfaEnrollmentBypass, error) {
+func IssueMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, actorID, userID string, ttl time.Duration, now time.Time) (*mfadomain.MfaEnrollmentBypass, error) {
 	if ttl < time.Minute || ttl > time.Hour || deps.BypassRepo == nil {
 		return nil, ErrMfaEnrollmentNotAllowed
 	}
@@ -76,7 +76,7 @@ func IssueMfaEnrollmentBypass(ctx context.Context, deps MfaEnrollmentDeps, actor
 	if err != nil {
 		return nil, err
 	}
-	bypass := &domain.MfaEnrollmentBypass{ID: id, TenantID: user.TenantID, UserID: userID, IssuedBy: actorID, IssuedAt: now, ExpiresAt: now.Add(ttl)}
+	bypass := &mfadomain.MfaEnrollmentBypass{ID: id, TenantID: user.TenantID, UserID: userID, IssuedBy: actorID, IssuedAt: now, ExpiresAt: now.Add(ttl)}
 	if err := deps.BypassRepo.Save(ctx, bypass); err != nil {
 		return nil, err
 	}

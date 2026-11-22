@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/internal/authorization/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -45,15 +45,15 @@ type AuthorizeRequestInput struct {
 }
 
 type AuthorizeRequestOutput struct {
-	Request *domain.AuthorizationRequest
-	Client  *domain.OAuth2Client
+	Request *oauthdomain.AuthorizationRequest
+	Client  *oauthdomain.OAuth2Client
 }
 
 type AuthorizeDeps struct {
-	ClientRepo            ports.OAuth2ClientRepository
-	RequestStore          ports.AuthorizationRequestStore
-	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
-	McpResourceServerRepo ports.McpResourceServerRepository
+	ClientRepo            oauthports.OAuth2ClientRepository
+	RequestStore          oauthports.AuthorizationRequestStore
+	AuthzDetailTypeRepo   oauthports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo oauthports.McpResourceServerRepository
 	Emit                  func(spec.DomainEvent)
 }
 
@@ -101,7 +101,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		return nil, NewOAuthError("invalid_request", "this client requires PAR")
 	}
 	if in.Prompt != "" {
-		prompt, err := domain.ParsePromptTokens(in.Prompt)
+		prompt, err := oauthdomain.ParsePromptTokens(in.Prompt)
 		if err != nil {
 			return nil, NewOAuthError("invalid_request", err.Error())
 		}
@@ -119,7 +119,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	// RFC 8707 resource indicator: 登録済み Active な McpResourceServer に限定する。
 	mcp, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, requestedScopes)
 	if err != nil {
-		emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})
+		emit(deps.Emit, &oauthdomain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})
 		return nil, err
 	}
 	var resource *string
@@ -132,7 +132,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		return nil, err
 	}
 	now := time.Now().UTC()
-	req := &domain.AuthorizationRequest{
+	req := &oauthdomain.AuthorizationRequest{
 		TenantID:             tenantID,
 		ID:                   id,
 		State:                spec.AuthFlowReceived,

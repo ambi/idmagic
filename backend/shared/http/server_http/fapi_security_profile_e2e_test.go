@@ -36,7 +36,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
@@ -84,8 +84,8 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 	}}}
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	seed := func(clientID string, profile domain.FapiProfile) {
-		_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	seed := func(clientID string, profile oauthdomain.FapiProfile) {
+		_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 			TenantID: tenancydomain.DefaultTenantID,
 			ClientID: clientID, ClientType: spec.ClientConfidential,
 			RedirectURIs: []string{fpRedirectURI},
@@ -93,7 +93,7 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 				spec.GrantAuthorizationCode, spec.GrantClientCredentials,
 			},
 			ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-			TokenEndpointAuthMethod:  domain.AuthMethodPrivateKeyJwt,
+			TokenEndpointAuthMethod:  oauthdomain.AuthMethodPrivateKeyJwt,
 			Scope:                    fpScope,
 			JWKS:                     jwks,
 			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
@@ -102,8 +102,8 @@ func newFapiProfileFixture(t *testing.T) *fpFixture {
 			UpdatedAt:                now,
 		})
 	}
-	seed(fpFapiClientID, domain.FapiSecurityProfileV2)
-	seed(fpPlainClientID, domain.FapiNone)
+	seed(fpFapiClientID, oauthdomain.FapiSecurityProfileV2)
+	seed(fpPlainClientID, oauthdomain.FapiNone)
 
 	hasher := testingpasswords.NewHasher()
 	passwordHash, err := hasher.Hash(fpPassword)

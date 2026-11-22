@@ -19,8 +19,8 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
-	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
-	ratelimit "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -54,8 +54,8 @@ type Dependencies struct {
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
 	AccessControl    accesscontrol.Module
-	Notification     notification.Module
-	RateLimit        ratelimit.Module
+	Notification     notificationports.Module
+	RateLimit        rlports.Module
 	// SecurityNotifications はアカウントのセキュリティ通知の起動時配線 (wi-90)。
 	// AssembleNotification が locale と実行方法を埋め、issuer を知るプロセスが
 	// IssuerResolver を差し込む。

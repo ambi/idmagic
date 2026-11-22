@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // =====================================================================
@@ -19,14 +19,14 @@ import (
 
 type RefreshTokenStore struct {
 	mu     sync.Mutex
-	byHash map[string]*domain.RefreshTokenRecord
-	byID   map[string]*domain.RefreshTokenRecord
+	byHash map[string]*oauthdomain.RefreshTokenRecord
+	byID   map[string]*oauthdomain.RefreshTokenRecord
 }
 
 func NewRefreshTokenStore() *RefreshTokenStore {
 	return &RefreshTokenStore{
-		byHash: map[string]*domain.RefreshTokenRecord{},
-		byID:   map[string]*domain.RefreshTokenRecord{},
+		byHash: map[string]*oauthdomain.RefreshTokenRecord{},
+		byID:   map[string]*oauthdomain.RefreshTokenRecord{},
 	}
 }
 
@@ -42,13 +42,13 @@ func (s *RefreshTokenStore) DeleteForClient(_ context.Context, tenantID, clientI
 	return nil
 }
 
-func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*domain.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) FindByHash(_ context.Context, hash string) (*oauthdomain.RefreshTokenRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return cloneRefreshToken(s.byHash[hash]), nil
 }
 
-func (s *RefreshTokenStore) Save(_ context.Context, rec *domain.RefreshTokenRecord) error {
+func (s *RefreshTokenStore) Save(_ context.Context, rec *oauthdomain.RefreshTokenRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
@@ -58,7 +58,7 @@ func (s *RefreshTokenStore) Save(_ context.Context, rec *domain.RefreshTokenReco
 	return nil
 }
 
-func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *domain.RefreshTokenRecord) (*domain.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) Rotate(_ context.Context, parentID string, newRec *oauthdomain.RefreshTokenRecord) (*oauthdomain.RefreshTokenRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	parent, ok := s.byID[parentID]
@@ -113,7 +113,7 @@ func (s *RefreshTokenStore) DeleteAllForSub(_ context.Context, sub string) error
 	return nil
 }
 
-func cloneRefreshToken(in *domain.RefreshTokenRecord) *domain.RefreshTokenRecord {
+func cloneRefreshToken(in *oauthdomain.RefreshTokenRecord) *oauthdomain.RefreshTokenRecord {
 	if in == nil {
 		return nil
 	}

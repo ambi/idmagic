@@ -10,7 +10,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -35,12 +35,12 @@ func (c *fakeClock) clock() IssuanceClock {
 
 // iatIssuer は、署名器と同じく署名の時点の時刻の秒を iat に使い、その値を記録する。
 type iatIssuer struct {
-	ports.TokenIssuer
+	oauthports.TokenIssuer
 	now  func() time.Time
 	iats []int64
 }
 
-func (i *iatIssuer) SignAccessToken(context.Context, ports.AccessTokenInput) (string, string, error) {
+func (i *iatIssuer) SignAccessToken(context.Context, oauthports.AccessTokenInput) (string, string, error) {
 	i.iats = append(i.iats, i.now().Unix())
 	return "token", "jti", nil
 }
@@ -69,7 +69,7 @@ func TestIssuerAfterUserRevocationWaitsOnlyWithinTheEpochSecond(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			clock := &fakeClock{now: tc.now}
 			signer := &iatIssuer{now: func() time.Time { return clock.now }}
-			if _, _, err := IssuerAfterUserRevocation(signer, tc.epochs, clock.clock()).SignAccessToken(ctx, ports.AccessTokenInput{Sub: idJagUser}); err != nil {
+			if _, _, err := IssuerAfterUserRevocation(signer, tc.epochs, clock.clock()).SignAccessToken(ctx, oauthports.AccessTokenInput{Sub: idJagUser}); err != nil {
 				t.Fatal(err)
 			}
 			if len(signer.iats) != 1 || signer.iats[0] != tc.wantIat {
@@ -83,7 +83,7 @@ func TestIssuerAfterUserRevocationWaitsOnlyWithinTheEpochSecond(t *testing.T) {
 		signer := &iatIssuer{now: func() time.Time { return clock.now }}
 		canceled, cancel := context.WithCancel(ctx)
 		cancel()
-		if _, _, err := IssuerAfterUserRevocation(signer, epochs, clock.clock()).SignAccessToken(canceled, ports.AccessTokenInput{Sub: idJagUser}); !errors.Is(err, context.Canceled) {
+		if _, _, err := IssuerAfterUserRevocation(signer, epochs, clock.clock()).SignAccessToken(canceled, oauthports.AccessTokenInput{Sub: idJagUser}); !errors.Is(err, context.Canceled) {
 			t.Fatalf("err=%v, want context.Canceled", err)
 		}
 		if len(signer.iats) != 0 {
@@ -94,7 +94,7 @@ func TestIssuerAfterUserRevocationWaitsOnlyWithinTheEpochSecond(t *testing.T) {
 	t.Run("エポックを読めなければ署名しない", func(t *testing.T) {
 		clock := &fakeClock{now: epoch}
 		signer := &iatIssuer{now: func() time.Time { return clock.now }}
-		if _, _, err := IssuerAfterUserRevocation(signer, failingUserEpochs{}, clock.clock()).SignAccessToken(ctx, ports.AccessTokenInput{Sub: idJagUser}); err == nil {
+		if _, _, err := IssuerAfterUserRevocation(signer, failingUserEpochs{}, clock.clock()).SignAccessToken(ctx, oauthports.AccessTokenInput{Sub: idJagUser}); err == nil {
 			t.Fatal("エポックの読み取りの失敗を返さなかった")
 		}
 		if len(signer.iats) != 0 {
@@ -128,7 +128,7 @@ func TestTokenIssuedRightAfterUserRevocationStaysActive(t *testing.T) {
 	clock := &fakeClock{now: epoch.Add(42 * time.Millisecond)}
 	signer := &iatIssuer{now: func() time.Time { return clock.now }}
 	issuer := IssuerAfterUserRevocation(signer, epochs, clock.clock())
-	if _, _, err := issuer.SignAccessToken(ctx, ports.AccessTokenInput{Sub: idJagUser}); err != nil {
+	if _, _, err := issuer.SignAccessToken(ctx, oauthports.AccessTokenInput{Sub: idJagUser}); err != nil {
 		t.Fatal(err)
 	}
 	after := signer.iats[0]
@@ -141,7 +141,7 @@ func TestTokenIssuedRightAfterUserRevocationStaysActive(t *testing.T) {
 		"失効の後に発行した": {after, false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			revoked, err := AccessTokenIsRevoked(ctx, deps, &ports.IntrospectionResult{Active: true, Sub: idJagUser, Iat: tc.iat})
+			revoked, err := AccessTokenIsRevoked(ctx, deps, &oauthports.IntrospectionResult{Active: true, Sub: idJagUser, Iat: tc.iat})
 			if err != nil {
 				t.Fatal(err)
 			}

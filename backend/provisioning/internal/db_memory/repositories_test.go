@@ -6,29 +6,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
-func testConnection(applicationID, tenantID string) *domain.ProvisioningConnection {
+func testConnection(applicationID, tenantID string) *provisioningdomain.ProvisioningConnection {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	return &domain.ProvisioningConnection{
+	return &provisioningdomain.ProvisioningConnection{
 		ApplicationID: applicationID,
 		TenantID:      tenantID,
-		Status:        domain.ConnectionActive,
+		Status:        provisioningdomain.ConnectionActive,
 		BaseURL:       "https://downstream.example.com/scim/v2",
-		Credential:    domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-1", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
-		FeatureFlags:  domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
-		Scope:         domain.ScopeAssignedOnly,
-		Matching:      domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate,
-			OnDelete:   domain.DeprovisionDeactivate,
+		Credential:    provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-1", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
+		FeatureFlags:  provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
+		Scope:         provisioningdomain.ScopeAssignedOnly,
+		Matching:      provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate,
+			OnDelete:   provisioningdomain.DeprovisionDeactivate,
 		},
 		RateLimitPerMinute:                60,
 		MaxAttempts:                       8,
 		QuarantineAfterConsecutiveFailure: 10,
-		Health:                            domain.HealthOK,
+		Health:                            provisioningdomain.HealthOK,
 		CreatedAt:                         now,
 		UpdatedAt:                         now,
 	}
@@ -42,7 +42,7 @@ func TestProvisioningConnectionRepository_Register_RejectsDuplicateApplication(t
 		t.Fatalf("first Register() error = %v", err)
 	}
 	dup := testConnection("app-1", "tenant-a")
-	if err := repo.Register(ctx, dup, "secret-2"); !errors.Is(err, ports.ErrConnectionAlreadyExists) {
+	if err := repo.Register(ctx, dup, "secret-2"); !errors.Is(err, provisioningports.ErrConnectionAlreadyExists) {
 		t.Errorf("second Register() error = %v, want ErrConnectionAlreadyExists", err)
 	}
 }
@@ -157,17 +157,17 @@ const (
 	testTaskConnectionID = "app-1"
 )
 
-func testTask(sourceID string, version int64) *domain.ProvisioningTask {
+func testTask(sourceID string, version int64) *provisioningdomain.ProvisioningTask {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	return &domain.ProvisioningTask{
+	return &provisioningdomain.ProvisioningTask{
 		ID:            "task-" + sourceID + "-" + testTaskTenantID,
 		TenantID:      testTaskTenantID,
 		ConnectionID:  testTaskConnectionID,
-		SourceType:    domain.SourceTypeUser,
+		SourceType:    provisioningdomain.SourceTypeUser,
 		SourceID:      sourceID,
 		SourceVersion: version,
-		Operation:     domain.OperationCreate,
-		Status:        domain.TaskPending,
+		Operation:     provisioningdomain.OperationCreate,
+		Status:        provisioningdomain.TaskPending,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -223,7 +223,7 @@ func TestProvisioningTaskRepository_ListUnenqueued_OnlyPendingWithoutJob(t *test
 		t.Fatalf("AttachJob() error = %v", err)
 	}
 	succeeded := testTask("user-3", 1)
-	succeeded.Status = domain.TaskSucceeded
+	succeeded.Status = provisioningdomain.TaskSucceeded
 	_, _ = repo.Save(ctx, succeeded)
 
 	unenqueued, err := repo.ListUnenqueued(ctx, time.Time{}, "", 10)
@@ -259,14 +259,14 @@ func TestProvisioningTaskRepository_UpdateStatus_PersistsStatusAndError(t *testi
 	d := testTask("user-1", 1)
 	_, _ = repo.Save(ctx, d)
 	msg := "downstream 503"
-	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, domain.TaskDeadLetter, &msg); err != nil {
+	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, provisioningdomain.TaskDeadLetter, &msg); err != nil {
 		t.Fatalf("UpdateStatus() error = %v", err)
 	}
 	found, err := repo.Find(ctx, "tenant-a", d.ID)
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
-	if found.Status != domain.TaskDeadLetter || found.LastError == nil || *found.LastError != msg {
+	if found.Status != provisioningdomain.TaskDeadLetter || found.LastError == nil || *found.LastError != msg {
 		t.Errorf("UpdateStatus() did not persist: %+v", found)
 	}
 }
@@ -288,7 +288,7 @@ func TestProvisioningTaskRepository_RetryDeadLetter_OnlyFromDeadLetter(t *testin
 		t.Error("RetryDeadLetter() on a non-dead_letter task should return false")
 	}
 
-	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, domain.TaskDeadLetter, nil); err != nil {
+	if err := repo.UpdateStatus(ctx, "tenant-a", d.ID, provisioningdomain.TaskDeadLetter, nil); err != nil {
 		t.Fatalf("UpdateStatus() error = %v", err)
 	}
 	retried, err = repo.RetryDeadLetter(ctx, "tenant-a", d.ID)
@@ -296,7 +296,7 @@ func TestProvisioningTaskRepository_RetryDeadLetter_OnlyFromDeadLetter(t *testin
 		t.Fatalf("RetryDeadLetter() on dead_letter task = (%v, %v), want (true, nil)", retried, err)
 	}
 	found, _ := repo.Find(ctx, "tenant-a", d.ID)
-	if found.Status != domain.TaskPending || found.JobID != nil {
+	if found.Status != provisioningdomain.TaskPending || found.JobID != nil {
 		t.Errorf("RetryDeadLetter() did not reset task: %+v", found)
 	}
 }
@@ -317,11 +317,11 @@ func TestProvisioningTaskRepository_TenantIsolation(t *testing.T) {
 	if err != nil || len(tasks) != 0 {
 		t.Errorf("ListByConnection() across tenants = (%+v, %v), want (empty, nil)", tasks, err)
 	}
-	if err := repo.UpdateStatus(ctx, "tenant-other", d.ID, domain.TaskDeadLetter, nil); err != nil {
+	if err := repo.UpdateStatus(ctx, "tenant-other", d.ID, provisioningdomain.TaskDeadLetter, nil); err != nil {
 		t.Fatalf("UpdateStatus() across tenants unexpected error = %v", err)
 	}
 	found, err := repo.Find(ctx, testTaskTenantID, d.ID)
-	if err != nil || found == nil || found.Status != domain.TaskPending {
+	if err != nil || found == nil || found.Status != provisioningdomain.TaskPending {
 		t.Errorf("UpdateStatus() from another tenant must not mutate the task, got %+v, err=%v", found, err)
 	}
 }
@@ -329,14 +329,14 @@ func TestProvisioningTaskRepository_TenantIsolation(t *testing.T) {
 func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	repo := NewRemoteResourceLinkRepository()
 	ctx := context.Background()
-	link := domain.NewRemoteResourceLink("app-1", "tenant-a", domain.SourceTypeUser, "user-1")
+	link := provisioningdomain.NewRemoteResourceLink("app-1", "tenant-a", provisioningdomain.SourceTypeUser, "user-1")
 	if err := link.ApplySync(1, "remote-1", "user-1", nil, time.Now()); err != nil {
 		t.Fatalf("ApplySync() error = %v", err)
 	}
 	if err := repo.Upsert(ctx, link); err != nil {
 		t.Fatalf("Upsert() error = %v", err)
 	}
-	found, err := repo.Find(ctx, "app-1", domain.SourceTypeUser, "user-1")
+	found, err := repo.Find(ctx, "app-1", provisioningdomain.SourceTypeUser, "user-1")
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
@@ -350,7 +350,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	if err := repo.Upsert(ctx, link); err != nil {
 		t.Fatalf("second Upsert() error = %v", err)
 	}
-	found, _ = repo.Find(ctx, "app-1", domain.SourceTypeUser, "user-1")
+	found, _ = repo.Find(ctx, "app-1", provisioningdomain.SourceTypeUser, "user-1")
 	if found.LastSyncedVersion != 2 {
 		t.Errorf("Find() after second Upsert() LastSyncedVersion = %d, want 2", found.LastSyncedVersion)
 	}
@@ -358,7 +358,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 
 func TestRemoteResourceLinkRepository_Find_NotFoundReturnsNil(t *testing.T) {
 	repo := NewRemoteResourceLinkRepository()
-	found, err := repo.Find(context.Background(), "app-1", domain.SourceTypeUser, "missing")
+	found, err := repo.Find(context.Background(), "app-1", provisioningdomain.SourceTypeUser, "missing")
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
@@ -374,7 +374,7 @@ func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
 	for i, sourceID := range []string{"user-1", "user-2", "user-3", "user-4", "user-5"} {
 		d := testTask(sourceID, 1)
 		if sourceID == "user-3" {
-			d.SourceType = domain.SourceTypeGroup
+			d.SourceType = provisioningdomain.SourceTypeGroup
 		}
 		d.ID = "task-" + sourceID
 		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
@@ -408,7 +408,7 @@ func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
 	}
-	group := domain.SourceTypeGroup
+	group := provisioningdomain.SourceTypeGroup
 	groups, err := repo.ListPageByConnection(ctx, testTaskTenantID, testTaskConnectionID, nil, &group, time.Time{}, "", 100)
 	if err != nil || len(groups) != 1 || groups[0].SourceID != "user-3" {
 		t.Fatalf("source_type filter=%+v err=%v", groups, err)

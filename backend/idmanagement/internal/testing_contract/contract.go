@@ -8,11 +8,11 @@ import (
 	"io"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/idmanagement/internal/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 )
 
 type Fixture struct {
-	Artifacts ports.CSVArtifactStore
+	Artifacts idmports.CSVArtifactStore
 	TenantA   string
 	TenantB   string
 }
@@ -43,7 +43,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if readErr != nil || closeErr != nil || !bytes.Equal(got, payload) || opened != metadata {
 		t.Fatalf("opened bytes=%d metadata=%+v readErr=%v closeErr=%v", len(got), opened, readErr, closeErr)
 	}
-	if reader, _, err := f.Artifacts.OpenCSVArtifact(ctx, f.TenantB, metadata.Ref); reader != nil || !errors.Is(err, ports.ErrCSVArtifactNotFound) {
+	if reader, _, err := f.Artifacts.OpenCSVArtifact(ctx, f.TenantB, metadata.Ref); reader != nil || !errors.Is(err, idmports.ErrCSVArtifactNotFound) {
 		t.Fatalf("other tenant OpenCSVArtifact = (%v, %v)", reader, err)
 	}
 
@@ -65,10 +65,10 @@ func Run(t *testing.T, newFixture NewFixture) {
 			t.Fatalf("ReadCSVArtifactPage(%d) = (%q, %+v, %v)", index, page, readMetadata, err)
 		}
 	}
-	if page, _, err := f.Artifacts.ReadCSVArtifactPage(ctx, f.TenantA, pageMetadata.Ref, -1); page != nil || !errors.Is(err, ports.ErrCSVArtifactNotFound) {
+	if page, _, err := f.Artifacts.ReadCSVArtifactPage(ctx, f.TenantA, pageMetadata.Ref, -1); page != nil || !errors.Is(err, idmports.ErrCSVArtifactNotFound) {
 		t.Fatalf("negative ReadCSVArtifactPage = (%q, %v)", page, err)
 	}
-	usageReader, ok := f.Artifacts.(ports.CSVArtifactUsageReader)
+	usageReader, ok := f.Artifacts.(idmports.CSVArtifactUsageReader)
 	if !ok {
 		t.Fatal("artifact store cannot measure its usage")
 	}

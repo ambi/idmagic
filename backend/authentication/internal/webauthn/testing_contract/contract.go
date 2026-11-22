@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 )
 
 type Fixture struct {
-	Store   ports.WebAuthnSessionStore
+	Store   webauthnports.WebAuthnSessionStore
 	Context func(context.Context) context.Context
 	Other   func(context.Context) context.Context
 	Now     time.Time
@@ -24,7 +24,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx, other := f.Context(context.Background()), f.Other(context.Background())
-	session := ports.WebAuthnSession{Payload: json.RawMessage(`{"challenge":"challenge","user_id":"dXNlci0x"}`)}
+	session := webauthnports.WebAuthnSession{Payload: json.RawMessage(`{"challenge":"challenge","user_id":"dXNlci0x"}`)}
 	if err := f.Store.Save(ctx, "key-1", session, f.Now.Add(time.Minute)); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

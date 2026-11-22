@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -68,7 +68,7 @@ func (r UserInfoResponse) MarshalJSON() ([]byte, error) {
 func UserInfo(
 	ctx context.Context,
 	repo userports.UserRepository,
-	authorizer policyports.Authorizer,
+	authorizer accessports.Authorizer,
 	in UserInfoInput,
 ) (*UserInfoResponse, error) {
 	req := spec.AuthZRequest{

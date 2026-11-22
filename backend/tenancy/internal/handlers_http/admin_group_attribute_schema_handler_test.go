@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	groupschemaports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -36,8 +36,8 @@ type groupAttributeSchemaResponse struct {
 }
 
 func newGroupAttributeSchemaServer(
-	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
-) (*echo.Echo, groupschemaports.TenantGroupAttributeSchemaRepository, *[]spec.DomainEvent) {
+	t *testing.T, actor *userdomain.User, tenants ...*tenancydomain.Tenant,
+) (*echo.Echo, groupports.TenantGroupAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {

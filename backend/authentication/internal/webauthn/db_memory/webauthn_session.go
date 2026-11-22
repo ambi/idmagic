@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -33,7 +33,7 @@ func NewWebAuthnSessionStore() *WebAuthnSessionStore {
 func (s *WebAuthnSessionStore) Save(
 	ctx context.Context,
 	key string,
-	session ports.WebAuthnSession,
+	session webauthnports.WebAuthnSession,
 	expiresAt time.Time,
 ) error {
 	s.mu.Lock()
@@ -45,7 +45,7 @@ func (s *WebAuthnSessionStore) Save(
 func (s *WebAuthnSessionStore) Take(
 	ctx context.Context,
 	key string,
-) (*ports.WebAuthnSession, error) {
+) (*webauthnports.WebAuthnSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry, ok := s.sessions[sessionKey(ctx, key)]
@@ -56,7 +56,7 @@ func (s *WebAuthnSessionStore) Take(
 	if !time.Now().Before(entry.expiresAt) {
 		return nil, nil
 	}
-	return &ports.WebAuthnSession{Payload: entry.payload}, nil
+	return &webauthnports.WebAuthnSession{Payload: entry.payload}, nil
 }
 
 func sessionKey(ctx context.Context, key string) string {

@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/security/safehttp"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 const (
@@ -50,10 +50,10 @@ func withoutRedirects(client *http.Client) *http.Client {
 }
 
 // Send は代理実行の要求を送る。
-func (c *Client) Send(ctx context.Context, request ports.OutboundRequest) (ports.OutboundResponse, error) {
+func (c *Client) Send(ctx context.Context, request tokenvaultports.OutboundRequest) (tokenvaultports.OutboundResponse, error) {
 	outbound, err := http.NewRequestWithContext(ctx, request.Method, request.URL, bytes.NewReader(request.Body))
 	if err != nil {
-		return ports.OutboundResponse{}, ports.ErrUpstreamUnreachable
+		return tokenvaultports.OutboundResponse{}, tokenvaultports.ErrUpstreamUnreachable
 	}
 	for name, value := range request.Headers {
 		outbound.Header.Set(name, value)
@@ -61,25 +61,25 @@ func (c *Client) Send(ctx context.Context, request ports.OutboundRequest) (ports
 	outbound.Header.Set("Authorization", "Bearer "+request.AccessToken)
 	response, err := c.HTTP.Do(outbound)
 	if err != nil {
-		return ports.OutboundResponse{}, ports.ErrUpstreamUnreachable
+		return tokenvaultports.OutboundResponse{}, tokenvaultports.ErrUpstreamUnreachable
 	}
 	defer func() { _ = response.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(response.Body, domain.MaxResponseBodyBytes+1))
+	body, err := io.ReadAll(io.LimitReader(response.Body, tokenvaultdomain.MaxResponseBodyBytes+1))
 	if err != nil {
-		return ports.OutboundResponse{}, ports.ErrUpstreamUnreachable
+		return tokenvaultports.OutboundResponse{}, tokenvaultports.ErrUpstreamUnreachable
 	}
-	if len(body) > domain.MaxResponseBodyBytes {
-		return ports.OutboundResponse{}, ports.ErrUpstreamResponseTooLarge
+	if len(body) > tokenvaultdomain.MaxResponseBodyBytes {
+		return tokenvaultports.OutboundResponse{}, tokenvaultports.ErrUpstreamResponseTooLarge
 	}
-	return ports.OutboundResponse{Status: response.StatusCode, ContentType: response.Header.Get("Content-Type"), Body: body}, nil
+	return tokenvaultports.OutboundResponse{Status: response.StatusCode, ContentType: response.Header.Get("Content-Type"), Body: body}, nil
 }
 
 // OpenMCP は同じ安全な transport を使って応答を開く。要求を再作成するための
 // GetBody を持たせず、Transport にも POST の再送を許さない。
-func (c *Client) OpenMCP(ctx context.Context, request ports.OutboundRequest) (*http.Response, error) {
+func (c *Client) OpenMCP(ctx context.Context, request tokenvaultports.OutboundRequest) (*http.Response, error) {
 	outbound, err := http.NewRequestWithContext(ctx, http.MethodPost, request.URL, bytes.NewReader(request.Body))
 	if err != nil {
-		return nil, ports.ErrUpstreamUnreachable
+		return nil, tokenvaultports.ErrUpstreamUnreachable
 	}
 	for _, name := range []string{"Accept", "Content-Type", "Mcp-Protocol-Version", "Mcp-Method", "Mcp-Name", "Mcp-Session-Id"} {
 		if value := request.Headers[http.CanonicalHeaderKey(name)]; value != "" {
@@ -94,19 +94,19 @@ func (c *Client) OpenMCP(ctx context.Context, request ports.OutboundRequest) (*h
 }
 
 // ExchangeCode は認可コードをトークンへ交換する。
-func (c *Client) ExchangeCode(ctx context.Context, client ports.OAuthClient, code, verifier, redirectURI string) (ports.TokenResponse, error) {
+func (c *Client) ExchangeCode(ctx context.Context, client tokenvaultports.OAuthClient, code, verifier, redirectURI string) (tokenvaultports.TokenResponse, error) {
 	return c.token(ctx, client, url.Values{
 		"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {verifier}, "redirect_uri": {redirectURI},
 	})
 }
 
 // Refresh は更新トークンでトークンを更新する。
-func (c *Client) Refresh(ctx context.Context, client ports.OAuthClient, refreshToken string) (ports.TokenResponse, error) {
+func (c *Client) Refresh(ctx context.Context, client tokenvaultports.OAuthClient, refreshToken string) (tokenvaultports.TokenResponse, error) {
 	return c.token(ctx, client, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
 }
 
 // Revoke は RFC 7009 の失効を試す。
-func (c *Client) Revoke(ctx context.Context, client ports.OAuthClient, token, tokenTypeHint string) error {
+func (c *Client) Revoke(ctx context.Context, client tokenvaultports.OAuthClient, token, tokenTypeHint string) error {
 	response, err := c.postForm(ctx, client, client.RevocationEndpoint, url.Values{"token": {token}, "token_type_hint": {tokenTypeHint}})
 	if err != nil {
 		return err
@@ -118,43 +118,43 @@ func (c *Client) Revoke(ctx context.Context, client ports.OAuthClient, token, to
 	return nil
 }
 
-func (c *Client) postForm(ctx context.Context, client ports.OAuthClient, endpoint string, form url.Values) (*http.Response, error) {
-	if client.AuthMethod == domain.AuthMethodClientSecretPost {
+func (c *Client) postForm(ctx context.Context, client tokenvaultports.OAuthClient, endpoint string, form url.Values) (*http.Response, error) {
+	if client.AuthMethod == tokenvaultdomain.AuthMethodClientSecretPost {
 		form.Set("client_id", client.ClientID)
 		form.Set("client_secret", client.ClientSecret)
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
-		return nil, ports.ErrUpstreamUnreachable
+		return nil, tokenvaultports.ErrUpstreamUnreachable
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	// JSON を既定にしない上流があるので明示する。
 	request.Header.Set("Accept", "application/json")
-	if client.AuthMethod != domain.AuthMethodClientSecretPost {
+	if client.AuthMethod != tokenvaultdomain.AuthMethodClientSecretPost {
 		// RFC 6749 §2.3.1: 資格情報は form-urlencoded してから Basic にする。
 		request.SetBasicAuth(url.QueryEscape(client.ClientID), url.QueryEscape(client.ClientSecret))
 	}
 	response, err := c.HTTP.Do(request)
 	if err != nil {
-		return nil, ports.ErrUpstreamUnreachable
+		return nil, tokenvaultports.ErrUpstreamUnreachable
 	}
 	return response, nil
 }
 
-func (c *Client) token(ctx context.Context, client ports.OAuthClient, form url.Values) (ports.TokenResponse, error) {
+func (c *Client) token(ctx context.Context, client tokenvaultports.OAuthClient, form url.Values) (tokenvaultports.TokenResponse, error) {
 	response, err := c.postForm(ctx, client, client.TokenEndpoint, form)
 	if err != nil {
-		return ports.TokenResponse{}, err
+		return tokenvaultports.TokenResponse{}, err
 	}
 	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxTokenResponseSize+1))
 	if err != nil || len(body) > maxTokenResponseSize {
-		return ports.TokenResponse{}, &ports.TokenEndpointError{Status: response.StatusCode}
+		return tokenvaultports.TokenResponse{}, &tokenvaultports.TokenEndpointError{Status: response.StatusCode}
 	}
 	return parseTokenResponse(response, body)
 }
 
-func parseTokenResponse(response *http.Response, body []byte) (ports.TokenResponse, error) {
+func parseTokenResponse(response *http.Response, body []byte) (tokenvaultports.TokenResponse, error) {
 	var parsed struct {
 		AccessToken  string `json:"access_token"`
 		TokenType    string `json:"token_type"`
@@ -165,15 +165,15 @@ func parseTokenResponse(response *http.Response, body []byte) (ports.TokenRespon
 	}
 	mediaType, _, _ := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if mediaType != "application/json" || json.Unmarshal(body, &parsed) != nil {
-		return ports.TokenResponse{}, &ports.TokenEndpointError{Status: response.StatusCode}
+		return tokenvaultports.TokenResponse{}, &tokenvaultports.TokenEndpointError{Status: response.StatusCode}
 	}
 	if response.StatusCode != http.StatusOK || parsed.Error != "" {
-		return ports.TokenResponse{}, &ports.TokenEndpointError{Status: response.StatusCode, OAuthError: parsed.Error}
+		return tokenvaultports.TokenResponse{}, &tokenvaultports.TokenEndpointError{Status: response.StatusCode, OAuthError: parsed.Error}
 	}
 	if parsed.AccessToken == "" || !strings.EqualFold(parsed.TokenType, "bearer") {
-		return ports.TokenResponse{}, &ports.TokenEndpointError{Status: response.StatusCode}
+		return tokenvaultports.TokenResponse{}, &tokenvaultports.TokenEndpointError{Status: response.StatusCode}
 	}
-	result := ports.TokenResponse{AccessToken: parsed.AccessToken, RefreshToken: parsed.RefreshToken}
+	result := tokenvaultports.TokenResponse{AccessToken: parsed.AccessToken, RefreshToken: parsed.RefreshToken}
 	if parsed.Scope != "" {
 		result.Scopes = strings.Fields(parsed.Scope)
 	}
@@ -184,4 +184,4 @@ func parseTokenResponse(response *http.Response, body []byte) (ports.TokenRespon
 	return result, nil
 }
 
-var _ ports.UpstreamClient = (*Client)(nil)
+var _ tokenvaultports.UpstreamClient = (*Client)(nil)

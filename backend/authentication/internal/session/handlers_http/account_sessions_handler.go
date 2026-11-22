@@ -9,8 +9,8 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
-	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -25,7 +25,7 @@ type accountSessionResponse struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-func toAccountSessionResponse(view authusecases.SessionView) accountSessionResponse {
+func toAccountSessionResponse(view sessionusecases.SessionView) accountSessionResponse {
 	amr := view.AMR
 	if amr == nil {
 		amr = []string{}
@@ -36,15 +36,15 @@ func toAccountSessionResponse(view authusecases.SessionView) accountSessionRespo
 	}
 }
 
-func sessionStore(d httpdeps.Deps) authnports.SessionStore {
+func sessionStore(d httpdeps.Deps) sessionports.SessionStore {
 	if d.SessionManager == nil {
 		return nil
 	}
 	return d.SessionManager.Store
 }
 
-func accountSessionDeps(d httpdeps.Deps) authusecases.SessionDeps {
-	deps := authusecases.SessionDeps{Store: sessionStore(d), Emit: d.Emit, TrustedDevices: d.TrustedDeviceRevoker()}
+func accountSessionDeps(d httpdeps.Deps) sessionusecases.SessionDeps {
+	deps := sessionusecases.SessionDeps{Store: sessionStore(d), Emit: d.Emit, TrustedDevices: d.TrustedDeviceRevoker()}
 	if d.SessionManager != nil {
 		deps.QuotaRepo = d.SessionManager.QuotaRepo
 	}
@@ -75,7 +75,7 @@ func HandleListAccountSessions(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	views, err := authusecases.ListSessions(c.Request().Context(), sessionStore(d), sub, sessionID)
+	views, err := sessionusecases.ListSessions(c.Request().Context(), sessionStore(d), sub, sessionID)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func HandleRevokeAccountSession(d httpdeps.Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	targetSessionID := c.Param("id")
-	if err := authusecases.RevokeOwnSession(
+	if err := sessionusecases.RevokeOwnSession(
 		c.Request().Context(), accountSessionDeps(d), sub, targetSessionID, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
@@ -117,7 +117,7 @@ type adminSessionResponse struct {
 	ExpiresAt  time.Time `json:"expires_at"`
 }
 
-func toAdminSessionResponse(view authusecases.AdminSessionView) adminSessionResponse {
+func toAdminSessionResponse(view sessionusecases.AdminSessionView) adminSessionResponse {
 	amr := view.AMR
 	if amr == nil {
 		amr = []string{}
@@ -134,7 +134,7 @@ func HandleAdminListSessions(d httpdeps.Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := authusecases.AdminListSessions(c.Request().Context(), sessionStore(d), c.Param("sub"))
+	views, err := sessionusecases.AdminListSessions(c.Request().Context(), sessionStore(d), c.Param("sub"))
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func HandleAdminRevokeSession(d httpdeps.Deps, c *echo.Context) error {
 	}
 	targetUserID := c.Param("sub")
 	targetSessionID := c.Param("id")
-	if err := authusecases.AdminRevokeSession(
+	if err := sessionusecases.AdminRevokeSession(
 		c.Request().Context(), accountSessionDeps(d), actor.ID, targetUserID, targetSessionID, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
@@ -182,7 +182,7 @@ func HandleAdminRevokeAllSessions(d httpdeps.Deps, c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	targetUserID := c.Param("sub")
-	revokedIDs, err := authusecases.AdminRevokeUserSessions(
+	revokedIDs, err := sessionusecases.AdminRevokeUserSessions(
 		c.Request().Context(), accountSessionDeps(d), actor.ID, targetUserID, time.Now().UTC(),
 	)
 	if err != nil {
@@ -206,7 +206,7 @@ func HandleRevokeOtherAccountSessions(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	revokedIDs, err := authusecases.RevokeOtherSessions(
+	revokedIDs, err := sessionusecases.RevokeOtherSessions(
 		c.Request().Context(), accountSessionDeps(d), sub, sessionID, time.Now().UTC(),
 	)
 	if err != nil {

@@ -16,27 +16,27 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 type AdminWorkloadIdentityDeps struct {
-	TrustBundleRepo ports.WorkloadTrustBundleRepository
-	BindingRepo     ports.AgentWorkloadBindingRepository
+	TrustBundleRepo workloadports.WorkloadTrustBundleRepository
+	BindingRepo     workloadports.AgentWorkloadBindingRepository
 	// FetchJWKS performs the live JWKS lookup used by RefreshWorkloadTrustBundleJWKS
 	// (test/refresh action). Shares the same signature as
 	// VerifyWorkloadAttestationDeps.FetchJWKS so both can be wired to the same
 	// adapter at the composition root.
-	FetchJWKS func(ctx context.Context, bundle *domain.WorkloadTrustBundle) ([]map[string]any, error)
+	FetchJWKS func(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error)
 	Emit      func(spec.DomainEvent)
 }
 
-func ListWorkloadTrustBundles(ctx context.Context, deps AdminWorkloadIdentityDeps) ([]*domain.WorkloadTrustBundle, error) {
+func ListWorkloadTrustBundles(ctx context.Context, deps AdminWorkloadIdentityDeps) ([]*workloaddomain.WorkloadTrustBundle, error) {
 	return deps.TrustBundleRepo.ListAll(ctx, tenantports.TenantID(ctx))
 }
 
 // GetWorkloadTrustBundle は別テナントの bundle を未存在として扱う。
-func GetWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string) (*domain.WorkloadTrustBundle, error) {
+func GetWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string) (*workloaddomain.WorkloadTrustBundle, error) {
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantports.TenantID(ctx), id)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func GetWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps,
 type RegisterWorkloadTrustBundleInput struct {
 	Name string
 	// Profile は空なら oidc にする。
-	Profile                   domain.WorkloadTrustBundleProfile
+	Profile                   workloaddomain.WorkloadTrustBundleProfile
 	TrustDomain               string
 	Issuer                    string
 	JWKSURI                   *string
@@ -59,7 +59,7 @@ type RegisterWorkloadTrustBundleInput struct {
 	MaxSubjectTokenTTLSeconds *int
 }
 
-func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, in RegisterWorkloadTrustBundleInput, now time.Time) (*domain.WorkloadTrustBundle, error) {
+func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, in RegisterWorkloadTrustBundleInput, now time.Time) (*workloaddomain.WorkloadTrustBundle, error) {
 	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -67,17 +67,17 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 	}
 	profile := in.Profile
 	if profile == "" {
-		profile = domain.WorkloadTrustBundleProfileOIDC
+		profile = workloaddomain.WorkloadTrustBundleProfileOIDC
 	}
 	if !profile.Valid() {
 		return nil, ErrTrustBundleInvalidProfile
 	}
 	trustDomain := strings.TrimSpace(in.TrustDomain)
 	issuer := strings.TrimSpace(in.Issuer)
-	if issuer == "" && profile != domain.WorkloadTrustBundleProfileSPIFFE {
+	if issuer == "" && profile != workloaddomain.WorkloadTrustBundleProfileSPIFFE {
 		return nil, ErrTrustBundleIssuerRequired
 	}
-	if profile == domain.WorkloadTrustBundleProfileSPIFFE && !domain.ValidTrustDomain(trustDomain) {
+	if profile == workloaddomain.WorkloadTrustBundleProfileSPIFFE && !workloaddomain.ValidTrustDomain(trustDomain) {
 		return nil, ErrTrustBundleInvalidTrustDomain
 	}
 	if in.JWKSURI == nil && in.JWKS == nil {
@@ -89,7 +89,7 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 	if err := ensureTrustBundleNameAndIssuerAvailable(ctx, deps, tenantID, name, issuer, ""); err != nil {
 		return nil, err
 	}
-	if profile == domain.WorkloadTrustBundleProfileSPIFFE {
+	if profile == workloaddomain.WorkloadTrustBundleProfileSPIFFE {
 		existing, err := deps.TrustBundleRepo.FindSPIFFEByTrustDomain(ctx, tenantID, trustDomain)
 		if err != nil {
 			return nil, err
@@ -102,14 +102,14 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 	if in.MaxSubjectTokenTTLSeconds != nil && *in.MaxSubjectTokenTTLSeconds > 0 {
 		ttl = *in.MaxSubjectTokenTTLSeconds
 	}
-	id, err := domain.NewWorkloadTrustBundleID()
+	id, err := workloaddomain.NewWorkloadTrustBundleID()
 	if err != nil {
 		return nil, err
 	}
-	bundle := &domain.WorkloadTrustBundle{
+	bundle := &workloaddomain.WorkloadTrustBundle{
 		ID: id, TenantID: tenantID, Name: name, Profile: profile, TrustDomain: trustDomain,
 		Issuer: issuer, JWKSURI: in.JWKSURI, JWKS: in.JWKS, AcceptedAudiences: in.AcceptedAudiences,
-		MaxSubjectTokenTTLSeconds: ttl, Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,
+		MaxSubjectTokenTTLSeconds: ttl, Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,
 	}
 	if err := bundle.Validate(); err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func RegisterWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentity
 	if err := deps.TrustBundleRepo.Save(ctx, bundle); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.WorkloadTrustBundleConfigured{At: now, TenantID: tenantID, TrustBundleID: bundle.ID, Issuer: bundle.Issuer})
+	emit(deps.Emit, &workloaddomain.WorkloadTrustBundleConfigured{At: now, TenantID: tenantID, TrustBundleID: bundle.ID, Issuer: bundle.Issuer})
 	return bundle, nil
 }
 
@@ -131,7 +131,7 @@ type UpdateWorkloadTrustBundleInput struct {
 
 // UpdateWorkloadTrustBundle は name / jwks_uri / jwks / accepted_audiences /
 // max_subject_token_ttl_seconds を更新する。profile / issuer / trust_domain は不変。
-func UpdateWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, in UpdateWorkloadTrustBundleInput, now time.Time) (*domain.WorkloadTrustBundle, error) {
+func UpdateWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, in UpdateWorkloadTrustBundleInput, now time.Time) (*workloaddomain.WorkloadTrustBundle, error) {
 	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -191,19 +191,19 @@ func UpdateWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDe
 	if err := deps.TrustBundleRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.WorkloadTrustBundleUpdated{At: now, TenantID: tenantID, TrustBundleID: bundle.ID})
+	emit(deps.Emit, &workloaddomain.WorkloadTrustBundleUpdated{At: now, TenantID: tenantID, TrustBundleID: bundle.ID})
 	return &updated, nil
 }
 
-func DisableWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, now time.Time) (*domain.WorkloadTrustBundle, error) {
-	return setTrustBundleStatus(ctx, deps, id, domain.WorkloadTrustBundleStatusDisabled, now)
+func DisableWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, now time.Time) (*workloaddomain.WorkloadTrustBundle, error) {
+	return setTrustBundleStatus(ctx, deps, id, workloaddomain.WorkloadTrustBundleStatusDisabled, now)
 }
 
-func EnableWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, now time.Time) (*domain.WorkloadTrustBundle, error) {
-	return setTrustBundleStatus(ctx, deps, id, domain.WorkloadTrustBundleStatusEnabled, now)
+func EnableWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, now time.Time) (*workloaddomain.WorkloadTrustBundle, error) {
+	return setTrustBundleStatus(ctx, deps, id, workloaddomain.WorkloadTrustBundleStatusEnabled, now)
 }
 
-func setTrustBundleStatus(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, status domain.WorkloadTrustBundleStatus, now time.Time) (*domain.WorkloadTrustBundle, error) {
+func setTrustBundleStatus(ctx context.Context, deps AdminWorkloadIdentityDeps, id string, status workloaddomain.WorkloadTrustBundleStatus, now time.Time) (*workloaddomain.WorkloadTrustBundle, error) {
 	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -224,10 +224,10 @@ func setTrustBundleStatus(ctx context.Context, deps AdminWorkloadIdentityDeps, i
 	if err := deps.TrustBundleRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if status == domain.WorkloadTrustBundleStatusDisabled {
-		emit(deps.Emit, &domain.WorkloadTrustBundleDisabled{At: now, TenantID: tenantID, TrustBundleID: bundle.ID})
+	if status == workloaddomain.WorkloadTrustBundleStatusDisabled {
+		emit(deps.Emit, &workloaddomain.WorkloadTrustBundleDisabled{At: now, TenantID: tenantID, TrustBundleID: bundle.ID})
 	} else {
-		emit(deps.Emit, &domain.WorkloadTrustBundleEnabled{At: now, TenantID: tenantID, TrustBundleID: bundle.ID})
+		emit(deps.Emit, &workloaddomain.WorkloadTrustBundleEnabled{At: now, TenantID: tenantID, TrustBundleID: bundle.ID})
 	}
 	return &updated, nil
 }
@@ -256,7 +256,7 @@ func DeleteWorkloadTrustBundle(ctx context.Context, deps AdminWorkloadIdentityDe
 	if err := deps.TrustBundleRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.WorkloadTrustBundleDeleted{At: now, TenantID: tenantID, TrustBundleID: id})
+	emit(deps.Emit, &workloaddomain.WorkloadTrustBundleDeleted{At: now, TenantID: tenantID, TrustBundleID: id})
 	return nil
 }
 
@@ -285,13 +285,13 @@ func RefreshWorkloadTrustBundleJWKS(ctx context.Context, deps AdminWorkloadIdent
 	reachable := fetchErr == nil
 	result := &RefreshWorkloadTrustBundleJWKSResult{Reachable: reachable, KeyCount: len(keys)}
 	if reachable {
-		fetched := domain.JWKSSnapshot{Keys: keys, FetchedAt: now}
+		fetched := workloaddomain.JWKSSnapshot{Keys: keys, FetchedAt: now}
 		if err := deps.TrustBundleRepo.RecordJWKSFetched(ctx, tenantID, id, bundle.JWKSURI, fetched); err != nil {
 			return nil, err
 		}
 		result.JWKSCachedAt = &now
 	}
-	emit(deps.Emit, &domain.WorkloadTrustBundleJWKSRefreshed{At: now, TenantID: tenantID, TrustBundleID: id, Reachable: reachable})
+	emit(deps.Emit, &workloaddomain.WorkloadTrustBundleJWKSRefreshed{At: now, TenantID: tenantID, TrustBundleID: id, Reachable: reachable})
 	return result, nil
 }
 

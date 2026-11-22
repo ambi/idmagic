@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idmanagement/agent/domain"
-	"github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 )
 
 type Fixture struct {
-	Repository ports.AgentRepository
+	Repository agentports.AgentRepository
 	TenantID   string
-	Agent      *domain.Agent
+	Agent      *agentdomain.Agent
 }
 
 type NewFixture func(t *testing.T) Fixture
@@ -53,7 +53,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 
 	// Update は呼び出し側が先に読んだ値ではなく、保存先の最新の値に変更を当てる。
 	described := "described by Update"
-	afterUpdate, err := f.Repository.Update(ctx, f.TenantID, f.Agent.ID, func(latest *domain.Agent) (bool, error) {
+	afterUpdate, err := f.Repository.Update(ctx, f.TenantID, f.Agent.ID, func(latest *agentdomain.Agent) (bool, error) {
 		if latest.Name != "updated-agent" {
 			t.Errorf("Update received name %q, want the latest saved name", latest.Name)
 		}
@@ -67,7 +67,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		got.Name != "updated-agent" || got.Description == nil || *got.Description != described {
 		t.Fatalf("FindByID after Update = (%+v, %v)", got, err)
 	}
-	if _, err := f.Repository.Update(ctx, f.TenantID, f.Agent.ID, func(latest *domain.Agent) (bool, error) {
+	if _, err := f.Repository.Update(ctx, f.TenantID, f.Agent.ID, func(latest *agentdomain.Agent) (bool, error) {
 		latest.Name = "discarded"
 		return false, nil
 	}); err != nil {
@@ -77,7 +77,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("Update without change saved: (%+v, %v)", got, err)
 	}
 	called := false
-	if missing, err := f.Repository.Update(ctx, f.TenantID, "00000000-0000-0000-0000-0000000000fe", func(*domain.Agent) (bool, error) {
+	if missing, err := f.Repository.Update(ctx, f.TenantID, "00000000-0000-0000-0000-0000000000fe", func(*agentdomain.Agent) (bool, error) {
 		called = true
 		return true, nil
 	}); err != nil || missing != nil || called {

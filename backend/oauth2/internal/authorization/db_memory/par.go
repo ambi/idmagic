@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // =====================================================================
@@ -17,14 +17,14 @@ import (
 
 type PARStore struct {
 	mu      sync.Mutex
-	records map[string]*domain.PARRecord
+	records map[string]*oauthdomain.PARRecord
 }
 
 func NewPARStore() *PARStore {
-	return &PARStore{records: map[string]*domain.PARRecord{}}
+	return &PARStore{records: map[string]*oauthdomain.PARRecord{}}
 }
 
-func (s *PARStore) Save(_ context.Context, rec *domain.PARRecord) error {
+func (s *PARStore) Save(_ context.Context, rec *oauthdomain.PARRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
@@ -32,13 +32,13 @@ func (s *PARStore) Save(_ context.Context, rec *domain.PARRecord) error {
 	return nil
 }
 
-func (s *PARStore) Find(_ context.Context, requestURI string) (*domain.PARRecord, error) {
+func (s *PARStore) Find(_ context.Context, requestURI string) (*oauthdomain.PARRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.records[requestURI], nil
 }
 
-func (s *PARStore) Consume(_ context.Context, requestURI string) (*domain.PARRecord, error) {
+func (s *PARStore) Consume(_ context.Context, requestURI string) (*oauthdomain.PARRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.records[requestURI]

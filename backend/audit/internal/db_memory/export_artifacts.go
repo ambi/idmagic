@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 type (
@@ -18,7 +18,7 @@ type (
 		byJob map[string]memoryExportArtifact
 	}
 	memoryExportArtifact struct {
-		metadata ports.ExportArtifact
+		metadata auditports.ExportArtifact
 		content  []byte
 	}
 )
@@ -27,36 +27,36 @@ func NewExportArtifactStore() *ExportArtifactStore {
 	return &ExportArtifactStore{byJob: map[string]memoryExportArtifact{}}
 }
 
-func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string, write func(io.Writer) (ports.ExportCompletion, error)) (ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string, write func(io.Writer) (auditports.ExportCompletion, error)) (auditports.ExportArtifact, error) {
 	s.mu.RLock()
 	existing, ok := s.byJob[jobID]
 	s.mu.RUnlock()
 	if ok {
 		if existing.metadata.TenantID != tenantID {
-			return ports.ExportArtifact{}, ports.ErrExportArtifactNotFound
+			return auditports.ExportArtifact{}, auditports.ErrExportArtifactNotFound
 		}
 		return existing.metadata, nil
 	}
 	var content bytes.Buffer
 	completion, err := write(&content)
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	if err := ctx.Err(); err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	if completion.BeforePublish != nil {
 		if err := completion.BeforePublish(); err != nil {
-			return ports.ExportArtifact{}, err
+			return auditports.ExportArtifact{}, err
 		}
 	}
 	digest := sha256.Sum256(content.Bytes())
-	meta := ports.ExportArtifact{Ref: jobID, JobID: jobID, TenantID: tenantID, Events: completion.Events, ByteSize: int64(content.Len()), SHA256: hex.EncodeToString(digest[:]), ExpiresAt: completion.ExpiresAt.UTC().Truncate(time.Microsecond)}
+	meta := auditports.ExportArtifact{Ref: jobID, JobID: jobID, TenantID: tenantID, Events: completion.Events, ByteSize: int64(content.Len()), SHA256: hex.EncodeToString(digest[:]), ExpiresAt: completion.ExpiresAt.UTC().Truncate(time.Microsecond)}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if existing, ok := s.byJob[jobID]; ok {
 		if existing.metadata.TenantID != tenantID {
-			return ports.ExportArtifact{}, ports.ErrExportArtifactNotFound
+			return auditports.ExportArtifact{}, auditports.ErrExportArtifactNotFound
 		}
 		return existing.metadata, nil
 	}
@@ -64,20 +64,20 @@ func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string,
 	return meta, nil
 }
 
-func (s *ExportArtifactStore) Open(_ context.Context, tenantID, jobID string) (io.ReadCloser, ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) Open(_ context.Context, tenantID, jobID string) (io.ReadCloser, auditports.ExportArtifact, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	stored, ok := s.byJob[jobID]
 	if !ok || stored.metadata.TenantID != tenantID {
-		return nil, ports.ExportArtifact{}, ports.ErrExportArtifactNotFound
+		return nil, auditports.ExportArtifact{}, auditports.ErrExportArtifactNotFound
 	}
 	return io.NopCloser(bytes.NewReader(stored.content)), stored.metadata, nil
 }
 
-func (s *ExportArtifactStore) Expire(_ context.Context, now time.Time) ([]ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) Expire(_ context.Context, now time.Time) ([]auditports.ExportArtifact, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var expired []ports.ExportArtifact
+	var expired []auditports.ExportArtifact
 	for id, stored := range s.byJob {
 		if !now.Before(stored.metadata.ExpiresAt) {
 			expired = append(expired, stored.metadata)

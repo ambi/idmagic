@@ -5,17 +5,17 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // ParseUserWrite: userName は必須 (RFC7643-CORE-RESOURCES)。
 // interfaces.CreateScimUser / UpdateScimUser
 func TestParseUserWriteRequiresUserName(t *testing.T) {
-	_, err := domain.ParseUserWrite(map[string]any{})
+	_, err := scimdomain.ParseUserWrite(map[string]any{})
 	if err == nil {
 		t.Fatal("expected error for missing userName")
 	}
-	var mutErr *domain.MutationError
+	var mutErr *scimdomain.MutationError
 	if !isMutationError(err, &mutErr) {
 		t.Fatalf("expected *domain.MutationError, got %T: %v", err, err)
 	}
@@ -44,7 +44,7 @@ func TestParseUserWriteCanonicalName(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			test.body["userName"] = "name-projection"
-			write, err := domain.ParseUserWrite(test.body)
+			write, err := scimdomain.ParseUserWrite(test.body)
 			if err != nil || write.Formatted != test.want {
 				t.Fatalf("name=%q error=%v, want %q", write.Formatted, err, test.want)
 			}
@@ -59,9 +59,9 @@ func TestParseUserWriteCanonicalName(t *testing.T) {
 		{"displayName": "Valid", "name": map[string]any{"formatted": 42}},
 	} {
 		body["userName"] = "invalid-name"
-		write, err := domain.ParseUserWrite(body)
-		var mutation *domain.MutationError
-		if !errors.As(err, &mutation) || mutation.ScimType != "invalidValue" || write != (domain.UserWrite{}) {
+		write, err := scimdomain.ParseUserWrite(body)
+		var mutation *scimdomain.MutationError
+		if !errors.As(err, &mutation) || mutation.ScimType != "invalidValue" || write != (scimdomain.UserWrite{}) {
 			t.Errorf("input=%v write=%+v error=%v, want invalidValue and no partial write", body, write, err)
 		}
 	}
@@ -69,7 +69,7 @@ func TestParseUserWriteCanonicalName(t *testing.T) {
 
 // 省略した mutable 属性は既定値にリセットされる (PUT full-replace semantics)。
 func TestParseUserWriteDefaultsOmittedAttributes(t *testing.T) {
-	w, err := domain.ParseUserWrite(map[string]any{"userName": "bjensen"})
+	w, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestParseUserWriteExplicitValues(t *testing.T) {
 		},
 		"active": false,
 	}
-	w, err := domain.ParseUserWrite(body)
+	w, err := scimdomain.ParseUserWrite(body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestProjectCanonicalEmailPriority(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := domain.ProjectCanonicalEmail(tt.emails)
+			got, err := scimdomain.ProjectCanonicalEmail(tt.emails)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -187,7 +187,7 @@ func TestProjectCanonicalEmailRejectsInvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := domain.ProjectCanonicalEmail(tt.emails)
+			_, err := scimdomain.ProjectCanonicalEmail(tt.emails)
 			assertMutationError(t, err, "invalidValue")
 		})
 	}
@@ -197,7 +197,7 @@ func TestProjectCanonicalEmailRejectsInvalidValues(t *testing.T) {
 func TestParseUserWriteRejectsUnsupportedComplexAttributes(t *testing.T) {
 	for _, attr := range []string{"phoneNumbers", "addresses"} {
 		t.Run(attr, func(t *testing.T) {
-			_, err := domain.ParseUserWrite(map[string]any{"userName": "bjensen", attr: []any{}})
+			_, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen", attr: []any{}})
 			assertMutationError(t, err, "invalidValue")
 		})
 	}
@@ -210,13 +210,13 @@ func TestParseUserWriteEnterpriseExtension(t *testing.T) {
 	t.Run("value object form", func(t *testing.T) {
 		body := map[string]any{
 			"userName": "bjensen",
-			domain.EnterpriseUserSchemaURN: map[string]any{
+			scimdomain.EnterpriseUserSchemaURN: map[string]any{
 				"employeeNumber": "701984",
 				"department":     "Tour Operations",
 				"manager":        map[string]any{"value": "scim_manager1"},
 			},
 		}
-		w, err := domain.ParseUserWrite(body)
+		w, err := scimdomain.ParseUserWrite(body)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -228,11 +228,11 @@ func TestParseUserWriteEnterpriseExtension(t *testing.T) {
 	t.Run("manager as bare string (Entra quirk)", func(t *testing.T) {
 		body := map[string]any{
 			"userName": "bjensen",
-			domain.EnterpriseUserSchemaURN: map[string]any{
+			scimdomain.EnterpriseUserSchemaURN: map[string]any{
 				"manager": "scim_manager1",
 			},
 		}
-		w, err := domain.ParseUserWrite(body)
+		w, err := scimdomain.ParseUserWrite(body)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -242,7 +242,7 @@ func TestParseUserWriteEnterpriseExtension(t *testing.T) {
 	})
 
 	t.Run("omitted extension defaults empty", func(t *testing.T) {
-		w, err := domain.ParseUserWrite(map[string]any{"userName": "bjensen"})
+		w, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -268,10 +268,10 @@ func TestParseUserWriteRejectsInvalidEnterpriseExtension(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body := map[string]any{
-				"userName":                     "bjensen",
-				domain.EnterpriseUserSchemaURN: tt.ext,
+				"userName":                         "bjensen",
+				scimdomain.EnterpriseUserSchemaURN: tt.ext,
 			}
-			_, err := domain.ParseUserWrite(body)
+			_, err := scimdomain.ParseUserWrite(body)
 			assertMutationError(t, err, "invalidValue")
 		})
 	}
@@ -289,7 +289,7 @@ func TestParseUserPatchOpsProjectsCanonicalEmail(t *testing.T) {
 			},
 		}},
 	}
-	ops, err := domain.ParseUserPatchOps(body)
+	ops, err := scimdomain.ParseUserPatchOps(body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -305,11 +305,11 @@ func TestParseUserPatchOpsAllowedPath(t *testing.T) {
 			map[string]any{"op": "replace", "path": "active", "value": false},
 		},
 	}
-	ops, err := domain.ParseUserPatchOps(body)
+	ops, err := scimdomain.ParseUserPatchOps(body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(ops) != 1 || ops[0].Attr != domain.UserAttrActive || ops[0].Op != "replace" {
+	if len(ops) != 1 || ops[0].Attr != scimdomain.UserAttrActive || ops[0].Op != "replace" {
 		t.Fatalf("unexpected ops: %+v", ops)
 	}
 }
@@ -321,7 +321,7 @@ func TestParseUserPatchOpsRejectsUnknownPath(t *testing.T) {
 			map[string]any{"op": "replace", "path": "nickName", "value": "x"},
 		},
 	}
-	_, err := domain.ParseUserPatchOps(body)
+	_, err := scimdomain.ParseUserPatchOps(body)
 	assertMutationError(t, err, "invalidPath")
 }
 
@@ -333,7 +333,7 @@ func TestParseUserPatchOpsRejectsReadOnlyPath(t *testing.T) {
 				map[string]any{"op": "replace", "path": path, "value": "x"},
 			},
 		}
-		_, err := domain.ParseUserPatchOps(body)
+		_, err := scimdomain.ParseUserPatchOps(body)
 		assertMutationError(t, err, "mutability")
 	}
 }
@@ -345,7 +345,7 @@ func TestParseUserPatchOpsRejectsUnknownOp(t *testing.T) {
 			map[string]any{"op": "delete", "path": "active", "value": true},
 		},
 	}
-	_, err := domain.ParseUserPatchOps(body)
+	_, err := scimdomain.ParseUserPatchOps(body)
 	assertMutationError(t, err, "invalidValue")
 }
 
@@ -356,12 +356,12 @@ func TestParseUserPatchOpsEnterpriseExtensionPaths(t *testing.T) {
 	tests := []struct {
 		name string
 		path string
-		attr domain.UserAttr
+		attr scimdomain.UserAttr
 	}{
-		{"bare employeeNumber", "employeeNumber", domain.UserAttrEmployeeNumber},
-		{"urn-qualified employeeNumber", domain.EnterpriseUserSchemaURN + ":employeeNumber", domain.UserAttrEmployeeNumber},
-		{"bare department", "department", domain.UserAttrDepartment},
-		{"urn-qualified department", domain.EnterpriseUserSchemaURN + ":department", domain.UserAttrDepartment},
+		{"bare employeeNumber", "employeeNumber", scimdomain.UserAttrEmployeeNumber},
+		{"urn-qualified employeeNumber", scimdomain.EnterpriseUserSchemaURN + ":employeeNumber", scimdomain.UserAttrEmployeeNumber},
+		{"bare department", "department", scimdomain.UserAttrDepartment},
+		{"urn-qualified department", scimdomain.EnterpriseUserSchemaURN + ":department", scimdomain.UserAttrDepartment},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -370,7 +370,7 @@ func TestParseUserPatchOpsEnterpriseExtensionPaths(t *testing.T) {
 					map[string]any{"op": "replace", "path": tt.path, "value": "x"},
 				},
 			}
-			ops, err := domain.ParseUserPatchOps(body)
+			ops, err := scimdomain.ParseUserPatchOps(body)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -391,11 +391,11 @@ func TestParseUserPatchOpsProjectsManagerValue(t *testing.T) {
 				map[string]any{"op": "replace", "path": "manager", "value": map[string]any{"value": "scim_manager1"}},
 			},
 		}
-		ops, err := domain.ParseUserPatchOps(body)
+		ops, err := scimdomain.ParseUserPatchOps(body)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got, ok := ops[0].Value.(string); !ok || got != "scim_manager1" || ops[0].Attr != domain.UserAttrManager {
+		if got, ok := ops[0].Value.(string); !ok || got != "scim_manager1" || ops[0].Attr != scimdomain.UserAttrManager {
 			t.Fatalf("unexpected op: %+v", ops[0])
 		}
 	})
@@ -403,10 +403,10 @@ func TestParseUserPatchOpsProjectsManagerValue(t *testing.T) {
 	t.Run("bare string form", func(t *testing.T) {
 		body := map[string]any{
 			"Operations": []any{
-				map[string]any{"op": "replace", "path": domain.EnterpriseUserSchemaURN + ":manager", "value": "scim_manager1"},
+				map[string]any{"op": "replace", "path": scimdomain.EnterpriseUserSchemaURN + ":manager", "value": "scim_manager1"},
 			},
 		}
-		ops, err := domain.ParseUserPatchOps(body)
+		ops, err := scimdomain.ParseUserPatchOps(body)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -421,11 +421,11 @@ func TestParseUserPatchOpsProjectsManagerValue(t *testing.T) {
 				map[string]any{"op": "remove", "path": "manager"},
 			},
 		}
-		ops, err := domain.ParseUserPatchOps(body)
+		ops, err := scimdomain.ParseUserPatchOps(body)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(ops) != 1 || ops[0].Attr != domain.UserAttrManager || ops[0].Op != "remove" {
+		if len(ops) != 1 || ops[0].Attr != scimdomain.UserAttrManager || ops[0].Op != "remove" {
 			t.Fatalf("unexpected ops: %+v", ops)
 		}
 	})
@@ -436,7 +436,7 @@ func TestParseUserPatchOpsProjectsManagerValue(t *testing.T) {
 				map[string]any{"op": "replace", "path": "manager", "value": map[string]any{}},
 			},
 		}
-		_, err := domain.ParseUserPatchOps(body)
+		_, err := scimdomain.ParseUserPatchOps(body)
 		assertMutationError(t, err, "invalidValue")
 	})
 }
@@ -448,19 +448,19 @@ func TestParseUserPatchOpsRejectsWrongValueType(t *testing.T) {
 			map[string]any{"op": "replace", "path": "active", "value": "yes"},
 		},
 	}
-	_, err := domain.ParseUserPatchOps(body)
+	_, err := scimdomain.ParseUserPatchOps(body)
 	assertMutationError(t, err, "invalidValue")
 }
 
 // ParseGroupWrite: displayName は必須。
 func TestParseGroupWriteRequiresDisplayName(t *testing.T) {
-	_, err := domain.ParseGroupWrite(map[string]any{})
+	_, err := scimdomain.ParseGroupWrite(map[string]any{})
 	assertMutationError(t, err, "invalidValue")
 }
 
 // members を省略すると空集合になる (PUT full-replace)。
 func TestParseGroupWriteDefaultsMembersEmpty(t *testing.T) {
-	w, err := domain.ParseGroupWrite(map[string]any{"displayName": "Engineering"})
+	w, err := scimdomain.ParseGroupWrite(map[string]any{"displayName": "Engineering"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -480,7 +480,7 @@ func TestParseGroupWriteMembers(t *testing.T) {
 			map[string]any{"value": "scim_u2"},
 		},
 	}
-	w, err := domain.ParseGroupWrite(body)
+	w, err := scimdomain.ParseGroupWrite(body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -492,7 +492,7 @@ func TestParseGroupWriteMembers(t *testing.T) {
 //spec:covers REQ-SOURCING-005: Group member は type 省略または User だけを受け付ける。
 func TestParseGroupWriteMemberType(t *testing.T) {
 	t.Run("accepts case insensitive User", func(t *testing.T) {
-		w, err := domain.ParseGroupWrite(map[string]any{
+		w, err := scimdomain.ParseGroupWrite(map[string]any{
 			"displayName": "Engineering",
 			"members":     []any{map[string]any{"value": "scim_u1", "type": "uSeR"}},
 		})
@@ -506,7 +506,7 @@ func TestParseGroupWriteMemberType(t *testing.T) {
 
 	for _, memberType := range []any{"Group", 42} {
 		t.Run("rejects unsupported type", func(t *testing.T) {
-			_, err := domain.ParseGroupWrite(map[string]any{
+			_, err := scimdomain.ParseGroupWrite(map[string]any{
 				"displayName": "Engineering",
 				"members":     []any{map[string]any{"value": "scim_g1", "type": memberType}},
 			})
@@ -524,7 +524,7 @@ func TestParseGroupPatchOpsRejectsGroupMemberType(t *testing.T) {
 			"value": []any{map[string]any{"value": "scim_g1", "type": "Group"}},
 		}},
 	}
-	_, err := domain.ParseGroupPatchOps(body)
+	_, err := scimdomain.ParseGroupPatchOps(body)
 	assertMutationError(t, err, "invalidValue")
 }
 
@@ -537,11 +537,11 @@ func TestParseGroupPatchOpsAllowedPath(t *testing.T) {
 			}},
 		},
 	}
-	ops, err := domain.ParseGroupPatchOps(body)
+	ops, err := scimdomain.ParseGroupPatchOps(body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(ops) != 1 || ops[0].Attr != domain.GroupAttrMembers || ops[0].Op != "add" {
+	if len(ops) != 1 || ops[0].Attr != scimdomain.GroupAttrMembers || ops[0].Op != "add" {
 		t.Fatalf("unexpected ops: %+v", ops)
 	}
 }
@@ -552,7 +552,7 @@ func TestParseGroupPatchOpsRejectsUnknownPath(t *testing.T) {
 			map[string]any{"op": "replace", "path": "description", "value": "x"},
 		},
 	}
-	_, err := domain.ParseGroupPatchOps(body)
+	_, err := scimdomain.ParseGroupPatchOps(body)
 	assertMutationError(t, err, "invalidPath")
 }
 
@@ -562,7 +562,7 @@ func TestParseGroupPatchOpsRejectsReadOnlyPath(t *testing.T) {
 			map[string]any{"op": "replace", "path": "meta", "value": "x"},
 		},
 	}
-	_, err := domain.ParseGroupPatchOps(body)
+	_, err := scimdomain.ParseGroupPatchOps(body)
 	assertMutationError(t, err, "mutability")
 }
 
@@ -571,7 +571,7 @@ func assertMutationError(t *testing.T, err error, wantScimType string) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	var mutErr *domain.MutationError
+	var mutErr *scimdomain.MutationError
 	if !isMutationError(err, &mutErr) {
 		t.Fatalf("expected *domain.MutationError, got %T: %v", err, err)
 	}
@@ -580,7 +580,7 @@ func assertMutationError(t *testing.T, err error, wantScimType string) {
 	}
 }
 
-func isMutationError(err error, target **domain.MutationError) bool {
+func isMutationError(err error, target **scimdomain.MutationError) bool {
 	return errors.As(err, target)
 }
 
@@ -595,43 +595,43 @@ func TestParseUserPatchOpsWithoutPathExpandsTheValue(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		value map[string]any
-		want  []domain.UserPatchOp
+		want  []scimdomain.UserPatchOp
 	}{
-		{"single attribute", map[string]any{"active": false}, []domain.UserPatchOp{
-			{Op: "replace", Attr: domain.UserAttrActive, Value: false},
+		{"single attribute", map[string]any{"active": false}, []scimdomain.UserPatchOp{
+			{Op: "replace", Attr: scimdomain.UserAttrActive, Value: false},
 		}},
-		{"members in name order", map[string]any{"userName": "u", "active": true, "name.givenName": "G"}, []domain.UserPatchOp{
-			{Op: "replace", Attr: domain.UserAttrActive, Value: true},
-			{Op: "replace", Attr: domain.UserAttrGivenName, Value: "G"},
-			{Op: "replace", Attr: domain.UserAttrUserName, Value: "u"},
+		{"members in name order", map[string]any{"userName": "u", "active": true, "name.givenName": "G"}, []scimdomain.UserPatchOp{
+			{Op: "replace", Attr: scimdomain.UserAttrActive, Value: true},
+			{Op: "replace", Attr: scimdomain.UserAttrGivenName, Value: "G"},
+			{Op: "replace", Attr: scimdomain.UserAttrUserName, Value: "u"},
 		}},
 		{"enterprise extension members", map[string]any{
-			domain.EnterpriseUserSchemaURN: map[string]any{"manager": map[string]any{"value": "m"}, "department": "D"},
-		}, []domain.UserPatchOp{
-			{Op: "replace", Attr: domain.UserAttrDepartment, Value: "D"},
-			{Op: "replace", Attr: domain.UserAttrManager, Value: "m"},
+			scimdomain.EnterpriseUserSchemaURN: map[string]any{"manager": map[string]any{"value": "m"}, "department": "D"},
+		}, []scimdomain.UserPatchOp{
+			{Op: "replace", Attr: scimdomain.UserAttrDepartment, Value: "D"},
+			{Op: "replace", Attr: scimdomain.UserAttrManager, Value: "m"},
 		}},
 		{"formatted wins over displayName", map[string]any{
 			"name": map[string]any{"formatted": "Formatted"}, "displayName": "Display",
-		}, []domain.UserPatchOp{
-			{Op: "replace", Attr: domain.UserAttrFormatted, Value: "Display"},
-			{Op: "replace", Attr: domain.UserAttrName, Value: map[string]any{"formatted": "Formatted"}},
+		}, []scimdomain.UserPatchOp{
+			{Op: "replace", Attr: scimdomain.UserAttrFormatted, Value: "Display"},
+			{Op: "replace", Attr: scimdomain.UserAttrName, Value: map[string]any{"formatted": "Formatted"}},
 		}},
 		{"explicit empty formatted wins", map[string]any{
 			"name.formatted": "", "displayName": "Display",
-		}, []domain.UserPatchOp{
-			{Op: "replace", Attr: domain.UserAttrFormatted, Value: "Display"},
-			{Op: "replace", Attr: domain.UserAttrFormatted, Value: ""},
+		}, []scimdomain.UserPatchOp{
+			{Op: "replace", Attr: scimdomain.UserAttrFormatted, Value: "Display"},
+			{Op: "replace", Attr: scimdomain.UserAttrFormatted, Value: ""},
 		}},
 		{"displayName wins over an unassigned formatted", map[string]any{
 			"name": map[string]any{"givenName": "G", "formatted": nil}, "displayName": "Display",
-		}, []domain.UserPatchOp{
-			{Op: "replace", Attr: domain.UserAttrName, Value: map[string]any{"givenName": "G", "formatted": nil}},
-			{Op: "replace", Attr: domain.UserAttrFormatted, Value: "Display"},
+		}, []scimdomain.UserPatchOp{
+			{Op: "replace", Attr: scimdomain.UserAttrName, Value: map[string]any{"givenName": "G", "formatted": nil}},
+			{Op: "replace", Attr: scimdomain.UserAttrFormatted, Value: "Display"},
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ops, err := domain.ParseUserPatchOps(pathless(test.value))
+			ops, err := scimdomain.ParseUserPatchOps(pathless(test.value))
 			if err != nil || !reflect.DeepEqual(ops, test.want) {
 				t.Fatalf("ops=%+v error=%v, want %+v", ops, err, test.want)
 			}
@@ -656,10 +656,10 @@ func TestParsePatchOpsWithoutPathRefusals(t *testing.T) {
 		{"empty path is not omitted", map[string]any{"op": "replace", "path": "", "value": map[string]any{"displayName": "x"}}, "invalidPath"},
 	} {
 		body := map[string]any{"Operations": []any{test.op}}
-		_, userErr := domain.ParseUserPatchOps(body)
-		_, groupErr := domain.ParseGroupPatchOps(body)
+		_, userErr := scimdomain.ParseUserPatchOps(body)
+		_, groupErr := scimdomain.ParseGroupPatchOps(body)
 		for kind, err := range map[string]error{"User": userErr, "Group": groupErr} {
-			var mutation *domain.MutationError
+			var mutation *scimdomain.MutationError
 			if !errors.As(err, &mutation) || mutation.ScimType != test.wantScimType {
 				t.Errorf("%s %s: error=%v, want %s", kind, test.name, err, test.wantScimType)
 			}
@@ -669,12 +669,12 @@ func TestParsePatchOpsWithoutPathRefusals(t *testing.T) {
 
 func TestParseGroupPatchOpsWithoutPathExpandsTheValue(t *testing.T) {
 	members := []any{map[string]any{"value": "u1"}}
-	ops, err := domain.ParseGroupPatchOps(map[string]any{"Operations": []any{
+	ops, err := scimdomain.ParseGroupPatchOps(map[string]any{"Operations": []any{
 		map[string]any{"op": "add", "value": map[string]any{"members": members, "displayName": "G"}},
 	}})
-	want := []domain.GroupPatchOp{
-		{Op: "add", Attr: domain.GroupAttrDisplayName, Value: "G"},
-		{Op: "add", Attr: domain.GroupAttrMembers, Value: members},
+	want := []scimdomain.GroupPatchOp{
+		{Op: "add", Attr: scimdomain.GroupAttrDisplayName, Value: "G"},
+		{Op: "add", Attr: scimdomain.GroupAttrMembers, Value: members},
 	}
 	if err != nil || !reflect.DeepEqual(ops, want) {
 		t.Fatalf("ops=%+v error=%v, want %+v", ops, err, want)

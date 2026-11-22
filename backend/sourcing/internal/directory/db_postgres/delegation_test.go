@@ -8,7 +8,7 @@ import (
 
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/testing_contract"
 )
 
@@ -19,7 +19,7 @@ func TestPasswordChallengePersistenceContract(t *testing.T) {
 	other := pgfixtures.SeedTenant(t, db)
 	ids := []string{uuid.NewV4().String(), uuid.NewV4().String()}
 	for i, id := range ids {
-		c, err := domain.NewConnector(tenant.ID, id, "AD", fmt.Sprintf("%064x", i+1), time.Now())
+		c, err := directorydomain.NewConnector(tenant.ID, id, "AD", fmt.Sprintf("%064x", i+1), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}

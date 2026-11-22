@@ -14,7 +14,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	workloadhttp "github.com/ambi/idmagic/backend/workloadidentity/internal/handlers_http"
@@ -74,7 +74,7 @@ func TestIssuerMetadataHTTPContractAndRefusalEffects(t *testing.T) {
 	if calls[0] != "https://issuer.example" {
 		t.Fatalf("issuer=%s", calls[0])
 	}
-	bundles, err := module.TrustBundleRepo.ListAll(t.Context(), domain.DefaultTenantID)
+	bundles, err := module.TrustBundleRepo.ListAll(t.Context(), tenancydomain.DefaultTenantID)
 	if err != nil || len(bundles) != 0 {
 		t.Fatalf("metadata saved bundles=%v err=%v", bundles, err)
 	}

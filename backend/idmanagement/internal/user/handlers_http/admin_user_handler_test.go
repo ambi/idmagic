@@ -24,7 +24,7 @@ import (
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -353,7 +353,7 @@ func newAdminUserHandler(
 
 type mockEmailSender struct{}
 
-func (m mockEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
+func (m mockEmailSender) SendEmail(ctx context.Context, message notificationports.EmailMessage) bool {
 	return true
 }
 

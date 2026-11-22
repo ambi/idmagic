@@ -4,7 +4,7 @@ import (
 	"context"
 
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // ClientAdministration は clientports.ClientAdministration を、管理者向けの操作で実装する。
@@ -16,7 +16,7 @@ func (a ClientAdministration) Create(ctx context.Context, in CreateAdminOAuth2Cl
 	return CreateAdminOAuth2Client(ctx, a.Deps, in)
 }
 
-func (a ClientAdministration) Update(ctx context.Context, in UpdateAdminOAuth2ClientInput) (*domain.OAuth2Client, error) {
+func (a ClientAdministration) Update(ctx context.Context, in UpdateAdminOAuth2ClientInput) (*oauthdomain.OAuth2Client, error) {
 	return UpdateAdminOAuth2Client(ctx, a.Deps, in)
 }
 

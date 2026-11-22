@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	postgres "github.com/ambi/idmagic/backend/provisioning/internal/db_postgres"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -34,25 +34,25 @@ func TestConnectionDeletionRollsBackCascadeFailure(t *testing.T) {
 	if err := connections.Register(ctx, conn, "secret"); err != nil {
 		t.Fatal(err)
 	}
-	task := &domain.ProvisioningTask{
+	task := &provisioningdomain.ProvisioningTask{
 		ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, ConnectionID: app.ID,
-		SourceType: domain.SourceTypeUser, SourceID: pgfixtures.NewUUID(t), SourceVersion: 1,
-		Operation: domain.OperationUpdate, Status: domain.TaskPending, CreatedAt: conn.CreatedAt, UpdatedAt: conn.CreatedAt,
+		SourceType: provisioningdomain.SourceTypeUser, SourceID: pgfixtures.NewUUID(t), SourceVersion: 1,
+		Operation: provisioningdomain.OperationUpdate, Status: provisioningdomain.TaskPending, CreatedAt: conn.CreatedAt, UpdatedAt: conn.CreatedAt,
 	}
-	resync := domain.NewFullResync(pgfixtures.NewUUID(t), tenant.ID, app.ID, 1, conn.CreatedAt)
+	resync := provisioningdomain.NewFullResync(pgfixtures.NewUUID(t), tenant.ID, app.ID, 1, conn.CreatedAt)
 	if err := tasks.SaveFullResync(ctx, resync); err != nil {
 		t.Fatal(err)
 	}
 	if created, err := tasks.SaveFullResyncTask(ctx, resync.ID, task); err != nil || !created {
 		t.Fatalf("task=%v error=%v", created, err)
 	}
-	if err := links.Upsert(ctx, &domain.RemoteResourceLink{
+	if err := links.Upsert(ctx, &provisioningdomain.RemoteResourceLink{
 		TenantID: tenant.ID, ConnectionID: app.ID, SourceType: task.SourceType, SourceID: task.SourceID,
 		RemoteID: "remote-1", ExternalID: task.SourceID, LastSyncedVersion: 1, UpdatedAt: conn.CreatedAt,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	reservation := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, task.SourceID, 2, conn.CreatedAt, 0)
+	reservation := provisioningdomain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, task.SourceID, 2, conn.CreatedAt, 0)
 	if created, err := tasks.ScheduleDeprovision(ctx, reservation); err != nil || !created {
 		t.Fatalf("reservation=%v error=%v", created, err)
 	}
@@ -68,7 +68,7 @@ SAVEPOINT before_deletion;
 		t.Fatal(err)
 	}
 	var events []spec.DomainEvent
-	err = usecases.DeleteConnection(ctx, usecases.AdminDeps{
+	err = provisioningusecases.DeleteConnection(ctx, provisioningusecases.AdminDeps{
 		ConnectionRepo: connections, TaskRepo: tasks, Emit: func(e spec.DomainEvent) { events = append(events, e) },
 	}, tenant.ID, app.ID, conn.CreatedAt)
 	var pgError *pgconn.PgError

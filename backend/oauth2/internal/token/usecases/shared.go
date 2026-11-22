@@ -1,27 +1,27 @@
 package usecases
 
-import sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+import oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 
-type OAuthError = sharedusecases.OAuthError
+type OAuthError = oauthusecases.OAuthError
 
 var (
-	NewOAuthError                = sharedusecases.NewOAuthError
-	emit                         = sharedusecases.Emit
-	senderConstraintTag          = sharedusecases.SenderConstraintTag
-	ParseAuthorizationDetails    = sharedusecases.ParseAuthorizationDetails
-	ValidateAuthorizationDetails = sharedusecases.ValidateAuthorizationDetails
-	LoadAuthorizationDetailTypes = sharedusecases.LoadAuthorizationDetailTypes
-	ResolveResourceIndicator     = sharedusecases.ResolveResourceIndicator
-	ResolveIssuableAgent         = sharedusecases.ResolveIssuableAgent
+	NewOAuthError                = oauthusecases.NewOAuthError
+	emit                         = oauthusecases.Emit
+	senderConstraintTag          = oauthusecases.SenderConstraintTag
+	ParseAuthorizationDetails    = oauthusecases.ParseAuthorizationDetails
+	ValidateAuthorizationDetails = oauthusecases.ValidateAuthorizationDetails
+	LoadAuthorizationDetailTypes = oauthusecases.LoadAuthorizationDetailTypes
+	ResolveResourceIndicator     = oauthusecases.ResolveResourceIndicator
+	ResolveIssuableAgent         = oauthusecases.ResolveIssuableAgent
 	// 承認を記録しない発行経路の区分ゲート (REQ-OAUTH2-050)。
-	ResolveIssuableAgentWithoutApproval = sharedusecases.ResolveIssuableAgentWithoutApproval
-	RejectAgentIssuanceWithoutApproval  = sharedusecases.RejectAgentIssuanceWithoutApproval
-	RejectAgentClientWithoutKeyProof    = sharedusecases.RejectAgentClientWithoutKeyProof
+	ResolveIssuableAgentWithoutApproval = oauthusecases.ResolveIssuableAgentWithoutApproval
+	RejectAgentIssuanceWithoutApproval  = oauthusecases.RejectAgentIssuanceWithoutApproval
+	RejectAgentClientWithoutKeyProof    = oauthusecases.RejectAgentClientWithoutKeyProof
 	// 要求したクライアントの Agent を発行するトークンへ記録する (REQ-OAUTH2-012)。
-	IssuerForRequestingAgent = sharedusecases.IssuerForRequestingAgent
-	IssuerWithAgentGuardrail = sharedusecases.IssuerWithAgentGuardrail
+	IssuerForRequestingAgent = oauthusecases.IssuerForRequestingAgent
+	IssuerWithAgentGuardrail = oauthusecases.IssuerWithAgentGuardrail
 )
 
-type AgentIssuanceDeps = sharedusecases.AgentIssuanceDeps
+type AgentIssuanceDeps = oauthusecases.AgentIssuanceDeps
 
-type AgentGuardrailDeps = sharedusecases.AgentGuardrailDeps
+type AgentGuardrailDeps = oauthusecases.AgentGuardrailDeps

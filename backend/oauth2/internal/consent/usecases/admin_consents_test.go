@@ -10,7 +10,7 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -30,8 +30,8 @@ func TestRevokeConsent_decrementsQuotaUsage(t *testing.T) {
 	if err := quotaRepo.CheckAndIncrement(ctx, tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err != nil {
 		t.Fatalf("seed usage: %v", err)
 	}
-	if err := consentRepo.Save(ctx, tenancydomain.DefaultTenantID, &domain.Consent{
-		UserID: "user-1", ClientID: "client-1", Scopes: []string{"openid"}, State: domain.ConsentGranted,
+	if err := consentRepo.Save(ctx, tenancydomain.DefaultTenantID, &oauthdomain.Consent{
+		UserID: "user-1", ClientID: "client-1", Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
 	}); err != nil {
 		t.Fatalf("seed consent: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestAdminConsents(t *testing.T) {
 		}
 
 		// 1つ保存
-		consent := &domain.Consent{
+		consent := &oauthdomain.Consent{
 			UserID:   "user-1",
 			ClientID: "client-1",
 			Scopes:   []string{"openid"},
@@ -129,7 +129,7 @@ func TestAdminConsents(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if consent.State != domain.ConsentRevoked {
+		if consent.State != oauthdomain.ConsentRevoked {
 			t.Errorf("expected state to be ConsentRevoked, got %v", consent.State)
 		}
 		if consent.RevokedAt == nil {
@@ -140,7 +140,7 @@ func TestAdminConsents(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*domain.ConsentRevokedEvent)
+		ev, ok := emitted[0].(*oauthdomain.ConsentRevokedEvent)
 		if !ok {
 			t.Fatalf("expected ConsentRevokedEvent, got %T", emitted[0])
 		}

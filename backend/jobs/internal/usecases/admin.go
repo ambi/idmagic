@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 )
 
 // ErrJobCursorMismatch はページングのカーソルが、それを発行したときと異なるテナントや
@@ -32,8 +32,8 @@ const (
 // AdminJobDeps は管理系ユースケースの依存。Canceler は取り消しの遷移と、active_jobs の
 // 減算と JobCanceled の発行を担う。参照だけの操作は Canceler を使わない。
 type AdminJobDeps struct {
-	Repo     ports.JobRepository
-	Canceler ports.Canceler
+	Repo     jobsports.JobRepository
+	Canceler jobsports.Canceler
 }
 
 // TenantScope は呼び出し元の認可が確定させたテナントの範囲。呼び出し元 (ハンドラー) が
@@ -47,23 +47,23 @@ type TenantScope struct {
 func (s TenantScope) valid() bool { return s.AllTenants || s.TenantID != "" }
 
 // includes は job がこの範囲から見えるかを返す。
-func (s TenantScope) includes(job *domain.Job) bool {
+func (s TenantScope) includes(job *jobsdomain.Job) bool {
 	return s.AllTenants || (job != nil && job.TenantID == s.TenantID)
 }
 
 // ListJobsInput は一覧の入力。Scope 以外はすべて任意の絞り込みである。
 type ListJobsInput struct {
 	Scope    TenantScope
-	Statuses []domain.JobStatus
-	Kinds    []domain.JobKind
-	Lane     domain.ExecutionLane
+	Statuses []jobsdomain.JobStatus
+	Kinds    []jobsdomain.JobKind
+	Lane     jobsdomain.ExecutionLane
 	Limit    int
 	Cursor   string
 }
 
 // JobPage は 1 ページ分の結果。NextCursor が空なら最終ページである。
 type JobPage struct {
-	Jobs       []*domain.Job
+	Jobs       []*jobsdomain.Job
 	NextCursor string
 }
 
@@ -74,7 +74,7 @@ type JobPage struct {
 // 一度の書き漏らしがテナント境界の穴になる。
 func ListJobsForAdmin(ctx context.Context, deps AdminJobDeps, in ListJobsInput) (JobPage, error) {
 	if !in.Scope.valid() {
-		return JobPage{}, ports.ErrAdminJobFilterUnscoped
+		return JobPage{}, jobsports.ErrAdminJobFilterUnscoped
 	}
 	if deps.Repo == nil {
 		return JobPage{}, errors.New("jobs: admin listing requires a repository")
@@ -87,7 +87,7 @@ func ListJobsForAdmin(ctx context.Context, deps AdminJobDeps, in ListJobsInput) 
 		limit = maxAdminJobLimit
 	}
 
-	filter := ports.AdminJobFilter{
+	filter := jobsports.AdminJobFilter{
 		TenantID:   in.Scope.TenantID,
 		AllTenants: in.Scope.AllTenants,
 		Statuses:   in.Statuses,
@@ -125,9 +125,9 @@ func ListJobsForAdmin(ctx context.Context, deps AdminJobDeps, in ListJobsInput) 
 
 // GetJobForAdmin は 1 件を返す。範囲の外にある Job は ErrJobNotFound とする。存在を
 // 区別できる応答を返すと、id を総当たりするだけで他テナントに Job があることが分かる。
-func GetJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, scope TenantScope) (*domain.Job, error) {
+func GetJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, scope TenantScope) (*jobsdomain.Job, error) {
 	if !scope.valid() {
-		return nil, ports.ErrAdminJobFilterUnscoped
+		return nil, jobsports.ErrAdminJobFilterUnscoped
 	}
 	if deps.Repo == nil {
 		return nil, errors.New("jobs: admin read requires a repository")
@@ -137,7 +137,7 @@ func GetJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, scope 
 		return nil, err
 	}
 	if !scope.includes(job) {
-		return nil, ports.ErrJobNotFound
+		return nil, jobsports.ErrJobNotFound
 	}
 	return job, nil
 }
@@ -148,7 +148,7 @@ func GetJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, scope 
 // 完了報告が失敗し、ハンドラー自身が処理をやめる。すでに確定した副作用は元へ戻らない。
 // 終端に達した Job は成功として黙認せず拒否する。止めるよう頼んだ運用者にとって、すでに
 // 終わっていたのか止まったのかは別の事実である。
-func CancelJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, scope TenantScope, now time.Time) (*domain.Job, error) {
+func CancelJobForAdmin(ctx context.Context, deps AdminJobDeps, jobID string, scope TenantScope, now time.Time) (*jobsdomain.Job, error) {
 	// 取り消しの前に範囲を確かめる。先に取り消してから範囲外と判定したのでは、他テナントの
 	// Job を止めたうえで「存在しない」と答えることになる。
 	if _, err := GetJobForAdmin(ctx, deps, jobID, scope); err != nil {

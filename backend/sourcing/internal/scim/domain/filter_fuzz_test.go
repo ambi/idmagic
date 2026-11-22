@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // FuzzParseFilter は untrusted な SCIM client 由来の filter 文字列を解釈する
@@ -46,8 +46,8 @@ func FuzzParseFilter(f *testing.F) {
 		`urn:ietf:params:scim:schemas:core:2.0:Group:displayName eq "Engineering"`,
 		`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber eq "1"`,
 		// 資源上限の境界 (Risk Notes)。
-		`userName eq "` + strings.Repeat("a", domain.MaxFilterLength) + `"`,
-		strings.Repeat("not (", domain.MaxFilterDepth+5) + `userName eq "x"` + strings.Repeat(")", domain.MaxFilterDepth+5),
+		`userName eq "` + strings.Repeat("a", scimdomain.MaxFilterLength) + `"`,
+		strings.Repeat("not (", scimdomain.MaxFilterDepth+5) + `userName eq "x"` + strings.Repeat(")", scimdomain.MaxFilterDepth+5),
 		// 未終端の文字列・escape、不正な unicode escape。
 		`userName eq "unterminated`,
 		`userName eq "bad\`,
@@ -67,7 +67,7 @@ func FuzzParseFilter(f *testing.F) {
 				t.Fatalf("ParseFilter panicked on input %q: %v", filter, r)
 			}
 		}()
-		_, _ = domain.ParseFilter(filter, domain.UserFilterAttributes)
-		_, _ = domain.ParseFilter(filter, domain.GroupFilterAttributes)
+		_, _ = scimdomain.ParseFilter(filter, scimdomain.UserFilterAttributes)
+		_, _ = scimdomain.ParseFilter(filter, scimdomain.GroupFilterAttributes)
 	})
 }

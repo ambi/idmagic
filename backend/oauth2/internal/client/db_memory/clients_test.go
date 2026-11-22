@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -19,7 +19,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 	t.Run("Save and FindByID", func(t *testing.T) {
 		name := "My Application"
 		secret := "secret-hash"
-		client := &domain.OAuth2Client{
+		client := &oauthdomain.OAuth2Client{
 			TenantID:                "tenant-1",
 			ClientID:                "client-1",
 			ClientSecretHash:        &secret,
@@ -27,7 +27,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 			ClientType:              spec.ClientConfidential,
 			RedirectURIs:            []string{"https://example.com/callback"},
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
-			TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 			CreatedAt:               time.Now(),
 		}
 
@@ -61,7 +61,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 	})
 
 	t.Run("Seed", func(t *testing.T) {
-		client := &domain.OAuth2Client{
+		client := &oauthdomain.OAuth2Client{
 			TenantID: "tenant-1",
 			ClientID: "client-seeded",
 		}
@@ -79,7 +79,7 @@ func TestOAuth2ClientRepository(t *testing.T) {
 
 	t.Run("FindAll", func(t *testing.T) {
 		// すでに client-1, client-seeded が tenant-1 に存在する
-		clientOther := &domain.OAuth2Client{
+		clientOther := &oauthdomain.OAuth2Client{
 			TenantID: "tenant-other",
 			ClientID: "client-other",
 		}
@@ -124,7 +124,7 @@ func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) 
 	ctx := context.Background()
 	repo := NewClientRepository()
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
-	legacy := domain.ClientSecretCredential{
+	legacy := oauthdomain.ClientSecretCredential{
 		ID: "legacy", ClientID: "client", SecretHash: "legacy-hash", CreatedAt: now.Add(-time.Hour),
 	}
 	if err := repo.SaveClientSecretCredential(ctx, legacy); err != nil {
@@ -139,7 +139,7 @@ func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) 
 		go func(credentialID string) {
 			ready.Done()
 			<-start
-			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
+			errs <- repo.IssueClientSecretCredential(ctx, nil, oauthdomain.ClientSecretCredential{
 				ID: credentialID, ClientID: "client", SecretHash: credentialID, CreatedAt: now,
 			}, 2, now)
 		}(id)
@@ -154,7 +154,7 @@ func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) 
 		switch {
 		case err == nil:
 			succeeded++
-		case errors.Is(err, ports.ErrClientSecretCredentialLimitExceeded):
+		case errors.Is(err, oauthports.ErrClientSecretCredentialLimitExceeded):
 			limited++
 		default:
 			t.Fatalf("unexpected error: %v", err)
@@ -176,11 +176,11 @@ func TestOAuth2ClientRepositoryListPage(t *testing.T) {
 	ctx := context.Background()
 	repo := NewClientRepository()
 	for _, id := range []string{"c3", "c1", "c2", "c4", "c5"} {
-		if err := repo.Save(ctx, &domain.OAuth2Client{TenantID: "tenant-1", ClientID: id, ClientType: spec.ClientConfidential}); err != nil {
+		if err := repo.Save(ctx, &oauthdomain.OAuth2Client{TenantID: "tenant-1", ClientID: id, ClientType: spec.ClientConfidential}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := repo.Save(ctx, &domain.OAuth2Client{TenantID: "tenant-2", ClientID: "other", ClientType: spec.ClientConfidential}); err != nil {
+	if err := repo.Save(ctx, &oauthdomain.OAuth2Client{TenantID: "tenant-2", ClientID: "other", ClientType: spec.ClientConfidential}); err != nil {
 		t.Fatal(err)
 	}
 

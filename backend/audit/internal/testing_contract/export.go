@@ -8,27 +8,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 // RunExport は実ストアの確定、分離、再配送と期限の共通契約を検査する。
 //
 //spec:covers REQ-AUDIT-010: 全チャンクの確定前の障害で部分成果物を公開しない。
 //spec:covers REQ-AUDIT-011: 成果物はテナントに閉じ、期限で容量からも除去する。
-func RunExport(t *testing.T, store ports.ExportArtifactStore, tenantA, tenantB, jobID string, now time.Time) {
+func RunExport(t *testing.T, store auditports.ExportArtifactStore, tenantA, tenantB, jobID string, now time.Time) {
 	t.Helper()
 	ctx := context.Background()
 	data := bytes.Repeat([]byte("audit-event\n"), 200000)
 	failed := errors.New("build interrupted")
 	for _, beforePublish := range []bool{false, true} {
-		_, err := store.Write(ctx, tenantA, jobID, func(out io.Writer) (ports.ExportCompletion, error) {
+		_, err := store.Write(ctx, tenantA, jobID, func(out io.Writer) (auditports.ExportCompletion, error) {
 			if _, err := out.Write(data); err != nil {
-				return ports.ExportCompletion{}, err
+				return auditports.ExportCompletion{}, err
 			}
 			if !beforePublish {
-				return ports.ExportCompletion{}, failed
+				return auditports.ExportCompletion{}, failed
 			}
-			return ports.ExportCompletion{Events: 200000, ExpiresAt: now.Add(time.Hour), BeforePublish: func() error { return failed }}, nil
+			return auditports.ExportCompletion{Events: 200000, ExpiresAt: now.Add(time.Hour), BeforePublish: func() error { return failed }}, nil
 		})
 		if !errors.Is(err, failed) {
 			t.Fatalf("Write failure=%v", err)
@@ -37,16 +37,16 @@ func RunExport(t *testing.T, store ports.ExportArtifactStore, tenantA, tenantB, 
 		if reader != nil {
 			_ = reader.Close()
 		}
-		if !errors.Is(err, ports.ErrExportArtifactNotFound) {
+		if !errors.Is(err, auditports.ErrExportArtifactNotFound) {
 			t.Fatalf("partial Open=%v", err)
 		}
 		if size, err := store.Usage(ctx, tenantA); err != nil || size != 0 {
 			t.Fatalf("partial Usage=%d %v", size, err)
 		}
 	}
-	meta, err := store.Write(ctx, tenantA, jobID, func(out io.Writer) (ports.ExportCompletion, error) {
+	meta, err := store.Write(ctx, tenantA, jobID, func(out io.Writer) (auditports.ExportCompletion, error) {
 		_, err := out.Write(data)
-		return ports.ExportCompletion{Events: 200000, ExpiresAt: now.Add(time.Hour)}, err
+		return auditports.ExportCompletion{Events: 200000, ExpiresAt: now.Add(time.Hour)}, err
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -54,9 +54,9 @@ func RunExport(t *testing.T, store ports.ExportArtifactStore, tenantA, tenantB, 
 	if meta.ByteSize != int64(len(data)) || meta.SHA256 == "" {
 		t.Fatalf("metadata=%+v", meta)
 	}
-	repeated, err := store.Write(ctx, tenantA, jobID, func(io.Writer) (ports.ExportCompletion, error) {
+	repeated, err := store.Write(ctx, tenantA, jobID, func(io.Writer) (auditports.ExportCompletion, error) {
 		t.Error("replayed write")
-		return ports.ExportCompletion{}, failed
+		return auditports.ExportCompletion{}, failed
 	})
 	if err != nil || repeated.Ref != meta.Ref {
 		t.Fatalf("replay=%+v %v", repeated, err)
@@ -76,7 +76,7 @@ func RunExport(t *testing.T, store ports.ExportArtifactStore, tenantA, tenantB, 
 	if reader != nil {
 		_ = reader.Close()
 	}
-	if !errors.Is(err, ports.ErrExportArtifactNotFound) {
+	if !errors.Is(err, auditports.ErrExportArtifactNotFound) {
 		t.Fatalf("other tenant=%v", err)
 	}
 	if size, err := store.Usage(ctx, tenantA); err != nil || size != meta.ByteSize {

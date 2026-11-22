@@ -33,11 +33,11 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/ambi/idmagic/backend/authentication"
-	authndomain "github.com/ambi/idmagic/backend/authentication/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
@@ -71,8 +71,8 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 	now := time.Now().UTC()
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	secretHash := domain.HashClientSecret(cpClientSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(cpClientSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: cpClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{cpRedirectURI},
@@ -80,10 +80,10 @@ func newClientProfileFixture(t *testing.T) *cpFixture {
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    cpScope,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 		UpdatedAt:                now,
 	})
@@ -337,14 +337,14 @@ func TestIDTokenRecordsOnlyTheAuthenticationMethodsThatActuallyHappened(t *testi
 	}
 	amr := cpStrings(t, cpClaims(t, idToken), "amr")
 
-	if !slices.Contains(amr, authndomain.AMRPassword) {
-		t.Fatalf("パスワードで通したのに amr に %q が無い: %v", authndomain.AMRPassword, amr)
+	if !slices.Contains(amr, authdomain.AMRPassword) {
+		t.Fatalf("パスワードで通したのに amr に %q が無い: %v", authdomain.AMRPassword, amr)
 	}
 
 	// 提示していない方法は 1 つも載らない。語彙のうちパスワード以外を、成立して
 	// いない方法として全件読む。1 つだけを選ぶと、残りを並べる実装が生き残る。
-	for _, value := range authndomain.AMRVocabulary() {
-		if value == authndomain.AMRPassword {
+	for _, value := range authdomain.AMRVocabulary() {
+		if value == authdomain.AMRPassword {
 			continue
 		}
 		if slices.Contains(amr, value) {

@@ -8,11 +8,11 @@ import (
 	"time"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
-	w, err := domain.ParseGroupWrite(body)
+	w, err := scimdomain.ParseGroupWrite(body)
 	if err != nil {
 		return nil, err
 	}
@@ -79,9 +79,9 @@ func (u *Usecases) ListGroups(ctx context.Context, tenantID string, query ListQu
 		return ListResult{}, err
 	}
 
-	var expr domain.FilterExpr
+	var expr scimdomain.FilterExpr
 	if query.Filter != "" {
-		expr, err = domain.ParseFilter(query.Filter, domain.GroupFilterAttributes)
+		expr, err = scimdomain.ParseFilter(query.Filter, scimdomain.GroupFilterAttributes)
 		if err != nil {
 			return ListResult{}, err
 		}
@@ -225,7 +225,7 @@ func (u *Usecases) removeMembersLenient(ctx context.Context, tenantID, groupID s
 }
 
 func groupMemberScimIDs(value any) ([]string, error) {
-	return domain.ParseGroupMemberScimIDs(value)
+	return scimdomain.ParseGroupMemberScimIDs(value)
 }
 
 // UpdateGroup implements PUT full-replace semantics: displayName
@@ -249,7 +249,7 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 		return nil, ErrNotFound
 	}
 
-	w, err := domain.ParseGroupWrite(body)
+	w, err := scimdomain.ParseGroupWrite(body)
 	if err != nil {
 		return nil, err
 	}
@@ -300,14 +300,14 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 		return nil, ErrNotFound
 	}
 
-	ops, err := domain.ParseGroupPatchOps(body)
+	ops, err := scimdomain.ParseGroupPatchOps(body)
 	if err != nil {
 		return nil, err
 	}
 
 	resolvedMembers := make([][]string, len(ops))
 	for i, op := range ops {
-		if op.Attr != domain.GroupAttrMembers || (op.Op != "add" && op.Op != "replace") {
+		if op.Attr != scimdomain.GroupAttrMembers || (op.Op != "add" && op.Op != "replace") {
 			continue
 		}
 		scimIDs, err := groupMemberScimIDs(op.Value)
@@ -336,15 +336,15 @@ func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body
 	return u.toScimGroup(ctx, group, scimID)
 }
 
-func (u *Usecases) applyGroupPatchOp(ctx context.Context, tenantID string, group *groupdomain.Group, op domain.GroupPatchOp, resolvedUserIDs []string) error {
+func (u *Usecases) applyGroupPatchOp(ctx context.Context, tenantID string, group *groupdomain.Group, op scimdomain.GroupPatchOp, resolvedUserIDs []string) error {
 	switch op.Attr {
-	case domain.GroupAttrDisplayName:
+	case scimdomain.GroupAttrDisplayName:
 		if op.Op == "remove" {
-			return domain.NewMutationError("invalidValue", "displayName cannot be removed")
+			return scimdomain.NewMutationError("invalidValue", "displayName cannot be removed")
 		}
 		displayName, _ := op.Value.(string)
 		if displayName == "" {
-			return domain.NewMutationError("invalidValue", "displayName value must be a non-empty string")
+			return scimdomain.NewMutationError("invalidValue", "displayName value must be a non-empty string")
 		}
 		if displayName != group.Name {
 			existing, err := u.findGroupByDisplayName(ctx, tenantID, displayName)
@@ -356,7 +356,7 @@ func (u *Usecases) applyGroupPatchOp(ctx context.Context, tenantID string, group
 			}
 		}
 		group.Name = displayName
-	case domain.GroupAttrMembers:
+	case scimdomain.GroupAttrMembers:
 		switch op.Op {
 		case "add":
 			return u.addMembers(ctx, tenantID, group.ID, resolvedUserIDs)

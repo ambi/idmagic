@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idmanagement/group/domain"
-	"github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 )
 
 type Fixture struct {
-	Repository ports.GroupRepository
+	Repository groupports.GroupRepository
 	TenantID   string
 	UserID     string
-	Group      *domain.Group
+	Group      *groupdomain.Group
 	Now        time.Time
 }
 
@@ -41,7 +41,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if count, err := f.Repository.Count(ctx, f.TenantID); err != nil || count < 1 {
 		t.Fatalf("Count = (%d, %v)", count, err)
 	}
-	member := &domain.GroupMember{GroupID: f.Group.ID, UserID: f.UserID, Source: domain.MembershipSourceManual, CreatedAt: f.Now}
+	member := &groupdomain.GroupMember{GroupID: f.Group.ID, UserID: f.UserID, Source: groupdomain.MembershipSourceManual, CreatedAt: f.Now}
 	added, err := f.Repository.AddMember(ctx, member)
 	if err != nil || !added {
 		t.Fatalf("AddMember = (%v, %v)", added, err)
@@ -77,11 +77,11 @@ func roleDelegation(t *testing.T, newFixture NewFixture) {
 			g.Roles = []string{"catalog:read"}
 			g.UpstreamManaged = !dynamic
 			expression := ""
-			member := &domain.GroupMember{GroupID: g.ID, UserID: f.UserID, Source: domain.MembershipSourceManual, CreatedAt: f.Now}
+			member := &groupdomain.GroupMember{GroupID: g.ID, UserID: f.UserID, Source: groupdomain.MembershipSourceManual, CreatedAt: f.Now}
 			if dynamic {
-				g.MembershipType = domain.GroupMembershipDynamic
+				g.MembershipType = groupdomain.GroupMembershipDynamic
 				expression = `user.department == "Engineering"`
-				member.Source, member.RuleVersion = domain.MembershipSourceDynamicRule, new(int64(1))
+				member.Source, member.RuleVersion = groupdomain.MembershipSourceDynamicRule, new(int64(1))
 			}
 			if err := f.Repository.Save(ctx, g); err != nil {
 				t.Fatal(err)
@@ -92,7 +92,7 @@ func roleDelegation(t *testing.T, newFixture NewFixture) {
 				}
 			})
 			if dynamic {
-				if err := f.Repository.SaveDynamicRule(ctx, &domain.DynamicGroupRule{TenantID: f.TenantID, GroupID: g.ID, Expression: expression, Enabled: true, Version: 1, CreatedAt: f.Now, UpdatedAt: f.Now}); err != nil {
+				if err := f.Repository.SaveDynamicRule(ctx, &groupdomain.DynamicGroupRule{TenantID: f.TenantID, GroupID: g.ID, Expression: expression, Enabled: true, Version: 1, CreatedAt: f.Now, UpdatedAt: f.Now}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -107,7 +107,7 @@ func roleDelegation(t *testing.T, newFixture NewFixture) {
 				}
 			}
 			assertRoles(nil)
-			approval := &domain.GroupRoleDelegation{Roles: g.Roles, Expression: expression, ApprovedBy: f.UserID, ApprovedAt: f.Now}
+			approval := &groupdomain.GroupRoleDelegation{Roles: g.Roles, Expression: expression, ApprovedBy: f.UserID, ApprovedAt: f.Now}
 			if err := f.Repository.SetRoleDelegation(ctx, f.TenantID, g.ID, approval, f.Now); err != nil {
 				t.Fatal(err)
 			}
@@ -125,11 +125,11 @@ func roleDelegation(t *testing.T, newFixture NewFixture) {
 			assertRoles(g.Roles)
 			if dynamic {
 				// 所属の版が一致しても、式が違えば以前の承認は使えない。
-				if err := f.Repository.SaveDynamicRule(ctx, &domain.DynamicGroupRule{TenantID: f.TenantID, GroupID: g.ID, Expression: `user.department != ""`, Enabled: true, Version: 1, CreatedAt: f.Now, UpdatedAt: f.Now}); err != nil {
+				if err := f.Repository.SaveDynamicRule(ctx, &groupdomain.DynamicGroupRule{TenantID: f.TenantID, GroupID: g.ID, Expression: `user.department != ""`, Enabled: true, Version: 1, CreatedAt: f.Now, UpdatedAt: f.Now}); err != nil {
 					t.Fatal(err)
 				}
 				assertRoles(nil)
-				if err := f.Repository.SaveDynamicRule(ctx, &domain.DynamicGroupRule{TenantID: f.TenantID, GroupID: g.ID, Expression: expression, Enabled: true, Version: 1, CreatedAt: f.Now, UpdatedAt: f.Now}); err != nil {
+				if err := f.Repository.SaveDynamicRule(ctx, &groupdomain.DynamicGroupRule{TenantID: f.TenantID, GroupID: g.ID, Expression: expression, Enabled: true, Version: 1, CreatedAt: f.Now, UpdatedAt: f.Now}); err != nil {
 					t.Fatal(err)
 				}
 				assertRoles(g.Roles)
@@ -148,7 +148,7 @@ func roleDelegation(t *testing.T, newFixture NewFixture) {
 				t.Fatal(err)
 			}
 			assertRoles(nil)
-			if err := f.Repository.SetRoleDelegation(ctx, "00000000-0000-4000-8000-ffffffffffff", g.ID, approval, f.Now); !errors.Is(err, domain.ErrDelegationGroupNotFound) {
+			if err := f.Repository.SetRoleDelegation(ctx, "00000000-0000-4000-8000-ffffffffffff", g.ID, approval, f.Now); !errors.Is(err, groupdomain.ErrDelegationGroupNotFound) {
 				t.Fatalf("foreign approval err=%v, want missing group", err)
 			}
 			assertRoles(nil)

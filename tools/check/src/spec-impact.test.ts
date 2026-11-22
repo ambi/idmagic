@@ -170,6 +170,100 @@ describe('changedCharacterizations', () => {
     ])
     expect(changedCharacterizations(undefined, before)).toEqual([])
   })
+
+  const aliased = (
+    alias: string,
+    path = 'example.com/jobs/domain',
+    body = `${alias}.LaneBulk`,
+  ): string =>
+    `package demo\nimport ${alias === 'domain' ? '' : `${alias} `}"${path}"\n${test('TestCharacterizeLane', `check(t, ${body}, "bulk")`)}`
+
+  it('同じ参照先への別名追従だけを許可し、逆向きも同じように扱う', () => {
+    expect(changedCharacterizations(aliased('domain'), aliased('jobsdomain'))).toEqual([])
+    expect(changedCharacterizations(aliased('jobsdomain'), aliased('domain'))).toEqual([])
+  })
+
+  it('別名を追従させても、期待値と呼び出す操作の変更を拒否する', () => {
+    const original = aliased('domain')
+    expect(
+      changedCharacterizations(original, aliased('jobsdomain').replace('"bulk"', '"fast"')),
+    ).toEqual(['TestCharacterizeLane'])
+    expect(
+      changedCharacterizations(original, aliased('jobsdomain', undefined, 'jobsdomain.LaneFast')),
+    ).toEqual(['TestCharacterizeLane'])
+  })
+
+  it('同じ別名でも異なる参照先に変えたら拒否する', () => {
+    expect(
+      changedCharacterizations(aliased('domain'), aliased('domain', 'example.com/other/domain')),
+    ).toEqual(['TestCharacterizeLane'])
+    expect(
+      changedCharacterizations(
+        aliased('domain'),
+        aliased('jobsdomain', 'example.com/other/domain'),
+      ),
+    ).toEqual(['TestCharacterizeLane'])
+  })
+
+  it('文字列、raw 文字列とコメントの中の別名を正規化しない', () => {
+    for (const literal of ['"domain.LaneBulk"', '`domain.LaneBulk`', "'d' /* domain.LaneBulk */"]) {
+      const original = aliased('domain', undefined, `domain.LaneBulk, ${literal}`)
+      const renamed = aliased('jobsdomain', undefined, `jobsdomain.LaneBulk, ${literal}`)
+      expect(changedCharacterizations(original, renamed)).toEqual([])
+      expect(
+        changedCharacterizations(
+          original,
+          renamed.replaceAll('domain.LaneBulk', 'domain.LaneFast'),
+        ),
+      ).toEqual(['TestCharacterizeLane'])
+    }
+  })
+
+  it('別名と同名のローカル変数があれば追従だけだと推測しない', () => {
+    const original = aliased('domain', undefined, 'domain.LaneBulk; domain := local; domain.Value')
+    const renamed = aliased(
+      'jobsdomain',
+      undefined,
+      'jobsdomain.LaneBulk; jobsdomain := local; jobsdomain.Value',
+    )
+    expect(changedCharacterizations(original, renamed)).toEqual(['TestCharacterizeLane'])
+  })
+
+  it('別名を末尾に含む Unicode 識別子の変更を追従として許可しない', () => {
+    const original = aliased('domain', undefined, 'domain.LaneBulk, 日本語domain.Value')
+    const renamed = aliased('jobsdomain', undefined, 'jobsdomain.LaneBulk, 日本語jobsdomain.Value')
+    expect(changedCharacterizations(original, renamed)).toEqual(['TestCharacterizeLane'])
+  })
+
+  it('グループ import、コメントと raw のパスも扱う', () => {
+    const original = `package demo\nimport (\n// import の説明\n\"example.com/jobs/domain\"\n)\n${test('TestCharacterizeLane', 'check(t, domain.LaneBulk, "bulk")')}`
+    const renamed = `package demo\nimport (\njobsdomain /* 別名の説明 */ \`example.com/jobs/domain\`\n)\n${test('TestCharacterizeLane', 'check(t, jobsdomain.LaneBulk, "bulk")')}`
+    expect(changedCharacterizations(original, renamed)).toEqual([])
+  })
+
+  it('エスケープされた文字列と行コメントを別名追従の対象にしない', () => {
+    const body = 'check(t, domain.LaneBulk, "escaped\\\"domain.Value"); // domain.Value'
+    const original = aliased('domain', undefined, body)
+    const renamed = aliased(
+      'jobsdomain',
+      undefined,
+      body.replace('domain.LaneBulk', 'jobsdomain.LaneBulk'),
+    )
+    expect(changedCharacterizations(original, renamed)).toEqual([])
+    expect(
+      changedCharacterizations(original, renamed.replace('// domain.Value', '// changed')),
+    ).toEqual(['TestCharacterizeLane'])
+  })
+
+  it('読み取れない import や未完のリテラルでは別名追従を許可しない', () => {
+    for (const source of [
+      aliased('jobsdomain').replace('example.com/jobs/domain', 'example.com/jobs/\\x64omain'),
+      `${aliased('jobsdomain')}\n/* unfinished`,
+      `${aliased('jobsdomain')}\nvar unfinished = "`,
+    ]) {
+      expect(changedCharacterizations(aliased('domain'), source)).toEqual(['TestCharacterizeLane'])
+    }
+  })
 })
 
 describe('workRangeStart', () => {

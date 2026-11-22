@@ -6,7 +6,7 @@ import (
 	"time"
 
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
 )
 
 var ErrRunBusy = errors.New("directory ingestion: connector operation is busy")
@@ -31,19 +31,19 @@ type IngestionRunRepository interface {
 	// WithConnectorLock はプロセスをまたいで同じ Connector の変更を排他し、競合は ErrRunBusy で返す。
 	WithConnectorLock(ctx context.Context, tenantID, connectorID string, apply func() error) error
 	// SaveProgress は実行の状態、保留と無効化件数を保存する。バッチの集計を書き戻さない。
-	SaveProgress(ctx context.Context, run domain.IngestionRun) error
+	SaveProgress(ctx context.Context, run directorydomain.IngestionRun) error
 	// Start は run を保存し、同じ Connector の running の実行を superseded にする。
-	Start(ctx context.Context, run domain.IngestionRun) error
+	Start(ctx context.Context, run directorydomain.IngestionRun) error
 	// Find は、Connector の実行でなければ nil を返す。
-	Find(ctx context.Context, tenantID, connectorID, runID string) (*domain.IngestionRun, error)
+	Find(ctx context.Context, tenantID, connectorID, runID string) (*directorydomain.IngestionRun, error)
 	// List は Connector の実行を開始時刻の新しい順に limit 件まで返す。
-	List(ctx context.Context, tenantID, connectorID string, limit int) ([]domain.IngestionRun, error)
-	FindBatch(ctx context.Context, tenantID, runID, batchID string) (*domain.IngestionBatch, error)
+	List(ctx context.Context, tenantID, connectorID string, limit int) ([]directorydomain.IngestionRun, error)
+	FindBatch(ctx context.Context, tenantID, runID, batchID string) (*directorydomain.IngestionBatch, error)
 	// RecordBatch はバッチを記録して実行の件数へ足し、記録したバッチを返す。同じ ID のバッチが
 	// 先に記録されていれば、何も変えずにそれを返す。
-	RecordBatch(ctx context.Context, batch domain.IngestionBatch) (domain.IngestionBatch, error)
+	RecordBatch(ctx context.Context, batch directorydomain.IngestionBatch) (directorydomain.IngestionBatch, error)
 	// ListBatches は実行のバッチを記録した順に返す。
-	ListBatches(ctx context.Context, tenantID, runID string) ([]domain.IngestionBatch, error)
+	ListBatches(ctx context.Context, tenantID, runID string) ([]directorydomain.IngestionBatch, error)
 	// Complete は running の実行だけを completed にし、変えたかを返す。
 	Complete(ctx context.Context, tenantID, runID string, completedAt time.Time, disabled int) (bool, error)
 }

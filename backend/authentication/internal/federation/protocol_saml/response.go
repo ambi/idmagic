@@ -18,7 +18,7 @@ import (
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -26,12 +26,12 @@ import (
 const maxSAMLResponseBytes = 1 << 20
 
 func BuildAuthnRequest(
-	connection domain.IdentityProviderConnection,
-	attempt domain.FederatedLoginAttempt,
+	connection federationdomain.IdentityProviderConnection,
+	attempt federationdomain.FederatedLoginAttempt,
 	acsURL string,
 	now time.Time,
 ) (string, error) {
-	if !connection.Active() || connection.Protocol != domain.ProtocolSAML {
+	if !connection.Active() || connection.Protocol != federationdomain.ProtocolSAML {
 		return "", errors.New("SAML connection is not active")
 	}
 	if attempt.State == "" || attempt.RequestID == "" {
@@ -74,14 +74,14 @@ func BuildAuthnRequest(
 
 func ValidateResponse(
 	ctx context.Context,
-	connection domain.IdentityProviderConnection,
-	attempt domain.FederatedLoginAttempt,
+	connection federationdomain.IdentityProviderConnection,
+	attempt federationdomain.FederatedLoginAttempt,
 	encodedResponse, acsURL string,
 	now time.Time,
 	replay federationports.ReplayStore,
-) (domain.NormalizedClaims, error) {
-	var empty domain.NormalizedClaims
-	if !connection.Active() || connection.Protocol != domain.ProtocolSAML {
+) (federationdomain.NormalizedClaims, error) {
+	var empty federationdomain.NormalizedClaims
+	if !connection.Active() || connection.Protocol != federationdomain.ProtocolSAML {
 		return empty, errors.New("SAML connection is not active")
 	}
 	raw, err := base64.StdEncoding.DecodeString(encodedResponse)
@@ -247,8 +247,8 @@ func validateSubjectConfirmation(assertion *etree.Element, requestID, acsURL str
 	return nil
 }
 
-func normalizeClaims(mapping domain.ClaimMapping, values map[string]string) (domain.NormalizedClaims, error) {
-	out := domain.NormalizedClaims{
+func normalizeClaims(mapping federationdomain.ClaimMapping, values map[string]string) (federationdomain.NormalizedClaims, error) {
+	out := federationdomain.NormalizedClaims{
 		Subject:       strings.TrimSpace(values[mapping.Subject]),
 		Username:      strings.TrimSpace(values[mapping.Username]),
 		Email:         strings.TrimSpace(values[mapping.Email]),
@@ -256,7 +256,7 @@ func normalizeClaims(mapping domain.ClaimMapping, values map[string]string) (dom
 		EmailVerified: strings.EqualFold(strings.TrimSpace(values[mapping.EmailVerified]), "true"),
 	}
 	if out.Subject == "" || out.Username == "" {
-		return domain.NormalizedClaims{}, errors.New("required mapped SAML attributes are missing")
+		return federationdomain.NormalizedClaims{}, errors.New("required mapped SAML attributes are missing")
 	}
 	return out, nil
 }

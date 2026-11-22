@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
@@ -16,7 +16,7 @@ type passwordPolicyProblem struct {
 }
 
 // writePasswordPolicyProblem は、パスワードの変更と再設定のポリシー違反を 422 で返す。
-func writePasswordPolicyProblem(c *echo.Context, policyErr *authusecases.PasswordPolicyError) error {
+func writePasswordPolicyProblem(c *echo.Context, policyErr *passwordusecases.PasswordPolicyError) error {
 	return support.WriteProblemBody(c, http.StatusUnprocessableEntity, passwordPolicyProblem{
 		Problem: support.NewProblem(
 			c, http.StatusUnprocessableEntity, "password_policy", "The password does not meet the security requirements.",

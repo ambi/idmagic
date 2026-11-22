@@ -9,9 +9,9 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
@@ -28,17 +28,17 @@ func (d *denyAuthorizer) Authorize(_ context.Context, req spec.AuthZRequest) (sp
 
 // recordingIssuer は SignAccessToken の入力を記録するスタブ。
 type recordingIssuer struct {
-	lastInput ports.AccessTokenInput
+	lastInput oauthports.AccessTokenInput
 	calls     int
 }
 
-func (r *recordingIssuer) SignAccessToken(_ context.Context, in ports.AccessTokenInput) (string, string, error) {
+func (r *recordingIssuer) SignAccessToken(_ context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	r.calls++
 	r.lastInput = in
 	return "exchanged-access-token", "jti-exch", nil
 }
 
-func (r *recordingIssuer) SignIDToken(context.Context, ports.IDTokenInput) (string, error) {
+func (r *recordingIssuer) SignIDToken(context.Context, oauthports.IDTokenInput) (string, error) {
 	return "", nil
 }
 func (r *recordingIssuer) AccessTokenTTLSeconds() int { return 600 }
@@ -46,20 +46,20 @@ func (r *recordingIssuer) IDTokenTTLSeconds() int     { return 3600 }
 
 // tokenIntrospector は token 文字列ごとに異なる結果を返すスタブ。
 type tokenIntrospector struct {
-	results map[string]*ports.IntrospectionResult
+	results map[string]*oauthports.IntrospectionResult
 }
 
-func (s tokenIntrospector) IntrospectAccessToken(_ context.Context, token string) (*ports.IntrospectionResult, error) {
+func (s tokenIntrospector) IntrospectAccessToken(_ context.Context, token string) (*oauthports.IntrospectionResult, error) {
 	if r, ok := s.results[token]; ok {
 		return r, nil
 	}
-	return &ports.IntrospectionResult{Active: false}, nil
+	return &oauthports.IntrospectionResult{Active: false}, nil
 }
 
-func newExchangeTokenDeps(t *testing.T, issuer *recordingIssuer, results map[string]*ports.IntrospectionResult) ExchangeTokenDeps {
+func newExchangeTokenDeps(t *testing.T, issuer *recordingIssuer, results map[string]*oauthports.IntrospectionResult) ExchangeTokenDeps {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		ClientID:   "client",
 		ClientType: spec.ClientConfidential,
 		GrantTypes: []spec.GrantType{spec.GrantTokenExchange},
@@ -70,20 +70,20 @@ func newExchangeTokenDeps(t *testing.T, issuer *recordingIssuer, results map[str
 		ClientRepo:   clientRepo,
 		Introspector: tokenIntrospector{results: results},
 		TokenIssuer:  issuer,
-		McpResourceServerRepo: newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+		McpResourceServerRepo: newFakeMcpResourceServerRepo(&oauthdomain.McpResourceServer{
 			TenantID: kernel.DefaultTenantID,
 			ID:       "rs-api-example",
 			Resource: "https://api.example",
 			Name:     "API Example",
 			Scopes:   []string{"read", "write"},
-			State:    domain.McpResourceServerActive,
+			State:    oauthdomain.McpResourceServerActive,
 		}),
 	}
 }
 
 func TestExchangeTokenBuildsActAndAudience(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
 	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -112,12 +112,12 @@ func TestExchangeTokenBuildsActAndAudience(t *testing.T) {
 
 func TestExchangeTokenRejectsAccountScopeFromClientSubject(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "service-client", ClientID: "service-client", Scope: "account:read"},
 	})
-	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&oauthdomain.McpResourceServer{
 		TenantID: kernel.DefaultTenantID,
-		ID:       "realm-api", Resource: "https://api.example", Name: "Realm API", Scopes: []string{"account:read"}, State: domain.McpResourceServerActive,
+		ID:       "realm-api", Resource: "https://api.example", Name: "Realm API", Scopes: []string{"account:read"}, State: oauthdomain.McpResourceServerActive,
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}}, time.Now().UTC())
 	if err == nil {
@@ -130,7 +130,7 @@ func TestExchangeTokenRejectsAccountScopeFromClientSubject(t *testing.T) {
 
 func TestExchangeTokenNestsExistingActChain(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", Act: map[string]any{"sub": "svc-a"}},
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -153,7 +153,7 @@ func TestExchangeTokenRejectsExceedingMaxDepth(t *testing.T) {
 	// 既存 act が深さ 3 (MaxDelegationDepth) → 交換すると深さ 4 で拒否。
 	deep := map[string]any{"sub": "a3", "act": map[string]any{"sub": "a2", "act": map[string]any{"sub": "a1"}}}
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", Act: deep},
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -169,7 +169,7 @@ func TestExchangeTokenRejectsExceedingMaxDepth(t *testing.T) {
 
 func TestExchangeTokenRejectsInactiveSubject(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: false},
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -182,7 +182,7 @@ func TestExchangeTokenRejectsInactiveSubject(t *testing.T) {
 
 func TestExchangeTokenEnforcesMayAct(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		// may_act.sub != currentActor("client") → 拒否。
 		"subj": {Active: true, Sub: "user-1", Scope: "read", MayAct: map[string]any{"sub": "other"}},
 	})
@@ -195,7 +195,7 @@ func TestExchangeTokenEnforcesMayAct(t *testing.T) {
 
 	// may_act.sub == currentActor → 許可。
 	issuer2 := &recordingIssuer{}
-	deps2 := newExchangeTokenDeps(t, issuer2, map[string]*ports.IntrospectionResult{
+	deps2 := newExchangeTokenDeps(t, issuer2, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", MayAct: map[string]any{"sub": "client"}},
 	})
 	if _, err := ExchangeToken(testing_tenant.Default(context.Background()), deps2, ExchangeTokenInput{
@@ -207,7 +207,7 @@ func TestExchangeTokenEnforcesMayAct(t *testing.T) {
 
 func TestExchangeTokenCannotWidenScope(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -221,7 +221,7 @@ func TestExchangeTokenCannotWidenScope(t *testing.T) {
 
 func TestExchangeTokenDownscopes(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
 	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -238,7 +238,7 @@ func TestExchangeTokenDownscopes(t *testing.T) {
 
 func TestExchangeTokenRejectsUnregisteredResource(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -252,13 +252,13 @@ func TestExchangeTokenRejectsUnregisteredResource(t *testing.T) {
 
 func TestExchangeTokenRejectsDisabledResource(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
-	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&oauthdomain.McpResourceServer{
 		TenantID: kernel.DefaultTenantID, ID: "rs-1",
 		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
-		State: domain.McpResourceServerDisabled,
+		State: oauthdomain.McpResourceServerDisabled,
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"},
@@ -268,13 +268,13 @@ func TestExchangeTokenRejectsDisabledResource(t *testing.T) {
 
 func TestExchangeTokenRejectsScopeExceedingResourceAllowlist(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
-	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&oauthdomain.McpResourceServer{
 		TenantID: kernel.DefaultTenantID, ID: "rs-1",
 		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
-		State: domain.McpResourceServerActive,
+		State: oauthdomain.McpResourceServerActive,
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
 		ClientID: "client", SubjectToken: "subj", Scope: "write",
@@ -291,7 +291,7 @@ func TestExchangeTokenRequiresSingleResource(t *testing.T) {
 	for name, resource := range cases {
 		t.Run(name, func(t *testing.T) {
 			issuer := &recordingIssuer{}
-			deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+			deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 				"subj": {Active: true, Sub: "user-1", Scope: "read"},
 			})
 			_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -306,7 +306,7 @@ func TestExchangeTokenRequiresSingleResource(t *testing.T) {
 
 func TestExchangeTokenRejectsUnsupportedRequestedTokenType(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	_, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -324,7 +324,7 @@ func TestExchangeTokenRejectsUnsupportedRequestedTokenType(t *testing.T) {
 func TestExchangeTokenUsesAuthorizerPolicyGate(t *testing.T) {
 	issuer := &recordingIssuer{}
 	authorizer := &denyAuthorizer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	deps.Authorizer = authorizer
@@ -351,7 +351,7 @@ func TestExchangeTokenUsesAuthorizerPolicyGate(t *testing.T) {
 
 func TestExchangeTokenActorTokenBecomesActor(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj":  {Active: true, Sub: "user-1", Scope: "read"},
 		"actor": {Active: true, Sub: "svc-actor", Scope: "read"},
 	})
@@ -386,7 +386,7 @@ func (f fakeWorkloadVerifier) VerifyClientAssertion(context.Context, string, str
 func TestExchangeTokenWorkloadFederation(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, nil)
-	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&domain.OAuth2Client{
+	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&oauthdomain.OAuth2Client{
 		ClientID:   "agent-bound-client",
 		ClientType: spec.ClientConfidential,
 		GrantTypes: []spec.GrantType{spec.GrantClientCredentials},

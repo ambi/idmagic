@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/domain"
-	"github.com/ambi/idmagic/backend/audit/internal/usecases"
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditdomain "github.com/ambi/idmagic/backend/audit/domain"
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -40,22 +40,22 @@ func newExportFixture(tb testing.TB, count int) *exportFixture {
 	emit := func(event spec.DomainEvent) { f.events = append(f.events, event) }
 	quotas := tenancy.NewMemoryModule().QuotaRepo
 	activeJobs := 100
-	if err := quotas.SetQuota(context.Background(), "a", &tenantdomain.TenantQuota{ActiveJobs: &activeJobs}); err != nil {
+	if err := quotas.SetQuota(context.Background(), "a", &tenancydomain.TenantQuota{ActiveJobs: &activeJobs}); err != nil {
 		tb.Fatal(err)
 	}
 	f.quotas = quotas
 	f.deps = ExportDeps{Events: f.module.AuditEventRepo, Artifacts: f.module.ExportArtifacts, Jobs: repo, Enqueuer: jobs.NewEnqueuer(repo, quotas, emit), Canceler: jobs.NewCanceler(repo, quotas, emit), Codec: f.module.ExportCodec, Emit: emit, Now: func() time.Time { return f.now }}
 	for i := range count {
-		if err := f.deps.Events.Append(context.Background(), &ports.AuditEventRecord{ID: fmt.Sprintf("%08d", i), TenantID: "a", Type: "UserAuthenticated", OccurredAt: f.now.Add(-time.Minute), Payload: map[string]any{"userId": "alice"}}); err != nil {
+		if err := f.deps.Events.Append(context.Background(), &auditports.AuditEventRecord{ID: fmt.Sprintf("%08d", i), TenantID: "a", Type: "UserAuthenticated", OccurredAt: f.now.Add(-time.Minute), Payload: map[string]any{"userId": "alice"}}); err != nil {
 			tb.Fatal(err)
 		}
 	}
 	return f
 }
 
-func (f *exportFixture) start(tb testing.TB, policy domain.ExportPolicy) *jobsdomain.Job {
+func (f *exportFixture) start(tb testing.TB, policy auditdomain.ExportPolicy) *jobsdomain.Job {
 	tb.Helper()
-	view, err := StartExport(context.Background(), f.deps, ports.ExportParams{Query: ports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: policy})
+	view, err := StartExport(context.Background(), f.deps, auditports.ExportParams{Query: auditports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: policy})
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -66,16 +66,16 @@ func (f *exportFixture) start(tb testing.TB, policy domain.ExportPolicy) *jobsdo
 	return claimed[0]
 }
 
-func (f *exportFixture) complete(tb testing.TB, job *jobsdomain.Job) ports.ExportArtifact {
+func (f *exportFixture) complete(tb testing.TB, job *jobsdomain.Job) auditports.ExportArtifact {
 	tb.Helper()
-	result, err := usecases.ExportHandler(f.deps)(context.Background(), job)
+	result, err := auditusecases.ExportHandler(f.deps)(context.Background(), job)
 	if err != nil {
 		tb.Fatal(err)
 	}
 	if _, err = f.deps.Jobs.Complete(context.Background(), job.ID, "worker", result, f.now); err != nil {
 		tb.Fatal(err)
 	}
-	var meta ports.ExportArtifact
+	var meta auditports.ExportArtifact
 	if err := json.Unmarshal(result, &meta); err != nil {
 		tb.Fatal(err)
 	}
@@ -89,8 +89,8 @@ func TestAuditExportCompletesAllPages(t *testing.T) {
 	for _, count := range []int{0, 500, 1001, 1500} {
 		t.Run(fmt.Sprint(count), func(t *testing.T) {
 			f := newExportFixture(t, count)
-			job := f.start(t, domain.DefaultExportPolicy())
-			var params ports.ExportParams
+			job := f.start(t, auditdomain.DefaultExportPolicy())
+			var params auditports.ExportParams
 			if err := json.Unmarshal(job.Params, &params); err != nil {
 				t.Fatal(err)
 			}
@@ -125,7 +125,7 @@ func TestAuditExportCompletesAllPages(t *testing.T) {
 					t.Fatalf("event[%d]=%+v", i, event)
 				}
 			}
-			repeated, err := usecases.ExportHandler(f.deps)(context.Background(), job)
+			repeated, err := auditusecases.ExportHandler(f.deps)(context.Background(), job)
 			if !errors.Is(err, jobsports.ErrJobLeaseLost) || len(repeated) != 0 {
 				t.Fatalf("terminal replay err=%v", err)
 			}
@@ -135,21 +135,21 @@ func TestAuditExportCompletesAllPages(t *testing.T) {
 
 //spec:covers REQ-AUDIT-010: 件数とバイト数の境界のちょうどは成功し、一つ超えた成果物は公開しない。
 func TestAuditExportLimitsAndFailurePublication(t *testing.T) {
-	policy := domain.DefaultExportPolicy()
+	policy := auditdomain.DefaultExportPolicy()
 	for _, count := range []int{2, 3} {
 		t.Run(fmt.Sprintf("events-%d", count), func(t *testing.T) {
 			f := newExportFixture(t, count)
 			p := policy
 			p.MaxEvents = 2
 			job := f.start(t, p)
-			_, err := usecases.ExportHandler(f.deps)(context.Background(), job)
+			_, err := auditusecases.ExportHandler(f.deps)(context.Background(), job)
 			if count == 2 {
 				if err != nil {
 					t.Fatal(err)
 				}
 				return
 			}
-			if !errors.Is(err, usecases.ErrEventLimit) {
+			if !errors.Is(err, auditusecases.ErrEventLimit) {
 				t.Fatalf("err=%v", err)
 			}
 			assertNoExport(t, f, job.ID)
@@ -157,8 +157,8 @@ func TestAuditExportLimitsAndFailurePublication(t *testing.T) {
 	}
 	f := newExportFixture(t, 2)
 	var encoded bytes.Buffer
-	p := ports.ExportParams{Query: ports.AuditEventQuery{TenantID: "a"}, Policy: policy}
-	if _, err := usecases.StreamExport(context.Background(), f.deps, p, &encoded, nil, false); err != nil {
+	p := auditports.ExportParams{Query: auditports.AuditEventQuery{TenantID: "a"}, Policy: policy}
+	if _, err := auditusecases.StreamExport(context.Background(), f.deps, p, &encoded, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	for _, delta := range []int64{0, -1} {
@@ -167,14 +167,14 @@ func TestAuditExportLimitsAndFailurePublication(t *testing.T) {
 			p := policy
 			p.MaxBytes = int64(encoded.Len()) + delta
 			job := f.start(t, p)
-			_, err := usecases.ExportHandler(f.deps)(context.Background(), job)
+			_, err := auditusecases.ExportHandler(f.deps)(context.Background(), job)
 			if delta == 0 {
 				if err != nil {
 					t.Fatal(err)
 				}
 				return
 			}
-			if !errors.Is(err, usecases.ErrByteLimit) {
+			if !errors.Is(err, auditusecases.ErrByteLimit) {
 				t.Fatalf("err=%v", err)
 			}
 			assertNoExport(t, f, job.ID)
@@ -188,18 +188,18 @@ func assertNoExport(t *testing.T, f *exportFixture, id string) {
 	if reader != nil {
 		reader.Close()
 	}
-	if !errors.Is(err, ports.ErrExportArtifactNotFound) {
+	if !errors.Is(err, auditports.ErrExportArtifactNotFound) {
 		t.Fatalf("partial artifact exposed: %v", err)
 	}
 }
 
 type interruptingEvents struct {
-	ports.AuditEventRepository
+	auditports.AuditEventRepository
 	afterPage func()
 	pages     int
 }
 
-func (s *interruptingEvents) List(ctx context.Context, q ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {
+func (s *interruptingEvents) List(ctx context.Context, q auditports.AuditEventQuery) ([]*auditports.AuditEventRecord, error) {
 	if q.Limit != 500 {
 		return nil, errors.New("unbounded page")
 	}
@@ -213,27 +213,27 @@ func (s *interruptingEvents) List(ctx context.Context, q ports.AuditEventQuery) 
 //spec:covers REQ-AUDIT-010: ページ途中の取消しと保存先障害は部分成果物を公開しない。
 func TestAuditExportCancellationAndStorageFailure(t *testing.T) {
 	f := newExportFixture(t, 1001)
-	job := f.start(t, domain.DefaultExportPolicy())
+	job := f.start(t, auditdomain.DefaultExportPolicy())
 	f.deps.Events = &interruptingEvents{AuditEventRepository: f.deps.Events, afterPage: func() {
 		if _, err := f.deps.Jobs.Cancel(context.Background(), job.ID, f.now); err != nil {
 			t.Error(err)
 		}
 	}}
-	if _, err := usecases.ExportHandler(f.deps)(context.Background(), job); !errors.Is(err, jobsports.ErrJobLeaseLost) {
+	if _, err := auditusecases.ExportHandler(f.deps)(context.Background(), job); !errors.Is(err, jobsports.ErrJobLeaseLost) {
 		t.Fatalf("err=%v", err)
 	}
 	assertNoExport(t, f, job.ID)
 	f = newExportFixture(t, 1)
-	job = f.start(t, domain.DefaultExportPolicy())
+	job = f.start(t, auditdomain.DefaultExportPolicy())
 	f.deps.Artifacts = &failingArtifacts{ExportArtifactStore: f.deps.Artifacts}
-	if _, err := usecases.ExportHandler(f.deps)(context.Background(), job); !errors.Is(err, usecases.ErrExportFailed) || strings.Contains(err.Error(), "secret") {
+	if _, err := auditusecases.ExportHandler(f.deps)(context.Background(), job); !errors.Is(err, auditusecases.ErrExportFailed) || strings.Contains(err.Error(), "secret") {
 		t.Fatalf("err=%v", err)
 	}
 	assertNoExport(t, f, job.ID)
 	f = newExportFixture(t, 1)
-	job = f.start(t, domain.DefaultExportPolicy())
+	job = f.start(t, auditdomain.DefaultExportPolicy())
 	f.deps.Jobs = failingExportJobs{JobRepository: f.deps.Jobs}
-	if _, err := usecases.ExportHandler(f.deps)(context.Background(), job); !errors.Is(err, usecases.ErrExportFailed) {
+	if _, err := auditusecases.ExportHandler(f.deps)(context.Background(), job); !errors.Is(err, auditusecases.ErrExportFailed) {
 		t.Fatalf("job read failure=%v", err)
 	}
 }
@@ -243,9 +243,9 @@ func TestAuditExportCancellationAndStorageFailure(t *testing.T) {
 //spec:covers REQ-AUDIT-011: 未完了のジョブの取消しは canceled にして active_jobs の枠を解放し、終端のジョブの取消しは 409 の誤りで状態も枠も変えない。
 func TestAuditExportCancellationReleasesTheActiveJobsQuota(t *testing.T) {
 	f := newExportFixture(t, 1)
-	job := f.start(t, domain.DefaultExportPolicy())
+	job := f.start(t, auditdomain.DefaultExportPolicy())
 	// 拒否が枠を変えないことを、0 で止まる減算と区別するために、もう一件の枠を残す。
-	f.start(t, domain.DefaultExportPolicy())
+	f.start(t, auditdomain.DefaultExportPolicy())
 	scope := ExportScope{TenantID: "a", RequestedBy: "owner"}
 	assertActiveJobs := func(want int) {
 		t.Helper()
@@ -260,7 +260,7 @@ func TestAuditExportCancellationReleasesTheActiveJobsQuota(t *testing.T) {
 	assertActiveJobs(2)
 	f.events = nil
 
-	view, err := usecases.CancelExport(context.Background(), f.deps, scope, job.ID)
+	view, err := auditusecases.CancelExport(context.Background(), f.deps, scope, job.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestAuditExportCancellationReleasesTheActiveJobsQuota(t *testing.T) {
 		t.Fatalf("events=%v, want exactly JobCanceled", f.events)
 	}
 
-	if _, err := usecases.CancelExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
+	if _, err := auditusecases.CancelExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
 		t.Fatalf("second cancel err=%v, want ErrJobAlreadyTerminal", err)
 	}
 	assertActiveJobs(1)
@@ -284,23 +284,23 @@ func (failingExportJobs) Get(context.Context, string) (*jobsdomain.Job, error) {
 	return nil, errors.New("secret database details")
 }
 
-type failingArtifacts struct{ ports.ExportArtifactStore }
+type failingArtifacts struct{ auditports.ExportArtifactStore }
 
-func (*failingArtifacts) Write(context.Context, string, string, func(io.Writer) (ports.ExportCompletion, error)) (ports.ExportArtifact, error) {
-	return ports.ExportArtifact{}, errors.New("secret database details")
+func (*failingArtifacts) Write(context.Context, string, string, func(io.Writer) (auditports.ExportCompletion, error)) (auditports.ExportArtifact, error) {
+	return auditports.ExportArtifact{}, errors.New("secret database details")
 }
 
 //spec:covers REQ-AUDIT-011: 所有者、範囲、成功、期限を毎回照合する。
 func TestAuditExportDownloadScopeAndExpiry(t *testing.T) {
 	f := newExportFixture(t, 1)
-	job := f.start(t, domain.DefaultExportPolicy())
+	job := f.start(t, auditdomain.DefaultExportPolicy())
 	scope := ExportScope{TenantID: "a", RequestedBy: "owner"}
-	if _, _, err := DownloadExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, usecases.ErrExportUnavailable) {
+	if _, _, err := DownloadExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, auditusecases.ErrExportUnavailable) {
 		t.Fatal(err)
 	}
 	meta := f.complete(t, job)
 	for _, wrong := range []ExportScope{{TenantID: "b", RequestedBy: "owner"}, {TenantID: "a", RequestedBy: "another"}, {TenantID: "a", RequestedBy: "owner", System: true}} {
-		if _, _, err := DownloadExport(context.Background(), f.deps, wrong, job.ID); !errors.Is(err, usecases.ErrExportNotFound) {
+		if _, _, err := DownloadExport(context.Background(), f.deps, wrong, job.ID); !errors.Is(err, auditusecases.ErrExportNotFound) {
 			t.Fatalf("scope=%+v err=%v", wrong, err)
 		}
 	}
@@ -309,7 +309,7 @@ func TestAuditExportDownloadScopeAndExpiry(t *testing.T) {
 	if err != nil || view.Status != "expired" || view.Downloadable {
 		t.Fatalf("view=%+v err=%v", view, err)
 	}
-	if _, _, err := DownloadExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, usecases.ErrExportUnavailable) {
+	if _, _, err := DownloadExport(context.Background(), f.deps, scope, job.ID); !errors.Is(err, auditusecases.ErrExportUnavailable) {
 		t.Fatal(err)
 	}
 	if err := f.module.PurgeExpiredExports(context.Background(), f.deps.Jobs, f.now, f.deps.Emit); err != nil {
@@ -322,12 +322,12 @@ func TestAuditExportDownloadScopeAndExpiry(t *testing.T) {
 }
 
 type pausedExportEvents struct {
-	ports.AuditEventRepository
+	auditports.AuditEventRepository
 	entered chan struct{}
 	release chan struct{}
 }
 
-func (p *pausedExportEvents) List(ctx context.Context, q ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {
+func (p *pausedExportEvents) List(ctx context.Context, q auditports.AuditEventQuery) ([]*auditports.AuditEventRecord, error) {
 	close(p.entered)
 	select {
 	case <-p.release:
@@ -337,7 +337,7 @@ func (p *pausedExportEvents) List(ctx context.Context, q ports.AuditEventQuery) 
 	}
 }
 
-func (*pausedExportEvents) Count(context.Context, ports.AuditEventQuery) (int64, error) {
+func (*pausedExportEvents) Count(context.Context, auditports.AuditEventQuery) (int64, error) {
 	panic("export creation must not count audit events")
 }
 
@@ -346,9 +346,9 @@ func TestAuditExportRequestsDoNotWaitForWorker(t *testing.T) {
 	f := newExportFixture(t, 1001)
 	paused := &pausedExportEvents{AuditEventRepository: f.deps.Events, entered: make(chan struct{}), release: make(chan struct{})}
 	f.deps.Events = paused
-	job := f.start(t, domain.DefaultExportPolicy())
+	job := f.start(t, auditdomain.DefaultExportPolicy())
 	finished := make(chan error, 1)
-	go func() { _, err := usecases.ExportHandler(f.deps)(context.Background(), job); finished <- err }()
+	go func() { _, err := auditusecases.ExportHandler(f.deps)(context.Background(), job); finished <- err }()
 	<-paused.entered
 	defer close(paused.release)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -359,7 +359,7 @@ func TestAuditExportRequestsDoNotWaitForWorker(t *testing.T) {
 	deps.Enqueuer = jobs.NewEnqueuer(deps.Jobs, f.quotas, deps.Emit)
 	deps.Canceler = jobs.NewCanceler(deps.Jobs, f.quotas, deps.Emit)
 	for range 20 {
-		view, err := StartExport(ctx, deps, ports.ExportParams{Query: ports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: domain.DefaultExportPolicy()})
+		view, err := StartExport(ctx, deps, auditports.ExportParams{Query: auditports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: auditdomain.DefaultExportPolicy()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -367,7 +367,7 @@ func TestAuditExportRequestsDoNotWaitForWorker(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := usecases.CancelExport(ctx, deps, ExportScope{TenantID: "a", RequestedBy: "owner"}, job.ID); err != nil {
+	if _, err := auditusecases.CancelExport(ctx, deps, ExportScope{TenantID: "a", RequestedBy: "owner"}, job.ID); err != nil {
 		t.Fatal(err)
 	}
 	// 解放後に取消しを確認して終了する。
@@ -388,7 +388,7 @@ func BenchmarkAuditExportRequest(b *testing.B) {
 				deps.Jobs = jobs.NewJobRepository()
 				deps.Emit = func(spec.DomainEvent) {}
 				deps.Enqueuer = jobs.NewEnqueuer(deps.Jobs, tenancy.NewMemoryModule().QuotaRepo, deps.Emit)
-				if _, err := StartExport(context.Background(), deps, ports.ExportParams{Query: ports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: domain.DefaultExportPolicy()}); err != nil {
+				if _, err := StartExport(context.Background(), deps, auditports.ExportParams{Query: auditports.AuditEventQuery{TenantID: "a"}, RequestedBy: "owner", Format: "json", Policy: auditdomain.DefaultExportPolicy()}); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -400,7 +400,7 @@ func BenchmarkAuditExportRequest(b *testing.B) {
 func TestAuditExportMetrics(t *testing.T) {
 	f := newExportFixture(t, 1)
 	f.deps.Metrics = f.module.metrics
-	job := f.start(t, domain.DefaultExportPolicy())
+	job := f.start(t, auditdomain.DefaultExportPolicy())
 	meta := f.complete(t, job)
 	f.module.metrics.Limit("event_limit_exceeded")
 	registry := prometheus.NewRegistry()

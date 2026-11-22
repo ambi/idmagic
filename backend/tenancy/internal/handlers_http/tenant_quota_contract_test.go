@@ -10,7 +10,7 @@ import (
 	"time"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
@@ -24,14 +24,14 @@ func newQuotaContractServer(t *testing.T) (*rulesServer, *observedQuotaRepositor
 	quotas := &observedQuotaRepository{QuotaRepository: memory.NewQuotaRepository()}
 	users := 100
 	for _, key := range []string{quotaContractID, quotaContractRealm} {
-		if err := quotas.QuotaRepository.SetQuota(t.Context(), key, &domain.TenantQuota{Users: &users}); err != nil {
+		if err := quotas.QuotaRepository.SetQuota(t.Context(), key, &tenancydomain.TenantQuota{Users: &users}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	s := newRulesServer(t, systemAdmin(), rulesOptions{quotas: quotas})
-	if err := s.tenants.Save(t.Context(), &domain.Tenant{
+	if err := s.tenants.Save(t.Context(), &tenancydomain.Tenant{
 		ID: quotaContractID, Realm: quotaContractRealm, DisplayName: "Quota contract",
-		Status: domain.TenantStatusActive, CreatedAt: time.Now().UTC(),
+		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestTenantQuotaResolvesRealmAndReturnsStoredQuota(t *testing.T) {
 	if len(*s.events) != 1 {
 		t.Fatalf("events = %v, want one quota update", *s.events)
 	}
-	event, ok := (*s.events)[0].(*domain.TenantQuotaUpdated)
+	event, ok := (*s.events)[0].(*tenancydomain.TenantQuotaUpdated)
 	if !ok || event.TenantID != quotaContractID || !reflect.DeepEqual(event.ChangedFields, []string{"users", "groups"}) {
 		t.Fatalf("event = %+v, want resolved tenant ID and changed fields", (*s.events)[0])
 	}
@@ -89,10 +89,10 @@ func TestTenantQuotaKeepsSoftOverridesWithoutRefusingUsage(t *testing.T) {
 		t.Fatalf("soft overrides=%v", body)
 	}
 	stored, err := quotas.GetQuota(t.Context(), quotaContractID)
-	if err != nil || stored.EffectiveLimit(domain.ResourceAuditEventsRetained) != 0 || stored.EffectiveLimit(domain.ResourceExportArtifactsBytes) != large {
+	if err != nil || stored.EffectiveLimit(tenancydomain.ResourceAuditEventsRetained) != 0 || stored.EffectiveLimit(tenancydomain.ResourceExportArtifactsBytes) != large {
 		t.Fatalf("quota=%+v err=%v", stored, err)
 	}
-	if err := quotas.CheckAndIncrement(t.Context(), quotaContractID, domain.ResourceAuditEventsRetained, 1); err != nil {
+	if err := quotas.CheckAndIncrement(t.Context(), quotaContractID, tenancydomain.ResourceAuditEventsRetained, 1); err != nil {
 		t.Fatal(err)
 	}
 	usage, err := quotas.GetUsage(t.Context(), quotaContractID)
@@ -170,13 +170,13 @@ func TestTenantQuotaRefusesNonSystemAdmin(t *testing.T) {
 		status int
 		code   string
 	}{
-		{settingsActor("tenant-admin", domain.DefaultTenantID, []string{"admin"}), http.StatusForbidden, "access_denied"},
+		{settingsActor("tenant-admin", tenancydomain.DefaultTenantID, []string{"admin"}), http.StatusForbidden, "access_denied"},
 		{settingsActor("foreign-system-admin", "acme", []string{"system_admin"}), http.StatusUnauthorized, "authentication_required"},
 	} {
 		t.Run(tc.actor.ID, func(t *testing.T) {
 			quotas := &observedQuotaRepository{QuotaRepository: memory.NewQuotaRepository()}
 			users := 100
-			if err := quotas.QuotaRepository.SetQuota(t.Context(), "acme", &domain.TenantQuota{Users: &users}); err != nil {
+			if err := quotas.QuotaRepository.SetQuota(t.Context(), "acme", &tenancydomain.TenantQuota{Users: &users}); err != nil {
 				t.Fatal(err)
 			}
 			s := newRulesServer(t, tc.actor, rulesOptions{quotas: quotas})

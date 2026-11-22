@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -36,17 +36,17 @@ var ErrOperationKeyRequired = errors.New("operation_key is required")
 
 // ResourceAccessDeps は評価の境界である。Tokens は失効の判定まで済ませた結果を返す。
 type ResourceAccessDeps struct {
-	Servers   ports.McpResourceServerRepository
-	Tokens    ports.TokenIntrospector
-	Clients   ports.OAuth2ClientRepository
-	Relations policyports.RelationChecker
-	Replay    ports.DpopReplayStore
+	Servers   oauthports.McpResourceServerRepository
+	Tokens    oauthports.TokenIntrospector
+	Clients   oauthports.OAuth2ClientRepository
+	Relations accessports.RelationChecker
+	Replay    oauthports.DpopReplayStore
 	// Approvals は承認した操作の照合と使用権に使う。該当の規則を未配線で評価しない。
 	Approvals approvalports.ApprovalRequestStore
 	// Limiter は規則の上限を数える。上限を持つ規則を未配線で評価しない。
 	Limiter rlports.RateLimiter
 	// Grants は交換の許可を保存する。交換を求める評価を未配線で許可しない。
-	Grants ports.TokenExchangeGrantStore
+	Grants oauthports.TokenExchangeGrantStore
 	// Recipients と Notifier は評価が起票した承認を本人へ知らせる。ApprovalURL はアカウントポータルの
 	// 承認の画面で、起票を求める評価に必須である (REQ-OAUTH2-093)。
 	Recipients  ApprovalRecipients
@@ -95,11 +95,11 @@ type ApprovedOperationUse struct {
 // ResourceAccessDecision は評価の結果である。不許可ではトークンのクレームを持たない。
 type ResourceAccessDecision struct {
 	// Caller は内部の代理転送だけが使う検証済みの事実。HTTP 応答へは変換しない。
-	Caller               *ports.IntrospectionResult `json:"-"`
+	Caller               *oauthports.IntrospectionResult `json:"-"`
 	Permitted            bool
 	Reasons              []string
 	Scope                string
-	DelegationMode       domain.DelegationMode
+	DelegationMode       oauthdomain.DelegationMode
 	AuthorizationDetails []spec.AuthorizationDetail
 	ApprovedOperation    *ApprovedOperationUse
 	// TokenExchangeGrant は宛先への一回限りの交換の許可で、ログと監査へ出さない。
@@ -129,7 +129,7 @@ func EvaluateResourceAccess(ctx context.Context, deps ResourceAccessDeps, in Res
 		return ResourceAccessDecision{}, err
 	}
 	if deps.Emit != nil {
-		event := &domain.ResourceAccessEvaluated{
+		event := &oauthdomain.ResourceAccessEvaluated{
 			At: now, TenantID: in.TenantID, RSClientID: in.ClientID, ResourceServerID: server.ID,
 			TokenID: audit.tokenID, UserID: audit.userID, AgentID: audit.agentID, ActorChain: audit.actorChain, RequestID: in.RequestID,
 			ResourceType: in.ResourceType, Relation: in.Relation,
@@ -159,15 +159,15 @@ type evaluationAudit struct {
 	actorChain []string
 	// 以下は評価した条件の相関。関係の判定まで届いた評価だけが持つ。
 	conditionVersion string
-	conditionOutcome domain.ConditionOutcome
+	conditionOutcome oauthdomain.ConditionOutcome
 	attributesDigest string
 	// exceededLimit は不許可の原因になった上限である。
-	exceededLimit *domain.ResourceAccessLimit
+	exceededLimit *oauthdomain.ResourceAccessLimit
 }
 
-func newEvaluationAudit(tokenID string, subject policyports.PrincipalRef, actors []policyports.PrincipalRef) evaluationAudit {
+func newEvaluationAudit(tokenID string, subject accessports.PrincipalRef, actors []accessports.PrincipalRef) evaluationAudit {
 	audit := evaluationAudit{tokenID: tokenID}
-	if subject.Type == domain.PrincipalTypeAgent {
+	if subject.Type == oauthdomain.PrincipalTypeAgent {
 		audit.agentID = subject.ID
 	} else {
 		audit.userID = subject.ID
@@ -182,7 +182,7 @@ func newEvaluationAudit(tokenID string, subject policyports.PrincipalRef, actors
 }
 
 func evaluateForServer(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, in ResourceAccessRequest, now time.Time,
+	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, in ResourceAccessRequest, now time.Time,
 ) (ResourceAccessDecision, evaluationAudit, error) {
 	operation := resolveResourceOperation(server, in)
 	rule, registered := operation.Rule, operation.Registered
@@ -193,7 +193,7 @@ func evaluateForServer(
 	// 規則にない操作も試行者を記録するためにトークンを確かめるが、理由は語り分けない。
 	reasonFor := func(reason string) string {
 		if !registered {
-			return domain.ReasonOperationNotRegistered
+			return oauthdomain.ReasonOperationNotRegistered
 		}
 		return reason
 	}
@@ -202,7 +202,7 @@ func evaluateForServer(
 		return ResourceAccessDecision{}, evaluationAudit{}, err
 	}
 	if token == nil || !token.Active || !slices.Contains(token.Aud, server.Resource) {
-		return denyResourceAccess(reasonFor(domain.ReasonTokenRejected)), evaluationAudit{}, nil
+		return denyResourceAccess(reasonFor(oauthdomain.ReasonTokenRejected)), evaluationAudit{}, nil
 	}
 	audit := evaluationAudit{tokenID: token.JTI}
 	proved, err := senderProofHolds(ctx, deps, server, token, in, now)
@@ -210,7 +210,7 @@ func evaluateForServer(
 		return ResourceAccessDecision{}, audit, err
 	}
 	if !proved {
-		return denyResourceAccess(reasonFor(domain.ReasonSenderProofInvalid)), audit, nil
+		return denyResourceAccess(reasonFor(oauthdomain.ReasonSenderProofInvalid)), audit, nil
 	}
 	subject, actors, resolved, err := principalsFromToken(ctx, deps, in.TenantID, token)
 	if err != nil {
@@ -220,7 +220,7 @@ func evaluateForServer(
 		audit = newEvaluationAudit(token.JTI, subject, actors)
 	}
 	if !registered {
-		return denyResourceAccess(domain.ReasonOperationNotRegistered), audit, nil
+		return denyResourceAccess(oauthdomain.ReasonOperationNotRegistered), audit, nil
 	}
 	// 承認を求める規則では、明細のないトークンを関係の判定の後に承認の不足として断る。
 	// 権限のない呼び出し元に承認の要否を知らせず、権限のある Agent には承認の要求へ導く。
@@ -228,10 +228,10 @@ func evaluateForServer(
 	// 承認を承認リクエストの識別子で扱う評価では、承認の明細をトークンに求めない (REQ-OAUTH2-093)。
 	byReference := referencesStartedApproval(in, token)
 	if !detailsPresent && !rule.RequiresApprovedOperation {
-		return denyResourceAccess(domain.ReasonAuthorizationDetailMismatch), audit, nil
+		return denyResourceAccess(oauthdomain.ReasonAuthorizationDetailMismatch), audit, nil
 	}
 	if !resolved {
-		return denyResourceAccess(domain.ReasonPrincipalUnresolved), audit, nil
+		return denyResourceAccess(oauthdomain.ReasonPrincipalUnresolved), audit, nil
 	}
 	relation, err := operationPermission(ctx, deps, server, operation, subject, actors, strings.Fields(token.Scope))
 	if err != nil {
@@ -246,21 +246,21 @@ func evaluateForServer(
 	}
 	if rule.Condition != nil {
 		attributes, digest := declaredAttributes(in.Attributes)
-		outcome := domain.ConditionIndeterminate
+		outcome := oauthdomain.ConditionIndeterminate
 		if attributes != nil {
 			outcome = rule.Condition.Evaluate(conditionInput(token, in, attributes, now))
 		}
 		audit.conditionVersion, audit.conditionOutcome, audit.attributesDigest = rule.Condition.Version(), outcome, digest
 		switch outcome {
-		case domain.ConditionDeny:
-			return denyResourceAccess(domain.ReasonConditionDenied), audit, nil
-		case domain.ConditionIndeterminate:
-			return denyResourceAccess(domain.ReasonConditionIndeterminate), audit, nil
-		case domain.ConditionRequireApproval:
+		case oauthdomain.ConditionDeny:
+			return denyResourceAccess(oauthdomain.ReasonConditionDenied), audit, nil
+		case oauthdomain.ConditionIndeterminate:
+			return denyResourceAccess(oauthdomain.ReasonConditionIndeterminate), audit, nil
+		case oauthdomain.ConditionRequireApproval:
 			approvalDetailType = rule.Condition.ApprovalDetailType
-			detail := domain.ResourceAccessRule{AuthorizationDetailType: approvalDetailType, Relation: in.Relation}
+			detail := oauthdomain.ResourceAccessRule{AuthorizationDetailType: approvalDetailType, Relation: in.Relation}
 			if !byReference && (token.ApprovalRequestID == "" || !detail.PermitsDetails(token.AuthorizationDetails, server.Resource, in.ResourceID)) {
-				return denyApproval(server, rule, approvalDetailType, in, domain.ReasonApprovalRequired), audit, nil
+				return denyApproval(server, rule, approvalDetailType, in, oauthdomain.ReasonApprovalRequired), audit, nil
 			}
 			// 規則だけでは鍵が要るか決まらないので、承認の経路へ進むときに確かめる。
 			if in.OperationKey == "" {
@@ -270,7 +270,7 @@ func evaluateForServer(
 	}
 	// 承認の使用権と上限の回数を減らす前に断る。交換の派生は承認を引き継がないので、承認の操作には出さない。
 	if in.TokenExchangeResource != "" && (approvalDetailType != "" || !rule.PermitsTokenExchange(in.TokenExchangeResource) || token.JTI == "") {
-		return denyResourceAccess(domain.ReasonTokenExchangeNotPermitted), audit, nil
+		return denyResourceAccess(oauthdomain.ReasonTokenExchangeNotPermitted), audit, nil
 	}
 	var approval *matchedApproval
 	if approvalDetailType != "" && byReference {
@@ -285,7 +285,7 @@ func evaluateForServer(
 	} else if approvalDetailType != "" {
 		// 条件の拒否と交換の不許可を優先し、その後で明細のないトークンを承認の不足とする。
 		if !detailsPresent {
-			return denyApproval(server, rule, approvalDetailType, in, domain.ReasonApprovalRequired), audit, nil
+			return denyApproval(server, rule, approvalDetailType, in, oauthdomain.ReasonApprovalRequired), audit, nil
 		}
 		matched, reason, err := matchApprovedOperation(ctx, deps, server, approvalDetailType, token, in, now)
 		if err != nil {
@@ -303,7 +303,7 @@ func evaluateForServer(
 	}
 	if exceeded {
 		audit.exceededLimit = &limit
-		return denyResourceAccess(domain.ReasonLimitExceeded), audit, nil
+		return denyResourceAccess(oauthdomain.ReasonLimitExceeded), audit, nil
 	}
 	var approved *ApprovedOperationUse
 	if approval != nil {
@@ -327,7 +327,7 @@ func evaluateForServer(
 		ApprovedOperation:  approved,
 		TokenExchangeGrant: grant,
 		Scope:              token.Scope,
-		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
+		DelegationMode: oauthdomain.DeriveDelegationMode(oauthdomain.DelegationSubject{
 			Sub: token.Sub, ClientID: token.ClientID, PrincipalType: token.PrincipalType, Act: token.Act,
 		}),
 		AuthorizationDetails: token.AuthorizationDetails,
@@ -343,9 +343,9 @@ func issueTokenExchangeGrant(ctx context.Context, deps ResourceAccessDeps, in Re
 		return "", ErrResourceAccessNotConfigured
 	}
 	grant := rand.Text()
-	if err := deps.Grants.Save(ctx, domain.HashTokenExchangeGrant(grant), domain.TokenExchangeGrant{
+	if err := deps.Grants.Save(ctx, oauthdomain.HashTokenExchangeGrant(grant), oauthdomain.TokenExchangeGrant{
 		ClientID: in.ClientID, SubjectTokenID: subjectTokenID, Resource: in.TokenExchangeResource,
-		ExpiresAt: now.Add(domain.TokenExchangeGrantTTL),
+		ExpiresAt: now.Add(oauthdomain.TokenExchangeGrantTTL),
 	}); err != nil {
 		return "", err
 	}
@@ -354,16 +354,16 @@ func issueTokenExchangeGrant(ctx context.Context, deps ResourceAccessDeps, in Re
 
 // enforceResourceAccessLimits は規則の上限を順に数え、超えた上限を返す。超えた上限より後は数えない。
 func enforceResourceAccessLimits(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, rule domain.ResourceAccessRule,
+	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule,
 	audit evaluationAudit, in ResourceAccessRequest, now time.Time,
-) (domain.ResourceAccessLimit, bool, error) {
+) (oauthdomain.ResourceAccessLimit, bool, error) {
 	if len(rule.Limits) == 0 {
-		return domain.ResourceAccessLimit{}, false, nil
+		return oauthdomain.ResourceAccessLimit{}, false, nil
 	}
 	if deps.Limiter == nil {
-		return domain.ResourceAccessLimit{}, false, ErrResourceAccessNotConfigured
+		return oauthdomain.ResourceAccessLimit{}, false, ErrResourceAccessNotConfigured
 	}
-	subject := domain.ResourceAccessLimitSubject{AgentID: audit.agentID, UserID: audit.userID, ResourceID: in.ResourceID}
+	subject := oauthdomain.ResourceAccessLimitSubject{AgentID: audit.agentID, UserID: audit.userID, ResourceID: in.ResourceID}
 	for _, limit := range rule.OrderedLimits() {
 		key, applies := resourceAccessLimitKey(server, rule, limit, subject, in.TenantID)
 		if !applies {
@@ -372,19 +372,19 @@ func enforceResourceAccessLimits(
 		result, err := deps.Limiter.AllowWithin(ctx, resourceAccessLimitPolicyID, key,
 			rlports.RateLimitPolicyConfig{MaxRequests: limit.MaxRequests, WindowSeconds: limit.WindowSeconds}, now)
 		if err != nil {
-			return domain.ResourceAccessLimit{}, false, err
+			return oauthdomain.ResourceAccessLimit{}, false, err
 		}
 		if !result.Allowed {
 			return limit, true, nil
 		}
 	}
-	return domain.ResourceAccessLimit{}, false, nil
+	return oauthdomain.ResourceAccessLimit{}, false, nil
 }
 
 // resourceAccessLimitKey は回数の鍵を作る。識別子を含むので、応答とログへ出さない。
 func resourceAccessLimitKey(
-	server *domain.McpResourceServer, rule domain.ResourceAccessRule, limit domain.ResourceAccessLimit,
-	subject domain.ResourceAccessLimitSubject, tenantID string,
+	server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule, limit oauthdomain.ResourceAccessLimit,
+	subject oauthdomain.ResourceAccessLimitSubject, tenantID string,
 ) (string, bool) {
 	bucket, applies := limit.Bucket(subject)
 	if !applies {
@@ -402,37 +402,37 @@ type matchedApproval struct {
 
 // matchApprovedOperation は実際の操作を承認と照合する。読むだけで、使用権を記録しない (REQ-OAUTH2-065)。
 func matchApprovedOperation(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, detailType string,
-	token *ports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
+	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, detailType string,
+	token *oauthports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
 ) (*matchedApproval, string, error) {
 	if deps.Approvals == nil {
 		return nil, "", ErrResourceAccessNotConfigured
 	}
 	if token.ApprovalRequestID == "" {
-		return nil, domain.ReasonApprovalRequired, nil
+		return nil, oauthdomain.ReasonApprovalRequired, nil
 	}
 	rec, err := deps.Approvals.FindByID(ctx, token.ApprovalRequestID)
 	if err != nil {
 		return nil, "", err
 	}
 	if rec == nil || rec.UserID != token.Sub || rec.ClientID != token.ClientID {
-		return nil, domain.ReasonApprovalExpired, nil
+		return nil, oauthdomain.ReasonApprovalExpired, nil
 	}
 	digest, err := approvaldomain.CanonicalizeOperationParameters(in.OperationParameters)
 	if err != nil {
-		return nil, domain.ReasonApprovedOperationMismatch, nil //nolint:nilerr // 比較できない引数は評価不能ではなく不一致である。
+		return nil, oauthdomain.ReasonApprovedOperationMismatch, nil //nolint:nilerr // 比較できない引数は評価不能ではなく不一致である。
 	}
 	switch approvaldomain.MatchApprovedOperation(rec, approvaldomain.OperationBinding{
 		DetailType: detailType, Location: server.Resource, Action: in.Relation, Identifier: in.ResourceID,
 	}, digest, now) {
 	case approvaldomain.ApprovedOperationExpired:
-		return nil, domain.ReasonApprovalExpired, nil
+		return nil, oauthdomain.ReasonApprovalExpired, nil
 	case approvaldomain.ApprovedOperationMismatched:
-		return nil, domain.ReasonApprovedOperationMismatch, nil
+		return nil, oauthdomain.ReasonApprovedOperationMismatch, nil
 	}
 	keyHash := approvaldomain.HashOperationKey(in.ClientID, in.OperationKey)
 	if rec.Use != nil && rec.Use.KeyHash != keyHash {
-		return nil, domain.ReasonApprovalAlreadyUsed, nil
+		return nil, oauthdomain.ReasonApprovalAlreadyUsed, nil
 	}
 	return &matchedApproval{requestID: rec.ID, digest: digest, keyHash: keyHash}, "", nil
 }
@@ -445,10 +445,10 @@ func claimApprovedOperation(ctx context.Context, deps ResourceAccessDeps, approv
 		return nil, "", err
 	}
 	if claimed == nil || claimed.Use == nil {
-		return nil, domain.ReasonApprovalExpired, nil
+		return nil, oauthdomain.ReasonApprovalExpired, nil
 	}
 	if claimed.Use.KeyHash != approval.keyHash {
-		return nil, domain.ReasonApprovalAlreadyUsed, nil
+		return nil, oauthdomain.ReasonApprovalAlreadyUsed, nil
 	}
 	return &ApprovedOperationUse{ApprovalRequestID: approval.requestID, OperationDigest: approval.digest, Replayed: !recorded}, "", nil
 }
@@ -469,10 +469,10 @@ func declaredAttributes(raw string) (map[string]any, string) {
 }
 
 // conditionInput は式へ渡す値を作る。値のないクレームはキーを持たず、式が has で区別する。
-func conditionInput(token *ports.IntrospectionResult, in ResourceAccessRequest, attributes map[string]any, now time.Time) domain.ConditionInput {
+func conditionInput(token *oauthports.IntrospectionResult, in ResourceAccessRequest, attributes map[string]any, now time.Time) oauthdomain.ConditionInput {
 	claims := map[string]any{
 		"scope": strings.Fields(token.Scope), "aud": token.Aud, "iat": token.Iat, "exp": token.Exp,
-		"delegation_mode": string(domain.DeriveDelegationMode(domain.DelegationSubject{
+		"delegation_mode": string(oauthdomain.DeriveDelegationMode(oauthdomain.DelegationSubject{
 			Sub: token.Sub, ClientID: token.ClientID, PrincipalType: token.PrincipalType, Act: token.Act,
 		})),
 	}
@@ -486,7 +486,7 @@ func conditionInput(token *ports.IntrospectionResult, in ResourceAccessRequest, 
 	if len(token.AgentChain) > 0 {
 		claims["agent_chain"] = token.AgentChain
 	}
-	return domain.ConditionInput{
+	return oauthdomain.ConditionInput{
 		Token: claims, Now: now, Attributes: attributes,
 		Operation: map[string]any{"resource_type": in.ResourceType, "resource_id": in.ResourceID, "relation": in.Relation},
 	}
@@ -499,11 +499,11 @@ func denyResourceAccess(reason string) ResourceAccessDecision {
 // denyApproval は承認の経路の不許可で、承認がないか使えないときだけ承認に求める明細を添える。
 // 使用済みの承認には添えない。結果を確かめずに新しい承認で再実行させないためである (REQ-OAUTH2-065)。
 func denyApproval(
-	server *domain.McpResourceServer, rule domain.ResourceAccessRule, approvalDetailType string, in ResourceAccessRequest, reason string,
+	server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule, approvalDetailType string, in ResourceAccessRequest, reason string,
 ) ResourceAccessDecision {
 	decision := denyResourceAccess(reason)
 	switch reason {
-	case domain.ReasonApprovalRequired, domain.ReasonApprovalExpired, domain.ReasonApprovedOperationMismatch:
+	case oauthdomain.ReasonApprovalRequired, oauthdomain.ReasonApprovalExpired, oauthdomain.ReasonApprovedOperationMismatch:
 		decision.Remediation = approvalRemediation(server, rule, approvalDetailType, in)
 	}
 	return decision
@@ -512,7 +512,7 @@ func denyApproval(
 // approvalRemediation は要求と登録の写しから、承認に求める明細を組み立てる。照合と同じ規則で
 // 読めない引数には明細を示さず、nil を返す。
 func approvalRemediation(
-	server *domain.McpResourceServer, rule domain.ResourceAccessRule, approvalDetailType string, in ResourceAccessRequest,
+	server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule, approvalDetailType string, in ResourceAccessRequest,
 ) []spec.AuthorizationDetail {
 	var fields map[string]any
 	if strings.TrimSpace(in.OperationParameters) != "" {
@@ -544,8 +544,8 @@ func approvalRemediation(
 // senderProofHolds は送信者制約に応じた提示の証明を確かめる。制約のないトークンでは、送られた
 // 証明を検証せず、jti も記録しない。リプレイ記録へ届かないときだけ error を返す。
 func senderProofHolds(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer,
-	token *ports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
+	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer,
+	token *oauthports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
 ) (bool, error) {
 	constraint := token.SenderConstraint
 	if constraint == nil {
@@ -593,33 +593,33 @@ func htuWithinResource(htu, resource string) bool {
 // principalsFromToken は主体と行為者を検証済みのトークンだけから導く。Agent へ解決できない act を
 // 持つトークンは、代行の連鎖を確かめられないので解決できないものとして扱う。
 func principalsFromToken(
-	ctx context.Context, deps ResourceAccessDeps, tenantID string, token *ports.IntrospectionResult,
-) (policyports.PrincipalRef, []policyports.PrincipalRef, bool, error) {
-	agents := domain.MergeAgentChain([]string{token.AgentID}, token.AgentChain)
-	var subject policyports.PrincipalRef
-	if token.PrincipalType == domain.PrincipalTypeAgent && token.AgentID != "" {
-		subject = policyports.PrincipalRef{Type: domain.PrincipalTypeAgent, ID: token.AgentID}
+	ctx context.Context, deps ResourceAccessDeps, tenantID string, token *oauthports.IntrospectionResult,
+) (accessports.PrincipalRef, []accessports.PrincipalRef, bool, error) {
+	agents := oauthdomain.MergeAgentChain([]string{token.AgentID}, token.AgentChain)
+	var subject accessports.PrincipalRef
+	if token.PrincipalType == oauthdomain.PrincipalTypeAgent && token.AgentID != "" {
+		subject = accessports.PrincipalRef{Type: oauthdomain.PrincipalTypeAgent, ID: token.AgentID}
 	} else {
 		user, err := isUserSubject(ctx, deps.Clients, tenantID, token.Sub)
 		if err != nil {
-			return policyports.PrincipalRef{}, nil, false, err
+			return accessports.PrincipalRef{}, nil, false, err
 		}
 		if !user {
-			return policyports.PrincipalRef{}, nil, false, nil
+			return accessports.PrincipalRef{}, nil, false, nil
 		}
-		subject = policyports.PrincipalRef{Type: "user", ID: token.Sub}
+		subject = accessports.PrincipalRef{Type: "user", ID: token.Sub}
 	}
-	actors := make([]policyports.PrincipalRef, 0, len(agents))
+	actors := make([]accessports.PrincipalRef, 0, len(agents))
 	for _, agentID := range agents {
-		if subject.Type == domain.PrincipalTypeAgent && agentID == subject.ID {
+		if subject.Type == oauthdomain.PrincipalTypeAgent && agentID == subject.ID {
 			continue
 		}
-		actors = append(actors, policyports.PrincipalRef{Type: domain.PrincipalTypeAgent, ID: agentID})
+		actors = append(actors, accessports.PrincipalRef{Type: oauthdomain.PrincipalTypeAgent, ID: agentID})
 	}
 	if len(token.Act) > 0 && len(actors) == 0 {
 		intermediary, err := actIsResourceServer(ctx, deps, tenantID, subject, token.Act)
 		if err != nil || !intermediary {
-			return policyports.PrincipalRef{}, nil, false, err
+			return accessports.PrincipalRef{}, nil, false, err
 		}
 	}
 	return subject, actors, true, nil
@@ -627,9 +627,9 @@ func principalsFromToken(
 
 // actIsResourceServer は、Agent の主体の act がゲートウェイ一人だけかを判定する。ゲートウェイは
 // 執行の中継で権限を足さないので、代行の連鎖として確かめる行為者がいなくても主体を導ける (REQ-OAUTH2-079)。
-func actIsResourceServer(ctx context.Context, deps ResourceAccessDeps, tenantID string, subject policyports.PrincipalRef, act map[string]any) (bool, error) {
+func actIsResourceServer(ctx context.Context, deps ResourceAccessDeps, tenantID string, subject accessports.PrincipalRef, act map[string]any) (bool, error) {
 	clientID, _ := act["sub"].(string)
-	if subject.Type != domain.PrincipalTypeAgent || clientID == "" || act["act"] != nil {
+	if subject.Type != oauthdomain.PrincipalTypeAgent || clientID == "" || act["act"] != nil {
 		return false, nil
 	}
 	server, err := deps.Servers.FindByClientID(ctx, tenantID, clientID)

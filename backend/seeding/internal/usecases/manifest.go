@@ -3,15 +3,15 @@ package usecases
 import (
 	"fmt"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 )
 
 type SecretResolver interface {
-	Resolve(domain.SecretReference) (string, error)
+	Resolve(seedingdomain.SecretReference) (string, error)
 }
 
 type MaterializedManifest struct {
-	Manifest domain.Manifest
+	Manifest seedingdomain.Manifest
 	secrets  map[string]map[string]string
 }
 
@@ -19,7 +19,7 @@ func (m MaterializedManifest) Secret(logicalKey, name string) string {
 	return m.secrets[logicalKey][name]
 }
 
-func MaterializeManifest(request domain.Request, manifest domain.Manifest, resolver SecretResolver) (MaterializedManifest, error) {
+func MaterializeManifest(request seedingdomain.Request, manifest seedingdomain.Manifest, resolver SecretResolver) (MaterializedManifest, error) {
 	if err := request.Validate(); err != nil {
 		return MaterializedManifest{}, err
 	}

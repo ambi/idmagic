@@ -15,8 +15,8 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
@@ -68,7 +68,7 @@ func (e endpoint) callMethod(ctx context.Context, method, path, bearer string, b
 			Type string `json:"type"`
 		}
 		_ = json.NewDecoder(io.LimitReader(response.Body, 64<<10)).Decode(&problem)
-		return &ports.APIError{Status: response.StatusCode, Type: strings.TrimPrefix(problem.Type, problemTypePrefix)}
+		return &directoryconnectorports.APIError{Status: response.StatusCode, Type: strings.TrimPrefix(problem.Type, problemTypePrefix)}
 	}
 	if into == nil || response.StatusCode == http.StatusNoContent {
 		return nil
@@ -86,8 +86,8 @@ func NewEnrollmentClient(realmURL string, client *http.Client) *EnrollmentClient
 	return &EnrollmentClient{endpoint: newEndpoint(realmURL, client)}
 }
 
-func (c *EnrollmentClient) Enroll(ctx context.Context, token string, jwk map[string]any) (ports.Enrollment, error) {
-	var enrollment ports.Enrollment
+func (c *EnrollmentClient) Enroll(ctx context.Context, token string, jwk map[string]any) (directoryconnectorports.Enrollment, error) {
+	var enrollment directoryconnectorports.Enrollment
 	err := c.endpoint.call(ctx, "/enrollment", "", map[string]any{"enrollment_token": token, "jwk": jwk}, &enrollment)
 	return enrollment, err
 }
@@ -96,11 +96,11 @@ func (c *EnrollmentClient) Enroll(ctx context.Context, token string, jwk map[str
 type Client struct {
 	endpoint   endpoint
 	key        *ecdsa.PrivateKey
-	enrollment ports.Enrollment
+	enrollment directoryconnectorports.Enrollment
 	now        func() time.Time
 }
 
-func NewClient(realmURL string, client *http.Client, key *ecdsa.PrivateKey, enrollment ports.Enrollment, now func() time.Time) *Client {
+func NewClient(realmURL string, client *http.Client, key *ecdsa.PrivateKey, enrollment directoryconnectorports.Enrollment, now func() time.Time) *Client {
 	return &Client{endpoint: newEndpoint(realmURL, client), key: key, enrollment: enrollment, now: now}
 }
 
@@ -125,7 +125,7 @@ func (c *Client) Heartbeat(ctx context.Context) error {
 	return c.signedCall(ctx, "/heartbeat", nil, nil)
 }
 
-func (c *Client) StartRun(ctx context.Context, mode domain.Mode) (string, error) {
+func (c *Client) StartRun(ctx context.Context, mode directoryconnectordomain.Mode) (string, error) {
 	var run struct {
 		ID string `json:"id"`
 	}
@@ -135,7 +135,7 @@ func (c *Client) StartRun(ctx context.Context, mode domain.Mode) (string, error)
 	return run.ID, nil
 }
 
-func (c *Client) SendBatch(ctx context.Context, runID, batchID string, items []domain.Item) error {
+func (c *Client) SendBatch(ctx context.Context, runID, batchID string, items []directoryconnectordomain.Item) error {
 	return c.signedCall(ctx, "/ingestion-runs/"+url.PathEscape(runID)+"/user-batches",
 		map[string]any{"batch_id": batchID, "items": items}, nil)
 }

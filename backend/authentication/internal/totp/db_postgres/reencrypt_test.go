@@ -10,7 +10,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/datakeys"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
@@ -37,7 +37,7 @@ func TestMfaFactorReencryptionSkipsDisabledKeys(t *testing.T) {
 	slices.Sort(users)
 	var disabledCiphertexts [][]byte
 	for _, userID := range users[:201] {
-		if err := repo.Save(ctx, &domain.MfaFactor{
+		if err := repo.Save(ctx, &totpdomain.MfaFactor{
 			UserID: userID, Type: spec.MfaFactorTOTP, Secret: new("disabled-seed"), CreatedAt: pgfixtures.TestClock(),
 		}); err != nil {
 			t.Fatal(err)
@@ -52,13 +52,13 @@ func TestMfaFactorReencryptionSkipsDisabledKeys(t *testing.T) {
 	if _, err := stack.module.Repository.Disable(ctx, tenant.ID, 1, pgfixtures.TestClock()); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Save(ctx, &domain.MfaFactor{
+	if err := repo.Save(ctx, &totpdomain.MfaFactor{
 		UserID: users[201], Type: spec.MfaFactorTOTP, Secret: new("retiring-seed"), CreatedAt: pgfixtures.TestClock(),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	stack.rotate(t, tenant.ID)
-	if err := repo.Save(ctx, &domain.MfaFactor{
+	if err := repo.Save(ctx, &totpdomain.MfaFactor{
 		UserID: users[202], Type: spec.MfaFactorTOTP, Secret: new("active-seed"), CreatedAt: pgfixtures.TestClock(),
 	}); err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestMfaFactorReencryptionRejectsCorruptedCiphertext(t *testing.T) {
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	stack := newTestDataKeyStack(t, tenant.ID)
 	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
-	if err := repo.Save(ctx, &domain.MfaFactor{
+	if err := repo.Save(ctx, &totpdomain.MfaFactor{
 		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("seed"), CreatedAt: pgfixtures.TestClock(),
 	}); err != nil {
 		t.Fatal(err)
@@ -240,7 +240,7 @@ func TestMfaFactorReencryptor_MigratesStaleVersionAfterRotationAndPreservesValue
 	repo := &MfaFactorRepository{Pool: db, Cipher: stack.cipher}
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 
-	if err := repo.Save(ctx, &domain.MfaFactor{
+	if err := repo.Save(ctx, &totpdomain.MfaFactor{
 		UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("JBSWY3DPEHPK3PXP"), CreatedAt: pgfixtures.TestClock(),
 	}); err != nil {
 		t.Fatalf("save: %v", err)

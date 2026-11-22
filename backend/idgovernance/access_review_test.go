@@ -11,7 +11,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -129,10 +129,10 @@ func TestAccessReviewRejectsNonlocalAndAutomaticTargets(t *testing.T) {
 }
 
 type accessReviewNotifier struct {
-	notify func(notification.Notification) bool
+	notify func(notificationports.Notification) bool
 }
 
-func (n accessReviewNotifier) Notify(_ context.Context, input notification.Notification) bool {
+func (n accessReviewNotifier) Notify(_ context.Context, input notificationports.Notification) bool {
 	return n.notify(input)
 }
 
@@ -154,7 +154,7 @@ func TestAccessReviewNotificationLeaseUsesCurrentClock(t *testing.T) {
 	m := idgovernance.NewMemoryModule(idm.UserRepo)
 	sent := 0
 	deps := idgovernance.AccessReviewDeps{UserRepo: idm.UserRepo, AgentRepo: idm.AgentRepo, Now: func() time.Time { return clock }, Emit: func(spec.DomainEvent) {}}
-	deps.Notifier = accessReviewNotifier{notify: func(notification.Notification) bool {
+	deps.Notifier = accessReviewNotifier{notify: func(notificationports.Notification) bool {
 		reviews, err := m.AccessReviews.ActiveReviews(ctx)
 		if err != nil {
 			t.Fatal(err)
@@ -203,7 +203,7 @@ func TestAccessReviewFallbackScheduleAndNotificationFailure(t *testing.T) {
 	}
 	m := idgovernance.NewMemoryModule(idm.UserRepo)
 	d := idgovernance.AccessReviewDeps{UserRepo: idm.UserRepo, AgentRepo: idm.AgentRepo, Emit: func(spec.DomainEvent) {}}
-	d.Notifier = accessReviewNotifier{notify: func(n notification.Notification) bool {
+	d.Notifier = accessReviewNotifier{notify: func(n notificationports.Notification) bool {
 		// 外向きの送信中も、別の利用者の参照が保存先のロックに阻まれない。
 		if _, err := m.AccessReviewPlans.ListPlans(ctx, "tenant-a"); err != nil {
 			t.Error(err)

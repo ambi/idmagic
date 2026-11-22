@@ -10,14 +10,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // TenantRepository (Tenancy)。クエリは sqlc 生成 (wi-179); Pool は DBTX を
 // 構造的に満たす。
 type TenantRepository struct{ Pool sharedpg.DB }
 
-func (r *TenantRepository) FindByID(ctx context.Context, id string) (*domain.Tenant, error) {
+func (r *TenantRepository) FindByID(ctx context.Context, id string) (*tenancydomain.Tenant, error) {
 	row, err := New(r.Pool).FindTenantByID(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -28,7 +28,7 @@ func (r *TenantRepository) FindByID(ctx context.Context, id string) (*domain.Ten
 	return tenantFromRow(row)
 }
 
-func (r *TenantRepository) FindByRealm(ctx context.Context, realm string) (*domain.Tenant, error) {
+func (r *TenantRepository) FindByRealm(ctx context.Context, realm string) (*tenancydomain.Tenant, error) {
 	row, err := New(r.Pool).FindTenantByRealm(ctx, realm)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -39,12 +39,12 @@ func (r *TenantRepository) FindByRealm(ctx context.Context, realm string) (*doma
 	return tenantFromRow(row)
 }
 
-func (r *TenantRepository) FindAll(ctx context.Context) ([]*domain.Tenant, error) {
+func (r *TenantRepository) FindAll(ctx context.Context) ([]*tenancydomain.Tenant, error) {
 	rows, err := New(r.Pool).FindAllTenants(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.Tenant, 0, len(rows))
+	out := make([]*tenancydomain.Tenant, 0, len(rows))
 	for _, row := range rows {
 		tenant, err := tenantFromRow(row)
 		if err != nil {
@@ -55,7 +55,7 @@ func (r *TenantRepository) FindAll(ctx context.Context) ([]*domain.Tenant, error
 	return out, nil
 }
 
-func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) error {
+func (r *TenantRepository) Save(ctx context.Context, tenant *tenancydomain.Tenant) error {
 	override, err := marshalPolicyOverride(tenant.PasswordPolicyOverride)
 	if err != nil {
 		return err
@@ -81,13 +81,13 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) erro
 	})
 }
 
-func tenantFromRow(row *Tenant) (*domain.Tenant, error) {
-	tenant := &domain.Tenant{
+func tenantFromRow(row *Tenant) (*tenancydomain.Tenant, error) {
+	tenant := &tenancydomain.Tenant{
 		ID:            row.ID,
 		Realm:         row.Realm,
 		DisplayName:   row.DisplayName,
-		Status:        domain.TenantStatus(row.Status),
-		EndpointStyle: domain.TenantEndpointStyle(row.EndpointStyle),
+		Status:        tenancydomain.TenantStatus(row.Status),
+		EndpointStyle: tenancydomain.TenantEndpointStyle(row.EndpointStyle),
 		CreatedAt:     row.CreatedAt,
 		UpdatedAt:     row.UpdatedAt,
 	}
@@ -129,18 +129,18 @@ func int4OrNil(value *int) pgtype.Int4 {
 
 // marshalPolicyOverride maps "no override" to SQL NULL, so a cleared override and
 // one that was never set are the same row state.
-func marshalPolicyOverride(override *domain.PasswordPolicyOverride) ([]byte, error) {
+func marshalPolicyOverride(override *tenancydomain.PasswordPolicyOverride) ([]byte, error) {
 	if override == nil {
 		return nil, nil
 	}
 	return json.Marshal(override)
 }
 
-func unmarshalPolicyOverride(raw []byte) (*domain.PasswordPolicyOverride, error) {
+func unmarshalPolicyOverride(raw []byte) (*tenancydomain.PasswordPolicyOverride, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
-	var override domain.PasswordPolicyOverride
+	var override tenancydomain.PasswordPolicyOverride
 	if err := json.Unmarshal(raw, &override); err != nil {
 		return nil, err
 	}

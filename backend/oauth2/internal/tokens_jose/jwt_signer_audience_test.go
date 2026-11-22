@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -38,7 +38,7 @@ func TestAccessTokenWithoutResourceInfersAudienceFromScope(t *testing.T) {
 		{name: "resource の指定は推定より優先する", scopes: []string{"account:read"}, audiences: []string{"https://mcp.example"}, want: "https://mcp.example"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			token, _, err := signer.SignAccessToken(ctx, ports.AccessTokenInput{
+			token, _, err := signer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 				Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1",
 				Scopes: tc.scopes, Audiences: tc.audiences,
 			})

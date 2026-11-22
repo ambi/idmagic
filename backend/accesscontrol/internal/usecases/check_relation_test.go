@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accesscontrolusecases "github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 )
 
 type principalsByID map[string]bool
@@ -16,11 +16,11 @@ func (p principalsByID) IsPrincipalActive(_ context.Context, _, principalType, p
 	return p[principalType+":"+principalID], nil
 }
 
-func relationCheck() policyports.RelationCheck {
-	return policyports.RelationCheck{
+func relationCheck() accessports.RelationCheck {
+	return accessports.RelationCheck{
 		TenantID: tenantID, ResourceType: "document", ResourceID: "d1", Relation: "viewer",
-		Subject:       policyports.PrincipalRef{Type: "user", ID: "alice"},
-		Actors:        []policyports.PrincipalRef{{Type: "agent", ID: "researcher"}},
+		Subject:       accessports.PrincipalRef{Type: "user", ID: "alice"},
+		Actors:        []accessports.PrincipalRef{{Type: "agent", ID: "researcher"}},
 		GrantedScopes: []string{"docs:read"}, RequiredScopes: []string{"docs:read"},
 	}
 }
@@ -37,7 +37,7 @@ func relationHarness(t *testing.T) *harness {
 func TestRelationCheckerComposesTheSameRules(t *testing.T) {
 	cases := []struct {
 		name    string
-		mutate  func(*policyports.RelationCheck)
+		mutate  func(*accessports.RelationCheck)
 		active  principalsByID
 		permits bool
 		reason  string
@@ -45,11 +45,11 @@ func TestRelationCheckerComposesTheSameRules(t *testing.T) {
 		{name: "双方が関係を持つ", permits: true},
 		{name: "無効な主体", active: principalsByID{"agent:researcher": true}, reason: "subject_principal_inactive"},
 		{name: "無効な行為者", active: principalsByID{"user:alice": true}},
-		{name: "関係のない行為者", mutate: func(c *policyports.RelationCheck) {
-			c.Actors = []policyports.PrincipalRef{{Type: "agent", ID: "stranger"}}
+		{name: "関係のない行為者", mutate: func(c *accessports.RelationCheck) {
+			c.Actors = []accessports.PrincipalRef{{Type: "agent", ID: "stranger"}}
 		}, active: principalsByID{"user:alice": true, "agent:stranger": true}},
-		{name: "スコープの不足", mutate: func(c *policyports.RelationCheck) { c.GrantedScopes = nil }},
-		{name: "別の資源", mutate: func(c *policyports.RelationCheck) { c.ResourceID = "d2" }},
+		{name: "スコープの不足", mutate: func(c *accessports.RelationCheck) { c.GrantedScopes = nil }},
+		{name: "別の資源", mutate: func(c *accessports.RelationCheck) { c.ResourceID = "d2" }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestRelationCheckerComposesTheSameRules(t *testing.T) {
 			if tc.mutate != nil {
 				tc.mutate(&check)
 			}
-			decision, err := usecases.RelationChecker{Deps: h.deps}.CheckRelation(context.Background(), check)
+			decision, err := accesscontrolusecases.RelationChecker{Deps: h.deps}.CheckRelation(context.Background(), check)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,14 +79,14 @@ func TestRelationCheckerComposesTheSameRules(t *testing.T) {
 func TestRelationCheckerFailsClosed(t *testing.T) {
 	bare := newBareHarness()
 	bare.deps.Principals = principalsByID{"user:alice": true, "agent:researcher": true}
-	decision, err := usecases.RelationChecker{Deps: bare.deps}.CheckRelation(context.Background(), relationCheck())
+	decision, err := accesscontrolusecases.RelationChecker{Deps: bare.deps}.CheckRelation(context.Background(), relationCheck())
 	if err != nil || decision.Permitted || !slices.Contains(decision.Reasons, "authorization_model_not_found") {
 		t.Fatalf("モデルの未登録: decision=%+v err=%v", decision, err)
 	}
 
 	h := relationHarness(t)
 	h.deps.Tuples = failingTuples{h.deps.Tuples}
-	decision, err = usecases.RelationChecker{Deps: h.deps}.CheckRelation(context.Background(), relationCheck())
+	decision, err = accesscontrolusecases.RelationChecker{Deps: h.deps}.CheckRelation(context.Background(), relationCheck())
 	if !errors.Is(err, errStoreDown) || decision.Permitted {
 		t.Fatalf("ストアの障害: decision=%+v err=%v", decision, err)
 	}

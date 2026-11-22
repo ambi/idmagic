@@ -5,24 +5,24 @@ import (
 	"testing"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 type operationRelations struct {
 	targetPermitted bool
-	got             []policyports.RelationCheck
+	got             []accessports.RelationCheck
 }
 
-func (r *operationRelations) CheckRelation(_ context.Context, check policyports.RelationCheck) (policyports.RelationDecision, error) {
+func (r *operationRelations) CheckRelation(_ context.Context, check accessports.RelationCheck) (accessports.RelationDecision, error) {
 	r.got = append(r.got, check)
-	return policyports.RelationDecision{Permitted: check.ResourceType == "idmagic_mcp_operation" || r.targetPermitted}, nil
+	return accessports.RelationDecision{Permitted: check.ResourceType == "idmagic_mcp_operation" || r.targetPermitted}, nil
 }
 
 //spec:covers REQ-OAUTH2-083: 操作割当から対象別の拒否を迂回せず、対応のない操作や引数を拒否する。
 func TestAssignedOperationAccess(t *testing.T) {
 	rule := evalRule
-	rule.Tool = &domain.ResourceAccessTool{ID: "operation-" + "read_document", Name: "read_document", DisplayName: "閲覧", ResourceIDArgument: "document_id"}
+	rule.Tool = &oauthdomain.ResourceAccessTool{ID: "operation-" + "read_document", Name: "read_document", DisplayName: "閲覧", ResourceIDArgument: "document_id"}
 	deps := ResourceAccessDeps{Servers: evalServer(t, rule), Tokens: evalTokens{result: evalAgentToken()}}
 	check := &operationRelations{}
 	deps.Relations = check
@@ -63,7 +63,7 @@ func TestAssignedOperationAccess(t *testing.T) {
 func TestToolTargetCannotBecomeProtocolPreparation(t *testing.T) {
 	rule := evalRule
 	rule.ResourceType = "idmagic_mcp_method"
-	rule.Tool = &domain.ResourceAccessTool{ID: "operation-read", Name: "read_document", DisplayName: "閲覧", ResourceIDArgument: "id"}
+	rule.Tool = &oauthdomain.ResourceAccessTool{ID: "operation-read", Name: "read_document", DisplayName: "閲覧", ResourceIDArgument: "id"}
 	check := &operationRelations{}
 	deps := ResourceAccessDeps{Servers: evalServer(t, rule), Tokens: evalTokens{result: evalAgentToken()}, Relations: check}
 	in := evalRequest()

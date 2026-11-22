@@ -9,7 +9,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -20,7 +20,7 @@ func TestSignAccessTokenIncludesAuthorizationDetails(t *testing.T) {
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
 
-	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"openid"},
 		AuthorizationDetails: []spec.AuthorizationDetail{
 			{Type: "payment_initiation", Actions: []string{"initiate"}, Fields: map[string]any{"instructedAmount": float64(100)}},
@@ -46,7 +46,7 @@ func TestSignAccessTokenOmitsAuthorizationDetailsWhenAbsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), ports.AccessTokenInput{
+	token, _, err := signer.SignAccessToken(testing_tenant.Default(context.Background()), oauthports.AccessTokenInput{
 		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, Sub: "user-1", Scopes: []string{"openid"},
 	})
 	if err != nil {

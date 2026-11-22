@@ -14,7 +14,7 @@ import (
 	"time"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 )
 
 const otherTenant = "tenant-b"
@@ -56,8 +56,8 @@ func spiffeBundle(issuer string) func(*workloaddomain.WorkloadTrustBundle) {
 // exchange は、fixture の Agent "agent_1" に束縛したクライアントとして交換を検証する。
 func (f *fixture) exchange(t *testing.T, token string) (*workloaddomain.WorkloadIdentityGrant, error) {
 	t.Helper()
-	return usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant,
-		usecases.VerifyWorkloadAttestationInput{ClientID: "agent_1-client", SubjectToken: token}, f.now)
+	return workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant,
+		workloadusecases.VerifyWorkloadAttestationInput{ClientID: "agent_1-client", SubjectToken: token}, f.now)
 }
 
 // 既定の SPIRE が発行する、`iss` のない JWT-SVID を、`sub` のトラストドメインに一致する

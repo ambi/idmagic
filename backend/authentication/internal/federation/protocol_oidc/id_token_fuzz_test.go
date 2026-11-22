@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
@@ -82,8 +82,8 @@ func TestVerifyUpstreamIDTokenAcceptsAValidToken(t *testing.T) {
 }
 
 func fuzzIDTokenFixture(tb testing.TB) (
-	domain.IdentityProviderConnection,
-	domain.FederatedLoginAttempt,
+	federationdomain.IdentityProviderConnection,
+	federationdomain.FederatedLoginAttempt,
 	*rsa.PrivateKey,
 	[]rsaSigningKey,
 	time.Time,
@@ -93,14 +93,14 @@ func fuzzIDTokenFixture(tb testing.TB) (
 	if err != nil {
 		tb.Fatalf("generate key: %v", err)
 	}
-	connection := domain.IdentityProviderConnection{
-		ID: "provider", TenantID: "tenant", Protocol: domain.ProtocolOIDC,
-		Status: domain.ConnectionActive,
+	connection := federationdomain.IdentityProviderConnection{
+		ID: "provider", TenantID: "tenant", Protocol: federationdomain.ProtocolOIDC,
+		Status: federationdomain.ConnectionActive,
 		Issuer: "https://upstream.example", ClientID: "idmagic-client",
 	}
-	attempt := domain.FederatedLoginAttempt{
+	attempt := federationdomain.FederatedLoginAttempt{
 		State: "state", TenantID: "tenant", ProviderID: "provider",
-		Protocol: domain.ProtocolOIDC, Nonce: "nonce-1",
+		Protocol: federationdomain.ProtocolOIDC, Nonce: "nonce-1",
 	}
 	keySet := []rsaSigningKey{{kid: "upstream-key", publicKey: &key.PublicKey}}
 	return connection, attempt, key, keySet, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)

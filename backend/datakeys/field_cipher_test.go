@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
-	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 )
 
-func newTestFieldCipher(t *testing.T) (*FieldCipher, usecases.Deps) {
+func newTestFieldCipher(t *testing.T) (*FieldCipher, datakeysusecases.Deps) {
 	t.Helper()
 	repo := db_memory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
@@ -22,8 +22,8 @@ func newTestFieldCipher(t *testing.T) (*FieldCipher, usecases.Deps) {
 		t.Fatalf("NewCleartextMasterKeyProvider failed: %v", err)
 	}
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(master)
-	deps := usecases.Deps{Repository: repo, Crypto: crypto}
-	cache := usecases.NewDataKeyCache(repo, crypto)
+	deps := datakeysusecases.Deps{Repository: repo, Crypto: crypto}
+	cache := datakeysusecases.NewDataKeyCache(repo, crypto)
 	deps.Cache = cache
 	return &FieldCipher{Repository: repo, Cache: cache, Crypto: crypto}, deps
 }
@@ -34,7 +34,7 @@ func newTestFieldCipher(t *testing.T) (*FieldCipher, usecases.Deps) {
 func TestFieldCipherEncryptDecryptRoundTrip(t *testing.T) {
 	fc, deps := newTestFieldCipher(t)
 	ctx := context.Background()
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
 	}
 
@@ -60,14 +60,14 @@ func TestFieldCipherDecryptsExistingCiphertextAfterRotation(t *testing.T) {
 	fieldCipher, deps := newTestFieldCipher(t)
 	ctx := context.Background()
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
 		t.Fatal(err)
 	}
 	version, ciphertext, err := fieldCipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+	if _, err := datakeysusecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	plaintext, err := fieldCipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
@@ -84,14 +84,14 @@ func TestFieldCipherDecryptFailsClosedAfterDisablingTheRetiringVersion(t *testin
 	fieldCipher, deps := newTestFieldCipher(t)
 	ctx := context.Background()
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
 		t.Fatal(err)
 	}
 	version, ciphertext, err := fieldCipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+	if _, err := datakeysusecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	// disable の前に retiring の版 1 で復号が通ることを確かめ、版 1 の DEK をキャッシュに載せる。
@@ -99,14 +99,14 @@ func TestFieldCipherDecryptFailsClosedAfterDisablingTheRetiringVersion(t *testin
 		t.Fatalf("Decrypt under retiring v1 failed: %v", err)
 	}
 
-	if err := usecases.DisableTenantDataKey(ctx, deps, "tenant-a", version, now.Add(2*time.Hour)); err != nil {
+	if err := datakeysusecases.DisableTenantDataKey(ctx, deps, "tenant-a", version, now.Add(2*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	disabled, err := deps.Repository.FindByVersion(ctx, "tenant-a", version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if disabled.Status != domain.DataKeyStatusDisabled {
+	if disabled.Status != datakeysdomain.DataKeyStatusDisabled {
 		t.Fatalf("v1 status = %s, want disabled", disabled.Status)
 	}
 	plaintext, err := fieldCipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
@@ -116,8 +116,8 @@ func TestFieldCipherDecryptFailsClosedAfterDisablingTheRetiringVersion(t *testin
 }
 
 // otherProcessFieldCipher は、同じ保存先を見る別のプロセスの FieldCipher を作る。ライフサイクルの操作はこのキャッシュへ届かない。
-func otherProcessFieldCipher(deps usecases.Deps) *FieldCipher {
-	return &FieldCipher{Repository: deps.Repository, Cache: usecases.NewDataKeyCache(deps.Repository, deps.Crypto), Crypto: deps.Crypto}
+func otherProcessFieldCipher(deps datakeysusecases.Deps) *FieldCipher {
+	return &FieldCipher{Repository: deps.Repository, Cache: datakeysusecases.NewDataKeyCache(deps.Repository, deps.Crypto), Crypto: deps.Crypto}
 }
 
 //spec:covers EX-DATAKEYS-002-02: プロセス A がローテーションすると、版 1 を保持するプロセス B の次の暗号化は版 2 を使い、版 1 の暗号文も復号できる。
@@ -125,7 +125,7 @@ func TestFieldCipherOtherProcessEncryptsWithTheRotatedVersion(t *testing.T) {
 	fieldCipher, deps := newTestFieldCipher(t)
 	ctx := context.Background()
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
 		t.Fatal(err)
 	}
 	other := otherProcessFieldCipher(deps)
@@ -133,7 +133,7 @@ func TestFieldCipherOtherProcessEncryptsWithTheRotatedVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+	if _, err := datakeysusecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -165,19 +165,19 @@ func TestFieldCipherOtherProcessEncryptsWithTheRotatedVersion(t *testing.T) {
 
 //spec:covers EX-DATAKEYS-003-02: プロセス A が版 1 を無効化または破棄すると、版 1 を保持するプロセス B の版 1 の復号は拒否され、版 2 の復号は成功する。
 func TestFieldCipherOtherProcessStopsDecryptingAfterLockout(t *testing.T) {
-	for name, lockOut := range map[string]func(context.Context, usecases.Deps, int, time.Time) error{
-		"disable": func(ctx context.Context, deps usecases.Deps, version int, now time.Time) error {
-			return usecases.DisableTenantDataKey(ctx, deps, "tenant-a", version, now)
+	for name, lockOut := range map[string]func(context.Context, datakeysusecases.Deps, int, time.Time) error{
+		"disable": func(ctx context.Context, deps datakeysusecases.Deps, version int, now time.Time) error {
+			return datakeysusecases.DisableTenantDataKey(ctx, deps, "tenant-a", version, now)
 		},
-		"destroy": func(ctx context.Context, deps usecases.Deps, version int, now time.Time) error {
-			return usecases.DestroyTenantDataKey(ctx, deps, "tenant-a", version, now)
+		"destroy": func(ctx context.Context, deps datakeysusecases.Deps, version int, now time.Time) error {
+			return datakeysusecases.DestroyTenantDataKey(ctx, deps, "tenant-a", version, now)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, deps := newTestFieldCipher(t)
 			ctx := context.Background()
 			now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
-			if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+			if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
 				t.Fatal(err)
 			}
 			other := otherProcessFieldCipher(deps)
@@ -185,7 +185,7 @@ func TestFieldCipherOtherProcessStopsDecryptingAfterLockout(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+			if _, err := datakeysusecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
 				t.Fatal(err)
 			}
 			activeVersion, activeCiphertext, err := other.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-2:totp", "secret", "KRSXG5CTMVRXEZLU")
@@ -215,20 +215,20 @@ func TestFieldCipherOtherProcessStopsDecryptingAfterLockout(t *testing.T) {
 
 // unreadableDataKeyRepository は、保存先へ到達できない間の読み取りを失敗させる。
 type unreadableDataKeyRepository struct {
-	ports.DataKeyRepository
+	datakeysports.DataKeyRepository
 	unreadable bool
 }
 
 var errDataKeyStoreUnreachable = errors.New("fake: data key store unreachable")
 
-func (r *unreadableDataKeyRepository) FindActive(ctx context.Context, tenantID string) (*domain.TenantDataEncryptionKey, error) {
+func (r *unreadableDataKeyRepository) FindActive(ctx context.Context, tenantID string) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	if r.unreadable {
 		return nil, errDataKeyStoreUnreachable
 	}
 	return r.DataKeyRepository.FindActive(ctx, tenantID)
 }
 
-func (r *unreadableDataKeyRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*domain.TenantDataEncryptionKey, error) {
+func (r *unreadableDataKeyRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	if r.unreadable {
 		return nil, errDataKeyStoreUnreachable
 	}
@@ -239,11 +239,11 @@ func (r *unreadableDataKeyRepository) FindByVersion(ctx context.Context, tenantI
 func TestFieldCipherFailsClosedWhileKeyStateIsUnreadable(t *testing.T) {
 	_, deps := newTestFieldCipher(t)
 	ctx := context.Background()
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	repository := &unreadableDataKeyRepository{DataKeyRepository: deps.Repository}
-	cipher := &FieldCipher{Repository: repository, Cache: usecases.NewDataKeyCache(repository, deps.Crypto), Crypto: deps.Crypto}
+	cipher := &FieldCipher{Repository: repository, Cache: datakeysusecases.NewDataKeyCache(repository, deps.Crypto), Crypto: deps.Crypto}
 	version, ciphertext, err := cipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
 	if err != nil {
 		t.Fatal(err)
@@ -277,34 +277,34 @@ func (migratedFieldMigrator) PendingCount(context.Context, string, int) (int, er
 //spec:covers EX-DATAKEYS-005-01: 参照がすべて移行済みなら版 1 は destroyed になって wrapped_dek が消え、キャッシュを作り直しても版 1 の暗号文を復号できない。
 func TestFieldCipherCannotDecryptUnderADestroyedVersion(t *testing.T) {
 	fieldCipher, deps := newTestFieldCipher(t)
-	migrators := usecases.NewMigratorRegistry()
+	migrators := datakeysusecases.NewMigratorRegistry()
 	migrators.Register("mfa_totp_secret", migratedFieldMigrator{})
 	deps.Migrators = migrators
 	ctx := context.Background()
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
 		t.Fatal(err)
 	}
 	version, ciphertext, err := fieldCipher.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+	if _, err := datakeysusecases.RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := usecases.DestroyTenantDataKey(ctx, deps, "tenant-a", version, now.Add(2*time.Hour)); err != nil {
+	if err := datakeysusecases.DestroyTenantDataKey(ctx, deps, "tenant-a", version, now.Add(2*time.Hour)); err != nil {
 		t.Fatalf("DestroyTenantDataKey failed: %v", err)
 	}
 	destroyed, err := deps.Repository.FindByVersion(ctx, "tenant-a", version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if destroyed.Status != domain.DataKeyStatusDestroyed || destroyed.WrappedDEK != nil {
+	if destroyed.Status != datakeysdomain.DataKeyStatusDestroyed || destroyed.WrappedDEK != nil {
 		t.Fatalf("v1 status=%s wrapped_dek=%d byte(s), want destroyed with no wrapped_dek", destroyed.Status, len(destroyed.WrappedDEK))
 	}
 	// 別のレプリカや再起動後のワーカーのように、版 1 を一度もキャッシュしていない FieldCipher でも同じである。
-	freshCipher := &FieldCipher{Repository: deps.Repository, Cache: usecases.NewDataKeyCache(deps.Repository, deps.Crypto), Crypto: deps.Crypto}
+	freshCipher := &FieldCipher{Repository: deps.Repository, Cache: datakeysusecases.NewDataKeyCache(deps.Repository, deps.Crypto), Crypto: deps.Crypto}
 	for name, cipher := range map[string]*FieldCipher{"same cache": fieldCipher, "fresh cache": freshCipher} {
 		plaintext, err := cipher.Decrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", version, ciphertext)
 		if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
@@ -344,7 +344,7 @@ func TestFieldCipherEncryptBootstrapsFirstDataKey(t *testing.T) {
 func TestFieldCipherDecryptFailsClosedAcrossRecords(t *testing.T) {
 	fc, deps := newTestFieldCipher(t)
 	ctx := context.Background()
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
 	}
 
@@ -370,14 +370,14 @@ func TestFieldCipherDecryptFailsClosedAcrossRecords(t *testing.T) {
 func TestFieldCipherDecryptFailsClosedForWrongKeyVersion(t *testing.T) {
 	fc, deps := newTestFieldCipher(t)
 	ctx := context.Background()
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
 	}
 	version, ciphertext, err := fc.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
 	if err != nil {
 		t.Fatalf("Encrypt failed: %v", err)
 	}
-	if _, err := usecases.RotateTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+	if _, err := datakeysusecases.RotateTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatalf("RotateTenantDataKey failed: %v", err)
 	}
 
@@ -420,11 +420,11 @@ func TestFieldCipherDecryptFailsClosedWhenProviderUnavailable(t *testing.T) {
 	}
 	provider := &unwrapUnavailableMasterKeyProvider{MasterKeyProvider: master}
 	crypto := envelope_crypto.NewTinkEnvelopeCrypto(provider)
-	cache := usecases.NewDataKeyCache(repo, crypto)
+	cache := datakeysusecases.NewDataKeyCache(repo, crypto)
 	fc := &FieldCipher{Repository: repo, Cache: cache, Crypto: crypto}
-	deps := usecases.Deps{Repository: repo, Crypto: crypto, Cache: cache}
+	deps := datakeysusecases.Deps{Repository: repo, Crypto: crypto, Cache: cache}
 	ctx := context.Background()
-	if _, err := usecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
+	if _, err := datakeysusecases.BootstrapTenantDataKey(ctx, deps, "tenant-a", time.Now().UTC()); err != nil {
 		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
 	}
 	version, ciphertext, err := fc.Encrypt(ctx, "tenant-a", "Authentication", "mfa_factors", "user-1:totp", "secret", "JBSWY3DPEHPK3PXP")
@@ -435,7 +435,7 @@ func TestFieldCipherDecryptFailsClosedWhenProviderUnavailable(t *testing.T) {
 	// A fresh cache forces GetByVersion to re-unwrap rather than serve a
 	// value cached from before the outage, matching a worker restart or a
 	// second replica that never had it cached.
-	cache = usecases.NewDataKeyCache(repo, crypto)
+	cache = datakeysusecases.NewDataKeyCache(repo, crypto)
 	fc = &FieldCipher{Repository: repo, Cache: cache, Crypto: crypto}
 	provider.unwrapUnavailable = true
 

@@ -29,12 +29,12 @@ import (
 	"strings"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -84,30 +84,30 @@ type ExchangeTokenResult struct {
 }
 
 type ExchangeTokenDeps struct {
-	ClientRepo            ports.OAuth2ClientRepository
-	Introspector          ports.TokenIntrospector
-	TokenIssuer           ports.TokenIssuer
-	Authorizer            policyports.Authorizer
-	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
-	McpResourceServerRepo ports.McpResourceServerRepository
+	ClientRepo            oauthports.OAuth2ClientRepository
+	Introspector          oauthports.TokenIntrospector
+	TokenIssuer           oauthports.TokenIssuer
+	Authorizer            accessports.Authorizer
+	AuthzDetailTypeRepo   oauthports.AuthorizationDetailTypeRepository
+	McpResourceServerRepo oauthports.McpResourceServerRepository
 	// AgentRepo は交換に関与する Agent の自律性区分を引く (REQ-OAUTH2-050)。nil の
 	// 配線ではこのゲートを行わない。Agent を持たない構成の軽量な配線に合わせた、
 	// 本コードベース共通の nil-skips-enforcement に倣う。
 	AgentRepo agentports.AgentRepository
 	// Consents は、関わる Agent への本人の代行の付与を引く (REQ-OAUTH2-060)。関わる Agent が
 	// ある交換で nil なら拒否する。
-	Consents ports.ConsentRepository
+	Consents oauthports.ConsentRepository
 	// WorkloadVerifier verifies external workload attestation tokens
 	// (subject_token_type=JWT URN) and maps them to a bound Agent's client
 	// ([[wi-54-workload-identity-federation-spiffe]]). nil rejects
 	// workload subject_token_type as unsupported.
-	WorkloadVerifier ports.WorkloadTokenVerifier
+	WorkloadVerifier oauthports.WorkloadTokenVerifier
 	// DelegationPolicy はテナントの act チェーン深さ上限を解決する。nil なら
 	// テナント上書きの上限でもある DefaultMaxDelegationDepth を使うため、未配線でも
 	// 製品既定より広い許可にはならない。解決器が error を返した場合は交換を拒否する。
-	DelegationPolicy ports.DelegationPolicyResolver
+	DelegationPolicy oauthports.DelegationPolicyResolver
 	// Grants は再束縛の許可を消費する。許可を伴う交換で nil なら拒否する。
-	Grants ports.TokenExchangeGrantStore
+	Grants oauthports.TokenExchangeGrantStore
 	Emit   func(spec.DomainEvent)
 }
 
@@ -118,7 +118,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	tenantID := tenantports.TenantID(ctx)
 
 	reject := func(actorUserID string, err *OAuthError) (*ExchangeTokenResult, error) {
-		emit(deps.Emit, &domain.TokenExchangeRejected{At: now, TenantID: tenantID, ActorUserID: actorUserID, Reason: err.Code})
+		emit(deps.Emit, &oauthdomain.TokenExchangeRejected{At: now, TenantID: tenantID, ActorUserID: actorUserID, Reason: err.Code})
 		return nil, err
 	}
 
@@ -152,7 +152,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	if in.SubjectToken == "" {
 		return reject("", NewOAuthError("invalid_request", "subject_token is required"))
 	}
-	var subject *ports.IntrospectionResult
+	var subject *oauthports.IntrospectionResult
 	var workloadGrant *workloaddomain.WorkloadIdentityGrant
 	switch in.SubjectTokenType {
 	case "", tokenTypeAccessTokenURN:
@@ -186,7 +186,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 			return reject("", NewOAuthError("invalid_grant", "workload identity is not bound to a usable client"))
 		}
 		workloadGrant = grant
-		subject = &ports.IntrospectionResult{Active: true, Sub: workloadClient.ClientID, Scope: workloadClient.Scope}
+		subject = &oauthports.IntrospectionResult{Active: true, Sub: workloadClient.ClientID, Scope: workloadClient.Scope}
 	default:
 		return reject("", NewOAuthError("invalid_request", "unsupported subject_token_type"))
 	}
@@ -206,7 +206,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 			return reject("", NewOAuthError("invalid_grant", "actor_token is invalid or revoked"))
 		}
 		currentActorSub = actor.Sub
-		actorAgents = domain.MergeAgentChain([]string{actor.AgentID}, actor.AgentChain)
+		actorAgents = oauthdomain.MergeAgentChain([]string{actor.AgentID}, actor.AgentChain)
 	}
 	if currentActorSub == "" {
 		return reject("", NewOAuthError("invalid_request", "The current actor cannot be determined."))
@@ -283,7 +283,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		if err != nil {
 			return nil, err
 		}
-		if err := domain.DetailsSubsetOf(in.AuthorizationDetails, subject.AuthorizationDetails, types); err != nil {
+		if err := oauthdomain.DetailsSubsetOf(in.AuthorizationDetails, subject.AuthorizationDetails, types); err != nil {
 			return reject(currentActorSub, NewOAuthError("invalid_authorization_details", "request exceeds authorization_details of subject_token"))
 		}
 		grantedDetails = in.AuthorizationDetails
@@ -308,10 +308,10 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	// --- sender constraint (DPoP / mTLS, REQ-OAUTH2-056) ---
 	// 束縛した subject_token は同じ鍵の証明があるときだけ交換でき、同じ制約を引き継ぐ。
 	// 外部 workload の subject は introspection を通らないため制約を持たない。
-	proof := domain.ExchangeProof{JKT: in.ProofJKT, X5TS256: in.ProofX5TS256}
-	sc, bound := domain.DecideExchangeBinding(subject.SenderConstraint, proof)
+	proof := oauthdomain.ExchangeProof{JKT: in.ProofJKT, X5TS256: in.ProofX5TS256}
+	sc, bound := oauthdomain.DecideExchangeBinding(subject.SenderConstraint, proof)
 	if rebinding {
-		sc, bound = domain.ReboundExchangeBinding(proof)
+		sc, bound = oauthdomain.ReboundExchangeBinding(proof)
 	}
 	if !bound {
 		return reject(currentActorSub, NewOAuthError("invalid_grant", "The proof does not match the key bound to the subject_token."))
@@ -319,7 +319,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 
 	// --- 本人の代行の付与 (REQ-OAUTH2-060) ---
 	var delegatingAgents []string
-	if agents := domain.MergeAgentChain([]string{subject.AgentID}, subject.AgentChain, actorAgents, []string{actingAgentID}); workloadGrant == nil && len(agents) > 0 {
+	if agents := oauthdomain.MergeAgentChain([]string{subject.AgentID}, subject.AgentChain, actorAgents, []string{actingAgentID}); workloadGrant == nil && len(agents) > 0 {
 		user, err := isUserSubject(ctx, deps.ClientRepo, tenantID, subject.Sub)
 		if err != nil {
 			return nil, err
@@ -348,7 +348,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		if !claimed {
 			return reject(currentActorSub, NewOAuthError("invalid_grant", "The token_exchange_grant is invalid or expired."))
 		}
-		expiresAt = min(now.Add(domain.TokenExchangeGrantTTL).Unix(), subject.Exp)
+		expiresAt = min(now.Add(oauthdomain.TokenExchangeGrantTTL).Unix(), subject.Exp)
 		expiresIn = int(expiresAt - now.Unix())
 	}
 
@@ -358,14 +358,14 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		agentID = workloadGrant.AgentID
 	}
 	// 再束縛は同じ主体のトークンを別の経路へ渡すだけなので、Agent の主体を保つ。
-	if rebinding && subject.PrincipalType == domain.PrincipalTypeAgent {
+	if rebinding && subject.PrincipalType == oauthdomain.PrincipalTypeAgent {
 		agentID = subject.AgentID
 	}
 	// 入力のトークンが持っていた発行時の Agent を引き継ぎ、連鎖のどの Agent を止めても
 	// 交換後のトークンが無効になるようにする (REQ-OAUTH2-012)。要求したクライアントの Agent は、
 	// 全グラントに共通して token ハンドラーが発行器で加える。
-	agentChain := domain.MergeAgentChain([]string{subject.AgentID}, subject.AgentChain, actorAgents, []string{agentID})
-	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
+	agentChain := oauthdomain.MergeAgentChain([]string{subject.AgentID}, subject.AgentChain, actorAgents, []string{agentID})
+	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client: client, Sub: subject.Sub, Scopes: grantedScopes,
 		SenderConstraint: sc, AuthTime: now.Unix(),
 		Audiences: []string{resource}, Act: act,
@@ -381,7 +381,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		}
 	}
 
-	emit(deps.Emit, &domain.AccessTokenIssued{
+	emit(deps.Emit, &oauthdomain.AccessTokenIssued{
 		At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID,
 		UserID: subject.Sub, Scopes: grantedScopes, SenderConstraint: senderConstraintTag(sc),
 		AgentID: actingAgentID,
@@ -391,19 +391,19 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	// 最も見つけにくい形で現れる。
 	principalType := ""
 	if agentID != "" {
-		principalType = domain.PrincipalTypeAgent
+		principalType = oauthdomain.PrincipalTypeAgent
 	}
-	emit(deps.Emit, &domain.TokenExchanged{
+	emit(deps.Emit, &oauthdomain.TokenExchanged{
 		At: now, TenantID: tenantID, ActorUserID: currentActorSub, SubjectUserID: subject.Sub,
 		Audience: resource, DelegationDepth: depth, MaxDelegationDepth: maxDepth,
-		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
+		DelegationMode: oauthdomain.DeriveDelegationMode(oauthdomain.DelegationSubject{
 			Sub: subject.Sub, ClientID: client.ClientID, PrincipalType: principalType, Act: act,
 		}),
 		// チェーンの参加者を残す。深さと両端だけでは、中間の行為者を後から辿れない。
 		// AgentID は交換を行った側の Agent であり、トークンへ載せる agentID (ワークロード
 		// ID 連携の grant 由来に限る) より広い。監査は資格情報の束縛による代行も
 		// Agent の操作として区別する必要がある。
-		AgentID: actingAgentID, ActorChain: domain.ActorChainParticipants(act, subject.Sub),
+		AgentID: actingAgentID, ActorChain: oauthdomain.ActorChainParticipants(act, subject.Sub),
 		SenderConstraintRebound: rebinding,
 	})
 	if workloadGrant != nil {
@@ -413,7 +413,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		})
 	}
 
-	tokenType := domain.PresentationTokenType(sc)
+	tokenType := oauthdomain.PresentationTokenType(sc)
 	return &ExchangeTokenResult{
 		AccessToken:          access,
 		IssuedTokenType:      tokenTypeAccessTokenURN,
@@ -425,17 +425,17 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 }
 
 // claimTokenExchangeGrant は、発行した評価と同じクライアント、トークン、宛先の許可だけを消費する。
-func claimTokenExchangeGrant(ctx context.Context, store ports.TokenExchangeGrantStore, in ExchangeTokenInput, subjectTokenID, resource string, now time.Time) (bool, error) {
+func claimTokenExchangeGrant(ctx context.Context, store oauthports.TokenExchangeGrantStore, in ExchangeTokenInput, subjectTokenID, resource string, now time.Time) (bool, error) {
 	if store == nil || subjectTokenID == "" {
 		return false, nil
 	}
-	return store.Claim(ctx, domain.HashTokenExchangeGrant(in.TokenExchangeGrant), domain.TokenExchangeGrant{
+	return store.Claim(ctx, oauthdomain.HashTokenExchangeGrant(in.TokenExchangeGrant), oauthdomain.TokenExchangeGrant{
 		ClientID: in.ClientID, SubjectTokenID: subjectTokenID, Resource: resource,
 	}, now)
 }
 
 // delegationsPermit は、agents のすべてに sub の付与があり、scopes の代行を許すかを判定する。
-func delegationsPermit(ctx context.Context, consents ports.ConsentRepository, tenantID, sub string, agents, scopes []string, now time.Time) (bool, error) {
+func delegationsPermit(ctx context.Context, consents oauthports.ConsentRepository, tenantID, sub string, agents, scopes []string, now time.Time) (bool, error) {
 	if len(agents) == 0 {
 		return true, nil
 	}
@@ -456,8 +456,8 @@ func delegationsPermit(ctx context.Context, consents ports.ConsentRepository, te
 
 func evaluateTokenExchangePolicy(
 	ctx context.Context,
-	authorizer policyports.Authorizer,
-	client *domain.OAuth2Client,
+	authorizer accessports.Authorizer,
+	client *oauthdomain.OAuth2Client,
 	actorUserID, subjectUserID, resource string,
 	scopes []string,
 	delegationDepth int,
@@ -498,7 +498,7 @@ func evaluateTokenExchangePolicy(
 // いない配線では既定 (= 上書きが超えられない上限) を使い、解決に失敗した場合は error を
 // 返して呼び出し側に拒否させる。解決できた値が既定を超えていた場合も既定へ丸める:
 // 上書きは厳しい方向にのみ働くという規則を、保存側と評価側の両方で守る。
-func resolveMaxDelegationDepth(ctx context.Context, resolver ports.DelegationPolicyResolver, tenantID string) (int, error) {
+func resolveMaxDelegationDepth(ctx context.Context, resolver oauthports.DelegationPolicyResolver, tenantID string) (int, error) {
 	if resolver == nil {
 		return DefaultMaxDelegationDepth, nil
 	}
@@ -549,7 +549,7 @@ func nonEmpty(values []string) []string {
 // 使う (REQ-AUDIT-005)。ここで既に解決しているので、監査のために引き直さない。
 func rejectSupervisedAgents(
 	ctx context.Context, deps ExchangeTokenDeps, in ExchangeTokenInput,
-	subject *ports.IntrospectionResult, workloadGrant *workloaddomain.WorkloadIdentityGrant, now time.Time,
+	subject *oauthports.IntrospectionResult, workloadGrant *workloaddomain.WorkloadIdentityGrant, now time.Time,
 ) (string, *OAuthError) {
 	if deps.AgentRepo == nil {
 		return "", nil

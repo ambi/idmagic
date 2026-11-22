@@ -4,7 +4,7 @@ package application
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -26,11 +26,11 @@ func SubjectDirectory(users userports.UserRepository, groups groupports.GroupRep
 func (d idManagementSubjectDirectory) SubjectExists(
 	ctx context.Context,
 	tenantID string,
-	subjectType domain.AssignmentSubjectType,
+	subjectType appdomain.AssignmentSubjectType,
 	subjectID string,
 ) (bool, error) {
 	switch subjectType {
-	case domain.AssignmentSubjectUser:
+	case appdomain.AssignmentSubjectUser:
 		if d.users == nil {
 			return false, nil
 		}
@@ -39,7 +39,7 @@ func (d idManagementSubjectDirectory) SubjectExists(
 			return false, err
 		}
 		return user != nil && user.TenantID == tenantID, nil
-	case domain.AssignmentSubjectGroup:
+	case appdomain.AssignmentSubjectGroup:
 		if d.groups == nil {
 			return false, nil
 		}

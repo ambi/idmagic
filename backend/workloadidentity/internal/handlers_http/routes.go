@@ -11,9 +11,9 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -21,25 +21,25 @@ import (
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	TrustBundleRepo ports.WorkloadTrustBundleRepository
-	BindingRepo     ports.AgentWorkloadBindingRepository
+	TrustBundleRepo workloadports.WorkloadTrustBundleRepository
+	BindingRepo     workloadports.AgentWorkloadBindingRepository
 	AgentRepo       agentports.AgentRepository
 	// FetchJWKS performs the live JWKS lookup for RefreshWorkloadTrustBundleJWKS
 	// and is also the source for WorkloadVerifier's own cache (composition root
 	// wires the same adapter to both).
-	FetchJWKS      func(ctx context.Context, bundle *domain.WorkloadTrustBundle) ([]map[string]any, error)
+	FetchJWKS      func(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error)
 	discoverIssuer func(context.Context, string) (string, error)
 }
 
-func (d Deps) adminDeps() usecases.AdminWorkloadIdentityDeps {
-	return usecases.AdminWorkloadIdentityDeps{
+func (d Deps) adminDeps() workloadusecases.AdminWorkloadIdentityDeps {
+	return workloadusecases.AdminWorkloadIdentityDeps{
 		TrustBundleRepo: d.TrustBundleRepo, BindingRepo: d.BindingRepo,
 		FetchJWKS: d.FetchJWKS, Emit: d.Emit,
 	}
 }
 
-func (d Deps) adminBindingDeps() usecases.AdminAgentWorkloadBindingDeps {
-	return usecases.AdminAgentWorkloadBindingDeps{AdminWorkloadIdentityDeps: d.adminDeps(), AgentRepo: d.AgentRepo}
+func (d Deps) adminBindingDeps() workloadusecases.AdminAgentWorkloadBindingDeps {
+	return workloadusecases.AdminAgentWorkloadBindingDeps{AdminWorkloadIdentityDeps: d.adminDeps(), AgentRepo: d.AgentRepo}
 }
 
 // RegisterRoutes はテナント解決済みグループに WorkloadIdentity 管理 API を登録する。
@@ -82,7 +82,7 @@ type trustBundleResponse struct {
 	JWKSCachedAt              *time.Time `json:"jwks_cached_at,omitempty"`
 }
 
-func toTrustBundleResponse(b *domain.WorkloadTrustBundle) trustBundleResponse {
+func toTrustBundleResponse(b *workloaddomain.WorkloadTrustBundle) trustBundleResponse {
 	audiences := b.AcceptedAudiences
 	if audiences == nil {
 		audiences = []string{}
@@ -118,7 +118,7 @@ func (d Deps) handleListTrustBundles(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	bundles, err := usecases.ListWorkloadTrustBundles(c.Request().Context(), d.adminDeps())
+	bundles, err := workloadusecases.ListWorkloadTrustBundles(c.Request().Context(), d.adminDeps())
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (d Deps) handleGetTrustBundle(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	bundle, err := usecases.GetWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"))
+	bundle, err := workloadusecases.GetWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"))
 	if err != nil {
 		return writeAdminWorkloadIdentityError(c, err)
 	}
@@ -151,8 +151,8 @@ func (d Deps) handleRegisterTrustBundle(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	bundle, err := usecases.RegisterWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), usecases.RegisterWorkloadTrustBundleInput{
-		Name: req.Name, Profile: domain.WorkloadTrustBundleProfile(req.Profile), TrustDomain: req.TrustDomain,
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), workloadusecases.RegisterWorkloadTrustBundleInput{
+		Name: req.Name, Profile: workloaddomain.WorkloadTrustBundleProfile(req.Profile), TrustDomain: req.TrustDomain,
 		Issuer: req.Issuer, JWKSURI: req.JWKSURI,
 		JWKS: req.JWKS, AcceptedAudiences: req.AcceptedAudiences, MaxSubjectTokenTTLSeconds: req.MaxSubjectTokenTTLSeconds,
 	}, time.Now().UTC())
@@ -173,7 +173,7 @@ func (d Deps) handleUpdateTrustBundle(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	bundle, err := usecases.UpdateWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"), usecases.UpdateWorkloadTrustBundleInput{
+	bundle, err := workloadusecases.UpdateWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"), workloadusecases.UpdateWorkloadTrustBundleInput{
 		Name: req.Name, JWKSURI: req.JWKSURI, JWKS: req.JWKS, AcceptedAudiences: req.AcceptedAudiences,
 		MaxSubjectTokenTTLSeconds: req.MaxSubjectTokenTTLSeconds,
 	}, time.Now().UTC())
@@ -185,21 +185,21 @@ func (d Deps) handleUpdateTrustBundle(c *echo.Context) error {
 
 func (d Deps) handleDisableTrustBundle(c *echo.Context) error {
 	return d.changeTrustBundleStatus(c, func(id string, now time.Time) error {
-		_, err := usecases.DisableWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), id, now)
+		_, err := workloadusecases.DisableWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), id, now)
 		return err
 	})
 }
 
 func (d Deps) handleEnableTrustBundle(c *echo.Context) error {
 	return d.changeTrustBundleStatus(c, func(id string, now time.Time) error {
-		_, err := usecases.EnableWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), id, now)
+		_, err := workloadusecases.EnableWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), id, now)
 		return err
 	})
 }
 
 func (d Deps) handleDeleteTrustBundle(c *echo.Context) error {
 	return d.changeTrustBundleStatus(c, func(id string, now time.Time) error {
-		return usecases.DeleteWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), id, now)
+		return workloadusecases.DeleteWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), id, now)
 	})
 }
 
@@ -230,7 +230,7 @@ func (d Deps) handleRefreshTrustBundleJWKS(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	res, err := usecases.RefreshWorkloadTrustBundleJWKS(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"), time.Now().UTC())
+	res, err := workloadusecases.RefreshWorkloadTrustBundleJWKS(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"), time.Now().UTC())
 	if err != nil {
 		return writeAdminWorkloadIdentityError(c, err)
 	}
@@ -253,7 +253,7 @@ type bindingResponse struct {
 	DisabledAt     *time.Time `json:"disabled_at,omitempty"`
 }
 
-func toBindingResponse(b *domain.AgentWorkloadBinding) bindingResponse {
+func toBindingResponse(b *workloaddomain.AgentWorkloadBinding) bindingResponse {
 	return bindingResponse{
 		ID: b.ID, TenantID: b.TenantID, TrustBundleID: b.TrustBundleID, SubjectPattern: b.SubjectPattern,
 		AgentID: b.AgentID, Status: string(b.Status), CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
@@ -270,7 +270,7 @@ func (d Deps) handleListBindings(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	bindings, err := usecases.ListAgentWorkloadBindings(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"))
+	bindings, err := workloadusecases.ListAgentWorkloadBindings(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"))
 	if err != nil {
 		return writeAdminWorkloadIdentityError(c, err)
 	}
@@ -292,7 +292,7 @@ func (d Deps) handleCreateBinding(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	binding, err := usecases.CreateAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"), usecases.CreateAgentWorkloadBindingInput{
+	binding, err := workloadusecases.CreateAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"), workloadusecases.CreateAgentWorkloadBindingInput{
 		SubjectPattern: req.SubjectPattern, AgentID: req.AgentID,
 	}, time.Now().UTC())
 	if err != nil {
@@ -303,21 +303,21 @@ func (d Deps) handleCreateBinding(c *echo.Context) error {
 
 func (d Deps) handleDisableBinding(c *echo.Context) error {
 	return d.changeBindingStatus(c, func(id string, now time.Time) error {
-		_, err := usecases.DisableAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), id, now)
+		_, err := workloadusecases.DisableAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), id, now)
 		return err
 	})
 }
 
 func (d Deps) handleEnableBinding(c *echo.Context) error {
 	return d.changeBindingStatus(c, func(id string, now time.Time) error {
-		_, err := usecases.EnableAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), id, now)
+		_, err := workloadusecases.EnableAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), id, now)
 		return err
 	})
 }
 
 func (d Deps) handleDeleteBinding(c *echo.Context) error {
 	return d.changeBindingStatus(c, func(id string, now time.Time) error {
-		return usecases.DeleteAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), id, now)
+		return workloadusecases.DeleteAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), id, now)
 	})
 }
 
@@ -337,37 +337,37 @@ func (d Deps) changeBindingStatus(c *echo.Context, action func(id string, now ti
 
 func writeAdminWorkloadIdentityError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, usecases.ErrBindingInvalidInput):
+	case errors.Is(err, workloadusecases.ErrBindingInvalidInput):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The binding pattern or preview input is invalid.")
-	case errors.Is(err, usecases.ErrTrustBundleNotFound):
+	case errors.Is(err, workloadusecases.ErrTrustBundleNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "workload_trust_bundle_not_found", "The workload trust bundle does not exist.")
-	case errors.Is(err, usecases.ErrTrustBundleNameConflict):
+	case errors.Is(err, workloadusecases.ErrTrustBundleNameConflict):
 		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_name_conflict", "The trust bundle name is already in use.")
-	case errors.Is(err, usecases.ErrTrustBundleIssuerConflict):
+	case errors.Is(err, workloadusecases.ErrTrustBundleIssuerConflict):
 		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_issuer_conflict", "The issuer is already registered.")
-	case errors.Is(err, usecases.ErrTrustBundleTrustDomainConflict):
+	case errors.Is(err, workloadusecases.ErrTrustBundleTrustDomainConflict):
 		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_trust_domain_conflict", "The trust domain is already registered for a spiffe trust bundle.")
-	case errors.Is(err, usecases.ErrTrustBundleInvalidTrustDomain):
+	case errors.Is(err, workloadusecases.ErrTrustBundleInvalidTrustDomain):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_invalid_trust_domain", "trust_domain is not a valid SPIFFE trust domain.")
-	case errors.Is(err, usecases.ErrTrustBundleInvalidProfile):
+	case errors.Is(err, workloadusecases.ErrTrustBundleInvalidProfile):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "profile must be oidc or spiffe.")
-	case errors.Is(err, usecases.ErrTrustBundleMissingJWKS):
+	case errors.Is(err, workloadusecases.ErrTrustBundleMissingJWKS):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_jwks_required", "jwks_uri or jwks is required.")
-	case errors.Is(err, usecases.ErrTrustBundleNameRequired):
+	case errors.Is(err, workloadusecases.ErrTrustBundleNameRequired):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_name_required", "The trust bundle name is required.")
-	case errors.Is(err, usecases.ErrTrustBundleIssuerRequired):
+	case errors.Is(err, workloadusecases.ErrTrustBundleIssuerRequired):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_issuer_required", "The issuer is required.")
-	case errors.Is(err, usecases.ErrTrustBundleAudiencesEmpty):
+	case errors.Is(err, workloadusecases.ErrTrustBundleAudiencesEmpty):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_audiences_required", "accepted_audiences must not be empty.")
-	case errors.Is(err, usecases.ErrTrustBundleInvalidTTL):
+	case errors.Is(err, workloadusecases.ErrTrustBundleInvalidTTL):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_invalid_ttl", "max_subject_token_ttl_seconds must be positive.")
-	case errors.Is(err, usecases.ErrBindingNotFound):
+	case errors.Is(err, workloadusecases.ErrBindingNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "agent_workload_binding_not_found", "The binding does not exist.")
-	case errors.Is(err, usecases.ErrBindingAgentNotFound):
+	case errors.Is(err, workloadusecases.ErrBindingAgentNotFound):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_workload_binding_agent_not_found", "The agent does not exist in this tenant.")
-	case errors.Is(err, usecases.ErrBindingSubjectPatternExists):
+	case errors.Is(err, workloadusecases.ErrBindingSubjectPatternExists):
 		return support.WriteProblem(c, http.StatusConflict, "agent_workload_binding_pattern_conflict", "subject_pattern is already registered for this trust bundle.")
-	case errors.Is(err, usecases.ErrBindingSubjectPatternEmpty):
+	case errors.Is(err, workloadusecases.ErrBindingSubjectPatternEmpty):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_workload_binding_pattern_required", "subject_pattern is required.")
 	default:
 		return err

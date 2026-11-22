@@ -13,7 +13,7 @@ import (
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	policyusecases "github.com/ambi/idmagic/backend/signinpolicy/usecases"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -24,18 +24,18 @@ import (
 )
 
 type applicationProtocolResponse struct {
-	Type     domain.ApplicationProtocolType `json:"type"`
-	ClientID string                         `json:"client_id,omitempty"`
-	EntityID string                         `json:"entity_id,omitempty"`
-	Wtrealm  string                         `json:"wtrealm,omitempty"`
+	Type     appdomain.ApplicationProtocolType `json:"type"`
+	ClientID string                            `json:"client_id,omitempty"`
+	EntityID string                            `json:"entity_id,omitempty"`
+	Wtrealm  string                            `json:"wtrealm,omitempty"`
 }
 
 type applicationResponse struct {
 	ID                   string                       `json:"id"`
 	DeletionProtected    bool                         `json:"deletion_protected"`
 	Name                 string                       `json:"name"`
-	Kind                 domain.ApplicationKind       `json:"kind"`
-	Status               domain.ApplicationStatus     `json:"status"`
+	Kind                 appdomain.ApplicationKind    `json:"kind"`
+	Status               appdomain.ApplicationStatus  `json:"status"`
 	IconURL              string                       `json:"icon_url,omitempty"`
 	IconObjectKey        string                       `json:"icon_object_key,omitempty"`
 	LaunchURL            string                       `json:"launch_url,omitempty"`
@@ -50,23 +50,23 @@ type applicationResponse struct {
 }
 
 type applicationUpdateRequest struct {
-	Name      *string                   `json:"name"`
-	Status    *domain.ApplicationStatus `json:"status"`
-	LaunchURL *string                   `json:"launch_url"`
+	Name      *string                      `json:"name"`
+	Status    *appdomain.ApplicationStatus `json:"status"`
+	LaunchURL *string                      `json:"launch_url"`
 }
 
 type assignmentRequest struct {
-	SubjectType domain.AssignmentSubjectType `json:"subject_type"`
-	SubjectID   string                       `json:"subject_id"`
-	Visibility  domain.AssignmentVisibility  `json:"visibility"`
+	SubjectType appdomain.AssignmentSubjectType `json:"subject_type"`
+	SubjectID   string                          `json:"subject_id"`
+	Visibility  appdomain.AssignmentVisibility  `json:"visibility"`
 }
 
 type assignmentResponse struct {
-	SubjectType domain.AssignmentSubjectType `json:"subject_type"`
-	SubjectID   string                       `json:"subject_id"`
-	Visibility  domain.AssignmentVisibility  `json:"visibility"`
-	CreatedAt   time.Time                    `json:"created_at"`
-	UpdatedAt   time.Time                    `json:"updated_at"`
+	SubjectType appdomain.AssignmentSubjectType `json:"subject_type"`
+	SubjectID   string                          `json:"subject_id"`
+	Visibility  appdomain.AssignmentVisibility  `json:"visibility"`
+	CreatedAt   time.Time                       `json:"created_at"`
+	UpdatedAt   time.Time                       `json:"updated_at"`
 }
 
 type signInPolicyRequest struct {
@@ -93,7 +93,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	var apps []*domain.Application
+	var apps []*appdomain.Application
 	var pageErr, countErr error
 	var totalItems int64
 	var wg sync.WaitGroup
@@ -360,7 +360,7 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 	}
 	// Application の削除は PostgreSQL でプロトコル設定へ連鎖するため、
 	// 割り当てやポリシーを変更する前に所有クライアントの保護を確かめる。
-	if app.Protocol != nil && app.Protocol.Type == domain.ApplicationProtocolOIDC {
+	if app.Protocol != nil && app.Protocol.Type == appdomain.ApplicationProtocolOIDC {
 		client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), app.Protocol.ClientID)
 		if err != nil {
 			return err
@@ -393,7 +393,7 @@ func (d Deps) handleListAssignments(c *echo.Context) error {
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	var assignments []*domain.ApplicationAssignment
+	var assignments []*appdomain.ApplicationAssignment
 	if page.Direction == support.PageBackward {
 		assignments, err = appusecases.ListAssignmentsBefore(c.Request().Context(), d.assignmentDeps(), c.Param("id"), page.AfterPrimary, page.AfterID, page.Limit+1)
 	} else {
@@ -450,7 +450,7 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 	}
 	if err := appusecases.UnassignApplication(
 		c.Request().Context(), d.assignmentDeps(), actor.ID, c.Param("id"),
-		domain.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC(),
+		appdomain.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -581,12 +581,12 @@ func (d Deps) applicationDeps() appusecases.ApplicationDeps {
 	}
 }
 
-func (d Deps) deleteApplicationProtocol(ctx context.Context, app *domain.Application) (int, error) {
+func (d Deps) deleteApplicationProtocol(ctx context.Context, app *appdomain.Application) (int, error) {
 	if app.Protocol == nil {
 		return 0, nil
 	}
 	switch app.Protocol.Type {
-	case domain.ApplicationProtocolOIDC:
+	case appdomain.ApplicationProtocolOIDC:
 		count, err := d.Clients.DeleteForApplicationWithState(ctx, app.TenantID, app.Protocol.ClientID)
 		if err != nil {
 			return 0, err
@@ -595,9 +595,9 @@ func (d Deps) deleteApplicationProtocol(ctx context.Context, app *domain.Applica
 			err = d.DeleteClientBindings(ctx, app.TenantID, app.Protocol.ClientID)
 		}
 		return count, err
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		return 0, d.ServiceProviders.DeleteForApplication(ctx, app.TenantID, app.Protocol.EntityID)
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		return 0, d.RelyingParties.DeleteForApplication(ctx, app.TenantID, app.Protocol.Wtrealm)
 	}
 	return 0, nil
@@ -644,10 +644,10 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 		return err
 	}
 	for _, invalid := range []error{
-		domain.ErrNameRequired, domain.ErrInvalidKind, domain.ErrInvalidStatus,
-		domain.ErrWeblinkLaunchURL, domain.ErrWeblinkHasProtocol, domain.ErrProtocolRequired,
-		domain.ErrServiceRequiresOIDC, domain.ErrInvalidProtocolType, domain.ErrOIDCClientID,
-		domain.ErrWsFedWtrealm, domain.ErrSAMLEntityID,
+		appdomain.ErrNameRequired, appdomain.ErrInvalidKind, appdomain.ErrInvalidStatus,
+		appdomain.ErrWeblinkLaunchURL, appdomain.ErrWeblinkHasProtocol, appdomain.ErrProtocolRequired,
+		appdomain.ErrServiceRequiresOIDC, appdomain.ErrInvalidProtocolType, appdomain.ErrOIDCClientID,
+		appdomain.ErrWsFedWtrealm, appdomain.ErrSAMLEntityID,
 		appusecases.ErrInvalidSubjectType, appusecases.ErrSubjectRequired,
 		appusecases.ErrSubjectNotFound, appusecases.ErrInvalidVisibility,
 	} {
@@ -665,8 +665,8 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	return err
 }
 
-func (d Deps) applicationDeletionProtected(ctx context.Context, tenantID string, app *domain.Application) bool {
-	if app.Protocol == nil || app.Protocol.Type != domain.ApplicationProtocolOIDC {
+func (d Deps) applicationDeletionProtected(ctx context.Context, tenantID string, app *appdomain.Application) bool {
+	if app.Protocol == nil || app.Protocol.Type != appdomain.ApplicationProtocolOIDC {
 		return false
 	}
 	if d.ClientRepo == nil {
@@ -677,7 +677,7 @@ func (d Deps) applicationDeletionProtected(ctx context.Context, tenantID string,
 	return err != nil || client != nil && client.FirstParty
 }
 
-func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *domain.Application) applicationResponse {
+func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *appdomain.Application) applicationResponse {
 	var categoryNames []string
 	if d.ApplicationCategoryRepo != nil && len(app.CategoryIDs) > 0 {
 		for _, catID := range app.CategoryIDs {
@@ -744,9 +744,9 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	}
 }
 
-func applicationProtocolProjection(app *domain.Application) (*applicationProtocolResponse, string) {
+func applicationProtocolProjection(app *appdomain.Application) (*applicationProtocolResponse, string) {
 	if app.Protocol == nil {
-		if app.Kind == domain.ApplicationWeblink {
+		if app.Kind == appdomain.ApplicationWeblink {
 			return nil, "Web Link"
 		}
 		return nil, ""
@@ -756,17 +756,17 @@ func applicationProtocolProjection(app *domain.Application) (*applicationProtoco
 		EntityID: app.Protocol.EntityID, Wtrealm: app.Protocol.Wtrealm,
 	}
 	switch app.Protocol.Type {
-	case domain.ApplicationProtocolOIDC:
+	case appdomain.ApplicationProtocolOIDC:
 		if app.Protocol.ClientID != "" {
 			return protocol, "OIDC (Client ID: " + app.Protocol.ClientID + ")"
 		}
 		return protocol, "OIDC"
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		if app.Protocol.EntityID != "" {
 			return protocol, "SAML (Entity ID: " + app.Protocol.EntityID + ")"
 		}
 		return protocol, "SAML"
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		if app.Protocol.Wtrealm != "" {
 			return protocol, "WS-Fed (Realm: " + app.Protocol.Wtrealm + ")"
 		}
@@ -776,7 +776,7 @@ func applicationProtocolProjection(app *domain.Application) (*applicationProtoco
 	}
 }
 
-func toAssignmentResponse(a *domain.ApplicationAssignment) assignmentResponse {
+func toAssignmentResponse(a *appdomain.ApplicationAssignment) assignmentResponse {
 	return assignmentResponse{
 		SubjectType: a.SubjectType, SubjectID: a.SubjectID, Visibility: a.Visibility, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	}

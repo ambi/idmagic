@@ -6,7 +6,7 @@ import (
 	"time"
 
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func TestTenantRepositorySaveAndFind(t *testing.T) {
@@ -15,11 +15,11 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now().UTC().Truncate(time.Second)
-	tenant := &domain.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID:          "11111111-1111-1111-1111-111111111111",
 		Realm:       "acme",
 		DisplayName: "Acme",
-		Status:      domain.TenantStatusActive,
+		Status:      tenancydomain.TenantStatusActive,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -34,7 +34,7 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 	if got == nil {
 		t.Fatal("tenant not found after save")
 	}
-	if got.DisplayName != "Acme" || got.Status != domain.TenantStatusActive || got.Realm != "acme" {
+	if got.DisplayName != "Acme" || got.Status != tenancydomain.TenantStatusActive || got.Realm != "acme" {
 		t.Fatalf("unexpected tenant: %+v", got)
 	}
 
@@ -82,10 +82,10 @@ func TestTenantRepositoryPersistsPasswordPolicyOverride(t *testing.T) {
 
 	minLength := 16
 	maxAge := 90
-	tenant := &domain.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID: "33333333-3333-3333-3333-333333333341", Realm: "policy-roundtrip",
-		DisplayName: "Policy Roundtrip", Status: domain.TenantStatusActive,
-		PasswordPolicyOverride: &domain.PasswordPolicyOverride{
+		DisplayName: "Policy Roundtrip", Status: tenancydomain.TenantStatusActive,
+		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{
 			MinLength: &minLength, MaxAgeDays: &maxAge,
 		},
 		PasswordPolicyUpdatedAt: &now,
@@ -150,9 +150,9 @@ func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	zeroValue := &domain.Tenant{
+	zeroValue := &tenancydomain.Tenant{
 		ID: "33333333-3333-3333-3333-333333333340", Realm: "style-default",
-		DisplayName: "Style Default", Status: domain.TenantStatusActive,
+		DisplayName: "Style Default", Status: tenancydomain.TenantStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, zeroValue); err != nil {
@@ -162,11 +162,11 @@ func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {
 	if err != nil || stored == nil {
 		t.Fatalf("find: %+v %v", stored, err)
 	}
-	if stored.EndpointStyle != domain.TenantEndpointStylePath {
-		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, domain.TenantEndpointStylePath)
+	if stored.EndpointStyle != tenancydomain.TenantEndpointStylePath {
+		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, tenancydomain.TenantEndpointStylePath)
 	}
 
-	stored.EndpointStyle = domain.TenantEndpointStyleSubdomain
+	stored.EndpointStyle = tenancydomain.TenantEndpointStyleSubdomain
 	if err := repo.Save(ctx, stored); err != nil {
 		t.Fatalf("save subdomain endpoint style: %v", err)
 	}
@@ -174,8 +174,8 @@ func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {
 	if err != nil || stored == nil {
 		t.Fatalf("find after switch: %+v %v", stored, err)
 	}
-	if stored.EndpointStyle != domain.TenantEndpointStyleSubdomain {
-		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, domain.TenantEndpointStyleSubdomain)
+	if stored.EndpointStyle != tenancydomain.TenantEndpointStyleSubdomain {
+		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, tenancydomain.TenantEndpointStyleSubdomain)
 	}
 }
 
@@ -186,9 +186,9 @@ func TestTenantRepositoryPersistsMaxDelegationDepth(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 
-	tenant := &domain.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID: "33333333-3333-3333-3333-333333333341", Realm: "delegation-depth",
-		DisplayName: "Delegation Depth", Status: domain.TenantStatusActive,
+		DisplayName: "Delegation Depth", Status: tenancydomain.TenantStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, tenant); err != nil {
@@ -201,7 +201,7 @@ func TestTenantRepositoryPersistsMaxDelegationDepth(t *testing.T) {
 	if stored.MaxDelegationDepth != nil {
 		t.Fatalf("MaxDelegationDepth = %v, want nil when never set", stored.MaxDelegationDepth)
 	}
-	if stored.EffectiveMaxDelegationDepth() != domain.DefaultMaxDelegationDepth {
+	if stored.EffectiveMaxDelegationDepth() != tenancydomain.DefaultMaxDelegationDepth {
 		t.Fatalf("EffectiveMaxDelegationDepth() = %d, want the system default",
 			stored.EffectiveMaxDelegationDepth())
 	}

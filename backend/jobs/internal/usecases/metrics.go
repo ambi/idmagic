@@ -3,7 +3,7 @@ package usecases
 import (
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 )
 
 // JobsMetrics is the lane-scoped observability surface a Runner records
@@ -14,19 +14,19 @@ import (
 type JobsMetrics interface {
 	// RecordJobClaimLatency records how long a claimed Job waited past its
 	// run_at before this Runner claimed it.
-	RecordJobClaimLatency(lane domain.ExecutionLane, latency time.Duration)
+	RecordJobClaimLatency(lane jobsdomain.ExecutionLane, latency time.Duration)
 	// RecordJobOutcome records one terminal-or-not handler outcome for a
 	// claimed Job's attempt: outcome is "succeeded" or "failed".
-	RecordJobOutcome(lane domain.ExecutionLane, outcome string)
+	RecordJobOutcome(lane jobsdomain.ExecutionLane, outcome string)
 	// RecordJobRetry records one non-terminal failure returned to Queued for
 	// a later retry attempt.
-	RecordJobRetry(lane domain.ExecutionLane)
+	RecordJobRetry(lane jobsdomain.ExecutionLane)
 	// RecordJobDuration records how long one attempt's handler ran, from the
 	// moment the Runner started it to the moment it returned (wi-157). Claim
 	// latency says how long a Job waited; this says how long it worked, and
 	// only the two together explain where a slow queue is spending its time.
 	// outcome is "succeeded" or "failed".
-	RecordJobDuration(lane domain.ExecutionLane, outcome string, duration time.Duration)
+	RecordJobDuration(lane jobsdomain.ExecutionLane, outcome string, duration time.Duration)
 }
 
 // jobsMetrics returns deps.Metrics, or a no-op implementation when unset, so
@@ -40,7 +40,7 @@ func (rn *Runner) jobsMetrics() JobsMetrics {
 
 type noopJobsMetrics struct{}
 
-func (noopJobsMetrics) RecordJobClaimLatency(domain.ExecutionLane, time.Duration)     {}
-func (noopJobsMetrics) RecordJobOutcome(domain.ExecutionLane, string)                 {}
-func (noopJobsMetrics) RecordJobRetry(domain.ExecutionLane)                           {}
-func (noopJobsMetrics) RecordJobDuration(domain.ExecutionLane, string, time.Duration) {}
+func (noopJobsMetrics) RecordJobClaimLatency(jobsdomain.ExecutionLane, time.Duration)     {}
+func (noopJobsMetrics) RecordJobOutcome(jobsdomain.ExecutionLane, string)                 {}
+func (noopJobsMetrics) RecordJobRetry(jobsdomain.ExecutionLane)                           {}
+func (noopJobsMetrics) RecordJobDuration(jobsdomain.ExecutionLane, string, time.Duration) {}

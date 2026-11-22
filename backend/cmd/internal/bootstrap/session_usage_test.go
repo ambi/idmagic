@@ -7,7 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -41,7 +41,7 @@ func TestRetentionSweepRecountsActiveSessionUsage(t *testing.T) {
 		t.Helper()
 		n++
 		id := tenantID + "-session-" + string(rune('0'+n))
-		sess := &domain.LoginSession{
+		sess := &sessiondomain.LoginSession{
 			ID: id, TenantID: tenantID, UserID: "user", AuthTime: now.Unix(), AMR: []string{"pwd"},
 			ACR: "urn:idmagic:acr:pwd", ExpiresAt: expiresAt, AuthenticationPending: pending,
 		}

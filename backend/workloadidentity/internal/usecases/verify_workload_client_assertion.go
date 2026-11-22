@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
 // VerifyWorkloadClientAssertionInput は spiffe_jwt のクライアント認証の入力である。
@@ -35,9 +35,9 @@ func VerifyWorkloadClientAssertion(
 	tenantID string,
 	in VerifyWorkloadClientAssertionInput,
 	now time.Time,
-) (*domain.WorkloadClientAuthentication, error) {
-	reject := func(reason, trustBundleID string) (*domain.WorkloadClientAuthentication, error) {
-		emitRejected(deps, tenantID, reason, trustBundleID, domain.AttestationUsageClientAuthentication, now)
+) (*workloaddomain.WorkloadClientAuthentication, error) {
+	reject := func(reason, trustBundleID string) (*workloaddomain.WorkloadClientAuthentication, error) {
+		emitRejected(deps, tenantID, reason, trustBundleID, workloaddomain.AttestationUsageClientAuthentication, now)
 		return nil, errWorkloadAttestationRejected(reason)
 	}
 
@@ -45,7 +45,7 @@ func VerifyWorkloadClientAssertion(
 	if !ok {
 		return reject("unregistered_issuer", "")
 	}
-	id, err := domain.ParseSpiffeID(unverified.Subject)
+	id, err := workloaddomain.ParseSpiffeID(unverified.Subject)
 	if err != nil {
 		return reject("invalid_spiffe_id", "")
 	}
@@ -94,7 +94,7 @@ func VerifyWorkloadClientAssertion(
 		return reject("client_not_bound", bundle.ID)
 	}
 
-	return &domain.WorkloadClientAuthentication{
+	return &workloaddomain.WorkloadClientAuthentication{
 		AgentID:       agent,
 		ClientID:      in.ClientID,
 		TrustBundleID: bundle.ID,
@@ -114,16 +114,16 @@ func resolveBoundAgent(
 	if err != nil {
 		return "", "", "", err
 	}
-	bindingValues := make([]domain.AgentWorkloadBinding, 0, len(bindings))
+	bindingValues := make([]workloaddomain.AgentWorkloadBinding, 0, len(bindings))
 	for _, b := range bindings {
 		bindingValues = append(bindingValues, *b)
 	}
-	matched, err := domain.MatchAgent(bindingValues, subject)
+	matched, err := workloaddomain.MatchAgent(bindingValues, subject)
 	if err != nil {
 		switch {
-		case errors.Is(err, domain.ErrNoBindingMatch):
+		case errors.Is(err, workloaddomain.ErrNoBindingMatch):
 			return "", "", "no_binding_match", nil
-		case errors.Is(err, domain.ErrAmbiguousBindingMatch):
+		case errors.Is(err, workloaddomain.ErrAmbiguousBindingMatch):
 			return "", "", "ambiguous_match", nil
 		default:
 			return "", "", "", err
@@ -140,10 +140,10 @@ func resolveBoundAgent(
 }
 
 func emitRejected(
-	deps VerifyWorkloadAttestationDeps, tenantID, reason, trustBundleID string, usage domain.AttestationUsage, now time.Time,
+	deps VerifyWorkloadAttestationDeps, tenantID, reason, trustBundleID string, usage workloaddomain.AttestationUsage, now time.Time,
 ) {
 	if deps.Emit != nil {
-		deps.Emit(&domain.WorkloadAttestationRejected{
+		deps.Emit(&workloaddomain.WorkloadAttestationRejected{
 			At: now, TenantID: tenantID, Reason: reason, TrustBundleID: trustBundleID, Usage: usage,
 		})
 	}

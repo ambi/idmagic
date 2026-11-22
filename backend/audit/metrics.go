@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -12,10 +12,10 @@ type exportMetrics struct {
 	operations *prometheus.CounterVec
 	limits     *prometheus.CounterVec
 	bytes      *prometheus.Desc
-	store      ports.ExportArtifactStore
+	store      auditports.ExportArtifactStore
 }
 
-func newExportMetrics(store ports.ExportArtifactStore) *exportMetrics {
+func newExportMetrics(store auditports.ExportArtifactStore) *exportMetrics {
 	return &exportMetrics{
 		operations: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "idmagic_audit_export_operations_total", Help: "Audit export lifecycle operations."}, []string{"operation", "outcome"}),
 		limits:     prometheus.NewCounterVec(prometheus.CounterOpts{Name: "idmagic_audit_export_limits_total", Help: "Audit exports that exceeded their configured limits."}, []string{"limit"}),

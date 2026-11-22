@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // =====================================================================
@@ -14,14 +14,14 @@ import (
 
 type TenantBrandingRepository struct {
 	mu       sync.RWMutex
-	byTenant map[string]*domain.TenantBranding
+	byTenant map[string]*tenancydomain.TenantBranding
 }
 
 func NewTenantBrandingRepository() *TenantBrandingRepository {
-	return &TenantBrandingRepository{byTenant: map[string]*domain.TenantBranding{}}
+	return &TenantBrandingRepository{byTenant: map[string]*tenancydomain.TenantBranding{}}
 }
 
-func (r *TenantBrandingRepository) FindByTenant(_ context.Context, tenantID string) (*domain.TenantBranding, error) {
+func (r *TenantBrandingRepository) FindByTenant(_ context.Context, tenantID string) (*tenancydomain.TenantBranding, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if branding := r.byTenant[tenantID]; branding != nil {
@@ -31,7 +31,7 @@ func (r *TenantBrandingRepository) FindByTenant(_ context.Context, tenantID stri
 	return nil, nil
 }
 
-func (r *TenantBrandingRepository) Save(_ context.Context, branding *domain.TenantBranding) error {
+func (r *TenantBrandingRepository) Save(_ context.Context, branding *tenancydomain.TenantBranding) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *branding
@@ -48,24 +48,24 @@ func (r *TenantBrandingRepository) Save(_ context.Context, branding *domain.Tena
 
 type TenantBrandingAssetStore struct {
 	mu     sync.RWMutex
-	assets map[string]*domain.TenantBrandingAsset // key: tenant_id + kind + object_key
+	assets map[string]*tenancydomain.TenantBrandingAsset // key: tenant_id + kind + object_key
 }
 
 func NewTenantBrandingAssetStore() *TenantBrandingAssetStore {
-	return &TenantBrandingAssetStore{assets: map[string]*domain.TenantBrandingAsset{}}
+	return &TenantBrandingAssetStore{assets: map[string]*tenancydomain.TenantBrandingAsset{}}
 }
 
-func brandingAssetKey(tenantID string, kind domain.TenantBrandingAssetKind, objectKey string) string {
+func brandingAssetKey(tenantID string, kind tenancydomain.TenantBrandingAssetKind, objectKey string) string {
 	return strings.Join([]string{tenantID, string(kind), objectKey}, "\x00")
 }
 
-func cloneBrandingAsset(asset *domain.TenantBrandingAsset) *domain.TenantBrandingAsset {
+func cloneBrandingAsset(asset *tenancydomain.TenantBrandingAsset) *tenancydomain.TenantBrandingAsset {
 	cloned := *asset
 	cloned.Data = append([]byte(nil), asset.Data...)
 	return &cloned
 }
 
-func (s *TenantBrandingAssetStore) Save(_ context.Context, asset *domain.TenantBrandingAsset) error {
+func (s *TenantBrandingAssetStore) Save(_ context.Context, asset *tenancydomain.TenantBrandingAsset) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	key := brandingAssetKey(asset.TenantID, asset.Kind, asset.ID)
@@ -77,7 +77,7 @@ func (s *TenantBrandingAssetStore) Save(_ context.Context, asset *domain.TenantB
 	return nil
 }
 
-func (s *TenantBrandingAssetStore) Find(_ context.Context, tenantID string, kind domain.TenantBrandingAssetKind, objectKey string) (*domain.TenantBrandingAsset, error) {
+func (s *TenantBrandingAssetStore) Find(_ context.Context, tenantID string, kind tenancydomain.TenantBrandingAssetKind, objectKey string) (*tenancydomain.TenantBrandingAsset, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	asset := s.assets[brandingAssetKey(tenantID, kind, objectKey)]
@@ -87,7 +87,7 @@ func (s *TenantBrandingAssetStore) Find(_ context.Context, tenantID string, kind
 	return cloneBrandingAsset(asset), nil
 }
 
-func (s *TenantBrandingAssetStore) DeleteByTenant(_ context.Context, tenantID string, kind domain.TenantBrandingAssetKind) error {
+func (s *TenantBrandingAssetStore) DeleteByTenant(_ context.Context, tenantID string, kind tenancydomain.TenantBrandingAssetKind) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	prefix := tenantID + "\x00" + string(kind) + "\x00"

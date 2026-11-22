@@ -5,19 +5,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 )
 
 type MfaEnrollmentBypassRepository struct {
 	mu    sync.Mutex
-	items map[string]*domain.MfaEnrollmentBypass
+	items map[string]*mfadomain.MfaEnrollmentBypass
 }
 
 func NewMfaEnrollmentBypassRepository() *MfaEnrollmentBypassRepository {
-	return &MfaEnrollmentBypassRepository{items: map[string]*domain.MfaEnrollmentBypass{}}
+	return &MfaEnrollmentBypassRepository{items: map[string]*mfadomain.MfaEnrollmentBypass{}}
 }
 
-func (r *MfaEnrollmentBypassRepository) Save(_ context.Context, bypass *domain.MfaEnrollmentBypass) error {
+func (r *MfaEnrollmentBypassRepository) Save(_ context.Context, bypass *mfadomain.MfaEnrollmentBypass) error {
 	if err := bypass.Validate(); err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (r *MfaEnrollmentBypassRepository) Save(_ context.Context, bypass *domain.M
 	return nil
 }
 
-func (r *MfaEnrollmentBypassRepository) ExpireOpen(_ context.Context, tenantID, userID string, now time.Time) (*domain.MfaEnrollmentBypass, error) {
+func (r *MfaEnrollmentBypassRepository) ExpireOpen(_ context.Context, tenantID, userID string, now time.Time) (*mfadomain.MfaEnrollmentBypass, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	item := r.findOpen(tenantID, userID)
@@ -44,13 +44,13 @@ func (r *MfaEnrollmentBypassRepository) ExpireOpen(_ context.Context, tenantID, 
 	return cloneMfaEnrollmentBypass(item), nil
 }
 
-func (r *MfaEnrollmentBypassRepository) FindActive(_ context.Context, tenantID, userID string, now time.Time) (*domain.MfaEnrollmentBypass, error) {
+func (r *MfaEnrollmentBypassRepository) FindActive(_ context.Context, tenantID, userID string, now time.Time) (*mfadomain.MfaEnrollmentBypass, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return cloneMfaEnrollmentBypass(r.findActive(tenantID, userID, now)), nil
 }
 
-func (r *MfaEnrollmentBypassRepository) ConsumeActive(_ context.Context, tenantID, userID string, now time.Time) (*domain.MfaEnrollmentBypass, error) {
+func (r *MfaEnrollmentBypassRepository) ConsumeActive(_ context.Context, tenantID, userID string, now time.Time) (*mfadomain.MfaEnrollmentBypass, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	item := r.findActive(tenantID, userID, now)
@@ -61,7 +61,7 @@ func (r *MfaEnrollmentBypassRepository) ConsumeActive(_ context.Context, tenantI
 	return cloneMfaEnrollmentBypass(item), nil
 }
 
-func (r *MfaEnrollmentBypassRepository) RevokeActive(_ context.Context, tenantID, userID string, now time.Time) (*domain.MfaEnrollmentBypass, error) {
+func (r *MfaEnrollmentBypassRepository) RevokeActive(_ context.Context, tenantID, userID string, now time.Time) (*mfadomain.MfaEnrollmentBypass, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	item := r.findOpen(tenantID, userID)
@@ -72,7 +72,7 @@ func (r *MfaEnrollmentBypassRepository) RevokeActive(_ context.Context, tenantID
 	return cloneMfaEnrollmentBypass(item), nil
 }
 
-func (r *MfaEnrollmentBypassRepository) findActive(tenantID, userID string, now time.Time) *domain.MfaEnrollmentBypass {
+func (r *MfaEnrollmentBypassRepository) findActive(tenantID, userID string, now time.Time) *mfadomain.MfaEnrollmentBypass {
 	for _, item := range r.items {
 		if item.TenantID == tenantID && item.UserID == userID && item.Available(now) {
 			return item
@@ -81,7 +81,7 @@ func (r *MfaEnrollmentBypassRepository) findActive(tenantID, userID string, now 
 	return nil
 }
 
-func (r *MfaEnrollmentBypassRepository) findOpen(tenantID, userID string) *domain.MfaEnrollmentBypass {
+func (r *MfaEnrollmentBypassRepository) findOpen(tenantID, userID string) *mfadomain.MfaEnrollmentBypass {
 	for _, item := range r.items {
 		if item.TenantID == tenantID && item.UserID == userID && item.ConsumedAt == nil && item.RevokedAt == nil && item.ExpiredAt == nil {
 			return item
@@ -90,7 +90,7 @@ func (r *MfaEnrollmentBypassRepository) findOpen(tenantID, userID string) *domai
 	return nil
 }
 
-func cloneMfaEnrollmentBypass(in *domain.MfaEnrollmentBypass) *domain.MfaEnrollmentBypass {
+func cloneMfaEnrollmentBypass(in *mfadomain.MfaEnrollmentBypass) *mfadomain.MfaEnrollmentBypass {
 	if in == nil {
 		return nil
 	}

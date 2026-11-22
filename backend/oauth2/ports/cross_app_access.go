@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -14,17 +14,17 @@ var ErrCrossAppAccessPolicyExists = errors.New("cross-app access policy already 
 
 // CrossAppAccessPolicyRepository は ID-JAG の許可の永続境界である。すべてテナントに閉じる。
 type CrossAppAccessPolicyRepository interface {
-	ListIssuePolicies(ctx context.Context, tenantID string) ([]*domain.CrossAppAccessIssuePolicy, error)
-	FindIssuePolicy(ctx context.Context, tenantID, id string) (*domain.CrossAppAccessIssuePolicy, error)
+	ListIssuePolicies(ctx context.Context, tenantID string) ([]*oauthdomain.CrossAppAccessIssuePolicy, error)
+	FindIssuePolicy(ctx context.Context, tenantID, id string) (*oauthdomain.CrossAppAccessIssuePolicy, error)
 	// CreateIssuePolicy は同じクライアントと audience の組があれば ErrCrossAppAccessPolicyExists を返す。
-	CreateIssuePolicy(ctx context.Context, policy *domain.CrossAppAccessIssuePolicy) error
+	CreateIssuePolicy(ctx context.Context, policy *oauthdomain.CrossAppAccessIssuePolicy) error
 	DeleteIssuePolicy(ctx context.Context, tenantID, id string) error
 
-	ListRedeemPolicies(ctx context.Context, tenantID string) ([]*domain.CrossAppAccessRedeemPolicy, error)
-	FindRedeemPolicy(ctx context.Context, tenantID, id string) (*domain.CrossAppAccessRedeemPolicy, error)
-	FindRedeemPolicyFor(ctx context.Context, tenantID, providerID, clientID string) (*domain.CrossAppAccessRedeemPolicy, error)
+	ListRedeemPolicies(ctx context.Context, tenantID string) ([]*oauthdomain.CrossAppAccessRedeemPolicy, error)
+	FindRedeemPolicy(ctx context.Context, tenantID, id string) (*oauthdomain.CrossAppAccessRedeemPolicy, error)
+	FindRedeemPolicyFor(ctx context.Context, tenantID, providerID, clientID string) (*oauthdomain.CrossAppAccessRedeemPolicy, error)
 	// CreateRedeemPolicy は同じ接続とクライアントの組があれば ErrCrossAppAccessPolicyExists を返す。
-	CreateRedeemPolicy(ctx context.Context, policy *domain.CrossAppAccessRedeemPolicy) error
+	CreateRedeemPolicy(ctx context.Context, policy *oauthdomain.CrossAppAccessRedeemPolicy) error
 	DeleteRedeemPolicy(ctx context.Context, tenantID, id string) error
 }
 
@@ -74,7 +74,7 @@ type IDJAGInput struct {
 	AMR                  []string
 	ACR                  string
 	Email                string
-	SenderConstraint     *domain.SenderConstraint
+	SenderConstraint     *oauthdomain.SenderConstraint
 }
 
 // IDJAGSigner は ID-JAG に専用の鍵で署名する。

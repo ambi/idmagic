@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	"github.com/ambi/idmagic/backend/accesscontrol"
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	"github.com/ambi/idmagic/backend/apitoken"
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	"github.com/ambi/idmagic/backend/application"
@@ -41,7 +41,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/http/server_http/tenancydeps"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
@@ -53,7 +53,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity"
-	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
 	"github.com/labstack/echo/v5"
@@ -83,14 +83,14 @@ type Deps struct {
 	GroupRepo      groupports.GroupRepository
 	AgentRepo      agentports.AgentRepository
 	Authentication authentication.Module
-	Notification   sharednotification.Module
+	Notification   notificationports.Module
 	// Deprecated: wi-177 移行中のテスト用互換入力。bootstrap は Authentication.Module のみを設定する。
 	MfaFactorRepo           totpports.MfaFactorRepository
 	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore   userports.EmailChangeTokenStore
 	AuthEventBucketStore    authentication.AuthEventBucketStore
 	PasswordHasher          passwordports.PasswordHasher
-	EmailSender             sharednotification.EmailSender
+	EmailSender             notificationports.EmailSender
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 	SentinelPasswordHash    string
 	SessionManager          *authentication.SessionManager
@@ -102,7 +102,7 @@ type Deps struct {
 	// Deprecated: 移行中のテスト用互換入力。bootstrap は OAuth2.Module のみを設定する。
 	TokenIssuer       oauthports.TokenIssuer
 	TokenIntrospector oauthports.TokenIntrospector
-	Authorizer        policyports.Authorizer
+	Authorizer        accessports.Authorizer
 	SigningKeys       signingkeys.Module
 	DataKeys          datakeys.Module
 	// Deprecated: tests may still provide the legacy direct field.
@@ -248,7 +248,7 @@ func mergeLegacyIdManagementDeps(module idmanagement.Module, d Deps) idmanagemen
 	return module
 }
 
-func mergeLegacyNotificationDeps(module sharednotification.Module, d Deps) sharednotification.Module {
+func mergeLegacyNotificationDeps(module notificationports.Module, d Deps) notificationports.Module {
 	if module.EmailSender == nil {
 		module.EmailSender = d.EmailSender
 	}
@@ -290,7 +290,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// VerifyWorkloadAttestation's verification path, so the refreshed key count
 	// is the set the verifier uses. A spiffe bundle is read as a SPIFFE bundle,
 	// keeping only its jwt-svid keys (REQ-WORKLOADIDENTITY-003).
-	fetchWorkloadJWKS := func(ctx context.Context, bundle *workloadidentitydomain.WorkloadTrustBundle) ([]map[string]any, error) {
+	fetchWorkloadJWKS := func(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error) {
 		if bundle.IsSPIFFE() {
 			return d.JWKResolver.ResolveSPIFFEBundle(ctx, bundle.JWKSURI, bundle.JWKS)
 		}

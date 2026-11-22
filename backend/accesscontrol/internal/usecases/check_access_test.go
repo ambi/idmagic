@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/db_memory"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accesscontrolusecases "github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -42,34 +42,34 @@ func (s statusStub) IsPrincipalActive(_ context.Context, _, principalType, princ
 
 // failingTuples は ListSubjects だけを失敗させ、ストア障害を模す。
 type failingTuples struct {
-	ports.RelationTupleRepository
+	accessinternalports.RelationTupleRepository
 }
 
 var errStoreDown = errors.New("tuple store is down")
 
-func (f failingTuples) ListSubjects(context.Context, string, domain.ObjectRef, string) ([]domain.SubjectRef, error) {
+func (f failingTuples) ListSubjects(context.Context, string, accessdomain.ObjectRef, string) ([]accessdomain.SubjectRef, error) {
 	return nil, errStoreDown
 }
 
-func referenceTypes() []domain.ResourceTypeDefinition {
-	return []domain.ResourceTypeDefinition{
+func referenceTypes() []accessdomain.ResourceTypeDefinition {
+	return []accessdomain.ResourceTypeDefinition{
 		{Name: "user"},
 		{Name: "agent"},
-		{Name: "group", Relations: []domain.RelationDefinition{
-			{Name: "member", Rewrites: []domain.RelationRewrite{
-				{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user", "agent"}},
+		{Name: "group", Relations: []accessdomain.RelationDefinition{
+			{Name: "member", Rewrites: []accessdomain.RelationRewrite{
+				{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user", "agent"}},
 			}},
 		}},
-		{Name: "document", Relations: []domain.RelationDefinition{
-			{Name: "viewer", Rewrites: []domain.RelationRewrite{
-				{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user", "agent", "group#member"}},
+		{Name: "document", Relations: []accessdomain.RelationDefinition{
+			{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+				{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user", "agent", "group#member"}},
 			}},
 		}},
 	}
 }
 
 type harness struct {
-	deps   usecases.Deps
+	deps   accesscontrolusecases.Deps
 	events []spec.DomainEvent
 }
 
@@ -78,7 +78,7 @@ type harness struct {
 func newBareHarness() *harness {
 	store := db_memory.NewStore()
 	h := &harness{}
-	h.deps = usecases.Deps{
+	h.deps = accesscontrolusecases.Deps{
 		Tuples:     db_memory.NewRelationTupleRepository(store),
 		Models:     db_memory.NewAuthorizationModelRepository(store),
 		Principals: statusStub{},
@@ -96,7 +96,7 @@ func newHarness(t *testing.T) *harness {
 }
 
 // publish は指定テナントへ参照モデルを published し、そのバージョンを返す。
-func (h *harness) publish(t *testing.T, tenant string) usecases.PublishedModel {
+func (h *harness) publish(t *testing.T, tenant string) accesscontrolusecases.PublishedModel {
 	t.Helper()
 	latest, err := h.deps.Models.Latest(context.Background(), tenant)
 	if err != nil {
@@ -106,21 +106,21 @@ func (h *harness) publish(t *testing.T, tenant string) usecases.PublishedModel {
 	if latest != nil {
 		expected = latest.Version
 	}
-	published, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenant, expected, referenceTypes(), now)
+	published, err := accesscontrolusecases.PutAuthorizationModel(context.Background(), h.deps, tenant, expected, referenceTypes(), now)
 	if err != nil {
 		t.Fatalf("PutAuthorizationModel(%s): %v", tenant, err)
 	}
 	return published
 }
 
-func (h *harness) write(t *testing.T, tuples ...domain.RelationTuple) string {
+func (h *harness) write(t *testing.T, tuples ...accessdomain.RelationTuple) string {
 	t.Helper()
 	return h.writeFor(t, tenantID, tuples...)
 }
 
-func (h *harness) writeFor(t *testing.T, tenant string, tuples ...domain.RelationTuple) string {
+func (h *harness) writeFor(t *testing.T, tenant string, tuples ...accessdomain.RelationTuple) string {
 	t.Helper()
-	outcome, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenant, ports.TupleWrite{Writes: tuples}, now)
+	outcome, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenant, accessinternalports.TupleWrite{Writes: tuples}, now)
 	if err != nil {
 		t.Fatalf("WriteRelationTuples(%s): %v", tenant, err)
 	}
@@ -140,28 +140,28 @@ func (h *harness) countEvents(eventType string) int {
 
 // listAll は保管庫に残っているタプルを API 越しではなく読み直す。拒否された書き込みが
 // 何も残していないことは、応答だけでは確かめられない。
-func (h *harness) listAll(t *testing.T) []domain.RelationTuple {
+func (h *harness) listAll(t *testing.T) []accessdomain.RelationTuple {
 	t.Helper()
-	listed, err := usecases.ListRelationTuples(context.Background(), h.deps, tenantID, ports.RelationTupleFilter{}, 0)
+	listed, err := accesscontrolusecases.ListRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.RelationTupleFilter{}, 0)
 	if err != nil {
 		t.Fatalf("ListRelationTuples(%s): %v", tenantID, err)
 	}
 	return listed.Tuples
 }
 
-func viewerTuple(subjectType, subjectID string) domain.RelationTuple {
-	return domain.RelationTuple{
-		Resource: domain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
-		Subject: domain.SubjectRef{Type: subjectType, ID: subjectID},
+func viewerTuple(subjectType, subjectID string) accessdomain.RelationTuple {
+	return accessdomain.RelationTuple{
+		Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
+		Subject: accessdomain.SubjectRef{Type: subjectType, ID: subjectID},
 	}
 }
 
-func baseInput() usecases.CheckAccessInput {
-	return usecases.CheckAccessInput{
+func baseInput() accesscontrolusecases.CheckAccessInput {
+	return accesscontrolusecases.CheckAccessInput{
 		TenantID: tenantID,
-		Resource: domain.ObjectRef{Type: "document", ID: "d1"},
+		Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"},
 		Relation: "viewer",
-		Subject:  domain.SubjectRef{Type: "user", ID: "alice"},
+		Subject:  accessdomain.SubjectRef{Type: "user", ID: "alice"},
 	}
 }
 
@@ -174,7 +174,7 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 	t.Run("the user alone is permitted without a delegation chain", func(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("user", "alice"))
-		result, err := usecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
 		if err != nil {
 			t.Fatalf("CheckAccess: %v", err)
 		}
@@ -187,8 +187,8 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("user", "alice"))
 		input := baseInput()
-		input.ActorChain = []usecases.Actor{{Type: "agent", ID: "researcher"}}
-		result, err := usecases.CheckAccess(context.Background(), h.deps, input, now)
+		input.ActorChain = []accesscontrolusecases.Actor{{Type: "agent", ID: "researcher"}}
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now)
 		if err != nil {
 			t.Fatalf("CheckAccess: %v", err)
 		}
@@ -204,12 +204,12 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("user", "alice"), viewerTuple("agent", "researcher"))
 		input := baseInput()
-		input.ActorChain = []usecases.Actor{{Type: "agent", ID: "researcher"}}
+		input.ActorChain = []accesscontrolusecases.Actor{{Type: "agent", ID: "researcher"}}
 		// 表の scope 列は「含まれる」であって「制約しない」ではない。要求スコープを
 		// 空のままにすると、スコープを一切見ない実装でもこの行が通ってしまう。
 		input.RequiredScopes = []string{"documents:read"}
 		input.GrantedScopes = []string{"documents:read", "calendar:read"}
-		result, err := usecases.CheckAccess(context.Background(), h.deps, input, now)
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now)
 		if err != nil {
 			t.Fatalf("CheckAccess: %v", err)
 		}
@@ -222,8 +222,8 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("agent", "researcher"))
 		input := baseInput()
-		input.ActorChain = []usecases.Actor{{Type: "agent", ID: "researcher"}}
-		result, err := usecases.CheckAccess(context.Background(), h.deps, input, now)
+		input.ActorChain = []accesscontrolusecases.Actor{{Type: "agent", ID: "researcher"}}
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now)
 		if err != nil {
 			t.Fatalf("CheckAccess: %v", err)
 		}
@@ -250,8 +250,8 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 					h.deps.Principals = principals
 				}
 				input := baseInput()
-				input.ActorChain = []usecases.Actor{{Type: "agent", ID: "researcher"}}
-				result, err := usecases.CheckAccess(context.Background(), h.deps, input, now)
+				input.ActorChain = []accesscontrolusecases.Actor{{Type: "agent", ID: "researcher"}}
+				result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now)
 				if err != nil {
 					t.Fatalf("CheckAccess: %v", err)
 				}
@@ -271,7 +271,7 @@ func TestCheckAccessRequiresSubjectAndActorChain(t *testing.T) {
 		input := baseInput()
 		input.RequiredScopes = []string{"documents:read"}
 		input.GrantedScopes = []string{"calendar:read"}
-		result, err := usecases.CheckAccess(context.Background(), h.deps, input, now)
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now)
 		if err != nil {
 			t.Fatalf("CheckAccess: %v", err)
 		}
@@ -294,8 +294,8 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("user", "alice"))
 		input := baseInput()
-		input.Subject = domain.SubjectRef{Type: "user", ID: "mallory"}
-		result, err := usecases.CheckAccess(context.Background(), h.deps, input, now)
+		input.Subject = accessdomain.SubjectRef{Type: "user", ID: "mallory"}
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now)
 		if err != nil {
 			t.Fatalf("CheckAccess: %v", err)
 		}
@@ -305,21 +305,21 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 		if !slices.Contains(result.Reasons, "relationship_permits_subject") {
 			t.Fatalf("Reasons = %v, want the refusing rule relationship_permits_subject", result.Reasons)
 		}
-		if !slices.Contains(result.Reasons, domain.ReasonNoRelationPath) {
-			t.Fatalf("Reasons = %v, want %s", result.Reasons, domain.ReasonNoRelationPath)
+		if !slices.Contains(result.Reasons, accessdomain.ReasonNoRelationPath) {
+			t.Fatalf("Reasons = %v, want %s", result.Reasons, accessdomain.ReasonNoRelationPath)
 		}
 	})
 
 	t.Run("an unpublished model is an error, not a permit", func(t *testing.T) {
 		store := db_memory.NewStore()
-		deps := usecases.Deps{
+		deps := accesscontrolusecases.Deps{
 			Tuples:     db_memory.NewRelationTupleRepository(store),
 			Models:     db_memory.NewAuthorizationModelRepository(store),
 			Authorizer: authorizationLocal.Local{},
 		}
-		result, err := usecases.CheckAccess(context.Background(), deps, baseInput(), now)
-		if !errors.Is(err, domain.ErrModelNotFound) {
-			t.Fatalf("err = %v, want %v", err, domain.ErrModelNotFound)
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), deps, baseInput(), now)
+		if !errors.Is(err, accessdomain.ErrModelNotFound) {
+			t.Fatalf("err = %v, want %v", err, accessdomain.ErrModelNotFound)
 		}
 		if result.Permitted {
 			t.Fatal("a missing model must never permit")
@@ -330,7 +330,7 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("user", "alice"))
 		h.deps.Tuples = failingTuples{RelationTupleRepository: h.deps.Tuples}
-		result, err := usecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
+		result, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
 		if !errors.Is(err, errStoreDown) {
 			t.Fatalf("err = %v, want %v", err, errStoreDown)
 		}
@@ -343,8 +343,8 @@ func TestCheckAccessFailsClosed(t *testing.T) {
 		h := newHarness(t)
 		h.write(t, viewerTuple("user", "alice"))
 		h.deps.Authorizer = nil
-		if _, err := usecases.CheckAccess(context.Background(), h.deps, baseInput(), now); !errors.Is(err, usecases.ErrAuthorizerUnavailable) {
-			t.Fatalf("err = %v, want %v", err, usecases.ErrAuthorizerUnavailable)
+		if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, baseInput(), now); !errors.Is(err, accesscontrolusecases.ErrAuthorizerUnavailable) {
+			t.Fatalf("err = %v, want %v", err, accesscontrolusecases.ErrAuthorizerUnavailable)
 		}
 	})
 
@@ -375,27 +375,27 @@ func TestCheckAccessRejectsUnsatisfiedConsistency(t *testing.T) {
 
 	input := baseInput()
 	input.MinimumConsistency = consistency
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
 		t.Fatalf("the token the write returned must be satisfiable: %v", err)
 	}
 
-	input.MinimumConsistency = domain.EncodeConsistencyToken(tenantID, 9999)
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); !errors.Is(err, domain.ErrConsistencyNotSatisfied) {
+	input.MinimumConsistency = accessdomain.EncodeConsistencyToken(tenantID, 9999)
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); !errors.Is(err, accessdomain.ErrConsistencyNotSatisfied) {
 		t.Fatalf("a token ahead of the store must be rejected, got %v", err)
 	}
 
-	input.MinimumConsistency = domain.EncodeConsistencyToken("tenant-b", 1)
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); !errors.Is(err, domain.ErrConsistencyNotSatisfied) {
+	input.MinimumConsistency = accessdomain.EncodeConsistencyToken("tenant-b", 1)
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); !errors.Is(err, accessdomain.ErrConsistencyNotSatisfied) {
 		t.Fatalf("a token from another tenant must be rejected, got %v", err)
 	}
 }
 
 // lastCheckEvent は直近の FgaCheckEvaluated を返す。
-func (h *harness) lastCheckEvent(t *testing.T) *domain.FgaCheckEvaluated {
+func (h *harness) lastCheckEvent(t *testing.T) *accessdomain.FgaCheckEvaluated {
 	t.Helper()
-	var evaluated *domain.FgaCheckEvaluated
+	var evaluated *accessdomain.FgaCheckEvaluated
 	for _, event := range h.events {
-		if typed, ok := event.(*domain.FgaCheckEvaluated); ok {
+		if typed, ok := event.(*accessdomain.FgaCheckEvaluated); ok {
 			evaluated = typed
 		}
 	}
@@ -411,8 +411,8 @@ func TestCheckAccessAuditKeepsNoIdentifiers(t *testing.T) {
 	h := newHarness(t)
 	h.write(t, viewerTuple("user", "alice"))
 	input := baseInput()
-	input.ActorChain = []usecases.Actor{{Type: "agent", ID: "researcher"}}
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
+	input.ActorChain = []accesscontrolusecases.Actor{{Type: "agent", ID: "researcher"}}
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
 		t.Fatalf("CheckAccess: %v", err)
 	}
 	evaluated := h.lastCheckEvent(t)
@@ -440,7 +440,7 @@ func TestCheckAccessAuditKeepsNoIdentifiers(t *testing.T) {
 	}
 	// 許可の側も監査へ出す。Permitted を常に false にする実装はここで落ちる。
 	h.write(t, viewerTuple("agent", "researcher"))
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
 		t.Fatalf("CheckAccess: %v", err)
 	}
 	if permitted := h.lastCheckEvent(t); !permitted.Permitted {
@@ -460,7 +460,7 @@ func TestCheckAccessAuditKeepsNoIdentifiers(t *testing.T) {
 	}
 
 	// テナントが違えば同じリソースでもダイジェストは一致しない。
-	if usecases.ResourceIDDigest(otherTenantID, input.Resource) == evaluated.ResourceIDDigest {
+	if accesscontrolusecases.ResourceIDDigest(otherTenantID, input.Resource) == evaluated.ResourceIDDigest {
 		t.Fatal("the digest must not correlate across tenants")
 	}
 }
@@ -472,24 +472,24 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	h := newHarness(t)
 	h.write(t,
 		viewerTuple("user", "alice"),
-		domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "document", ID: "d2"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "user", ID: "bob"},
+		accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d2"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: "bob"},
 		},
-		domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "document", ID: "d3"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "group", ID: "eng", Relation: "member"},
+		accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d3"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "group", ID: "eng", Relation: "member"},
 		},
-		domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "group", ID: "eng"}, Relation: "member",
-			Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+		accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "group", ID: "eng"}, Relation: "member",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 		},
 	)
-	input := usecases.ListAccessibleResourcesInput{
+	input := accesscontrolusecases.ListAccessibleResourcesInput{
 		TenantID: tenantID, ResourceType: "document", Relation: "viewer",
-		Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+		Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 	}
-	listed, err := usecases.ListAccessibleResources(context.Background(), h.deps, input, now)
+	listed, err := accesscontrolusecases.ListAccessibleResources(context.Background(), h.deps, input, now)
 	if err != nil {
 		t.Fatalf("ListAccessibleResources: %v", err)
 	}
@@ -505,9 +505,9 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	var perCheck, enumerated int
 	for _, event := range h.events {
 		switch typed := event.(type) {
-		case *domain.FgaCheckEvaluated:
+		case *accessdomain.FgaCheckEvaluated:
 			perCheck++
-		case *domain.FgaResourcesEnumerated:
+		case *accessdomain.FgaResourcesEnumerated:
 			enumerated++
 			if typed.CandidateCount != 3 || typed.PermittedCount != 2 || typed.Truncated {
 				t.Fatalf("unexpected enumeration summary: %+v", typed)
@@ -522,8 +522,8 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	// 許可が 1 件も残らず、関係を持つ代行者を載せると主体だけのときと同じ一覧に戻る。
 	// 前者だけでは、チェーンを見た結果ではなく列挙が壊れただけの実装と区別できない。
 	delegated := input
-	delegated.ActorChain = []usecases.Actor{{Type: "agent", ID: "researcher"}}
-	listed, err = usecases.ListAccessibleResources(context.Background(), h.deps, delegated, now)
+	delegated.ActorChain = []accesscontrolusecases.Actor{{Type: "agent", ID: "researcher"}}
+	listed, err = accesscontrolusecases.ListAccessibleResources(context.Background(), h.deps, delegated, now)
 	if err != nil {
 		t.Fatalf("ListAccessibleResources: %v", err)
 	}
@@ -532,7 +532,7 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	}
 
 	h.write(t, viewerTuple("agent", "researcher"))
-	listed, err = usecases.ListAccessibleResources(context.Background(), h.deps, delegated, now)
+	listed, err = accesscontrolusecases.ListAccessibleResources(context.Background(), h.deps, delegated, now)
 	if err != nil {
 		t.Fatalf("ListAccessibleResources: %v", err)
 	}
@@ -543,7 +543,7 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	// 上限ちょうどは打ち切りではない。境界を片側からしか見ないと、候補が上限に
 	// 達しただけで打ち切りを立てる実装と区別できない。
 	h.deps.MaxEnumeratedResources = 3
-	listed, err = usecases.ListAccessibleResources(context.Background(), h.deps, input, now)
+	listed, err = accesscontrolusecases.ListAccessibleResources(context.Background(), h.deps, input, now)
 	if err != nil {
 		t.Fatalf("ListAccessibleResources: %v", err)
 	}
@@ -552,7 +552,7 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	}
 
 	h.deps.MaxEnumeratedResources = 2
-	listed, err = usecases.ListAccessibleResources(context.Background(), h.deps, input, now)
+	listed, err = accesscontrolusecases.ListAccessibleResources(context.Background(), h.deps, input, now)
 	if err != nil {
 		t.Fatalf("ListAccessibleResources: %v", err)
 	}
@@ -566,9 +566,9 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 	// 候補が 1 件も無いテナントでも、バージョンと整合トークンは返る。ここを通らないと、
 	// 走査の中でしかトークンを組み立てない実装が空の一覧でトークンを落とす。
 	h.publish(t, otherTenantID)
-	empty, err := usecases.ListAccessibleResources(context.Background(), h.deps, usecases.ListAccessibleResourcesInput{
+	empty, err := accesscontrolusecases.ListAccessibleResources(context.Background(), h.deps, accesscontrolusecases.ListAccessibleResourcesInput{
 		TenantID: otherTenantID, ResourceType: "document", Relation: "viewer",
-		Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+		Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 	}, now)
 	if err != nil {
 		t.Fatalf("ListAccessibleResources(%s): %v", otherTenantID, err)
@@ -586,11 +586,11 @@ func TestListAccessibleResourcesIsBoundedAndFiltered(t *testing.T) {
 //spec:covers EX-AUTHORIZATION-002-04: 同じ組が追加と削除の双方に現れる差分が ErrTupleInvalid で拒否され、その差分の追加も削除も保管庫へ効かない。
 func TestWriteRelationTuplesRejectsTheWholeDiff(t *testing.T) {
 	h := newHarness(t)
-	_, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		Writes: []domain.RelationTuple{viewerTuple("user", "alice"), viewerTuple("robot", "r2")},
+	_, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		Writes: []accessdomain.RelationTuple{viewerTuple("user", "alice"), viewerTuple("robot", "r2")},
 	}, now)
-	if !errors.Is(err, domain.ErrTupleInvalid) {
-		t.Fatalf("err = %v, want %v", err, domain.ErrTupleInvalid)
+	if !errors.Is(err, accessdomain.ErrTupleInvalid) {
+		t.Fatalf("err = %v, want %v", err, accessdomain.ErrTupleInvalid)
 	}
 	if remaining := h.listAll(t); len(remaining) != 0 {
 		t.Fatalf("a rejected diff must not be partially applied, found %v", remaining)
@@ -599,15 +599,15 @@ func TestWriteRelationTuplesRejectsTheWholeDiff(t *testing.T) {
 	// 衝突する差分の拒否は、保管庫が空のままでは観測にならない。先に 1 件書いておき、
 	// 拒否された差分が持っていた削除も追加も起きていないことを読む。
 	h.write(t, viewerTuple("user", "alice"))
-	_, err = usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		Writes:  []domain.RelationTuple{viewerTuple("agent", "researcher")},
-		Deletes: []domain.RelationTuple{viewerTuple("agent", "researcher"), viewerTuple("user", "alice")},
+	_, err = accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		Writes:  []accessdomain.RelationTuple{viewerTuple("agent", "researcher")},
+		Deletes: []accessdomain.RelationTuple{viewerTuple("agent", "researcher"), viewerTuple("user", "alice")},
 	}, now)
-	if !errors.Is(err, domain.ErrTupleInvalid) {
+	if !errors.Is(err, accessdomain.ErrTupleInvalid) {
 		t.Fatalf("a tuple in both writes and deletes must be rejected, got %v", err)
 	}
 	remaining := h.listAll(t)
-	if !slices.Equal(remaining, []domain.RelationTuple{viewerTuple("user", "alice")}) {
+	if !slices.Equal(remaining, []accessdomain.RelationTuple{viewerTuple("user", "alice")}) {
 		t.Fatalf("a conflicting diff must apply neither its writes nor its deletes, store holds %v", remaining)
 	}
 }
@@ -617,16 +617,16 @@ func TestWriteRelationTuplesRejectsTheWholeDiff(t *testing.T) {
 func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 	h := newHarness(t)
 	h.write(t,
-		domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "group", ID: "eng", Relation: "member"},
+		accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "group", ID: "eng", Relation: "member"},
 		},
-		domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: "group", ID: "eng"}, Relation: "member",
-			Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+		accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: "group", ID: "eng"}, Relation: "member",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 		},
 	)
-	before, err := usecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
+	before, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
 	if err != nil {
 		t.Fatalf("CheckAccess: %v", err)
 	}
@@ -634,8 +634,8 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 		t.Fatalf("the group grant must permit first, got reasons %v", before.Reasons)
 	}
 
-	outcome, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		DeleteObjects: []domain.ObjectRef{{Type: "group", ID: "eng"}},
+	outcome, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		DeleteObjects: []accessdomain.ObjectRef{{Type: "group", ID: "eng"}},
 	}, now)
 	if err != nil {
 		t.Fatalf("WriteRelationTuples: %v", err)
@@ -644,7 +644,7 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 		t.Fatalf("DeletedCount = %d, want 2 (both sides of the group)", outcome.DeletedCount)
 	}
 
-	after, err := usecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
+	after, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
 	if err != nil {
 		t.Fatalf("CheckAccess: %v", err)
 	}
@@ -658,8 +658,8 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 	// 何も参照していないオブジェクトの削除は、削除を 1 件も起こさない。件数を見ずに
 	// 削除イベントを出す実装は、監査に存在しない削除を残す。
 	deleted := h.countEvents("RelationTupleDeleted")
-	missing, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		DeleteObjects: []domain.ObjectRef{{Type: "group", ID: "nonexistent"}},
+	missing, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		DeleteObjects: []accessdomain.ObjectRef{{Type: "group", ID: "nonexistent"}},
 	}, now)
 	if err != nil {
 		t.Fatalf("WriteRelationTuples: %v", err)
@@ -676,17 +676,17 @@ func TestDeletingAnObjectStopsTheRelationsItCarried(t *testing.T) {
 //spec:covers EX-AUTHORIZATION-001-02: 宣言されていない関係を参照するモデルが ErrModelInvalid で拒否され、published 済みのバージョンが 1 つも増えない。
 func TestPutAuthorizationModelRejectsAnInconsistentModel(t *testing.T) {
 	h := newHarness(t)
-	_, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 1, []domain.ResourceTypeDefinition{
-		{Name: "document", Relations: []domain.RelationDefinition{
-			{Name: "viewer", Rewrites: []domain.RelationRewrite{
-				{Kind: domain.RewriteComputedUserset, ComputedRelation: "editor"},
+	_, err := accesscontrolusecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 1, []accessdomain.ResourceTypeDefinition{
+		{Name: "document", Relations: []accessdomain.RelationDefinition{
+			{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+				{Kind: accessdomain.RewriteComputedUserset, ComputedRelation: "editor"},
 			}},
 		}},
 	}, now)
-	if !errors.Is(err, domain.ErrModelInvalid) {
-		t.Fatalf("err = %v, want %v", err, domain.ErrModelInvalid)
+	if !errors.Is(err, accessdomain.ErrModelInvalid) {
+		t.Fatalf("err = %v, want %v", err, accessdomain.ErrModelInvalid)
 	}
-	published, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
+	published, err := accesscontrolusecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
 	if err != nil {
 		t.Fatalf("GetAuthorizationModel: %v", err)
 	}
@@ -698,7 +698,7 @@ func TestPutAuthorizationModelRejectsAnInconsistentModel(t *testing.T) {
 //spec:covers EX-AUTHORIZATION-001-01: バージョンがテナント内で単調増加し以前のバージョンが書き換わらないこと、レスポンスが整合トークンを含み、GetAuthorizationModel が新しいバージョンを最新として返すこと。
 func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T) {
 	h := newHarness(t)
-	first, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
+	first, err := accesscontrolusecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
 	if err != nil {
 		t.Fatalf("GetAuthorizationModel: %v", err)
 	}
@@ -708,8 +708,8 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 
 	// 2 つ目のバージョンは 1 つ目と形が違う。以前のバージョンを読み直したときに、上書きされたのか
 	// 残っているのかを中身で見分けられるようにする。
-	extended := append(referenceTypes(), domain.ResourceTypeDefinition{Name: "folder"})
-	second, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, first.Model.Version, extended, now)
+	extended := append(referenceTypes(), accessdomain.ResourceTypeDefinition{Name: "folder"})
+	second, err := accesscontrolusecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, first.Model.Version, extended, now)
 	if err != nil {
 		t.Fatalf("PutAuthorizationModel: %v", err)
 	}
@@ -720,7 +720,7 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 		t.Fatal("the publish response must carry a consistency token")
 	}
 
-	latest, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
+	latest, err := accesscontrolusecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
 	if err != nil {
 		t.Fatalf("GetAuthorizationModel: %v", err)
 	}
@@ -731,7 +731,7 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 		t.Fatalf("the latest model must be the one just published, got %d resource types", len(latest.Model.ResourceTypes))
 	}
 
-	previous, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, first.Model.Version)
+	previous, err := accesscontrolusecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, first.Model.Version)
 	if err != nil {
 		t.Fatalf("GetAuthorizationModel(version=1): %v", err)
 	}
@@ -750,30 +750,30 @@ func TestPutAuthorizationModelAddsAVersionWithoutRewritingTheOldOne(t *testing.T
 //spec:covers EX-AUTHORIZATION-001-03: 書き換え規則が循環するモデルが ErrModelInvalid で拒否され、バージョンが 1 つも増えない。
 //spec:covers EX-AUTHORIZATION-001-04: 型名または関係名がフォーマットに反するモデルが ErrModelInvalid で拒否され、バージョンが 1 つも増えない。
 func TestPutAuthorizationModelLeavesNoVersionBehindWhenItRefuses(t *testing.T) {
-	cases := map[string][]domain.ResourceTypeDefinition{
+	cases := map[string][]accessdomain.ResourceTypeDefinition{
 		"a cyclic rewrite": {
 			{Name: "user"},
-			{Name: "document", Relations: []domain.RelationDefinition{
-				{Name: "viewer", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteComputedUserset, ComputedRelation: "editor"},
+			{Name: "document", Relations: []accessdomain.RelationDefinition{
+				{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteComputedUserset, ComputedRelation: "editor"},
 				}},
-				{Name: "editor", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteComputedUserset, ComputedRelation: "viewer"},
+				{Name: "editor", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteComputedUserset, ComputedRelation: "viewer"},
 				}},
 			}},
 		},
 		"a malformed type name": {
-			{Name: "Document", Relations: []domain.RelationDefinition{
-				{Name: "viewer", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"Document"}},
+			{Name: "Document", Relations: []accessdomain.RelationDefinition{
+				{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"Document"}},
 				}},
 			}},
 		},
 		"a malformed relation name": {
 			{Name: "user"},
-			{Name: "document", Relations: []domain.RelationDefinition{
-				{Name: "Viewer", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
+			{Name: "document", Relations: []accessdomain.RelationDefinition{
+				{Name: "Viewer", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
 				}},
 			}},
 		},
@@ -781,11 +781,11 @@ func TestPutAuthorizationModelLeavesNoVersionBehindWhenItRefuses(t *testing.T) {
 	for name, types := range cases {
 		t.Run(name, func(t *testing.T) {
 			h := newHarness(t)
-			if _, err := usecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 1, types, now); !errors.Is(err, domain.ErrModelInvalid) {
-				t.Fatalf("err = %v, want %v", err, domain.ErrModelInvalid)
+			if _, err := accesscontrolusecases.PutAuthorizationModel(context.Background(), h.deps, tenantID, 1, types, now); !errors.Is(err, accessdomain.ErrModelInvalid) {
+				t.Fatalf("err = %v, want %v", err, accessdomain.ErrModelInvalid)
 			}
 			// 拒否が防いだ効果。採番してから検証する実装は、バージョンを 2 へ進めてここで落ちる。
-			published, err := usecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
+			published, err := accesscontrolusecases.GetAuthorizationModel(context.Background(), h.deps, tenantID, 0)
 			if err != nil {
 				t.Fatalf("GetAuthorizationModel: %v", err)
 			}
@@ -802,16 +802,16 @@ func TestWriteRelationTuplesAppliesTheDiffAtOnceAndIsIdempotent(t *testing.T) {
 	h.write(t, viewerTuple("user", "alice"), viewerTuple("agent", "researcher"))
 
 	// 追加と削除を 1 つの差分に混ぜる。両方が同じ呼び出しで効くことを件数で読む。
-	outcome, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		Writes: []domain.RelationTuple{
+	outcome, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		Writes: []accessdomain.RelationTuple{
 			// 既にある組の再追加。written には数えず、消えもしない。
 			viewerTuple("user", "alice"),
 			{
-				Resource: domain.ObjectRef{Type: "document", ID: "d2"}, Relation: "viewer",
-				Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+				Resource: accessdomain.ObjectRef{Type: "document", ID: "d2"}, Relation: "viewer",
+				Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 			},
 		},
-		Deletes: []domain.RelationTuple{viewerTuple("agent", "researcher")},
+		Deletes: []accessdomain.RelationTuple{viewerTuple("agent", "researcher")},
 	}, now)
 	if err != nil {
 		t.Fatalf("WriteRelationTuples: %v", err)
@@ -822,14 +822,14 @@ func TestWriteRelationTuplesAppliesTheDiffAtOnceAndIsIdempotent(t *testing.T) {
 	if outcome.DeletedCount != 1 {
 		t.Fatalf("DeletedCount = %d, want 1", outcome.DeletedCount)
 	}
-	want := []domain.RelationTuple{
+	want := []accessdomain.RelationTuple{
 		{
-			Resource: domain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 		},
 		{
-			Resource: domain.ObjectRef{Type: "document", ID: "d2"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "user", ID: "alice"},
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d2"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: "alice"},
 		},
 	}
 	if remaining := h.listAll(t); !slices.Equal(remaining, want) {
@@ -839,8 +839,8 @@ func TestWriteRelationTuplesAppliesTheDiffAtOnceAndIsIdempotent(t *testing.T) {
 	// 冪等は件数だけの話ではない。何も足さなかった書き込みが「書いた」と監査へ
 	// 言えば、外から見た振る舞いは冪等でない。
 	written := h.countEvents("RelationTupleWritten")
-	readd, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		Writes: []domain.RelationTuple{viewerTuple("user", "alice")},
+	readd, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		Writes: []accessdomain.RelationTuple{viewerTuple("user", "alice")},
 	}, now)
 	if err != nil {
 		t.Fatalf("WriteRelationTuples: %v", err)
@@ -857,11 +857,11 @@ func TestWriteRelationTuplesAppliesTheDiffAtOnceAndIsIdempotent(t *testing.T) {
 	// トークンが実際にバージョンを指していることを、1 つ先のトークンの拒否と対で読む。
 	input := baseInput()
 	input.MinimumConsistency = outcome.Consistency
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); err != nil {
 		t.Fatalf("the token the write returned must be satisfiable: %v", err)
 	}
-	input.MinimumConsistency = domain.EncodeConsistencyToken(tenantID, 9999)
-	if _, err := usecases.CheckAccess(context.Background(), h.deps, input, now); !errors.Is(err, domain.ErrConsistencyNotSatisfied) {
+	input.MinimumConsistency = accessdomain.EncodeConsistencyToken(tenantID, 9999)
+	if _, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, input, now); !errors.Is(err, accessdomain.ErrConsistencyNotSatisfied) {
 		t.Fatalf("a token ahead of the store must still be rejected, got %v", err)
 	}
 }
@@ -869,24 +869,24 @@ func TestWriteRelationTuplesAppliesTheDiffAtOnceAndIsIdempotent(t *testing.T) {
 //spec:covers EX-AUTHORIZATION-002-03: direct 規則が許していない主体型またはワイルドカードを含む差分が ErrTupleInvalid で拒否され、同じ差分の適合したタプルも 1 件も残らない。
 func TestWriteRelationTuplesRejectsSubjectFormsTheDirectRuleDoesNotAllow(t *testing.T) {
 	// document#viewer の direct は user / agent / group#member だけを許す。
-	cases := map[string]domain.RelationTuple{
+	cases := map[string]accessdomain.RelationTuple{
 		"a subject type the direct rule does not list": {
-			Resource: domain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "group", ID: "eng"},
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "group", ID: "eng"},
 		},
 		"a wildcard the direct rule does not declare": {
-			Resource: domain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
-			Subject: domain.SubjectRef{Type: "user", ID: domain.Wildcard},
+			Resource: accessdomain.ObjectRef{Type: "document", ID: "d1"}, Relation: "viewer",
+			Subject: accessdomain.SubjectRef{Type: "user", ID: accessdomain.Wildcard},
 		},
 	}
 	for name, offending := range cases {
 		t.Run(name, func(t *testing.T) {
 			h := newHarness(t)
-			_, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-				Writes: []domain.RelationTuple{viewerTuple("user", "alice"), offending},
+			_, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+				Writes: []accessdomain.RelationTuple{viewerTuple("user", "alice"), offending},
 			}, now)
-			if !errors.Is(err, domain.ErrTupleInvalid) {
-				t.Fatalf("err = %v, want %v", err, domain.ErrTupleInvalid)
+			if !errors.Is(err, accessdomain.ErrTupleInvalid) {
+				t.Fatalf("err = %v, want %v", err, accessdomain.ErrTupleInvalid)
 			}
 			if remaining := h.listAll(t); len(remaining) != 0 {
 				t.Fatalf("a rejected diff must not apply its valid half, found %v", remaining)
@@ -898,11 +898,11 @@ func TestWriteRelationTuplesRejectsSubjectFormsTheDirectRuleDoesNotAllow(t *test
 //spec:covers EX-AUTHORIZATION-002-05: 認可モデルが未登録のテナントへの書き込みが ErrModelNotFound で拒否され、タプルを 1 件も残さない。
 func TestWriteRelationTuplesRefusesATenantWithNoModel(t *testing.T) {
 	h := newBareHarness()
-	_, err := usecases.WriteRelationTuples(context.Background(), h.deps, tenantID, ports.TupleWrite{
-		Writes: []domain.RelationTuple{viewerTuple("user", "alice")},
+	_, err := accesscontrolusecases.WriteRelationTuples(context.Background(), h.deps, tenantID, accessinternalports.TupleWrite{
+		Writes: []accessdomain.RelationTuple{viewerTuple("user", "alice")},
 	}, now)
-	if !errors.Is(err, domain.ErrModelNotFound) {
-		t.Fatalf("err = %v, want %v", err, domain.ErrModelNotFound)
+	if !errors.Is(err, accessdomain.ErrModelNotFound) {
+		t.Fatalf("err = %v, want %v", err, accessdomain.ErrModelNotFound)
 	}
 	if remaining := h.listAll(t); len(remaining) != 0 {
 		t.Fatalf("a write with no model to validate against must leave nothing behind, found %v", remaining)
@@ -917,15 +917,15 @@ func TestCheckAccessReadsOnlyTheCallersTenant(t *testing.T) {
 	// 同じリソース識別子・関係・主体識別子を、別テナントにだけ置く。
 	h.writeFor(t, otherTenantID, viewerTuple("user", "alice"))
 
-	denied, err := usecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
+	denied, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, baseInput(), now)
 	if err != nil {
 		t.Fatalf("CheckAccess: %v", err)
 	}
 	if denied.Permitted {
 		t.Fatal("the grant lives in another tenant and must not reach this decision")
 	}
-	if !slices.Contains(denied.Reasons, domain.ReasonNoRelationPath) {
-		t.Fatalf("Reasons = %v, want %s", denied.Reasons, domain.ReasonNoRelationPath)
+	if !slices.Contains(denied.Reasons, accessdomain.ReasonNoRelationPath) {
+		t.Fatalf("Reasons = %v, want %s", denied.Reasons, accessdomain.ReasonNoRelationPath)
 	}
 	// 判定が別テナントへ滑っていないことは、監査に残るテナントで読む。不許可という
 	// 答えだけでは、対象テナントを取り違えたうえで別の理由で拒否した実装と区別できない。
@@ -937,7 +937,7 @@ func TestCheckAccessReadsOnlyTheCallersTenant(t *testing.T) {
 	// テナントだけが答えを分けていることを、この対が示す。
 	sameInput := baseInput()
 	sameInput.TenantID = otherTenantID
-	permitted, err := usecases.CheckAccess(context.Background(), h.deps, sameInput, now)
+	permitted, err := accesscontrolusecases.CheckAccess(context.Background(), h.deps, sameInput, now)
 	if err != nil {
 		t.Fatalf("CheckAccess(%s): %v", otherTenantID, err)
 	}

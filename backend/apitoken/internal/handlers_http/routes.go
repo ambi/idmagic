@@ -7,15 +7,15 @@ import (
 
 	"github.com/labstack/echo/v5"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
-	"github.com/ambi/idmagic/backend/apitoken/internal/usecases"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokenusecases "github.com/ambi/idmagic/backend/apitoken/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Service          *usecases.Service
+	Service          *apitokenusecases.Service
 	PersonalIdentity PersonalTokenIdentity
 }
 
@@ -46,7 +46,7 @@ type metadataResponse struct {
 	RevokedAt   *time.Time `json:"revoked_at,omitempty"`
 }
 
-func metadataJSON(metadata domain.Metadata) metadataResponse {
+func metadataJSON(metadata apitokendomain.Metadata) metadataResponse {
 	return metadataResponse{
 		ID: metadata.ID, JTI: metadata.JTI, UserID: metadata.UserID, ClientID: metadata.ClientID,
 		Description: metadata.Description, Scopes: metadata.Scopes.Strings(), Audience: metadata.Audience,
@@ -105,7 +105,7 @@ func (h handler) issue(c *echo.Context) error {
 	literal, metadata, err := h.deps.Service.Issue(
 		c.Request().Context(), support.RequestTenantID(c), actor.ID, request.Description, request.Scopes, request.ExpiryDays, request.DPoPJKT,
 	)
-	if errors.Is(err, usecases.ErrInvalidRequest) {
+	if errors.Is(err, apitokenusecases.ErrInvalidRequest) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	if err != nil {

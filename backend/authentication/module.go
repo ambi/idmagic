@@ -4,11 +4,11 @@
 package authentication
 
 import (
-	"github.com/ambi/idmagic/backend/authentication/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/internal/mfa/ports"
 	negotiateusecases "github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
-	"github.com/ambi/idmagic/backend/authentication/internal/ports"
+	authnports "github.com/ambi/idmagic/backend/authentication/internal/ports"
 	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
@@ -48,14 +48,14 @@ type Module struct {
 	NotificationPreferenceRepo securitynotificationports.PreferenceRepository
 	KnownSignInDeviceRepo      securitynotificationports.KnownDeviceRepository
 	NewLoginAttemptThrottle    func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
-	AuthEventBucketStore       ports.AuthEventBucketStore
+	AuthEventBucketStore       authnports.AuthEventBucketStore
 
 	PasswordHasher          passwordports.PasswordHasher
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 	LoginAttemptThrottle    sessionports.LoginAttemptThrottle
 	SentinelPasswordHash    string
 	SessionManager          *sessionusecases.SessionManager
-	AuthnResolver           domain.AuthenticationContextResolver
+	AuthnResolver           authdomain.AuthenticationContextResolver
 }
 
 // UserDeviceRevoker は、利用者の信頼済みデバイスをまとめて失効させる契約を返す。保存先が

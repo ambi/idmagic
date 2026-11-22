@@ -12,7 +12,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	webauthnhttp "github.com/ambi/idmagic/backend/authentication/internal/webauthn/handlers_http"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -31,8 +31,8 @@ type stepUpCompleteRequest struct {
 	Assertion json.RawMessage `json:"assertion,omitempty"`
 }
 
-func stepUpDeps(d httpdeps.Deps, c *echo.Context) authusecases.StepUpDeps {
-	return authusecases.StepUpDeps{
+func stepUpDeps(d httpdeps.Deps, c *echo.Context) mfausecases.StepUpDeps {
+	return mfausecases.StepUpDeps{
 		UserRepo:         d.UserRepo,
 		PasswordHasher:   d.PasswordHasher,
 		MfaFactorRepo:    d.MfaFactorRepo,
@@ -71,7 +71,7 @@ func HandleStartStepUp(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	methods, err := authusecases.StepUpStart(c.Request().Context(), stepUpDeps(d, c), authn.UserID, authn.SessionID)
+	methods, err := mfausecases.StepUpStart(c.Request().Context(), stepUpDeps(d, c), authn.UserID, authn.SessionID)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -94,10 +94,10 @@ func HandleCompleteStepUp(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if err := authusecases.CompleteStepUp(c.Request().Context(), stepUpDeps(d, c), authusecases.CompleteStepUpInput{
+	if err := mfausecases.CompleteStepUp(c.Request().Context(), stepUpDeps(d, c), mfausecases.CompleteStepUpInput{
 		Sub:       authn.UserID,
 		SessionID: authn.SessionID,
-		Method:    authusecases.StepUpMethod(input.Method),
+		Method:    mfausecases.StepUpMethod(input.Method),
 		Password:  input.Password,
 		Code:      input.Code,
 		Assertion: []byte(input.Assertion),
@@ -111,9 +111,9 @@ func HandleCompleteStepUp(d httpdeps.Deps, c *echo.Context) error {
 
 func writeStepUpError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, authusecases.ErrStepUpFailed):
+	case errors.Is(err, mfausecases.ErrStepUpFailed):
 		return support.WriteProblem(c, http.StatusForbidden, "step_up_failed", "Reauthentication failed. Check the input.")
-	case errors.Is(err, authusecases.ErrStepUpUnsupportedMethod):
+	case errors.Is(err, mfausecases.ErrStepUpUnsupportedMethod):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "This reauthentication method is unavailable.")
 	default:
 		return httpdeps.WriteAccountError(c, err)

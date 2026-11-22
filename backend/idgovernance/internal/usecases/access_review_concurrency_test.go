@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/idgovernance"
-	d "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	p "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -17,11 +17,11 @@ import (
 )
 
 type captureBeforeReviewUpdate struct {
-	p.AccessReviewPlanRepository
+	igports.AccessReviewPlanRepository
 	capture func()
 }
 
-func (r captureBeforeReviewUpdate) UpdatePlan(ctx context.Context, tenant, id string, apply func(*d.AccessReviewPlan) error) (*d.AccessReviewPlan, error) {
+func (r captureBeforeReviewUpdate) UpdatePlan(ctx context.Context, tenant, id string, apply func(*igdomain.AccessReviewPlan) error) (*igdomain.AccessReviewPlan, error) {
 	r.capture()
 	return r.AccessReviewPlanRepository.UpdatePlan(ctx, tenant, id, apply)
 }
@@ -44,7 +44,7 @@ func TestAccessReviewScheduleUpdateConflictsWithConcurrentStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := &d.AccessReview{ID: "first", TenantID: "tenant-a", PlanID: plan.ID, StartedAt: now, Status: "completed", Items: []d.AccessReviewItem{}}
+	first := &igdomain.AccessReview{ID: "first", TenantID: "tenant-a", PlanID: plan.ID, StartedAt: now, Status: "completed", Items: []igdomain.AccessReviewItem{}}
 	secondStart := now.Add(30 * 24 * time.Hour)
 	if captured, err := m.AccessReviewPlans.CaptureReview(ctx, plan, first, &secondStart); err != nil || !captured {
 		t.Fatalf("first capture=%v %v", captured, err)
@@ -56,13 +56,13 @@ func TestAccessReviewScheduleUpdateConflictsWithConcurrentStart(t *testing.T) {
 	thirdStart := secondStart.Add(30 * 24 * time.Hour)
 	base := m.AccessReviewPlans
 	m.AccessReviewPlans = captureBeforeReviewUpdate{AccessReviewPlanRepository: base, capture: func() {
-		second := &d.AccessReview{ID: "second", TenantID: "tenant-a", PlanID: plan.ID, StartedAt: secondStart, Status: "open", Items: []d.AccessReviewItem{}}
+		second := &igdomain.AccessReview{ID: "second", TenantID: "tenant-a", PlanID: plan.ID, StartedAt: secondStart, Status: "open", Items: []igdomain.AccessReviewItem{}}
 		if captured, err := base.CaptureReview(ctx, secondPlan, second, &thirdStart); err != nil || !captured {
 			t.Errorf("concurrent capture=%v %v", captured, err)
 		}
 	}}
 	input.RecurrenceDays = 14
-	if _, err := m.UpdateAccessReviewPlan(ctx, deps, "tenant-a", "admin", plan.ID, plan.Revision, input, secondStart); !errors.Is(err, d.ErrAccessReviewConflict) {
+	if _, err := m.UpdateAccessReviewPlan(ctx, deps, "tenant-a", "admin", plan.ID, plan.Revision, input, secondStart); !errors.Is(err, igdomain.ErrAccessReviewConflict) {
 		t.Fatalf("update error=%v want conflict", err)
 	}
 	stored, err := base.FindPlan(ctx, "tenant-a", plan.ID)

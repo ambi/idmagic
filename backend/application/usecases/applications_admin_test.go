@@ -13,9 +13,9 @@ import (
 
 	"github.com/ambi/idmagic/backend/signinpolicy"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -32,10 +32,10 @@ func fullAppDeps() appusecases.ApplicationDeps {
 	}
 }
 
-func seedApp(ctx context.Context, t *testing.T, deps appusecases.ApplicationDeps, name string) *domain.Application {
+func seedApp(ctx context.Context, t *testing.T, deps appusecases.ApplicationDeps, name string) *appdomain.Application {
 	t.Helper()
 	app, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: name, Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: name, Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("seed app: %v", err)
@@ -55,7 +55,7 @@ func TestCreateApplication_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	}
 	seedApp(ctx, t, deps, "app-one")
 	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "app-two", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	var qErr *tenancydomain.QuotaExceededError
 	if !errors.As(err, &qErr) {
@@ -81,7 +81,7 @@ func TestDeleteApplication_decrementsQuotaUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "app-two", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "app-two", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	}); err != nil {
 		t.Fatalf("expected create to succeed after delete freed quota, got %v", err)
 	}
@@ -117,14 +117,14 @@ func TestUpdateApplicationChangesAndNoop(t *testing.T) {
 	}
 
 	// status も更新できる。
-	disabled := domain.ApplicationDisabled
+	disabled := appdomain.ApplicationDisabled
 	got, err := appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
 		ActorUserID: "admin", ApplicationID: app.ID, Status: &disabled,
 	})
 	if err != nil {
 		t.Fatalf("update status: %v", err)
 	}
-	if got.Status != domain.ApplicationDisabled {
+	if got.Status != appdomain.ApplicationDisabled {
 		t.Fatalf("status not updated: %v", got.Status)
 	}
 
@@ -134,10 +134,10 @@ func TestUpdateApplicationChangesAndNoop(t *testing.T) {
 	if err != nil || stored == nil {
 		t.Fatalf("FindByID after update: app=%v err=%v", stored, err)
 	}
-	if stored.Name != "Payroll v2" || stored.Status != domain.ApplicationDisabled {
+	if stored.Name != "Payroll v2" || stored.Status != appdomain.ApplicationDisabled {
 		t.Fatalf("stored application = %+v", stored)
 	}
-	if stored.Protocol == nil || stored.Protocol.Type != domain.ApplicationProtocolOIDC || stored.Protocol.ClientID != "test-client" {
+	if stored.Protocol == nil || stored.Protocol.Type != appdomain.ApplicationProtocolOIDC || stored.Protocol.ClientID != "test-client" {
 		t.Fatalf("stored protocol = %+v", stored.Protocol)
 	}
 }
@@ -170,7 +170,7 @@ func TestDeleteApplicationRemovesAssignmentsAndPolicy(t *testing.T) {
 	}
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
 		ActorUserID: "admin", ApplicationID: app.ID,
-		SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 
 	// 不明なアプリ。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: "ghost", SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: "ghost", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
 	}
@@ -310,13 +310,13 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	}
 	// 空 subject id。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "  ",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "  ",
 	}); !errors.Is(err, appusecases.ErrSubjectRequired) {
 		t.Fatalf("expected ErrSubjectRequired, got %v", err)
 	}
 	// 不正な visibility。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser,
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser,
 		SubjectID: "alice", Visibility: "weird",
 	}); !errors.Is(err, appusecases.ErrInvalidVisibility) {
 		t.Fatalf("expected ErrInvalidVisibility, got %v", err)
@@ -324,7 +324,7 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 
 	// 正常割当のあと ListAssignments で確認。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
@@ -338,7 +338,7 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 
 	// Unassign。
 	if err := appusecases.UnassignApplication(ctx, assignDeps, "admin", app.ID,
-		domain.AssignmentSubjectUser, "alice", time.Time{}); err != nil {
+		appdomain.AssignmentSubjectUser, "alice", time.Time{}); err != nil {
 		t.Fatalf("unassign: %v", err)
 	}
 	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ID, "", "", 100)
@@ -372,7 +372,7 @@ func TestCreateApplicationWithNilEmit(t *testing.T) {
 		Emit: nil,
 	}
 	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "No Emit App", Kind: domain.ApplicationWeblink, LaunchURL: "https://example.com",
+		ActorUserID: "admin", Name: "No Emit App", Kind: appdomain.ApplicationWeblink, LaunchURL: "https://example.com",
 	})
 	if err != nil {
 		t.Fatalf("failed: %v", err)
@@ -389,7 +389,7 @@ func TestCreateApplicationWithEmit(t *testing.T) {
 		},
 	}
 	_, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Emit App", Kind: domain.ApplicationWeblink, LaunchURL: "https://example.com",
+		ActorUserID: "admin", Name: "Emit App", Kind: appdomain.ApplicationWeblink, LaunchURL: "https://example.com",
 	})
 	if err != nil {
 		t.Fatalf("failed: %v", err)
@@ -459,40 +459,40 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 
 	// 1. Service App (should be excluded)
 	serviceApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Service App", Kind: domain.ApplicationService,
-		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "service-client"},
+		ActorUserID: "admin", Name: "Service App", Kind: appdomain.ApplicationService,
+		Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "service-client"},
 	})
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: serviceApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: serviceApp.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
 	// 2. Disabled App (should be excluded)
 	disabledApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Disabled App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "Disabled App", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
-	disabled := domain.ApplicationDisabled
+	disabled := appdomain.ApplicationDisabled
 	_, _ = appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
 		ActorUserID: "admin", ApplicationID: disabledApp.ID, Status: &disabled,
 	})
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: disabledApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: disabledApp.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
 	// 3. Normal App with multiple assignments (should be deduped)
 	normalApp, _ := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Normal App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "Normal App", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	// assign to user "alice"
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 	// assign to group "alice-group"
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo, SubjectDirectory: existingSubjectDirectoryFake{}}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: domain.AssignmentSubjectGroup, SubjectID: "alice-group",
+		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: appdomain.AssignmentSubjectGroup, SubjectID: "alice-group",
 	})
-	subjectsWithGroup := []ports.SubjectRef{
-		{Type: domain.AssignmentSubjectUser, ID: "alice"},
-		{Type: domain.AssignmentSubjectGroup, ID: "alice-group"},
+	subjectsWithGroup := []appports.SubjectRef{
+		{Type: appdomain.AssignmentSubjectUser, ID: "alice"},
+		{Type: appdomain.AssignmentSubjectGroup, ID: "alice-group"},
 	}
 
 	apps, err := appusecases.ListMyApplications(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, subjectsWithGroup)
@@ -507,18 +507,18 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 }
 
 type errorAppRepo struct {
-	ports.ApplicationRepository
+	appports.ApplicationRepository
 }
 
-func (e errorAppRepo) FindByID(ctx context.Context, tenantID, id string) (*domain.Application, error) {
+func (e errorAppRepo) FindByID(ctx context.Context, tenantID, id string) (*appdomain.Application, error) {
 	return nil, errors.New("database error")
 }
 
-func (e errorAppRepo) Save(ctx context.Context, app *domain.Application) error {
+func (e errorAppRepo) Save(ctx context.Context, app *appdomain.Application) error {
 	return errors.New("database error")
 }
 
-func (e errorAppRepo) Create(ctx context.Context, app *domain.Application) error {
+func (e errorAppRepo) Create(ctx context.Context, app *appdomain.Application) error {
 	return errors.New("database error")
 }
 
@@ -527,14 +527,14 @@ func (e errorAppRepo) Delete(ctx context.Context, tenantID, id string) error {
 }
 
 type errorAssignmentRepo struct {
-	ports.AssignmentRepository
+	appports.AssignmentRepository
 }
 
-func (e errorAssignmentRepo) ListBySubjects(ctx context.Context, tenantID string, subjects []ports.SubjectRef) ([]*domain.ApplicationAssignment, error) {
+func (e errorAssignmentRepo) ListBySubjects(ctx context.Context, tenantID string, subjects []appports.SubjectRef) ([]*appdomain.ApplicationAssignment, error) {
 	return nil, errors.New("database error")
 }
 
-func (e errorAssignmentRepo) ListByApplication(ctx context.Context, tenantID, appID string) ([]*domain.ApplicationAssignment, error) {
+func (e errorAssignmentRepo) ListByApplication(ctx context.Context, tenantID, appID string) ([]*appdomain.ApplicationAssignment, error) {
 	return nil, errors.New("database error")
 }
 
@@ -542,7 +542,7 @@ func (e errorAssignmentRepo) DeleteByApplication(ctx context.Context, tenantID, 
 	return errors.New("database error")
 }
 
-func (e errorAssignmentRepo) Save(ctx context.Context, a *domain.ApplicationAssignment) error {
+func (e errorAssignmentRepo) Save(ctx context.Context, a *appdomain.ApplicationAssignment) error {
 	return errors.New("database error")
 }
 
@@ -553,7 +553,7 @@ func TestUsecaseDatabaseErrors(t *testing.T) {
 
 	// 1. CreateApplication save error
 	_, err := appusecases.CreateApplication(ctx, appusecases.ApplicationDeps{Repo: errRepo}, appusecases.CreateApplicationInput{
-		Name: "Test App", Kind: domain.ApplicationWeblink, LaunchURL: "https://example.com",
+		Name: "Test App", Kind: appdomain.ApplicationWeblink, LaunchURL: "https://example.com",
 	})
 	if err == nil || err.Error() != "database error" {
 		t.Fatalf("expected database error, got %v", err)
@@ -576,7 +576,7 @@ func TestUsecaseDatabaseErrors(t *testing.T) {
 
 	// 4. AssignApplication find error
 	_, err = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, appusecases.AssignApplicationInput{
-		ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 	if err == nil || err.Error() != "database error" {
 		t.Fatalf("expected database error, got %v", err)
@@ -589,13 +589,13 @@ func TestUsecaseDatabaseErrors(t *testing.T) {
 	}
 
 	// 8. IsSubjectAssigned list error
-	_, err = appusecases.IsSubjectAssigned(ctx, errAssignRepo, "acme", "app-1", []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}})
+	_, err = appusecases.IsSubjectAssigned(ctx, errAssignRepo, "acme", "app-1", []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: "alice"}})
 	if err == nil || err.Error() != "database error" {
 		t.Fatalf("expected database error, got %v", err)
 	}
 
 	// 9. ListMyApplications list error
-	_, err = appusecases.ListMyApplications(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}})
+	_, err = appusecases.ListMyApplications(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: "alice"}})
 	if err == nil || err.Error() != "database error" {
 		t.Fatalf("expected database error, got %v", err)
 	}

@@ -15,7 +15,7 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
@@ -24,8 +24,8 @@ import (
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -66,7 +66,7 @@ type wsfedConfig struct {
 	Wtrealm      string                         `json:"wtrealm"`
 	ReplyURLs    []string                       `json:"reply_urls"`
 	Audience     string                         `json:"audience"`
-	TokenType    feddomain.WsFedTokenType       `json:"token_type"`
+	TokenType    wsfeddomain.WsFedTokenType     `json:"token_type"`
 	NameIDFormat string                         `json:"name_id_format"`
 	NameIDSource string                         `json:"name_id_source"`
 	Rules        []claimdomain.ClaimMappingRule `json:"rules"`
@@ -120,7 +120,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	switch req.Type {
 	case "weblink":
 		app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
-			ActorUserID: actor.ID, Name: req.Name, Kind: domain.ApplicationWeblink,
+			ActorUserID: actor.ID, Name: req.Name, Kind: appdomain.ApplicationWeblink,
 			LaunchURL: req.LaunchURL, Now: now,
 		})
 		if err != nil {
@@ -152,8 +152,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
+			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -176,8 +176,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationService,
-			domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationService,
+			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -192,17 +192,17 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		if d.RelyingParties == nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "WS-Federation is unavailable.")
 		}
-		if err := d.RelyingParties.CreateForApplication(ctx, wsfederationports.CreateApplicationRelyingPartyInput{
+		if err := d.RelyingParties.CreateForApplication(ctx, wsfedports.CreateApplicationRelyingPartyInput{
 			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
 			NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Now: now,
 		}); err != nil {
-			if errors.Is(err, wsfederationports.ErrRelyingPartyAlreadyRegistered) {
+			if errors.Is(err, wsfedports.ErrRelyingPartyAlreadyRegistered) {
 				return writeProtocolAlreadyRegistered(c)
 			}
 			return err
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ApplicationProtocol{Type: domain.ApplicationProtocolWsFed, Wtrealm: req.Wtrealm})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
+			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolWsFed, Wtrealm: req.Wtrealm})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -224,8 +224,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		}); err != nil {
 			return writeServiceProviderError(c, err)
 		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
-			domain.ApplicationProtocol{Type: domain.ApplicationProtocolSAML, EntityID: req.EntityID})
+		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
+			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolSAML, EntityID: req.EntityID})
 		if err != nil {
 			return d.writeApplicationError(c, err)
 		}
@@ -237,7 +237,7 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 }
 
 // createCatalogApp は指定 kind の Application と不変な単一 protocol relation を作成する。
-func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind domain.ApplicationKind, protocol domain.ApplicationProtocol) (*domain.Application, error) {
+func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req createApplicationRequest, now time.Time, kind appdomain.ApplicationKind, protocol appdomain.ApplicationProtocol) (*appdomain.Application, error) {
 	app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
 		ActorUserID: actorUserID, Name: req.Name, Kind: kind, LaunchURL: req.LaunchURL,
 		Protocol: &protocol, Now: now,
@@ -248,15 +248,15 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 	// 通常 protocol CRUD は ownership を変更しない。Application 作成経路だけが
 	// memory adapter の domain projection に application_id を同期する。
 	switch protocol.Type {
-	case domain.ApplicationProtocolOIDC:
+	case appdomain.ApplicationProtocolOIDC:
 		if err := d.Clients.BindApplication(ctx, app.TenantID, protocol.ClientID, app.ID); err != nil {
 			return nil, err
 		}
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		if err := d.ServiceProviders.BindApplication(ctx, app.TenantID, protocol.EntityID, app.ID); err != nil {
 			return nil, err
 		}
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		if err := d.RelyingParties.BindApplication(ctx, app.TenantID, protocol.Wtrealm, app.ID); err != nil {
 			return nil, err
 		}
@@ -266,7 +266,7 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 
 // resolveProtocolConfig は Application の relation から OAuth2 client / WS-Fed RP の
 // 実設定を解決して返す (アプリ詳細表示用)。
-func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*oidcConfig, *wsfedConfig, *samlConfig) {
+func (d Deps) resolveProtocolConfig(c *echo.Context, app *appdomain.Application) (*oidcConfig, *wsfedConfig, *samlConfig) {
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 	var oidc *oidcConfig
@@ -275,11 +275,11 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 	if app.Protocol != nil {
 		protocol := app.Protocol
 		switch protocol.Type {
-		case domain.ApplicationProtocolOIDC:
+		case appdomain.ApplicationProtocolOIDC:
 			if config, err := d.oidcConfiguration(ctx, tenantID, protocol.ClientID, time.Now().UTC()); err == nil {
 				oidc = config
 			}
-		case domain.ApplicationProtocolWsFed:
+		case appdomain.ApplicationProtocolWsFed:
 			if d.RelyingParties == nil {
 				break
 			}
@@ -291,7 +291,7 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 					Rules: nonNilRules(rp.ClaimPolicy.Rules),
 				}
 			}
-		case domain.ApplicationProtocolSAML:
+		case appdomain.ApplicationProtocolSAML:
 			if d.ServiceProviders == nil {
 				break
 			}
@@ -365,7 +365,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
+	clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
 	if clientID == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
@@ -402,8 +402,8 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 			}
 			return err
 		}
-		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolOIDC),
+		d.Emit(&appdomain.ApplicationClaimMappingUpdated{
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(appdomain.ApplicationProtocolOIDC),
 		})
 	}
 	d.emitProtocolConfigUpdated(tenantID, actor.ID, app.ID, req.specifiedFields(), time.Now().UTC())
@@ -417,7 +417,7 @@ func (d Deps) emitProtocolConfigUpdated(tenantID, actorUserID, applicationID str
 	if len(fields) == 0 {
 		return
 	}
-	d.Emit(&domain.ApplicationUpdated{
+	d.Emit(&appdomain.ApplicationUpdated{
 		At: now, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, ChangedFields: fields,
 	})
 }
@@ -425,7 +425,7 @@ func (d Deps) emitProtocolConfigUpdated(tenantID, actorUserID, applicationID str
 type updateWsFedRequest struct {
 	ReplyURLs    *[]string                       `json:"reply_urls"`
 	Audience     *string                         `json:"audience"`
-	TokenType    *feddomain.WsFedTokenType       `json:"token_type"`
+	TokenType    *wsfeddomain.WsFedTokenType     `json:"token_type"`
 	NameIDFormat *string                         `json:"name_id_format"`
 	NameIDSource *string                         `json:"name_id_source"`
 	Rules        *[]claimdomain.ClaimMappingRule `json:"rules"`
@@ -455,7 +455,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	wtrealm := bindingKeyOf(app, domain.ApplicationProtocolWsFed)
+	wtrealm := bindingKeyOf(app, appdomain.ApplicationProtocolWsFed)
 	if wtrealm == "" || d.RelyingParties == nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The WS-Federation binding does not exist.")
 	}
@@ -479,22 +479,22 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 		}
 	}
 	now := time.Now().UTC()
-	if err := d.RelyingParties.Update(ctx, wsfederationports.UpdateRelyingPartyInput{
+	if err := d.RelyingParties.Update(ctx, wsfedports.UpdateRelyingPartyInput{
 		TenantID: tenantID, Wtrealm: wtrealm,
 		ReplyURLs: req.ReplyURLs, Audience: req.Audience, TokenType: req.TokenType,
 		NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Rules: req.Rules, Now: now,
 	}); err != nil {
 		switch {
-		case errors.Is(err, wsfederationports.ErrInvalidTokenType):
+		case errors.Is(err, wsfedports.ErrInvalidTokenType):
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The token_type is invalid.")
-		case errors.Is(err, wsfederationports.ErrRelyingPartyNotFound):
+		case errors.Is(err, wsfedports.ErrRelyingPartyNotFound):
 			return writeRelyingPartyNotFound(c)
 		}
 		return err
 	}
 	if req.NameIDSource != nil || req.Rules != nil {
-		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolWsFed),
+		d.Emit(&appdomain.ApplicationClaimMappingUpdated{
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(appdomain.ApplicationProtocolWsFed),
 		})
 	}
 	d.emitProtocolConfigUpdated(tenantID, actor.ID, app.ID, req.specifiedFields(), now)
@@ -544,7 +544,7 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	entityID := bindingKeyOf(app, domain.ApplicationProtocolSAML)
+	entityID := bindingKeyOf(app, appdomain.ApplicationProtocolSAML)
 	if entityID == "" || d.ServiceProviders == nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The SAML binding does not exist.")
 	}
@@ -583,8 +583,8 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 		return writeServiceProviderError(c, err)
 	}
 	if req.NameIDSource != nil || req.Rules != nil {
-		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolSAML),
+		d.Emit(&appdomain.ApplicationClaimMappingUpdated{
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(appdomain.ApplicationProtocolSAML),
 		})
 	}
 	d.emitProtocolConfigUpdated(tenantID, actor.ID, app.ID, req.specifiedFields(), now)
@@ -619,7 +619,7 @@ func writeServiceProviderError(c *echo.Context, err error) error {
 	return err
 }
 
-func (d Deps) requireApp(c *echo.Context) (*domain.Application, error) {
+func (d Deps) requireApp(c *echo.Context) (*appdomain.Application, error) {
 	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("id"))
 	if err != nil {
 		return nil, err
@@ -630,14 +630,14 @@ func (d Deps) requireApp(c *echo.Context) (*domain.Application, error) {
 	return app, nil
 }
 
-func bindingKeyOf(app *domain.Application, bindingType domain.ApplicationProtocolType) string {
+func bindingKeyOf(app *appdomain.Application, bindingType appdomain.ApplicationProtocolType) string {
 	if app.Protocol == nil || app.Protocol.Type != bindingType {
 		return ""
 	}
 	switch bindingType {
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		return app.Protocol.Wtrealm
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		return app.Protocol.EntityID
 	default:
 		return app.Protocol.ClientID

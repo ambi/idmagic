@@ -13,7 +13,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 // WsTrustService は WS-Trust active STS のトークン発行判断 (アプリケーションの関門・claim 発行・
@@ -26,7 +26,7 @@ type WsTrustService struct {
 
 // TokenRequest は認証・RP 解決を通過した後のトークン発行入力。
 type TokenRequest struct {
-	RP                 feddomain.WsFedRelyingParty
+	RP                 wsfeddomain.WsFedRelyingParty
 	User               userdomain.User
 	RequestedTokenType string // RST の要求 token type (空なら RP 既定)。
 	// AuthenticatedAt は UsernameToken のパスワードを照合した時刻。関門へパスワードだけで
@@ -47,7 +47,7 @@ type TokenDecision struct {
 	ClaimResult claimdomain.ClaimIssuanceResult
 	// Issuer は Assertion の発行者。空ならテナントの発行者を使う。
 	Issuer       string
-	TokenType    feddomain.WsFedTokenType
+	TokenType    wsfeddomain.WsFedTokenType
 	RejectReason string // 非空なら発行拒否 (WsTrustTokenRejected を発行し RejectStatus を返す)。
 	RejectStatus int
 }
@@ -74,10 +74,10 @@ func (s WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSch
 	}
 	tokenType := req.RP.EffectiveTokenType()
 	if strings.TrimSpace(req.RequestedTokenType) != "" {
-		if req.RequestedTokenType != string(feddomain.TokenTypeSAML11) && req.RequestedTokenType != string(feddomain.TokenTypeSAML20) {
+		if req.RequestedTokenType != string(wsfeddomain.TokenTypeSAML11) && req.RequestedTokenType != string(wsfeddomain.TokenTypeSAML20) {
 			return TokenDecision{RejectReason: "unsupported token type", RejectStatus: 400}, nil
 		}
-		tokenType = feddomain.WsFedTokenType(req.RequestedTokenType)
+		tokenType = wsfeddomain.WsFedTokenType(req.RequestedTokenType)
 	}
 	return TokenDecision{ClaimResult: issued.claims, Issuer: issued.issuer, TokenType: tokenType}, nil
 }

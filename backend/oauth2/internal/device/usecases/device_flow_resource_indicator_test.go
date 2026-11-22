@@ -11,7 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -47,9 +47,9 @@ func TestExchangeDeviceCode_unregisteredResource_rejectedAsInvalidTarget(t *test
 
 func TestExchangeDeviceCode_registeredResource_boundAudienceAndRefreshRecord(t *testing.T) {
 	repo := oauth2memory.NewMcpResourceServerRepository()
-	repo.Seed(&domain.McpResourceServer{
+	repo.Seed(&oauthdomain.McpResourceServer{
 		ID: "rs-1", Resource: "https://mcp.example.com/tools",
-		Name: "Tools", Scopes: []string{"openid", "offline_access"}, State: domain.McpResourceServerActive,
+		Name: "Tools", Scopes: []string{"openid", "offline_access"}, State: oauthdomain.McpResourceServerActive,
 	})
 	f, deviceCode := newApprovedDeviceFixture(t, repo)
 
@@ -66,7 +66,7 @@ func TestExchangeDeviceCode_registeredResource_boundAudienceAndRefreshRecord(t *
 	}
 
 	// 発行された refresh token record にも resource が伝播しているはず (rotation で保持するため)。
-	hash := domain.HashRefreshToken(out.RefreshToken)
+	hash := oauthdomain.HashRefreshToken(out.RefreshToken)
 	rec, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), hash)
 	if err != nil || rec == nil {
 		t.Fatalf("expected refresh token record to be findable: %v", err)

@@ -8,15 +8,15 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func seedTestTenant(t *testing.T, db sharedpg.DB, id string) *domain.Tenant {
+func seedTestTenant(t *testing.T, db sharedpg.DB, id string) *tenancydomain.Tenant {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
-	tenant := &domain.Tenant{
+	tenant := &tenancydomain.Tenant{
 		ID: id, Realm: "branding-" + id[len(id)-8:], DisplayName: "Branding Test Tenant",
-		Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := (&TenantRepository{Pool: db}).Save(context.Background(), tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
@@ -35,11 +35,11 @@ func TestTenantBrandingRepositorySaveAndFind(t *testing.T) {
 	}
 
 	now := time.Now().UTC().Truncate(time.Second)
-	branding := &domain.TenantBranding{
+	branding := &tenancydomain.TenantBranding{
 		TenantID:     tenant.ID,
 		ProductName:  "Acme",
 		PrimaryColor: "#0f172a",
-		FooterLink1:  domain.TenantFooterLink{Label: "ヘルプ", URL: "https://support.example.com"},
+		FooterLink1:  tenancydomain.TenantFooterLink{Label: "ヘルプ", URL: "https://support.example.com"},
 		FooterText:   "(c) Acme",
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -70,8 +70,8 @@ func TestTenantBrandingAssetStoreFindIsScopedToTenant(t *testing.T) {
 
 	now := pgtest.Now()
 	assetID := "33333333-3333-3333-3333-333333333334"
-	if err := store.Save(ctx, &domain.TenantBrandingAsset{
-		TenantID: owner.ID, Kind: domain.TenantBrandingAssetKindLogo, ID: assetID,
+	if err := store.Save(ctx, &tenancydomain.TenantBrandingAsset{
+		TenantID: owner.ID, Kind: tenancydomain.TenantBrandingAssetKindLogo, ID: assetID,
 		ContentType: "image/png", SizeBytes: 4, Data: []byte{0x1, 0x2, 0x3, 0x4},
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
@@ -79,10 +79,10 @@ func TestTenantBrandingAssetStoreFindIsScopedToTenant(t *testing.T) {
 	}
 
 	// 所有テナントでは見つかることを先に確かめ、下の nil が保存の失敗ではないことを示す。
-	if got, err := store.Find(ctx, owner.ID, domain.TenantBrandingAssetKindLogo, assetID); err != nil || got == nil {
+	if got, err := store.Find(ctx, owner.ID, tenancydomain.TenantBrandingAssetKindLogo, assetID); err != nil || got == nil {
 		t.Fatalf("owner find: %v %+v", err, got)
 	}
-	got, err := store.Find(ctx, other.ID, domain.TenantBrandingAssetKindLogo, assetID)
+	got, err := store.Find(ctx, other.ID, tenancydomain.TenantBrandingAssetKindLogo, assetID)
 	if err != nil || got != nil {
 		t.Fatalf("another tenant found the asset: %v %+v", err, got)
 	}
@@ -96,9 +96,9 @@ func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 
 	now := time.Now().UTC().Truncate(time.Second)
 	assetID := "33333333-3333-3333-3333-333333333333"
-	asset := &domain.TenantBrandingAsset{
+	asset := &tenancydomain.TenantBrandingAsset{
 		TenantID:    tenant.ID,
-		Kind:        domain.TenantBrandingAssetKindLogo,
+		Kind:        tenancydomain.TenantBrandingAssetKindLogo,
 		ID:          assetID,
 		ContentType: "image/png",
 		SizeBytes:   4,
@@ -110,7 +110,7 @@ func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	got, err := store.Find(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo, assetID)
+	got, err := store.Find(ctx, tenant.ID, tenancydomain.TenantBrandingAssetKindLogo, assetID)
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
@@ -118,10 +118,10 @@ func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 		t.Fatalf("asset not round-tripped: %+v", got)
 	}
 
-	if err := store.DeleteByTenant(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo); err != nil {
+	if err := store.DeleteByTenant(ctx, tenant.ID, tenancydomain.TenantBrandingAssetKindLogo); err != nil {
 		t.Fatalf("delete by tenant: %v", err)
 	}
-	got, err = store.Find(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo, assetID)
+	got, err = store.Find(ctx, tenant.ID, tenancydomain.TenantBrandingAssetKindLogo, assetID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}

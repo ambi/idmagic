@@ -19,7 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -40,15 +40,15 @@ const (
 func newTokenExchangeServer(t *testing.T, options ...func(*httpadapter.Deps)) string {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(exchClientSecret)
-	clientRepo.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(exchClientSecret)
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: exchClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		GrantTypes: []spec.GrantType{
 			spec.GrantClientCredentials, spec.GrantTokenExchange,
 		},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                   "read write",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 	keyStore, err := signingkeys.NewInMemoryKeyStore()
@@ -57,9 +57,9 @@ func newTokenExchangeServer(t *testing.T, options ...func(*httpadapter.Deps)) st
 	}
 	tokenIssuer := oauth2.NewJWTSigner("http://test", keyStore)
 	resourceServers := oauth2memory.NewMcpResourceServerRepository()
-	resourceServers.Seed(&domain.McpResourceServer{
+	resourceServers.Seed(&oauthdomain.McpResourceServer{
 		ID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",
-		Scopes: []string{"read", "write"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"read", "write"}, State: oauthdomain.McpResourceServerActive,
 	})
 	tenantRepo := tenancy.NewMemoryModule().TenantRepo
 	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{

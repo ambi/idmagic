@@ -11,7 +11,7 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -69,16 +69,16 @@ func TestIntrospectToken_UsesIssuanceTimeAgents(t *testing.T) {
 	}
 	cases := []struct {
 		name   string
-		token  ports.IntrospectionResult
+		token  oauthports.IntrospectionResult
 		active bool
 	}{
-		{"束縛を解除した Agent の agent_id", ports.IntrospectionResult{ClientID: "released_client", AgentID: "unbound", Iat: before}, false},
-		{"別の Agent へ束縛し直したクライアントの解除前のトークン", ports.IntrospectionResult{ClientID: "shared_client", AgentChain: []string{"unbound"}, Iat: before}, false},
-		{"束縛し直した先の Agent のもとで発行したトークン", ports.IntrospectionResult{ClientID: "shared_client", AgentChain: []string{"rebound"}, Iat: after}, true},
-		{"削除した Agent", ports.IntrospectionResult{ClientID: "deleted_client", AgentChain: []string{"deleted"}, Iat: after}, false},
-		{"エポックの前に状態が止まった Agent", ports.IntrospectionResult{ClientID: "stopped_client", AgentChain: []string{"stopped"}, Iat: after}, false},
-		{"連鎖の中間の Agent のエポックより前", ports.IntrospectionResult{ClientID: "c_client", AgentChain: []string{"subject", "unbound"}, Iat: before}, false},
-		{"連鎖の全員が Active でエポックより後", ports.IntrospectionResult{ClientID: "c_client", AgentChain: []string{"subject", "unbound"}, Iat: after}, true},
+		{"束縛を解除した Agent の agent_id", oauthports.IntrospectionResult{ClientID: "released_client", AgentID: "unbound", Iat: before}, false},
+		{"別の Agent へ束縛し直したクライアントの解除前のトークン", oauthports.IntrospectionResult{ClientID: "shared_client", AgentChain: []string{"unbound"}, Iat: before}, false},
+		{"束縛し直した先の Agent のもとで発行したトークン", oauthports.IntrospectionResult{ClientID: "shared_client", AgentChain: []string{"rebound"}, Iat: after}, true},
+		{"削除した Agent", oauthports.IntrospectionResult{ClientID: "deleted_client", AgentChain: []string{"deleted"}, Iat: after}, false},
+		{"エポックの前に状態が止まった Agent", oauthports.IntrospectionResult{ClientID: "stopped_client", AgentChain: []string{"stopped"}, Iat: after}, false},
+		{"連鎖の中間の Agent のエポックより前", oauthports.IntrospectionResult{ClientID: "c_client", AgentChain: []string{"subject", "unbound"}, Iat: before}, false},
+		{"連鎖の全員が Active でエポックより後", oauthports.IntrospectionResult{ClientID: "c_client", AgentChain: []string{"subject", "unbound"}, Iat: after}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,7 +111,7 @@ func (failingAgentRepository) FindByID(context.Context, string, string) (*agentd
 //
 //spec:covers REQ-OAUTH2-012: 発行時の Agent の状態を読めない場合はトークンを有効として返さない
 func TestIntrospectToken_IssuanceAgentLookupFailureIsNotActive(t *testing.T) {
-	introspector := &fakeIntrospector{result: &ports.IntrospectionResult{
+	introspector := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "sub", ClientID: "client", AgentChain: []string{"agent_1"},
 		Iat: time.Now().Unix(), Exp: time.Now().Add(time.Hour).Unix(),
 	}}

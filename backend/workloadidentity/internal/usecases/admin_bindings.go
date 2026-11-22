@@ -13,7 +13,7 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
 // AdminAgentWorkloadBindingDeps extends AdminWorkloadIdentityDeps with the
@@ -24,7 +24,7 @@ type AdminAgentWorkloadBindingDeps struct {
 	AgentRepo agentports.AgentRepository
 }
 
-func ListAgentWorkloadBindings(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string) ([]*domain.AgentWorkloadBinding, error) {
+func ListAgentWorkloadBindings(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string) ([]*workloaddomain.AgentWorkloadBinding, error) {
 	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, trustBundleID)
 	if err != nil {
@@ -45,7 +45,7 @@ type CreateAgentWorkloadBindingInput struct {
 // agent_id は同一テナントの既存 Agent でなければならず、subject_pattern は同一
 // trust_bundle_id 内で完全重複を許さない (ambiguous match の runtime 判定は
 // domain.MatchAgent が別途担う)。
-func CreateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string, in CreateAgentWorkloadBindingInput, now time.Time) (*domain.AgentWorkloadBinding, error) {
+func CreateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, trustBundleID string, in CreateAgentWorkloadBindingInput, now time.Time) (*workloaddomain.AgentWorkloadBinding, error) {
 	tenantID := tenantports.TenantID(ctx)
 	bundle, err := deps.TrustBundleRepo.FindByID(ctx, tenantID, trustBundleID)
 	if err != nil {
@@ -81,13 +81,13 @@ func CreateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 			return nil, ErrBindingSubjectPatternExists
 		}
 	}
-	id, err := domain.NewAgentWorkloadBindingID()
+	id, err := workloaddomain.NewAgentWorkloadBindingID()
 	if err != nil {
 		return nil, err
 	}
-	binding := &domain.AgentWorkloadBinding{
+	binding := &workloaddomain.AgentWorkloadBinding{
 		ID: id, TenantID: tenantID, TrustBundleID: trustBundleID, SubjectPattern: pattern,
-		AgentID: agentID, Status: domain.AgentWorkloadBindingStatusEnabled, CreatedAt: now,
+		AgentID: agentID, Status: workloaddomain.AgentWorkloadBindingStatusEnabled, CreatedAt: now,
 	}
 	if err := binding.Validate(); err != nil {
 		return nil, err
@@ -95,21 +95,21 @@ func CreateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 	if err := deps.BindingRepo.Save(ctx, binding); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.AgentWorkloadBindingCreated{
+	emit(deps.Emit, &workloaddomain.AgentWorkloadBindingCreated{
 		At: now, TenantID: tenantID, TrustBundleID: trustBundleID, BindingID: binding.ID, AgentID: agentID,
 	})
 	return binding, nil
 }
 
-func DisableAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, now time.Time) (*domain.AgentWorkloadBinding, error) {
-	return setBindingStatus(ctx, deps, id, domain.AgentWorkloadBindingStatusDisabled, now)
+func DisableAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, now time.Time) (*workloaddomain.AgentWorkloadBinding, error) {
+	return setBindingStatus(ctx, deps, id, workloaddomain.AgentWorkloadBindingStatusDisabled, now)
 }
 
-func EnableAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, now time.Time) (*domain.AgentWorkloadBinding, error) {
-	return setBindingStatus(ctx, deps, id, domain.AgentWorkloadBindingStatusEnabled, now)
+func EnableAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, now time.Time) (*workloaddomain.AgentWorkloadBinding, error) {
+	return setBindingStatus(ctx, deps, id, workloaddomain.AgentWorkloadBindingStatusEnabled, now)
 }
 
-func setBindingStatus(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, status domain.AgentWorkloadBindingStatus, now time.Time) (*domain.AgentWorkloadBinding, error) {
+func setBindingStatus(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, status workloaddomain.AgentWorkloadBindingStatus, now time.Time) (*workloaddomain.AgentWorkloadBinding, error) {
 	tenantID := tenantports.TenantID(ctx)
 	binding, err := deps.BindingRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -124,7 +124,7 @@ func setBindingStatus(ctx context.Context, deps AdminAgentWorkloadBindingDeps, i
 	updated := *binding
 	updated.Status = status
 	updated.UpdatedAt = &now
-	if status == domain.AgentWorkloadBindingStatusDisabled {
+	if status == workloaddomain.AgentWorkloadBindingStatusDisabled {
 		updated.DisabledAt = &now
 	} else {
 		updated.DisabledAt = nil
@@ -135,10 +135,10 @@ func setBindingStatus(ctx context.Context, deps AdminAgentWorkloadBindingDeps, i
 	if err := deps.BindingRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	if status == domain.AgentWorkloadBindingStatusDisabled {
-		emit(deps.Emit, &domain.AgentWorkloadBindingDisabled{At: now, TenantID: tenantID, BindingID: binding.ID})
+	if status == workloaddomain.AgentWorkloadBindingStatusDisabled {
+		emit(deps.Emit, &workloaddomain.AgentWorkloadBindingDisabled{At: now, TenantID: tenantID, BindingID: binding.ID})
 	} else {
-		emit(deps.Emit, &domain.AgentWorkloadBindingEnabled{At: now, TenantID: tenantID, BindingID: binding.ID})
+		emit(deps.Emit, &workloaddomain.AgentWorkloadBindingEnabled{At: now, TenantID: tenantID, BindingID: binding.ID})
 	}
 	return &updated, nil
 }
@@ -155,7 +155,7 @@ func DeleteAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 	if err := deps.BindingRepo.Delete(ctx, tenantID, id); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.AgentWorkloadBindingDeleted{At: now, TenantID: tenantID, BindingID: id})
+	emit(deps.Emit, &workloaddomain.AgentWorkloadBindingDeleted{At: now, TenantID: tenantID, BindingID: id})
 	return nil
 }
 
@@ -166,7 +166,7 @@ type UpdateAgentWorkloadBindingInput struct {
 	AgentID        *string
 }
 
-func UpdateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, in UpdateAgentWorkloadBindingInput, now time.Time) (*domain.AgentWorkloadBinding, error) {
+func UpdateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBindingDeps, id string, in UpdateAgentWorkloadBindingInput, now time.Time) (*workloaddomain.AgentWorkloadBinding, error) {
 	tenantID := tenantports.TenantID(ctx)
 	binding, err := deps.BindingRepo.FindByID(ctx, tenantID, id)
 	if err != nil {
@@ -188,7 +188,7 @@ func UpdateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 	if updated.SubjectPattern == "" {
 		return nil, ErrBindingSubjectPatternEmpty
 	}
-	if !domain.ValidSubjectPattern(updated.SubjectPattern) {
+	if !workloaddomain.ValidSubjectPattern(updated.SubjectPattern) {
 		return nil, ErrBindingInvalidInput
 	}
 	if updated.AgentID == "" || deps.AgentRepo == nil {
@@ -228,7 +228,7 @@ func UpdateAgentWorkloadBinding(ctx context.Context, deps AdminAgentWorkloadBind
 	if saved == nil {
 		return nil, ErrBindingNotFound
 	}
-	emit(deps.Emit, &domain.AgentWorkloadBindingUpdated{At: now, TenantID: tenantID, TrustBundleID: binding.TrustBundleID, BindingID: id, AgentID: saved.AgentID})
+	emit(deps.Emit, &workloaddomain.AgentWorkloadBindingUpdated{At: now, TenantID: tenantID, TrustBundleID: binding.TrustBundleID, BindingID: id, AgentID: saved.AgentID})
 	return saved, nil
 }
 
@@ -239,8 +239,8 @@ type PreviewAgentWorkloadBindingsInput struct {
 }
 
 type PreviewAgentWorkloadBindingsResult struct {
-	Matches          []*domain.AgentWorkloadBinding
-	PossibleOverlaps []*domain.AgentWorkloadBinding
+	Matches          []*workloaddomain.AgentWorkloadBinding
+	PossibleOverlaps []*workloaddomain.AgentWorkloadBinding
 	CandidateMatches *bool
 }
 
@@ -255,26 +255,26 @@ func PreviewAgentWorkloadBindings(ctx context.Context, deps AdminAgentWorkloadBi
 	var pattern string
 	if in.SubjectPattern != nil {
 		pattern = strings.TrimSpace(*in.SubjectPattern)
-		if pattern == "" || !domain.ValidSubjectPattern(pattern) {
+		if pattern == "" || !workloaddomain.ValidSubjectPattern(pattern) {
 			return nil, ErrBindingInvalidInput
 		}
 		if err := spec.All(spec.Required("subject_pattern", pattern, spec.Chars(1, spec.LengthDescription))); err != nil {
 			return nil, err
 		}
 	}
-	result := &PreviewAgentWorkloadBindingsResult{Matches: []*domain.AgentWorkloadBinding{}, PossibleOverlaps: []*domain.AgentWorkloadBinding{}}
+	result := &PreviewAgentWorkloadBindingsResult{Matches: []*workloaddomain.AgentWorkloadBinding{}, PossibleOverlaps: []*workloaddomain.AgentWorkloadBinding{}}
 	if in.Subject != nil && in.SubjectPattern != nil {
-		matched := domain.MatchesSubject(pattern, *in.Subject)
+		matched := workloaddomain.MatchesSubject(pattern, *in.Subject)
 		result.CandidateMatches = &matched
 	}
 	for _, binding := range bindings {
 		if !binding.IsEnabled() {
 			continue
 		}
-		if in.Subject != nil && domain.MatchesSubject(binding.SubjectPattern, *in.Subject) {
+		if in.Subject != nil && workloaddomain.MatchesSubject(binding.SubjectPattern, *in.Subject) {
 			result.Matches = append(result.Matches, binding)
 		}
-		if in.SubjectPattern != nil && binding.ID != in.ExcludeBindingID && (domain.MatchesSubject(pattern, binding.SubjectPattern) || domain.MatchesSubject(binding.SubjectPattern, pattern)) {
+		if in.SubjectPattern != nil && binding.ID != in.ExcludeBindingID && (workloaddomain.MatchesSubject(pattern, binding.SubjectPattern) || workloaddomain.MatchesSubject(binding.SubjectPattern, pattern)) {
 			result.PossibleOverlaps = append(result.PossibleOverlaps, binding)
 		}
 	}

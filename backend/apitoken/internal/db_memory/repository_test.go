@@ -5,29 +5,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 )
 
 func TestRepositoryRoundTripTenantIsolationAndIdempotentRevoke(t *testing.T) {
 	repository := NewRepository()
 	ctx := context.Background()
 	now := time.Date(2026, 7, 23, 10, 0, 0, 0, time.UTC)
-	token := &domain.ApiToken{
+	token := &apitokendomain.ApiToken{
 		ID: "token-1", TenantID: "tenant-1", JTI: "jti-1",
-		Scopes: domain.Scopes{domain.ScopeScimUsersRead}, CreatedAt: now,
+		Scopes: apitokendomain.Scopes{apitokendomain.ScopeScimUsersRead}, CreatedAt: now,
 	}
 	if err := repository.Save(ctx, token); err != nil {
 		t.Fatal(err)
 	}
-	token.Scopes[0] = domain.ScopeScimUsersWrite
+	token.Scopes[0] = apitokendomain.ScopeScimUsersWrite
 
 	found, err := repository.FindByJTI(ctx, "tenant-1", "jti-1")
-	if err != nil || found == nil || !found.Scopes.Has(domain.ScopeScimUsersRead) {
+	if err != nil || found == nil || !found.Scopes.Has(apitokendomain.ScopeScimUsersRead) {
 		t.Fatalf("found = %+v, err = %v", found, err)
 	}
-	found.Scopes[0] = domain.ScopeScimGroupsWrite
+	found.Scopes[0] = apitokendomain.ScopeScimGroupsWrite
 	foundAgain, _ := repository.FindByJTI(ctx, "tenant-1", "jti-1")
-	if !foundAgain.Scopes.Has(domain.ScopeScimUsersRead) {
+	if !foundAgain.Scopes.Has(apitokendomain.ScopeScimUsersRead) {
 		t.Fatalf("repository leaked mutable scope slice: %+v", foundAgain.Scopes)
 	}
 

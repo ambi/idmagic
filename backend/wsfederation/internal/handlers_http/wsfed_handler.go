@@ -14,7 +14,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfed "github.com/ambi/idmagic/backend/wsfederation/internal/responses_wsfederation"
 	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 
@@ -25,21 +25,21 @@ import (
 const assertionLifetime = 5 * time.Minute
 
 // samlVersion は RP の token type を samltoken の SAML バージョンへ写す。
-func samlVersion(t feddomain.WsFedTokenType) samltoken.SAMLVersion {
-	if t == feddomain.TokenTypeSAML20 {
+func samlVersion(t wsfeddomain.WsFedTokenType) samltoken.SAMLVersion {
+	if t == wsfeddomain.TokenTypeSAML20 {
 		return samltoken.SAML20
 	}
 	return samltoken.SAML11
 }
 
 // authnContext は認証方式クラスを assertion の認証コンテキストへ写す。
-func authnContext(m feddomain.AuthnMethodClass) samltoken.AuthnContext {
+func authnContext(m wsfeddomain.AuthnMethodClass) samltoken.AuthnContext {
 	switch m {
-	case feddomain.AuthnKerberos:
+	case wsfeddomain.AuthnKerberos:
 		return samltoken.AuthnContextKerberos
-	case feddomain.AuthnPassword:
+	case wsfeddomain.AuthnPassword:
 		return samltoken.AuthnContextPassword
-	case feddomain.AuthnMultipleAuthn:
+	case wsfeddomain.AuthnMultipleAuthn:
 		return samltoken.AuthnContextMultipleAuthn
 	default:
 		return samltoken.AuthnContextUnspecified
@@ -57,11 +57,11 @@ func assertionAttributes(claims []claimdomain.IssuedClaim) []samltoken.Attribute
 
 // handleWsFed は WS-Federation passive エンドポイントを wa で分岐する。
 func (d Deps) handleWsFed(c *echo.Context) error {
-	req := feddomain.ParseSignInRequest(c.QueryParam)
+	req := wsfeddomain.ParseSignInRequest(c.QueryParam)
 	switch req.Wa {
-	case feddomain.WaSignIn:
+	case wsfeddomain.WaSignIn:
 		return d.handleWsFedSignIn(c, req)
-	case feddomain.WaSignOut, feddomain.WaSignOutCleanup:
+	case wsfeddomain.WaSignOut, wsfeddomain.WaSignOutCleanup:
 		return d.handleWsFedSignOut(c, req)
 	default:
 		return c.String(http.StatusBadRequest, "unsupported wa")
@@ -69,7 +69,7 @@ func (d Deps) handleWsFed(c *echo.Context) error {
 }
 
 // handleWsFedSignIn は wire から usecase 入力を組み立て、発行判断の outcome を HTTP に写す。
-func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInRequest) error {
+func (d Deps) handleWsFedSignIn(c *echo.Context, req wsfeddomain.WsFedSignInRequest) error {
 	ctx := c.Request().Context()
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
 
@@ -85,12 +85,12 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 	switch outcome.Kind {
 	case wsfedusecases.SignInNeedLogin, wsfedusecases.SignInNeedKerberos:
 		if d.Negotiate != nil {
-			if handled, err := d.Negotiate(c, c.Request().URL.RequestURI(), feddomain.RequiresKerberos(req.Wauth)); handled || err != nil {
+			if handled, err := d.Negotiate(c, c.Request().URL.RequestURI(), wsfeddomain.RequiresKerberos(req.Wauth)); handled || err != nil {
 				return err
 			}
 		}
 		if outcome.Kind == wsfedusecases.SignInNeedKerberos {
-			d.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, Reason: "requested authentication method was not satisfied: Kerberos authentication unavailable"})
+			d.emit(&wsfeddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, Reason: "requested authentication method was not satisfied: Kerberos authentication unavailable"})
 			return c.String(http.StatusBadRequest, "The relying party requires Kerberos authentication, which is unavailable.")
 		}
 		return c.Redirect(http.StatusSeeOther, loginRedirect(c))
@@ -110,7 +110,7 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 func (d Deps) requireSecondFactor(c *echo.Context, o wsfedusecases.SignInOutcome) error {
 	if len(d.SecondFactors.SecondFactorMethods(c, o.Authn.UserID)) == 0 {
 		const reason = "the requested multi-factor authentication needs a second factor the user does not have"
-		d.emit(&feddomain.WsFedSignInRejected{At: o.Now, TenantID: support.RequestTenantID(c), Wtrealm: o.Validated.RelyingParty.Wtrealm, Reason: reason})
+		d.emit(&wsfeddomain.WsFedSignInRejected{At: o.Now, TenantID: support.RequestTenantID(c), Wtrealm: o.Validated.RelyingParty.Wtrealm, Reason: reason})
 		return c.String(http.StatusBadRequest, reason)
 	}
 	pending, err := d.SecondFactors.RequireSecondFactor(c.Request().Context(), c, o.Authn.SessionID)
@@ -167,14 +167,14 @@ func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) e
 		return c.String(http.StatusInternalServerError, "form render failed")
 	}
 
-	d.emit(&feddomain.WsFedSignInIssued{At: o.Now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: o.Authn.UserID})
+	d.emit(&wsfeddomain.WsFedSignInIssued{At: o.Now, TenantID: tenantID, Wtrealm: rp.Wtrealm, UserID: o.Authn.UserID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.HTML(http.StatusOK, string(formHTML))
 }
 
 // handleWsFedSignOut はローカルセッションを破棄する。wsignout1.0 は許可済み wreply への
 // リダイレクトまで行い、wsignoutcleanup1.0 は破棄のみで 200 を返す。
-func (d Deps) handleWsFedSignOut(c *echo.Context, req feddomain.WsFedSignInRequest) error {
+func (d Deps) handleWsFedSignOut(c *echo.Context, req wsfeddomain.WsFedSignInRequest) error {
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 
@@ -182,9 +182,9 @@ func (d Deps) handleWsFedSignOut(c *echo.Context, req feddomain.WsFedSignInReque
 		_ = d.SessionManager.Revoke(ctx, c.Request().Header.Get("Cookie"))
 	}
 	d.clearSessionCookie(c)
-	d.emit(&feddomain.WsFedSignOut{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm})
+	d.emit(&wsfeddomain.WsFedSignOut{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm})
 
-	if req.Wa == feddomain.WaSignOut {
+	if req.Wa == wsfeddomain.WaSignOut {
 		if target := d.signOutService().ResolveReply(ctx, tenantID, req); target != "" {
 			return c.Redirect(http.StatusSeeOther, target)
 		}

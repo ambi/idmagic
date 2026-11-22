@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -21,7 +21,7 @@ import (
 // tenant は ctx から解決し fail-closed 述語に含める。
 type AuthorizationRequestStore struct{ Pool sharedpg.DB }
 
-func (s *AuthorizationRequestStore) Save(ctx context.Context, req *domain.AuthorizationRequest) error {
+func (s *AuthorizationRequestStore) Save(ctx context.Context, req *oauthdomain.AuthorizationRequest) error {
 	req.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(req)
 	if err != nil {
@@ -35,7 +35,7 @@ func (s *AuthorizationRequestStore) Save(ctx context.Context, req *domain.Author
 	})
 }
 
-func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*domain.AuthorizationRequest, error) {
+func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*oauthdomain.AuthorizationRequest, error) {
 	payload, err := New(s.Pool).FindAuthorizationRequest(ctx, FindAuthorizationRequestParams{
 		ID:       id,
 		TenantID: tenantports.TenantID(ctx),
@@ -46,7 +46,7 @@ func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*domai
 	if err != nil {
 		return nil, err
 	}
-	var req domain.AuthorizationRequest
+	var req oauthdomain.AuthorizationRequest
 	if err := json.Unmarshal(payload, &req); err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (s *AuthorizationRequestStore) Find(ctx context.Context, id string) (*domai
 }
 
 // mutate は tx 内で行をロックし、payload を読み出して change を適用し書き戻す。
-func (s *AuthorizationRequestStore) mutate(ctx context.Context, id string, change func(*domain.AuthorizationRequest) error) error {
+func (s *AuthorizationRequestStore) mutate(ctx context.Context, id string, change func(*oauthdomain.AuthorizationRequest) error) error {
 	tenantID := tenantports.TenantID(ctx)
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *AuthorizationRequestStore) mutate(ctx context.Context, id string, chang
 	if err != nil {
 		return err
 	}
-	var req domain.AuthorizationRequest
+	var req oauthdomain.AuthorizationRequest
 	if err := json.Unmarshal(payload, &req); err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (s *AuthorizationRequestStore) mutate(ctx context.Context, id string, chang
 }
 
 func (s *AuthorizationRequestStore) UpdateState(ctx context.Context, id string, state spec.AuthorizationCodeFlowState) error {
-	return s.mutate(ctx, id, func(req *domain.AuthorizationRequest) error {
+	return s.mutate(ctx, id, func(req *oauthdomain.AuthorizationRequest) error {
 		next, err := spec.TransitionAuthorizationCodeFlow(req.State, eventForTargetState(state))
 		if err != nil {
 			return fmt.Errorf("invalid transition %q → %q: %w", req.State, state, err)
@@ -102,7 +102,7 @@ func (s *AuthorizationRequestStore) UpdateState(ctx context.Context, id string, 
 }
 
 func (s *AuthorizationRequestStore) AttachAuthentication(ctx context.Context, id, sub string, authTime int64, amr []string, acr, sid string) error {
-	return s.mutate(ctx, id, func(req *domain.AuthorizationRequest) error {
+	return s.mutate(ctx, id, func(req *oauthdomain.AuthorizationRequest) error {
 		req.UserID = &sub
 		req.AuthTime = &authTime
 		req.AMR = slices.Clone(amr)

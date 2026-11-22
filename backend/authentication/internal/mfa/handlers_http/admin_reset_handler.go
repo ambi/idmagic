@@ -6,7 +6,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -17,8 +17,8 @@ type resetAuthenticatorsRequest struct {
 	Targets []spec.AuthenticatorResetTarget `json:"targets"`
 }
 
-func authenticatorResetDeps(d httpdeps.Deps) authusecases.AuthenticatorResetDeps {
-	return authusecases.AuthenticatorResetDeps{
+func authenticatorResetDeps(d httpdeps.Deps) mfausecases.AuthenticatorResetDeps {
+	return mfausecases.AuthenticatorResetDeps{
 		MfaEnrollmentDeps: mfaEnrollmentDeps(d),
 		RecoveryCodeRepo:  d.RecoveryCodeRepo,
 		TrustedDevices:    d.TrustedDeviceRevoker(),
@@ -37,7 +37,7 @@ func HandleResetUserAuthenticators(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	result, err := authusecases.ResetUserAuthenticators(
+	result, err := mfausecases.ResetUserAuthenticators(
 		c.Request().Context(), authenticatorResetDeps(d), actor.ID, c.Param("sub"), input.Targets, time.Now().UTC(),
 	)
 	if err != nil {
@@ -51,7 +51,7 @@ func HandleResetUserAuthenticators(d httpdeps.Deps, c *echo.Context) error {
 }
 
 func writeAuthenticatorResetError(c *echo.Context, err error) error {
-	if errors.Is(err, authusecases.ErrAuthenticatorResetNotAllowed) {
+	if errors.Is(err, mfausecases.ErrAuthenticatorResetNotAllowed) {
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "authenticator_reset_not_allowed", "The authenticator reset cannot be performed.")
 	}
 	return err

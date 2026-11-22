@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -34,7 +34,7 @@ type StartedApproval struct {
 
 // referencesStartedApproval は、評価が承認をトークンではなく承認リクエストの識別子で扱うかを返す。
 // トークンが CIBA の承認を持ち、参照もなければ、従来どおりトークンの承認で評価する。
-func referencesStartedApproval(in ResourceAccessRequest, token *ports.IntrospectionResult) bool {
+func referencesStartedApproval(in ResourceAccessRequest, token *oauthports.IntrospectionResult) bool {
 	return in.ApprovalRequestID != "" || (in.ApprovalStart && token.ApprovalRequestID == "")
 }
 
@@ -46,8 +46,8 @@ type startedApprovalOutcome struct {
 
 // resolveStartedApproval は参照した承認を照合し、使えなければ起票する。トークンの承認の明細は求めない。
 func resolveStartedApproval(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, rule domain.ResourceAccessRule,
-	detailType string, token *ports.IntrospectionResult, subject policyports.PrincipalRef, in ResourceAccessRequest, now time.Time,
+	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule,
+	detailType string, token *oauthports.IntrospectionResult, subject accessports.PrincipalRef, in ResourceAccessRequest, now time.Time,
 ) (startedApprovalOutcome, error) {
 	if deps.Approvals == nil {
 		return startedApprovalOutcome{}, ErrResourceAccessNotConfigured
@@ -58,7 +58,7 @@ func resolveStartedApproval(
 	}
 	digest, err := approvaldomain.CanonicalizeOperationParameters(in.OperationParameters)
 	if err != nil {
-		return deny(domain.ReasonApprovedOperationMismatch)
+		return deny(oauthdomain.ReasonApprovedOperationMismatch)
 	}
 	binding := approvaldomain.OperationBinding{DetailType: detailType, Location: server.Resource, Action: in.Relation, Identifier: in.ResourceID}
 	if in.ApprovalRequestID != "" {
@@ -68,41 +68,41 @@ func resolveStartedApproval(
 		}
 		if referable(rec, server, token) && !approvaldomain.IsExpired(rec, now) {
 			if rec.State == spec.ApprovalDenied {
-				return deny(domain.ReasonApprovalDenied)
+				return deny(oauthdomain.ReasonApprovalDenied)
 			}
 			if approvaldomain.MatchApprovedOperation(rec, binding, digest, now) != approvaldomain.ApprovedOperationMatched {
-				return deny(domain.ReasonApprovedOperationMismatch)
+				return deny(oauthdomain.ReasonApprovedOperationMismatch)
 			}
 			if rec.State == spec.ApprovalPending {
 				return pendingApproval(deps, rec)
 			}
 			keyHash := approvaldomain.HashOperationKey(in.ClientID, in.OperationKey)
 			if rec.Use != nil && rec.Use.KeyHash != keyHash {
-				return deny(domain.ReasonApprovalAlreadyUsed)
+				return deny(oauthdomain.ReasonApprovalAlreadyUsed)
 			}
 			return startedApprovalOutcome{matched: &matchedApproval{requestID: rec.ID, digest: digest, keyHash: keyHash}}, nil
 		}
 	}
 	if !in.ApprovalStart {
-		return deny(domain.ReasonApprovalExpired)
+		return deny(oauthdomain.ReasonApprovalExpired)
 	}
 	// MCP クライアントの前にいる本人だけが承認者になれる。Agent の主体には承認者を解決する規則がない。
-	if subject.Type == domain.PrincipalTypeAgent {
-		return deny(domain.ReasonApprovalRequired)
+	if subject.Type == oauthdomain.PrincipalTypeAgent {
+		return deny(oauthdomain.ReasonApprovalRequired)
 	}
 	return startApproval(ctx, deps, server, detailType, token, binding, digest, in, now)
 }
 
 // referable は、参照した承認が評価した登録の、同じ利用者、クライアント、Agent の評価で起票したものかを返す。
 // それ以外は、識別子を知るだけで使わせないため、残っていない承認として扱う。
-func referable(rec *approvaldomain.ApprovalRequest, server *domain.McpResourceServer, token *ports.IntrospectionResult) bool {
+func referable(rec *approvaldomain.ApprovalRequest, server *oauthdomain.McpResourceServer, token *oauthports.IntrospectionResult) bool {
 	return rec != nil && rec.InitiatedByResourceServer() && rec.ResourceServerID != nil && *rec.ResourceServerID == server.ID &&
 		rec.UserID == token.Sub && rec.ClientID == token.ClientID && optionalValue(rec.AgentID) == token.AgentID
 }
 
 func startApproval(
-	ctx context.Context, deps ResourceAccessDeps, server *domain.McpResourceServer, detailType string,
-	token *ports.IntrospectionResult, binding approvaldomain.OperationBinding, digest string, in ResourceAccessRequest, now time.Time,
+	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, detailType string,
+	token *oauthports.IntrospectionResult, binding approvaldomain.OperationBinding, digest string, in ResourceAccessRequest, now time.Time,
 ) (startedApprovalOutcome, error) {
 	if deps.ApprovalURL == "" {
 		return startedApprovalOutcome{}, ErrResourceAccessNotConfigured
@@ -112,7 +112,7 @@ func startApproval(
 		return startedApprovalOutcome{}, err
 	}
 	// 明細は要求と登録の写しで、照合 (MatchApprovedOperation) と同じ規則で読める引数だけを fields にする。
-	details := approvalRemediation(server, domain.ResourceAccessRule{}, detailType, in)
+	details := approvalRemediation(server, oauthdomain.ResourceAccessRule{}, detailType, in)
 	operationDigest := approvaldomain.OperationStartDigest(binding, digest)
 	rec := &approvaldomain.ApprovalRequest{
 		ID: id, TenantID: tenantports.TenantID(ctx), ClientID: token.ClientID, AgentID: optionalPointer(token.AgentID), UserID: token.Sub,
@@ -129,7 +129,7 @@ func startApproval(
 	}
 	switch outcome {
 	case approvalports.StartLimited:
-		decision := denyResourceAccess(domain.ReasonApprovalRequestLimitExceeded)
+		decision := denyResourceAccess(oauthdomain.ReasonApprovalRequestLimitExceeded)
 		return startedApprovalOutcome{deny: &decision}, nil
 	case approvalports.StartCreated:
 		notifyStartedApproval(ctx, deps, stored, approvalURI(deps, stored.ID))
@@ -138,7 +138,7 @@ func startApproval(
 }
 
 func pendingApproval(deps ResourceAccessDeps, rec *approvaldomain.ApprovalRequest) (startedApprovalOutcome, error) {
-	decision := denyResourceAccess(domain.ReasonApprovalPending)
+	decision := denyResourceAccess(oauthdomain.ReasonApprovalPending)
 	decision.StartedApproval = &StartedApproval{ID: rec.ID, Status: "pending", ExpiresAt: rec.ExpiresAt, URI: approvalURI(deps, rec.ID)}
 	return startedApprovalOutcome{deny: &decision}, nil
 }

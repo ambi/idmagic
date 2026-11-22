@@ -28,7 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/sharedsignals"
 
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
-	sharedsignalsports "github.com/ambi/idmagic/backend/sharedsignals/ports"
+	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	"github.com/ambi/idmagic/backend/signingkeys"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -353,10 +353,10 @@ func TestWorkerDisableUserStepStopsTheAgentsTheUserOwns(t *testing.T) {
 type revocationFixture struct {
 	deps     *bootstrap.Dependencies
 	sink     *recordingSink
-	epochs   sharedsignalsports.AgentRevocationEpochRepository
-	streams  sharedsignalsports.SsfStreamRepository
-	configs  sharedsignalsports.SsfTransmitterConfigRepository
-	delivery sharedsignalsports.SecurityEventDeliveryRepository
+	epochs   ssports.AgentRevocationEpochRepository
+	streams  ssports.SsfStreamRepository
+	configs  ssports.SsfTransmitterConfigRepository
+	delivery ssports.SecurityEventDeliveryRepository
 	agentIDs []string
 }
 

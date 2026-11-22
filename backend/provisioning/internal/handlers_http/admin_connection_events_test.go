@@ -17,9 +17,9 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	provisioninghttp "github.com/ambi/idmagic/backend/provisioning/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -51,7 +51,7 @@ func TestAdminConnectionAPIEmitsLifecycleEvents(t *testing.T) {
 			Sessions:   authentication.Module{AuthnResolver: authentication.DemoHeaderResolver{}}.SessionAuthentications(),
 		},
 		ConnectionRepo: connections,
-		NewTargetClient: func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error) {
+		NewTargetClient: func(*provisioningdomain.ProvisioningConnection, string) (provisioningports.ProvisioningTargetClient, error) {
 			return discoveryTarget{}, nil
 		},
 	})

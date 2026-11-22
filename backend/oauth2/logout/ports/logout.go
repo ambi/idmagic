@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
 )
 
 type ClientSessionStore interface {
-	Upsert(ctx context.Context, session *domain.ClientSession) error
-	ListBySid(ctx context.Context, tenantID, sid string) ([]*domain.ClientSession, error)
+	Upsert(ctx context.Context, session *logoutdomain.ClientSession) error
+	ListBySid(ctx context.Context, tenantID, sid string) ([]*logoutdomain.ClientSession, error)
 }
 
 type LogoutNotificationStore interface {
-	Save(ctx context.Context, notification *domain.LogoutNotification) error
-	FindByID(ctx context.Context, tenantID, id string) (*domain.LogoutNotification, error)
+	Save(ctx context.Context, notification *logoutdomain.LogoutNotification) error
+	FindByID(ctx context.Context, tenantID, id string) (*logoutdomain.LogoutNotification, error)
 }
 
 type LogoutTokenInput struct {

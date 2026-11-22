@@ -5,18 +5,18 @@ import (
 	"strings"
 	"time"
 
-	authndomain "github.com/ambi/idmagic/backend/authentication/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // LoginPendingPurpose は AuthenticationContext.PendingPurpose と型を共有するため、
 // context ルートの共有 domain に定義がある (authentication_context.go)。
-type LoginPendingPurpose = authndomain.LoginPendingPurpose
+type LoginPendingPurpose = authdomain.LoginPendingPurpose
 
 const (
-	LoginPendingNone       = authndomain.LoginPendingNone
-	LoginPendingChallenge  = authndomain.LoginPendingChallenge
-	LoginPendingEnrollment = authndomain.LoginPendingEnrollment
+	LoginPendingNone       = authdomain.LoginPendingNone
+	LoginPendingChallenge  = authdomain.LoginPendingChallenge
+	LoginPendingEnrollment = authdomain.LoginPendingEnrollment
 )
 
 type LoginSession struct {
@@ -82,7 +82,7 @@ func (s LoginSession) Validate() error {
 	// 語彙の外の値は他の違反より先に、値を名指して拒否する。拒否が何を拒否したのか
 	// 言えることは、認証要素を足す側にとって「amr が不正」より役に立つ
 	// (RFC8176-AMR-VOCABULARY)。
-	if unknown := authndomain.UnknownAMRValues(s.AMR); len(unknown) > 0 {
+	if unknown := authdomain.UnknownAMRValues(s.AMR); len(unknown) > 0 {
 		return fmt.Errorf("amr holds values outside the declared vocabulary: %s", strings.Join(unknown, ", "))
 	}
 	return spec.All(

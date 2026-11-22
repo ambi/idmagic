@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsmetrics "github.com/ambi/idmagic/backend/jobs/internal/metrics_prometheus"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
@@ -16,12 +16,12 @@ import (
 //spec:covers REQ-SYSTEM-001: Worker の /metrics はレーンごとの時間、結果、再試行、キュー深度を保つ。
 func TestWorkerJobMetricsPreserveLaneLabelsAndValues(t *testing.T) {
 	for _, tc := range []struct {
-		lane  domain.ExecutionLane
+		lane  jobsdomain.ExecutionLane
 		label string
 	}{
-		{domain.LaneLatencySensitive, "latency_sensitive"},
-		{domain.LaneDefault, "default"},
-		{domain.LaneBulk, "bulk"},
+		{jobsdomain.LaneLatencySensitive, "latency_sensitive"},
+		{jobsdomain.LaneDefault, "default"},
+		{jobsdomain.LaneBulk, "bulk"},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
 			m, err := jobsmetrics.NewMetrics("worker-test", "test")

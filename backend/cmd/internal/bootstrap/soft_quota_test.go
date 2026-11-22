@@ -14,7 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 //spec:covers REQ-TENANCY-048: 保持期限バッチが実データをテナント別に計数し、Hard の使用量を保ち、Soft の超過だけを正式な監査経路へ送る。
@@ -24,7 +24,7 @@ func TestRetentionSweepReconcilesSoftQuotas(t *testing.T) {
 	sink := &recordingEventSink{}
 	deps := &Dependencies{Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
 	for _, id := range []string{"tenant-a", "tenant-b"} {
-		if err := deps.Tenancy.TenantRepo.Save(ctx, &domain.Tenant{ID: id, Realm: id, Status: domain.TenantStatusActive}); err != nil {
+		if err := deps.Tenancy.TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: id, Realm: id, Status: tenancydomain.TenantStatusActive}); err != nil {
 			t.Fatal(err)
 		}
 		if err := deps.Audit.AuditEventRepo.Append(ctx, &auditports.AuditEventRecord{ID: id, TenantID: id, Type: "TenantCreated", OccurredAt: now}); err != nil {
@@ -39,10 +39,10 @@ func TestRetentionSweepReconcilesSoftQuotas(t *testing.T) {
 	}
 	one, three := 1, 3
 	for _, id := range []string{"tenant-a", "tenant-b"} {
-		if err := deps.Tenancy.QuotaRepo.SetQuota(ctx, id, &domain.TenantQuota{AuditEventsRetained: &one, ExportArtifactsBytes: &three}); err != nil {
+		if err := deps.Tenancy.QuotaRepo.SetQuota(ctx, id, &tenancydomain.TenantQuota{AuditEventsRetained: &one, ExportArtifactsBytes: &three}); err != nil {
 			t.Fatal(err)
 		}
-		if err := deps.Tenancy.QuotaRepo.CheckAndIncrement(ctx, id, domain.ResourceGroups, 2); err != nil {
+		if err := deps.Tenancy.QuotaRepo.CheckAndIncrement(ctx, id, tenancydomain.ResourceGroups, 2); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -104,10 +104,10 @@ func TestRetentionSweepKeepsUsageWhenMeasurementFails(t *testing.T) {
 	sink := &recordingEventSink{}
 	deps := &Dependencies{Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
 	for _, id := range []string{"tenant-a", "tenant-b"} {
-		if err := deps.Tenancy.TenantRepo.Save(ctx, &domain.Tenant{ID: id, Realm: id, Status: domain.TenantStatusActive}); err != nil {
+		if err := deps.Tenancy.TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: id, Realm: id, Status: tenancydomain.TenantStatusActive}); err != nil {
 			t.Fatal(err)
 		}
-		if err := deps.Tenancy.QuotaRepo.SetSoftUsage(ctx, id, domain.SoftQuotaUsage{AuditEventsRetained: 12, ExportArtifactsBytes: 34}); err != nil {
+		if err := deps.Tenancy.QuotaRepo.SetSoftUsage(ctx, id, tenancydomain.SoftQuotaUsage{AuditEventsRetained: 12, ExportArtifactsBytes: 34}); err != nil {
 			t.Fatal(err)
 		}
 	}

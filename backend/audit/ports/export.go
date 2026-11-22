@@ -6,18 +6,18 @@ import (
 	"io"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/domain"
+	auditdomain "github.com/ambi/idmagic/backend/audit/domain"
 )
 
 var ErrExportArtifactNotFound = errors.New("audit export artifact not found")
 
 type ExportParams struct {
-	Query       AuditEventQuery     `json:"query"`
-	NoMatch     bool                `json:"no_match"`
-	RequestedBy string              `json:"requested_by"`
-	RequestedAt time.Time           `json:"requested_at"`
-	Format      string              `json:"format"`
-	Policy      domain.ExportPolicy `json:"policy"`
+	Query       AuditEventQuery          `json:"query"`
+	NoMatch     bool                     `json:"no_match"`
+	RequestedBy string                   `json:"requested_by"`
+	RequestedAt time.Time                `json:"requested_at"`
+	Format      string                   `json:"format"`
+	Policy      auditdomain.ExportPolicy `json:"policy"`
 }
 
 type ExportArtifact struct {

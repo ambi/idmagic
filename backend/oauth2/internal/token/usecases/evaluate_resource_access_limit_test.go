@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	ratelimitmemory "github.com/ambi/idmagic/backend/shared/ratelimit/db_memory"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -41,27 +41,27 @@ func (l *recordingLimiter) AllowWithin(ctx context.Context, policyID, key string
 	return l.RateLimiter.AllowWithin(ctx, policyID, key, config, now)
 }
 
-func limitedRule(limits ...domain.ResourceAccessLimit) domain.ResourceAccessRule {
+func limitedRule(limits ...oauthdomain.ResourceAccessLimit) oauthdomain.ResourceAccessRule {
 	rule := evalRule
 	rule.Limits = limits
 	return rule
 }
 
-func limitAgentToken(agentID string) *ports.IntrospectionResult {
+func limitAgentToken(agentID string) *oauthports.IntrospectionResult {
 	token := evalAgentToken()
 	token.AgentID = agentID
 	return token
 }
 
 func evaluateLimited(
-	t *testing.T, limiter rlports.RateLimiter, rule domain.ResourceAccessRule, token *ports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
-) (ResourceAccessDecision, *domain.ResourceAccessEvaluated) {
+	t *testing.T, limiter rlports.RateLimiter, rule oauthdomain.ResourceAccessRule, token *oauthports.IntrospectionResult, in ResourceAccessRequest, now time.Time,
+) (ResourceAccessDecision, *oauthdomain.ResourceAccessEvaluated) {
 	t.Helper()
-	var event *domain.ResourceAccessEvaluated
+	var event *oauthdomain.ResourceAccessEvaluated
 	decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
-		Servers: evalServer(t, rule), Tokens: evalTokens{result: token}, Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
+		Servers: evalServer(t, rule), Tokens: evalTokens{result: token}, Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}},
 		Limiter: limiter,
-		Emit:    func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+		Emit:    func(recorded spec.DomainEvent) { event, _ = recorded.(*oauthdomain.ResourceAccessEvaluated) },
 	}, in, now)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func evaluateLimited(
 
 //spec:covers REQ-OAUTH2-062: 上限の値、その次、窓の後の境界と、単位ごとに別の回数を持つこと
 func TestResourceAccessLimitBoundaryAndUnits(t *testing.T) {
-	agentLimit := domain.ResourceAccessLimit{By: []domain.ResourceAccessLimitUnit{domain.ResourceAccessLimitByAgent}, MaxRequests: 2, WindowSeconds: 60}
+	agentLimit := oauthdomain.ResourceAccessLimit{By: []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByAgent}, MaxRequests: 2, WindowSeconds: 60}
 	rule := limitedRule(agentLimit)
 	limiter := newRecordingLimiter()
 	a1, a2 := limitAgentToken("a1"), limitAgentToken("a2")
@@ -81,7 +81,7 @@ func TestResourceAccessLimitBoundaryAndUnits(t *testing.T) {
 		}
 	}
 	decision, event := evaluateLimited(t, limiter, rule, a1, evalRequest(), limitNow.Add(59*time.Second))
-	if decision.Permitted || !slices.Equal(decision.Reasons, []string{domain.ReasonLimitExceeded}) || decision.Scope != "" {
+	if decision.Permitted || !slices.Equal(decision.Reasons, []string{oauthdomain.ReasonLimitExceeded}) || decision.Scope != "" {
 		t.Fatalf("超過: %+v", decision)
 	}
 	if !slices.Equal(event.ExceededLimitBy, agentLimit.By) || event.ExceededLimitWindowSeconds != 60 || event.AgentID != "a1" {
@@ -94,7 +94,7 @@ func TestResourceAccessLimitBoundaryAndUnits(t *testing.T) {
 		t.Fatalf("窓の後: %+v", decision)
 	}
 
-	perResource := limitedRule(domain.ResourceAccessLimit{By: []domain.ResourceAccessLimitUnit{domain.ResourceAccessLimitByResource}, MaxRequests: 1, WindowSeconds: 60})
+	perResource := limitedRule(oauthdomain.ResourceAccessLimit{By: []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByResource}, MaxRequests: 1, WindowSeconds: 60})
 	limiter = newRecordingLimiter()
 	first, second := evalRequest(), evalRequest()
 	second.ResourceID = "d2"
@@ -105,7 +105,7 @@ func TestResourceAccessLimitBoundaryAndUnits(t *testing.T) {
 		t.Fatalf("資源 2 は別の回数を持つ: %+v", decision)
 	}
 
-	whole := limitedRule(domain.ResourceAccessLimit{MaxRequests: 1, WindowSeconds: 60})
+	whole := limitedRule(oauthdomain.ResourceAccessLimit{MaxRequests: 1, WindowSeconds: 60})
 	limiter = newRecordingLimiter()
 	if decision, _ := evaluateLimited(t, limiter, whole, a1, first, limitNow); !decision.Permitted {
 		t.Fatalf("全体 1 回目: %+v", decision)
@@ -117,7 +117,7 @@ func TestResourceAccessLimitBoundaryAndUnits(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-062: 単位の値がない評価にその上限を適用しないこと
 func TestResourceAccessLimitSkipsUnitWithoutValue(t *testing.T) {
-	userLimit := domain.ResourceAccessLimit{By: []domain.ResourceAccessLimitUnit{domain.ResourceAccessLimitByUser}, MaxRequests: 1, WindowSeconds: 60}
+	userLimit := oauthdomain.ResourceAccessLimit{By: []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByUser}, MaxRequests: 1, WindowSeconds: 60}
 	limiter := newRecordingLimiter()
 	for range 3 {
 		if decision, _ := evaluateLimited(t, limiter, limitedRule(userLimit), limitAgentToken("a1"), evalRequest(), limitNow); !decision.Permitted {
@@ -133,24 +133,24 @@ func TestResourceAccessLimitSkipsUnitWithoutValue(t *testing.T) {
 //
 //spec:covers REQ-OAUTH2-062: ほかの理由で不許可の評価は上限の回数を数えないこと
 func TestResourceAccessLimitCountsOnlyOtherwisePermitted(t *testing.T) {
-	limits := []domain.ResourceAccessLimit{{By: []domain.ResourceAccessLimitUnit{domain.ResourceAccessLimitByAgent}, MaxRequests: 1, WindowSeconds: 60}}
+	limits := []oauthdomain.ResourceAccessLimit{{By: []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByAgent}, MaxRequests: 1, WindowSeconds: 60}}
 	withDetail := limitedRule(limits...)
 	withDetail.AuthorizationDetailType = "payment"
 	denied := limitedRule(limits...)
-	denied.Condition = &domain.ResourceAccessCondition{DenyWhen: "true"}
+	denied.Condition = &oauthdomain.ResourceAccessCondition{DenyWhen: "true"}
 	limiter := newRecordingLimiter()
 	inactive := limitAgentToken("a1")
 	inactive.Active = false
 	for name, attempt := range map[string]struct {
-		rule      domain.ResourceAccessRule
-		token     *ports.IntrospectionResult
-		relations policyports.RelationDecision
+		rule      oauthdomain.ResourceAccessRule
+		token     *oauthports.IntrospectionResult
+		relations accessports.RelationDecision
 		reason    string
 	}{
-		"トークン": {limitedRule(limits...), inactive, policyports.RelationDecision{Permitted: true}, domain.ReasonTokenRejected},
-		"明細":   {withDetail, limitAgentToken("a1"), policyports.RelationDecision{Permitted: true}, domain.ReasonAuthorizationDetailMismatch},
-		"関係":   {limitedRule(limits...), limitAgentToken("a1"), policyports.RelationDecision{Reasons: []string{"no_relation"}}, "no_relation"},
-		"条件":   {denied, limitAgentToken("a1"), policyports.RelationDecision{Permitted: true}, domain.ReasonConditionDenied},
+		"トークン": {limitedRule(limits...), inactive, accessports.RelationDecision{Permitted: true}, oauthdomain.ReasonTokenRejected},
+		"明細":   {withDetail, limitAgentToken("a1"), accessports.RelationDecision{Permitted: true}, oauthdomain.ReasonAuthorizationDetailMismatch},
+		"関係":   {limitedRule(limits...), limitAgentToken("a1"), accessports.RelationDecision{Reasons: []string{"no_relation"}}, "no_relation"},
+		"条件":   {denied, limitAgentToken("a1"), accessports.RelationDecision{Permitted: true}, oauthdomain.ReasonConditionDenied},
 	} {
 		decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
 			Servers: evalServer(t, attempt.rule), Tokens: evalTokens{result: attempt.token}, Relations: &evalRelations{decision: attempt.relations}, Limiter: limiter,
@@ -169,11 +169,11 @@ func TestResourceAccessLimitCountsOnlyOtherwisePermitted(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-062: 宣言の順序によらず狭い単位と短い窓から数え、超えた上限で止めること
 func TestResourceAccessLimitOrderProtectsSharedBudget(t *testing.T) {
-	byAgent := []domain.ResourceAccessLimitUnit{domain.ResourceAccessLimitByAgent}
+	byAgent := []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByAgent}
 	rule := limitedRule(
-		domain.ResourceAccessLimit{MaxRequests: 100, WindowSeconds: 30},
-		domain.ResourceAccessLimit{By: byAgent, MaxRequests: 100, WindowSeconds: 3600},
-		domain.ResourceAccessLimit{By: byAgent, MaxRequests: 1, WindowSeconds: 10},
+		oauthdomain.ResourceAccessLimit{MaxRequests: 100, WindowSeconds: 30},
+		oauthdomain.ResourceAccessLimit{By: byAgent, MaxRequests: 100, WindowSeconds: 3600},
+		oauthdomain.ResourceAccessLimit{By: byAgent, MaxRequests: 1, WindowSeconds: 10},
 	)
 	limiter := newRecordingLimiter()
 	if decision, _ := evaluateLimited(t, limiter, rule, limitAgentToken("a1"), evalRequest(), limitNow); !decision.Permitted {
@@ -191,13 +191,13 @@ func TestResourceAccessLimitOrderProtectsSharedBudget(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-062: 上限の回数を読み書きできないか未配線の評価を許可しないこと
 func TestResourceAccessLimitFailsClosed(t *testing.T) {
-	rule := limitedRule(domain.ResourceAccessLimit{MaxRequests: 5, WindowSeconds: 60})
+	rule := limitedRule(oauthdomain.ResourceAccessLimit{MaxRequests: 5, WindowSeconds: 60})
 	broken := newRecordingLimiter()
 	broken.err = errors.New("counter unavailable")
 	for name, limiter := range map[string]rlports.RateLimiter{"障害": broken, "未配線": nil} {
 		decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
 			Servers: evalServer(t, rule), Tokens: evalTokens{result: limitAgentToken("a1")},
-			Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Limiter: limiter,
+			Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}}, Limiter: limiter,
 		}, evalRequest(), limitNow)
 		if err == nil || decision.Permitted {
 			t.Fatalf("%s: %+v %v", name, decision, err)
@@ -211,7 +211,7 @@ func TestResourceAccessLimitFailsClosed(t *testing.T) {
 //spec:covers REQ-OAUTH2-062: 並行した評価の許可の合計が上限と等しいこと
 func TestResourceAccessLimitConcurrentEvaluations(t *testing.T) {
 	const limit, attempts = 7, 64
-	rule := limitedRule(domain.ResourceAccessLimit{By: []domain.ResourceAccessLimitUnit{domain.ResourceAccessLimitByAgent}, MaxRequests: limit, WindowSeconds: 60})
+	rule := limitedRule(oauthdomain.ResourceAccessLimit{By: []oauthdomain.ResourceAccessLimitUnit{oauthdomain.ResourceAccessLimitByAgent}, MaxRequests: limit, WindowSeconds: 60})
 	servers := evalServer(t, rule)
 	limiter := newRecordingLimiter()
 	permitted := make(chan bool, attempts)
@@ -220,7 +220,7 @@ func TestResourceAccessLimitConcurrentEvaluations(t *testing.T) {
 		wg.Go(func() {
 			decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
 				Servers: servers, Tokens: evalTokens{result: limitAgentToken("a1")},
-				Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Limiter: limiter,
+				Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}}, Limiter: limiter,
 			}, evalRequest(), limitNow)
 			if err != nil {
 				t.Error(err)
@@ -246,7 +246,7 @@ func TestResourceAccessLimitConcurrentEvaluations(t *testing.T) {
 //spec:covers REQ-OAUTH2-062, REQ-OAUTH2-065: 超過で使用権を記録せず、承認の不一致で回数を数えないこと
 func TestResourceAccessLimitKeepsApprovalUnclaimed(t *testing.T) {
 	rule := approvedRule()
-	rule.Limits = []domain.ResourceAccessLimit{{MaxRequests: 1, WindowSeconds: 10}}
+	rule.Limits = []oauthdomain.ResourceAccessLimit{{MaxRequests: 1, WindowSeconds: 10}}
 	now := time.Now().UTC()
 	store := approvedStore(t, now)
 	limiter := newRecordingLimiter()
@@ -254,7 +254,7 @@ func TestResourceAccessLimitKeepsApprovalUnclaimed(t *testing.T) {
 		t.Helper()
 		decision, err := EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
 			Servers: evalServer(t, rule), Tokens: evalTokens{result: approvedToken()},
-			Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
+			Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}},
 			Approvals: store, Limiter: limiter,
 		}, in, at)
 		if err != nil {
@@ -263,7 +263,7 @@ func TestResourceAccessLimitKeepsApprovalUnclaimed(t *testing.T) {
 		return decision
 	}
 	matching := approvedRequest("k1", `{"amount":100}`)
-	if d := evaluate(approvedRequest("k1", `{"amount":999}`), now); !slices.Equal(d.Reasons, []string{domain.ReasonApprovedOperationMismatch}) {
+	if d := evaluate(approvedRequest("k1", `{"amount":999}`), now); !slices.Equal(d.Reasons, []string{oauthdomain.ReasonApprovedOperationMismatch}) {
 		t.Fatalf("不一致: %+v", d)
 	}
 	if len(limiter.windows) != 0 {
@@ -274,7 +274,7 @@ func TestResourceAccessLimitKeepsApprovalUnclaimed(t *testing.T) {
 	if _, err := limiter.AllowWithin(evalTenantContext(), resourceAccessLimitPolicyID, limitKeyForTest(t, rule), rlports.RateLimitPolicyConfig{MaxRequests: 1, WindowSeconds: 10}, now); err != nil {
 		t.Fatal(err)
 	}
-	if d := evaluate(matching, now); !slices.Equal(d.Reasons, []string{domain.ReasonLimitExceeded}) {
+	if d := evaluate(matching, now); !slices.Equal(d.Reasons, []string{oauthdomain.ReasonLimitExceeded}) {
 		t.Fatalf("超過: %+v", d)
 	}
 	stored, err := store.FindByID(evalTenantContext(), approvedToken().ApprovalRequestID)
@@ -289,7 +289,7 @@ func TestResourceAccessLimitKeepsApprovalUnclaimed(t *testing.T) {
 	}
 	// 記録済みの別の鍵は窓の予算を減らさずに拒否する。
 	limiter.windows = nil
-	if d := evaluate(approvedRequest("k3", `{"amount":100}`), now.Add(11*time.Second)); !slices.Equal(d.Reasons, []string{domain.ReasonApprovalAlreadyUsed}) || len(limiter.windows) != 0 {
+	if d := evaluate(approvedRequest("k3", `{"amount":100}`), now.Add(11*time.Second)); !slices.Equal(d.Reasons, []string{oauthdomain.ReasonApprovalAlreadyUsed}) || len(limiter.windows) != 0 {
 		t.Fatalf("記録済みの別の鍵: %+v %v", d, limiter.windows)
 	}
 }
@@ -298,7 +298,7 @@ func TestResourceAccessLimitKeepsApprovalUnclaimed(t *testing.T) {
 //
 //spec:covers REQ-OAUTH2-062: 超過の不許可が上限の値を応答へ語らないこと
 func TestResourceAccessLimitDecisionCarriesNoLimitValues(t *testing.T) {
-	rule := limitedRule(domain.ResourceAccessLimit{MaxRequests: 1, WindowSeconds: 77})
+	rule := limitedRule(oauthdomain.ResourceAccessLimit{MaxRequests: 1, WindowSeconds: 77})
 	limiter := newRecordingLimiter()
 	evaluateLimited(t, limiter, rule, limitAgentToken("a1"), evalRequest(), limitNow)
 	decision, _ := evaluateLimited(t, limiter, rule, limitAgentToken("a1"), evalRequest(), limitNow)
@@ -307,14 +307,14 @@ func TestResourceAccessLimitDecisionCarriesNoLimitValues(t *testing.T) {
 	}
 }
 
-func limitKeyForTest(t *testing.T, rule domain.ResourceAccessRule) string {
+func limitKeyForTest(t *testing.T, rule oauthdomain.ResourceAccessRule) string {
 	t.Helper()
 	servers := evalServer(t, rule)
 	server, err := servers.FindByClientID(evalTenantContext(), evalTenant, evalClient)
 	if err != nil || server == nil {
 		t.Fatalf("server: %v %v", server, err)
 	}
-	key, ok := resourceAccessLimitKey(server, rule, rule.Limits[0], domain.ResourceAccessLimitSubject{}, evalTenant)
+	key, ok := resourceAccessLimitKey(server, rule, rule.Limits[0], oauthdomain.ResourceAccessLimitSubject{}, evalTenant)
 	if !ok {
 		t.Fatal("key")
 	}

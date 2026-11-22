@@ -9,7 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -26,14 +26,14 @@ func TestTrustedDeviceRepositoryRoundTripsAndRotates(t *testing.T) {
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
 
-	device, cookie, err := domain.NewTrustedDevice(tenant.ID, user.ID, "Chrome / macOS", testMaxAge, now, entropy.Crypto())
+	device, cookie, err := trusteddevicedomain.NewTrustedDevice(tenant.ID, user.ID, "Chrome / macOS", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := repo.Save(ctx, device); err != nil {
 		t.Fatal(err)
 	}
-	_, verifier, _ := domain.ParseCookie(cookie)
+	_, verifier, _ := trusteddevicedomain.ParseCookie(cookie)
 
 	found, err := repo.FindBySelector(ctx, tenant.ID, device.Selector)
 	if err != nil || found == nil {
@@ -72,7 +72,7 @@ func TestTrustedDeviceRepositoryScopesSelectorToTheTenant(t *testing.T) {
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
 
-	device, _, err := domain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now, entropy.Crypto())
+	device, _, err := trusteddevicedomain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestTrustedDeviceRepositoryRevokesAllOnce(t *testing.T) {
 	ctx := context.Background()
 
 	for range 2 {
-		device, _, err := domain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now, entropy.Crypto())
+		device, _, err := trusteddevicedomain.NewTrustedDevice(tenant.ID, user.ID, "", testMaxAge, now, entropy.Crypto())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,7 +132,7 @@ func TestTrustedDeviceRepositoryFindByIDScopesToTheOwner(t *testing.T) {
 	now := pgfixtures.TestClock()
 	ctx := context.Background()
 
-	device, _, err := domain.NewTrustedDevice(tenant.ID, owner.ID, "", testMaxAge, now, entropy.Crypto())
+	device, _, err := trusteddevicedomain.NewTrustedDevice(tenant.ID, owner.ID, "", testMaxAge, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}

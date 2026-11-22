@@ -11,18 +11,18 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/internal/group/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
 func TestGetUserAttributeSchemaReturnsEmptyForUndefinedTenant(t *testing.T) {
 	repo := memory.NewTenantUserAttributeSchemaRepository()
-	schema, err := GetUserAttributeSchema(context.Background(), repo, domain.DefaultTenantID)
+	schema, err := GetUserAttributeSchema(context.Background(), repo, tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if schema == nil || schema.TenantID != domain.DefaultTenantID || len(schema.Attributes) != 0 {
+	if schema == nil || schema.TenantID != tenancydomain.DefaultTenantID || len(schema.Attributes) != 0 {
 		t.Fatalf("expected empty schema, got %#v", schema)
 	}
 }
@@ -60,14 +60,14 @@ func TestUpdateUserAttributeSchemaPersistsCustomDefs(t *testing.T) {
 	defs := []userdomain.UserAttributeDef{
 		{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed, ClaimName: new("region")},
 	}
-	saved, err := UpdateUserAttributeSchema(ctx, repo, nil, domain.DefaultTenantID, defs, time.Now().UTC())
+	saved, err := UpdateUserAttributeSchema(ctx, repo, nil, tenancydomain.DefaultTenantID, defs, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("update failed: %v", err)
 	}
 	if len(saved.Attributes) != 1 || saved.Attributes[0].Key != "region" {
 		t.Fatalf("unexpected saved schema: %#v", saved)
 	}
-	reloaded, err := GetUserAttributeSchema(ctx, repo, domain.DefaultTenantID)
+	reloaded, err := GetUserAttributeSchema(ctx, repo, tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
 	defs := []userdomain.UserAttributeDef{
 		{Key: "nickname", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityClaimExposed},
 	}
-	if _, err := UpdateUserAttributeSchema(context.Background(), repo, nil, domain.DefaultTenantID, defs, time.Now().UTC()); !errors.Is(err, ErrInvalidUserAttributeSchema) {
+	if _, err := UpdateUserAttributeSchema(context.Background(), repo, nil, tenancydomain.DefaultTenantID, defs, time.Now().UTC()); !errors.Is(err, ErrInvalidUserAttributeSchema) {
 		t.Fatalf("expected ErrInvalidUserAttributeSchema, got %v", err)
 	}
 }
@@ -89,12 +89,12 @@ func TestUpdateUserAttributeSchemaRejectsBuiltinCollision(t *testing.T) {
 func TestUpdateUserAttributeSchemaAllowsEmptyClear(t *testing.T) {
 	repo := memory.NewTenantUserAttributeSchemaRepository()
 	ctx := context.Background()
-	if _, err := UpdateUserAttributeSchema(ctx, repo, nil, domain.DefaultTenantID,
+	if _, err := UpdateUserAttributeSchema(ctx, repo, nil, tenancydomain.DefaultTenantID,
 		[]userdomain.UserAttributeDef{{Key: "region", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityAdminReadable}},
 		time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	cleared, err := UpdateUserAttributeSchema(ctx, repo, nil, domain.DefaultTenantID, nil, time.Now().UTC())
+	cleared, err := UpdateUserAttributeSchema(ctx, repo, nil, tenancydomain.DefaultTenantID, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("clear failed: %v", err)
 	}

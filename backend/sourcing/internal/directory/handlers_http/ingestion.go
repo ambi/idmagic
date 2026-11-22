@@ -9,9 +9,9 @@ import (
 	"github.com/labstack/echo/v5"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
 )
 
 type runResponse struct {
@@ -24,7 +24,7 @@ type runResponse struct {
 }
 
 type protectionResponse struct {
-	domain.DisableThresholds
+	directorydomain.DisableThresholds
 	CandidateCount int        `json:"candidate_count"`
 	ActiveCount    int        `json:"active_count"`
 	HeldAt         time.Time  `json:"held_at"`
@@ -55,7 +55,7 @@ type failureResponse struct {
 	Error      string `json:"error"`
 }
 
-func runJSON(run domain.IngestionRun) runResponse {
+func runJSON(run directorydomain.IngestionRun) runResponse {
 	r := runResponse{ID: run.ID, Mode: string(run.Mode), Status: string(run.Status), StartedAt: run.StartedAt, CompletedAt: run.CompletedAt}
 	if p := run.Protection; p != nil {
 		r.Protection = &protectionResponse{DisableThresholds: p.Thresholds, CandidateCount: len(p.Candidates), ActiveCount: p.ActiveCount, HeldAt: p.HeldAt, ApprovedAt: p.ApprovedAt, ApprovedBy: p.ApprovedBy, DiscardedAt: p.DiscardedAt}
@@ -63,7 +63,7 @@ func runJSON(run domain.IngestionRun) runResponse {
 	return r
 }
 
-func runSummaryJSON(run domain.IngestionRun) runSummaryResponse {
+func runSummaryJSON(run directorydomain.IngestionRun) runSummaryResponse {
 	c := run.Counts
 	return runSummaryResponse{runResponse: runJSON(run), Counts: countsResponse{
 		Batches: c.Batches, Items: c.Items, Created: c.Created, Updated: c.Updated,
@@ -73,7 +73,7 @@ func runSummaryJSON(run domain.IngestionRun) runSummaryResponse {
 
 // userItemRequest は項目の本文である。enabled を省いた項目は有効として扱う。
 type userItemRequest struct {
-	domain.UserItem
+	directorydomain.UserItem
 	Enabled *bool `json:"enabled"`
 }
 
@@ -89,7 +89,7 @@ func (h handler) startIngestionRun(c *echo.Context) error {
 		return writeInvalidIngestionRequest(c, "invalid ingestion run request")
 	}
 	run, err := h.deps.Ingestion.StartRun(c.Request().Context(), support.RequestTenantID(c), connector.ID, request.Mode)
-	if errors.Is(err, domain.ErrInvalidMode) {
+	if errors.Is(err, directorydomain.ErrInvalidMode) {
 		return writeInvalidIngestionRequest(c, "mode must be full or incremental")
 	}
 	if err != nil {
@@ -110,7 +110,7 @@ func (h handler) sendUserBatch(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
 		return writeInvalidIngestionRequest(c, "invalid user batch")
 	}
-	items := make([]domain.UserItem, len(request.Items))
+	items := make([]directorydomain.UserItem, len(request.Items))
 	for n, item := range request.Items {
 		items[n] = item.UserItem
 		items[n].Enabled = item.Enabled == nil || *item.Enabled
@@ -189,17 +189,17 @@ func (h handler) administeredConnector(c *echo.Context) (string, bool, error) {
 
 func writeIngestionError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, ports.ErrRunBusy):
+	case errors.Is(err, directoryinternalports.ErrRunBusy):
 		return support.WriteProblem(c, http.StatusConflict, "ingestion_run_busy", err.Error())
-	case errors.Is(err, domain.ErrInvalidBatch):
+	case errors.Is(err, directorydomain.ErrInvalidBatch):
 		return writeInvalidIngestionRequest(c, err.Error())
-	case errors.Is(err, usecases.ErrRunNotFound):
+	case errors.Is(err, directoryusecases.ErrRunNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "ingestion_run_not_found", "ingestion run not found")
-	case errors.Is(err, usecases.ErrRunClosed):
+	case errors.Is(err, directoryusecases.ErrRunClosed):
 		return support.WriteProblem(c, http.StatusConflict, "ingestion_run_closed", "the ingestion run no longer accepts this request")
-	case errors.Is(err, usecases.ErrRunIncomplete):
+	case errors.Is(err, directoryusecases.ErrRunIncomplete):
 		return support.WriteProblem(c, http.StatusConflict, "ingestion_run_incomplete", err.Error())
-	case errors.Is(err, usecases.ErrBatchConflict):
+	case errors.Is(err, directoryusecases.ErrBatchConflict):
 		return support.WriteProblem(c, http.StatusConflict, "batch_conflict", err.Error())
 	default:
 		return err
@@ -217,8 +217,8 @@ func (h handler) updateThresholds(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &request); err != nil || request.Count == nil || request.Percent == nil {
 		return writeInvalidIngestionRequest(c, "both deletion thresholds are required")
 	}
-	connector, err := h.deps.Service.UpdateThresholds(c.Request().Context(), support.RequestTenantID(c), c.Param("connector_id"), domain.DisableThresholds{Count: *request.Count, Percent: *request.Percent})
-	if errors.Is(err, domain.ErrInvalidThresholds) {
+	connector, err := h.deps.Service.UpdateThresholds(c.Request().Context(), support.RequestTenantID(c), c.Param("connector_id"), directorydomain.DisableThresholds{Count: *request.Count, Percent: *request.Percent})
+	if errors.Is(err, directorydomain.ErrInvalidThresholds) {
 		return writeInvalidIngestionRequest(c, err.Error())
 	}
 	if err != nil {
@@ -242,7 +242,7 @@ func (h handler) decideRun(c *echo.Context, approve bool) error {
 	if err != nil {
 		return writeAdminError(c, err)
 	}
-	var run domain.IngestionRun
+	var run directorydomain.IngestionRun
 	if approve {
 		run, err = h.deps.Ingestion.ApproveRun(c.Request().Context(), tenantID, connector.ID, c.Param("run_id"), actor.ID)
 	} else {

@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 )
 
 // SubjectDirectory は Application に割り当てられる主体がテナント内に実在するかを照合する。
@@ -12,7 +12,7 @@ type SubjectDirectory interface {
 	SubjectExists(
 		ctx context.Context,
 		tenantID string,
-		subjectType domain.AssignmentSubjectType,
+		subjectType appdomain.AssignmentSubjectType,
 		subjectID string,
 	) (bool, error)
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
 )
 
 //spec:covers REQ-AUTHENTICATION-033: 全種別が返り、必須の種別は mandatory かつ常に有効である。
@@ -18,11 +18,11 @@ func TestGetPreferencesReturnsEveryCategoryWithItsMandatoryFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != len(domain.Categories()) {
+	if len(got) != len(securitynotificationdomain.Categories()) {
 		t.Fatalf("returned %d categories, want the whole catalog", len(got))
 	}
 	for i, preference := range got {
-		if preference.Category != domain.Categories()[i] {
+		if preference.Category != securitynotificationdomain.Categories()[i] {
 			t.Errorf("position %d = %s, want the catalog order", i, preference.Category)
 		}
 		if !preference.Enabled {
@@ -42,8 +42,8 @@ func TestUpdatePreferencesRejectsMandatoryCategoriesWithoutPartialApplication(t 
 	ctx := context.Background()
 
 	_, err := UpdatePreferences(ctx, deps, testSub,
-		[]domain.Category{domain.CategoryNewDeviceSignIn, domain.CategoryCredentialChange}, testNow())
-	if !errors.Is(err, domain.ErrMandatoryCategory) {
+		[]securitynotificationdomain.Category{securitynotificationdomain.CategoryNewDeviceSignIn, securitynotificationdomain.CategoryCredentialChange}, testNow())
+	if !errors.Is(err, securitynotificationdomain.ErrMandatoryCategory) {
 		t.Fatalf("err = %v, want ErrMandatoryCategory", err)
 	}
 	stored, err := repo.Find(ctx, testSub)
@@ -62,18 +62,18 @@ func TestUpdatePreferencesReplacesTheDisabledSet(t *testing.T) {
 	ctx := context.Background()
 
 	got, err := UpdatePreferences(ctx, deps, testSub,
-		[]domain.Category{domain.CategoryNewDeviceSignIn, domain.CategorySessionRevoked}, testNow())
+		[]securitynotificationdomain.Category{securitynotificationdomain.CategoryNewDeviceSignIn, securitynotificationdomain.CategorySessionRevoked}, testNow())
 	if err != nil {
 		t.Fatal(err)
 	}
-	enabled := map[domain.Category]bool{}
+	enabled := map[securitynotificationdomain.Category]bool{}
 	for _, preference := range got {
 		enabled[preference.Category] = preference.Enabled
 	}
-	if enabled[domain.CategoryNewDeviceSignIn] || enabled[domain.CategorySessionRevoked] {
+	if enabled[securitynotificationdomain.CategoryNewDeviceSignIn] || enabled[securitynotificationdomain.CategorySessionRevoked] {
 		t.Error("the categories just disabled are still reported as enabled")
 	}
-	if !enabled[domain.CategoryMfaChange] {
+	if !enabled[securitynotificationdomain.CategoryMfaChange] {
 		t.Error("a mandatory category must stay enabled")
 	}
 

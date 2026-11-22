@@ -28,7 +28,7 @@ import (
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -55,8 +55,8 @@ type Deps struct {
 	AuthEventBucketStore    authnports.AuthEventBucketStore
 	TenantRepo              tenantports.TenantRepository
 	PasswordResetTokenStore passwordports.PasswordResetTokenStore
-	EmailSender             sharednotification.EmailSender
-	Notifier                sharednotification.Notifier
+	EmailSender             notificationports.EmailSender
+	Notifier                notificationports.Notifier
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker
 
 	// WebAuthn / Passkey と backup recovery code の self-service 管理 (wi-26)。

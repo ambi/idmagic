@@ -14,24 +14,24 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type RedeemIDJAGDeps struct {
-	ClientRepo          ports.OAuth2ClientRepository
+	ClientRepo          oauthports.OAuth2ClientRepository
 	UserRepo            userports.UserRepository
-	Policies            ports.CrossAppAccessPolicyRepository
-	Trust               ports.IDJAGIssuerTrust
-	ResourceServers     ports.McpResourceServerRepository
-	AuthzDetailTypeRepo ports.AuthorizationDetailTypeRepository
-	Replay              ports.ClientAssertionReplayStore
-	TokenIssuer         ports.TokenIssuer
+	Policies            oauthports.CrossAppAccessPolicyRepository
+	Trust               oauthports.IDJAGIssuerTrust
+	ResourceServers     oauthports.McpResourceServerRepository
+	AuthzDetailTypeRepo oauthports.AuthorizationDetailTypeRepository
+	Replay              oauthports.ClientAssertionReplayStore
+	TokenIssuer         oauthports.TokenIssuer
 	AgentRepo           agentports.AgentRepository
-	Consents            ports.ConsentRepository
+	Consents            oauthports.ConsentRepository
 	Emit                func(spec.DomainEvent)
 }
 
@@ -56,7 +56,7 @@ type RedeemIDJAGResult struct {
 func RedeemIDJAG(ctx context.Context, deps RedeemIDJAGDeps, in RedeemIDJAGInput, now time.Time) (*RedeemIDJAGResult, error) {
 	tenantID := tenantports.TenantID(ctx)
 	reject := func(code, description string) error {
-		emit(deps.Emit, &domain.IdJagRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Stage: idJagStageRedeem, Reason: code})
+		emit(deps.Emit, &oauthdomain.IdJagRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Stage: idJagStageRedeem, Reason: code})
 		return NewOAuthError(code, description)
 	}
 	invalid := func() error { return reject("invalid_grant", "The assertion is invalid.") }
@@ -174,31 +174,31 @@ func RedeemIDJAG(ctx context.Context, deps RedeemIDJAGDeps, in RedeemIDJAGInput,
 	if authTime == 0 {
 		authTime = now.Unix()
 	}
-	token, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
+	token, jti, err := deps.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 		Client: client, Sub: userID, Scopes: scopes, SenderConstraint: sc, AuthTime: authTime,
 		AMR: claims.AMR, ACR: claims.ACR, Audiences: claims.Resources, AuthorizationDetails: details,
 	})
 	if err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.AccessTokenIssued{
+	emit(deps.Emit, &oauthdomain.AccessTokenIssued{
 		At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID, UserID: userID,
 		Scopes: scopes, SenderConstraint: senderConstraintTag(sc),
 	})
 	for _, resource := range claims.Resources {
-		emit(deps.Emit, &domain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: resource, Scopes: scopes})
+		emit(deps.Emit, &oauthdomain.ResourceScopedTokenIssued{At: now, TenantID: tenantID, ClientID: client.ClientID, Resource: resource, Scopes: scopes})
 	}
-	emit(deps.Emit, &domain.IdJagRedeemed{
+	emit(deps.Emit, &oauthdomain.IdJagRedeemed{
 		At: now, TenantID: tenantID, Issuer: issuer, ClientID: client.ClientID, UserID: userID, JTI: claims.JTI,
 	})
 	return &RedeemIDJAGResult{
-		AccessToken: token, TokenType: domain.PresentationTokenType(sc), ExpiresIn: deps.TokenIssuer.AccessTokenTTLSeconds(),
+		AccessToken: token, TokenType: oauthdomain.PresentationTokenType(sc), ExpiresIn: deps.TokenIssuer.AccessTokenTTLSeconds(),
 		Scope: strings.Join(scopes, " "), AuthorizationDetails: details,
 	}, nil
 }
 
 // decideIDJAGBinding は REQ-OAUTH2-071 の表である。第 2 戻り値が空でなければ、その誤りで拒否する。
-func decideIDJAGBinding(cnf *tokens_jose.IDJAGConfirmation, grant spec.GrantType, jkt, x5t string) (*domain.SenderConstraint, string) {
+func decideIDJAGBinding(cnf *tokens_jose.IDJAGConfirmation, grant spec.GrantType, jkt, x5t string) (*oauthdomain.SenderConstraint, string) {
 	const refused, missingProof = "invalid_grant", "invalid_dpop_proof"
 	switch {
 	case cnf == nil:
@@ -218,12 +218,12 @@ func decideIDJAGBinding(cnf *tokens_jose.IDJAGConfirmation, grant spec.GrantType
 		if jkt != cnf.JKT {
 			return nil, refused
 		}
-		return &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt}, ""
+		return &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt}, ""
 	case cnf.X5TS256 != "":
 		if grant != spec.GrantJWTBearer || x5t != cnf.X5TS256 {
 			return nil, refused
 		}
-		return &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: x5t}, ""
+		return &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: x5t}, ""
 	}
 	return nil, refused
 }
@@ -241,7 +241,7 @@ func idJagAccessTokenScopes(requested, policy, client, resources []string) []str
 
 // registeredAuthorizationDetails は登録した型で検証を通る詳細だけを残す。読めない詳細は
 // 権限を広げないよう捨てる。
-func registeredAuthorizationDetails(ctx context.Context, repo ports.AuthorizationDetailTypeRepository, raw json.RawMessage) ([]spec.AuthorizationDetail, error) {
+func registeredAuthorizationDetails(ctx context.Context, repo oauthports.AuthorizationDetailTypeRepository, raw json.RawMessage) ([]spec.AuthorizationDetail, error) {
 	if len(raw) == 0 || repo == nil {
 		return nil, nil
 	}

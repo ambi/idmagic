@@ -8,8 +8,8 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -73,7 +73,7 @@ func ResolveIssuableAgent(ctx context.Context, deps AgentIssuanceDeps, clientID 
 // 応答は Agent の状態や所有者による拒否と同じ invalid_client にし、束縛の有無を外部へ
 // 区別させない。区別は AgentClientAuthenticationRejected にだけ残す。
 func RejectAgentClientWithoutKeyProof(
-	ctx context.Context, deps AgentIssuanceDeps, client *domain.OAuth2Client, grantType string, now time.Time,
+	ctx context.Context, deps AgentIssuanceDeps, client *oauthdomain.OAuth2Client, grantType string, now time.Time,
 ) error {
 	if deps.AgentRepo == nil || client.AgentClientAuthMethodAllowed() {
 		return nil
@@ -83,7 +83,7 @@ func RejectAgentClientWithoutKeyProof(
 	if err != nil || agent == nil {
 		return err
 	}
-	emit(deps.Emit, &domain.AgentClientAuthenticationRejected{
+	emit(deps.Emit, &oauthdomain.AgentClientAuthenticationRejected{
 		At: now, TenantID: tenantID, AgentID: agent.ID, ClientID: client.ClientID,
 		TokenEndpointAuthMethod: string(client.TokenEndpointAuthMethod), GrantType: grantType,
 	})
@@ -97,7 +97,7 @@ func RejectAgentClientWithoutKeyProof(
 // グラントごとのユースケースではなく発行器で加えるのは、送信者制約と同じく、グラントを
 // 足すたびに同じ記録を書き写さずに済ませ、書き忘れた経路だけ解除後の失効を見落とすことを
 // 防ぐためである。
-func IssuerForRequestingAgent(issuer ports.TokenIssuer, agentID string) ports.TokenIssuer {
+func IssuerForRequestingAgent(issuer oauthports.TokenIssuer, agentID string) oauthports.TokenIssuer {
 	if agentID == "" {
 		return issuer
 	}
@@ -105,12 +105,12 @@ func IssuerForRequestingAgent(issuer ports.TokenIssuer, agentID string) ports.To
 }
 
 type requestingAgentIssuer struct {
-	ports.TokenIssuer
+	oauthports.TokenIssuer
 	agentID string
 }
 
-func (i requestingAgentIssuer) SignAccessToken(ctx context.Context, in ports.AccessTokenInput) (string, string, error) {
-	in.AgentChain = domain.MergeAgentChain([]string{i.agentID}, in.AgentChain)
+func (i requestingAgentIssuer) SignAccessToken(ctx context.Context, in oauthports.AccessTokenInput) (string, string, error) {
+	in.AgentChain = oauthdomain.MergeAgentChain([]string{i.agentID}, in.AgentChain)
 	return i.TokenIssuer.SignAccessToken(ctx, in)
 }
 
@@ -175,7 +175,7 @@ func RejectAgentIssuanceWithoutApproval(
 	if !AgentRequiresHumanApproval(agent) {
 		return nil
 	}
-	emit(emitFn, &domain.AgentApprovalRequired{
+	emit(emitFn, &oauthdomain.AgentApprovalRequired{
 		At: now, TenantID: tenantports.TenantID(ctx), AgentID: agent.ID,
 		ClientID: clientID, Kind: string(agent.Kind), GrantType: grantType,
 	})

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	"github.com/ambi/idmagic/backend/authentication"
 
@@ -42,7 +42,7 @@ import (
 // seedAttributeSchema は、テナントが `employee_number` を `SelfReadable` で、内部属性を
 // `Private` で定義した状態を置く。具体例 006-01 の `Given` はこの定義を前提にしており、
 // 定義が無ければ規則の保存そのものが可視性 floor で拒否され、許可側を観測できない。
-func seedAttributeSchema(t *testing.T) userschemaports.TenantUserAttributeSchemaRepository {
+func seedAttributeSchema(t *testing.T) userports.TenantUserAttributeSchemaRepository {
 	t.Helper()
 	repo := idmanagement.NewMemoryModule().AttrSchemaRepo
 	now := time.Now().UTC()
@@ -220,7 +220,7 @@ func readOidcRules(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie,
 // issuedClaimTypes は、保存された規則を製品が共有する 1 本のクレーム解決経路へ通し、
 // 実際に発行されるクレーム型を返す。規則が保存されたことと、そのクレームが実際に
 // 発行されることは別の主張であり、具体例は後者を言っている。
-func issuedClaimTypes(t *testing.T, schema userschemaports.TenantUserAttributeSchemaRepository, rules []claimdomain.ClaimMappingRule) []string {
+func issuedClaimTypes(t *testing.T, schema userports.TenantUserAttributeSchemaRepository, rules []claimdomain.ClaimMappingRule) []string {
 	t.Helper()
 	defs, err := claimports.ResolveTenantAttributeDefs(
 		context.Background(), tenancydomain.DefaultTenantID, schema)
@@ -388,7 +388,7 @@ func (r *recordedEvents) reset() {
 // 具体例の `Then` が言うイベントを観測できない。
 func newApplicationHandlerRecordingEvents(
 	t *testing.T,
-) (*echo.Echo, *recordedEvents, userschemaports.TenantUserAttributeSchemaRepository) {
+) (*echo.Echo, *recordedEvents, userports.TenantUserAttributeSchemaRepository) {
 	t.Helper()
 	return newApplicationHandlerWithProtocolOwners(t, saml.Module{SPRepo: saml.NewSamlServiceProviderRepository()}, wsfederation.NewMemoryModule())
 }
@@ -397,7 +397,7 @@ func newApplicationHandlerRecordingEvents(
 // 管理 API や Entra の構成が先に置いた行を、カタログの作成がどう扱うかを観測するためである。
 func newApplicationHandlerWithProtocolOwners(
 	t *testing.T, samlModule saml.Module, wsfedModule wsfederation.Module,
-) (*echo.Echo, *recordedEvents, userschemaports.TenantUserAttributeSchemaRepository) {
+) (*echo.Echo, *recordedEvents, userports.TenantUserAttributeSchemaRepository) {
 	t.Helper()
 	users := idmanagement.NewMemoryModule().UserRepo
 	now := time.Now().UTC()

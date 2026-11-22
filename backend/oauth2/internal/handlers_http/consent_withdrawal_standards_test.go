@@ -23,7 +23,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	consentmemory "github.com/ambi/idmagic/backend/oauth2/internal/consent/db_memory"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -62,17 +62,17 @@ func newWithdrawalFixture(t *testing.T) *withdrawalFixture {
 	now := time.Now().UTC()
 
 	clients := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret("withdrawal-client-secret")
-	clients.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret("withdrawal-client-secret")
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: withdrawalClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{withdrawalRedirect},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 
@@ -124,9 +124,9 @@ func newWithdrawalFixture(t *testing.T) *withdrawalFixture {
 func (f *withdrawalFixture) grantConsent(t *testing.T) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &domain.Consent{
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: withdrawalUserID, ClientID: withdrawalClientID,
-		Scopes: []string{"openid", "profile"}, State: domain.ConsentGranted,
+		Scopes: []string{"openid", "profile"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func (f *withdrawalFixture) accessToken(t *testing.T, scope string) string {
 		"/realms/"+tenancydomain.DefaultRealm,
 	)
 	token, _, err := f.signer.SignAccessToken(ctx, oauthports.AccessTokenInput{
-		Client: &domain.OAuth2Client{ClientID: "api"}, Sub: withdrawalUserID,
+		Client: &oauthdomain.OAuth2Client{ClientID: "api"}, Sub: withdrawalUserID,
 		Scopes: strings.Fields(scope), AuthTime: time.Now().UTC().Unix(),
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func (f *withdrawalFixture) authorize(t *testing.T, extra url.Values) *httptest.
 func (f *withdrawalFixture) issuedCodes() int {
 	count := 0
 	for _, event := range *f.emitted {
-		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := event.(*oauthdomain.AuthorizationCodeIssued); ok {
 			count++
 		}
 	}
@@ -222,7 +222,7 @@ func TestConsentWithdrawalStopsFurtherIssuance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored == nil || stored.State != domain.ConsentRevoked || stored.RevokedAt == nil {
+	if stored == nil || stored.State != oauthdomain.ConsentRevoked || stored.RevokedAt == nil {
 		t.Fatalf("撤回後の同意=%+v, want state=revoked かつ revoked_at あり", stored)
 	}
 
@@ -296,7 +296,7 @@ func TestConnectedAppDisappearsFromTheOwnersListAfterWithdrawal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored == nil || stored.State != domain.ConsentRevoked {
+	if stored == nil || stored.State != oauthdomain.ConsentRevoked {
 		t.Fatalf("撤回後の同意=%+v, want state=revoked", stored)
 	}
 	if apps := fixture.connectedApps(t); slices.Contains(apps, withdrawalClientID) {

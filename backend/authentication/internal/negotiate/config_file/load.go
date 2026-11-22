@@ -10,14 +10,14 @@ import (
 	"io"
 	"os"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
+	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
 	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/protocol_kerberos"
 )
 
 type Configuration struct {
-	AttemptSecret string          `json:"attempt_secret"`
-	Automatic     bool            `json:"automatic"`
-	Tenants       []domain.Config `json:"tenants"`
+	AttemptSecret string                   `json:"attempt_secret"`
+	Automatic     bool                     `json:"automatic"`
+	Tenants       []negotiatedomain.Config `json:"tenants"`
 }
 
 func Load(path string) (Configuration, []byte, string, error) {

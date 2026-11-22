@@ -20,7 +20,7 @@ import (
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -59,7 +59,7 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	if err := applications.Save(ctx, application); err != nil {
 		t.Fatal(err)
 	}
-	workflow, err := usecases.CreateLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows, GroupRepo: groups, ApplicationRepo: applications}, usecases.CreateLifecycleWorkflowInput{
+	workflow, err := igusecases.CreateLifecycleWorkflow(ctx, igusecases.LifecycleWorkflowDeps{Repo: workflows, GroupRepo: groups, ApplicationRepo: applications}, igusecases.CreateLifecycleWorkflowInput{
 		Name:    "Joiner",
 		Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated},
 		Actions: []igdomain.WorkflowAction{
@@ -71,13 +71,13 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.EnableLifecycleWorkflow(ctx, usecases.LifecycleWorkflowDeps{Repo: workflows, GroupRepo: groups, ApplicationRepo: applications}, workflow.ID, workflow.CurrentRevision, "admin", now); err != nil {
+	if _, err := igusecases.EnableLifecycleWorkflow(ctx, igusecases.LifecycleWorkflowDeps{Repo: workflows, GroupRepo: groups, ApplicationRepo: applications}, workflow.ID, workflow.CurrentRevision, "admin", now); err != nil {
 		t.Fatal(err)
 	}
 
 	adminUsers := idmanagement.Module{
 		UserRepo: users,
-		UserMutationCommitter: usecases.UserMutationCommitter{
+		UserMutationCommitter: igusecases.UserMutationCommitter{
 			WorkflowRepo: workflows,
 			RunRepo:      runs,
 			UserRepo:     users,
@@ -91,14 +91,14 @@ func TestUserChangeRunsLifecycleWorkflowToDeclaredEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now.Add(2*time.Minute)); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now.Add(2*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	claimed, err := jobs.ClaimBatch(ctx, "worker-1", jobsdomain.LaneDefault, 1, time.Minute, now.Add(3*time.Minute))
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("ClaimBatch = %#v, %v", claimed, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups, ApplicationRepo: applications, AssignmentRepo: assignments,
 		ApplicationAssignments: desiredStateAssignments(applications, assignments, users, groups, nil),
 		GroupMembership:        idmanagement.Module{UserRepo: users, GroupRepo: groups}.GroupMembershipCommands(nil, "lifecycle-workflow"),
@@ -154,11 +154,11 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	run := queuedDisableRun(t, runs, users, now)
 	jobRepo := jobsmodule.NewJobRepository()
 	jobs := &failOnceJobRepository{JobRepository: jobRepo, fail: true}
-	deps := usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err == nil {
+	deps := igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err == nil {
 		t.Fatal("first dispatch must expose enqueue failure")
 	}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), deps, 10, now); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
@@ -169,12 +169,12 @@ func TestDispatchQueuedLifecycleWorkflowRunsAttachesDeduplicatedJob(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if job.DedupKey == nil || *job.DedupKey != "lifecycle-workflow-run:run-1" || job.Kind != usecases.LifecycleWorkflowRunJobKind || job.TenantID != "tenant-a" {
+	if job.DedupKey == nil || *job.DedupKey != "lifecycle-workflow-run:run-1" || job.Kind != igusecases.LifecycleWorkflowRunJobKind || job.TenantID != "tenant-a" {
 		t.Fatalf("dispatched job = kind %q tenant %q dedup %v, want the run's deduplicated lifecycle job", job.Kind, job.TenantID, job.DedupKey)
 	}
 
 	handlers := jobsmodule.NewHandlerRegistry()
-	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)}))
+	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)}))
 	runner := jobsmodule.NewRunner(
 		jobsmodule.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: time.Minute},
 		jobsmodule.RunnerDeps{Repo: jobRepo, Handlers: handlers},
@@ -214,7 +214,7 @@ func TestDuplicateDispatchReusesTheLifecycleWorkflowJob(t *testing.T) {
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)
 	run := queuedDisableRun(t, runs, nil, now)
 	jobs := jobsmodule.NewJobRepository()
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: runs, Jobs: testJobEnqueuer(jobs)}, 10, now); err != nil {
 		t.Fatal(err)
 	}
 	first, err := runs.FindRun(context.Background(), "tenant-a", run.ID)
@@ -223,10 +223,10 @@ func TestDuplicateDispatchReusesTheLifecycleWorkflowJob(t *testing.T) {
 	}
 
 	stale := staleRunListing{LifecycleWorkflowRunRepository: runs, listed: []*igdomain.WorkflowRun{run}}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), usecases.LifecycleWorkflowDispatcherDeps{RunRepo: stale, Jobs: testJobEnqueuer(jobs)}, 10, now.Add(time.Second)); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(context.Background(), igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: stale, Jobs: testJobEnqueuer(jobs)}, 10, now.Add(time.Second)); err != nil {
 		t.Fatalf("duplicate dispatch: %v", err)
 	}
-	queued, err := jobs.ListByTenantAndKinds(context.Background(), "tenant-a", []jobsdomain.JobKind{usecases.LifecycleWorkflowRunJobKind}, 0)
+	queued, err := jobs.ListByTenantAndKinds(context.Background(), "tenant-a", []jobsdomain.JobKind{igusecases.LifecycleWorkflowRunJobKind}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestLifecycleWorkflowRunHandlerCheckpointsAndSkipsCompletedStepsOnRetry(t *
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)})
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -291,7 +291,7 @@ func TestLifecycleWorkflowRunHandlerEmitsRunStartedAndRunSucceeded(t *testing.T)
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
 	var events []spec.DomainEvent
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -340,7 +340,7 @@ func TestLifecycleWorkflowRunHandlerAllStepsFailedEmitsRunFailed(t *testing.T) {
 	}
 	// GroupRepo left nil so the step fails with dependency_unavailable.
 	var events []spec.DomainEvent
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), Emit: func(e spec.DomainEvent) error { events = append(events, e); return nil }})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -384,7 +384,7 @@ func TestLifecycleWorkflowRunHandlerMixedOutcomeEmitsRunPartiallyFailed(t *testi
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)})
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users)})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -425,7 +425,7 @@ func TestLifecycleWorkflowRunHandlerAddGroupMemberNoOpWhenAlreadyMember(t *testi
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups})
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), GroupRepo: groups})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -468,7 +468,7 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), ApplicationRepo: apps, AssignmentRepo: assignments})
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), ApplicationRepo: apps, AssignmentRepo: assignments})
 	params, err := json.Marshal(map[string]string{"run_id": run.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -508,15 +508,15 @@ func TestLifecycleWorkflowRunHandlerAssignApplicationUpdatesADifferentVisibility
 		}
 	}
 	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAssignApplication, ApplicationID: "app-1", Visibility: "hidden"}
-	evalDeps := usecases.LifecycleActionEvalDeps{ApplicationRepo: apps, AssignmentRepo: assignments}
-	if outcome, _, err := usecases.EvaluateLifecycleAction(ctx, evalDeps, "tenant-a", user, action); err != nil || outcome != igdomain.WorkflowActionWouldChange {
+	evalDeps := igusecases.LifecycleActionEvalDeps{ApplicationRepo: apps, AssignmentRepo: assignments}
+	if outcome, _, err := igusecases.EvaluateLifecycleAction(ctx, evalDeps, "tenant-a", user, action); err != nil || outcome != igdomain.WorkflowActionWouldChange {
 		t.Fatalf("EvaluateLifecycleAction() = %s, %v; want would_change", outcome, err)
 	}
 	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
 	if _, err := runs.SaveRun(ctx, run, []igdomain.WorkflowStep{{RunID: run.ID, Action: action, Outcome: igdomain.WorkflowStepPending}}); err != nil {
 		t.Fatal(err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users), ApplicationRepo: apps, AssignmentRepo: assignments,
 		ApplicationAssignments: desiredStateAssignments(apps, assignments, users, idmanagement.NewMemoryModule().GroupRepo, nil),
 	})
@@ -568,7 +568,7 @@ func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.
 		t.Fatalf("SaveRun = %v, %v", created, err)
 	}
 	sender := &email_memory.NoopEmailSender{}
-	handler := usecases.LifecycleWorkflowRunHandler(usecases.LifecycleWorkflowExecutorDeps{
+	handler := igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: runs, UserRepo: users, UserLifecycle: workflowUserLifecycle(users),
 		Notifier: &template.Notifier{Sender: sender, SystemDefaultLocale: "en"},
 	})

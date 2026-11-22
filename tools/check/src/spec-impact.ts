@@ -7,6 +7,7 @@
  */
 
 import type { SpecificationDiff } from './spec-diff.ts'
+import { normalizeGoImportAliases } from './go-import-aliases.ts'
 
 /** `affected_spec` の一項目。この work item が触れる規範要素を名指す。 */
 export type SpecReference = {
@@ -174,8 +175,9 @@ export function changedCharacterizations(
   after: string | undefined,
 ): string[] {
   if (before === undefined) return []
-  const kept = characterizations(after ?? '')
-  return [...characterizations(before)]
+  const [original, current] = normalizeGoImportAliases(before, after ?? '')
+  const kept = characterizations(current)
+  return [...characterizations(original)]
     .filter(([name, body]) => kept.get(name) !== body)
     .map(([name]) => name)
 }

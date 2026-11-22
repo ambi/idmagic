@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/mediavalidation"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-var ErrApplicationNotFound = ports.ErrApplicationNotFound
+var ErrApplicationNotFound = appports.ErrApplicationNotFound
 
 var (
 	ErrApplicationIconRequired = errors.New("application icon file is required")
@@ -29,15 +29,15 @@ var (
 const MaxApplicationIconBytes = 256 * 1024
 
 type ApplicationDeps struct {
-	Repo           ports.ApplicationRepository
-	IconStore      ports.ApplicationIconStore
-	AssignmentRepo ports.AssignmentRepository
-	PolicyRepo     ports.SignInPolicyDeleter
+	Repo           appports.ApplicationRepository
+	IconStore      appports.ApplicationIconStore
+	AssignmentRepo appports.AssignmentRepository
+	PolicyRepo     appports.SignInPolicyDeleter
 	Emit           func(spec.DomainEvent)
 	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it.
 	QuotaRepo      tenantports.QuotaRepository
-	DeleteProtocol func(context.Context, *domain.Application) (int, error)
+	DeleteProtocol func(context.Context, *appdomain.Application) (int, error)
 }
 
 // reserveApplicationQuota reserves one unit of the tenant's applications Hard
@@ -55,13 +55,13 @@ func reserveApplicationQuota(ctx context.Context, deps ApplicationDeps, tenantID
 type CreateApplicationInput struct {
 	ActorUserID string
 	Name        string
-	Kind        domain.ApplicationKind
+	Kind        appdomain.ApplicationKind
 	LaunchURL   string
-	Protocol    *domain.ApplicationProtocol
+	Protocol    *appdomain.ApplicationProtocol
 	Now         time.Time
 }
 
-func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput) (*domain.Application, error) {
+func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput) (*appdomain.Application, error) {
 	tenantID := tenantports.TenantID(ctx)
 	now := adminNow(in.Now)
 	id, err := spec.NewUUIDv4()
@@ -72,7 +72,7 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 }
 
 // CreateSeedApplication は固定 ID を共通の検証、使用量管理とイベントへ通す。
-func CreateSeedApplication(ctx context.Context, deps ApplicationDeps, app *domain.Application) error {
+func CreateSeedApplication(ctx context.Context, deps ApplicationDeps, app *appdomain.Application) error {
 	if app.ID == "" {
 		return errors.New("seed application id is required")
 	}
@@ -82,19 +82,19 @@ func CreateSeedApplication(ctx context.Context, deps ApplicationDeps, app *domai
 	return err
 }
 
-func createApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput, tenantID, id string, now time.Time) (*domain.Application, error) {
-	app := &domain.Application{
+func createApplication(ctx context.Context, deps ApplicationDeps, in CreateApplicationInput, tenantID, id string, now time.Time) (*appdomain.Application, error) {
+	app := &appdomain.Application{
 		TenantID:  tenantID,
 		ID:        id,
 		Name:      strings.TrimSpace(in.Name),
 		Kind:      in.Kind,
-		Status:    domain.ApplicationActive,
+		Status:    appdomain.ApplicationActive,
 		LaunchURL: strings.TrimSpace(in.LaunchURL),
 		Protocol:  cloneProtocol(in.Protocol),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := domain.ValidateApplication(app); err != nil {
+	if err := appdomain.ValidateApplication(app); err != nil {
 		return nil, err
 	}
 	reservation, err := reserveApplicationQuota(ctx, deps, tenantID, now)
@@ -106,7 +106,7 @@ func createApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 		return nil, err
 	}
 	reservation.Keep()
-	emit(deps.Emit, &domain.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id})
+	emit(deps.Emit, &appdomain.ApplicationCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: id})
 	return app, nil
 }
 
@@ -114,12 +114,12 @@ type UpdateApplicationInput struct {
 	ActorUserID   string
 	ApplicationID string
 	Name          *string
-	Status        *domain.ApplicationStatus
+	Status        *appdomain.ApplicationStatus
 	LaunchURL     *string
 	Now           time.Time
 }
 
-func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateApplicationInput) (*domain.Application, error) {
+func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateApplicationInput) (*appdomain.Application, error) {
 	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
@@ -150,14 +150,14 @@ func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateAppli
 	if len(changed) == 0 {
 		return &updated, nil
 	}
-	if err := domain.ValidateApplication(&updated); err != nil {
+	if err := appdomain.ValidateApplication(&updated); err != nil {
 		return nil, err
 	}
 	updated.UpdatedAt = adminNow(in.Now)
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationUpdated{
+	emit(deps.Emit, &appdomain.ApplicationUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ID, ChangedFields: changed,
 	})
 	return &updated, nil
@@ -172,13 +172,13 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 	if app == nil {
 		return ErrApplicationNotFound
 	}
-	if err := deps.Repo.DeleteWithRelated(ctx, app, ports.DeletionParticipants{
+	if err := deps.Repo.DeleteWithRelated(ctx, app, appports.DeletionParticipants{
 		Assignments: deps.AssignmentRepo, Policy: deps.PolicyRepo, Icons: deps.IconStore,
 		Quota: deps.QuotaRepo, DeleteProtocol: deps.DeleteProtocol,
 	}); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
+	emit(deps.Emit, &appdomain.ApplicationDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID})
 	return nil
 }
 
@@ -191,7 +191,7 @@ type UploadApplicationIconInput struct {
 	Now           time.Time
 }
 
-func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadApplicationIconInput) (*domain.Application, error) {
+func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadApplicationIconInput) (*appdomain.Application, error) {
 	if deps.IconStore == nil {
 		return nil, errors.New("application icon store is not configured")
 	}
@@ -216,7 +216,7 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 			return nil, err
 		}
 	}
-	icon := &domain.ApplicationIcon{
+	icon := &appdomain.ApplicationIcon{
 		TenantID: tenantID, ApplicationID: app.ID, ID: objectKey,
 		ContentType: contentType, SizeBytes: len(in.Data), Data: slices.Clone(in.Data), CreatedAt: now, UpdatedAt: now,
 	}
@@ -232,13 +232,13 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationIconUpdated{
+	emit(deps.Emit, &appdomain.ApplicationIconUpdated{
 		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ID, Action: "uploaded",
 	})
 	return &updated, nil
 }
 
-func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time) (*domain.Application, error) {
+func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time) (*appdomain.Application, error) {
 	if deps.IconStore == nil {
 		return nil, errors.New("application icon store is not configured")
 	}
@@ -262,7 +262,7 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserI
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationIconUpdated{
+	emit(deps.Emit, &appdomain.ApplicationIconUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID, Action: "deleted",
 	})
 	return &updated, nil
@@ -286,7 +286,7 @@ func DetectApplicationIconContentType(data []byte) (string, error) {
 	return contentType, nil
 }
 
-func cloneProtocol(protocol *domain.ApplicationProtocol) *domain.ApplicationProtocol {
+func cloneProtocol(protocol *appdomain.ApplicationProtocol) *appdomain.ApplicationProtocol {
 	if protocol == nil {
 		return nil
 	}

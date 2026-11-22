@@ -10,7 +10,7 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
@@ -34,8 +34,8 @@ func (d Deps) entraVerification() wsfedusecases.EntraFederationVerification {
 // disabledRealmDiscovery は、探索を配線していない構成で、解除を観測記録だけで判定させる。
 type disabledRealmDiscovery struct{}
 
-func (disabledRealmDiscovery) Discover(context.Context, string) (feddomain.EntraDomainRealm, error) {
-	return feddomain.EntraDomainRealm{}, wsfedports.ErrEntraRealmDiscoveryDisabled
+func (disabledRealmDiscovery) Discover(context.Context, string) (wsfeddomain.EntraDomainRealm, error) {
+	return wsfeddomain.EntraDomainRealm{}, wsfedports.ErrEntraRealmDiscoveryDisabled
 }
 
 // signerCertificates は、XML 署名の提供元を Entra に登録すべき証明書として読む。
@@ -60,8 +60,8 @@ func (s signerCertificates) Next(ctx context.Context) (*x509.Certificate, error)
 }
 
 type entraDomainSummary struct {
-	feddomain.EntraDomainFederation
-	Verification feddomain.EntraVerification `json:"verification"`
+	wsfeddomain.EntraDomainFederation
+	Verification wsfeddomain.EntraVerification `json:"verification"`
 }
 
 func (d Deps) handleListEntraFederationDomains(c *echo.Context) error {
@@ -89,7 +89,7 @@ func certificateSummary(certificate *x509.Certificate) *entraCertificateSummary 
 		return nil
 	}
 	return &entraCertificateSummary{
-		SHA256Thumbprint: feddomain.CertificateThumbprint(certificate), NotAfter: certificate.NotAfter.UTC(),
+		SHA256Thumbprint: wsfeddomain.CertificateThumbprint(certificate), NotAfter: certificate.NotAfter.UTC(),
 	}
 }
 
@@ -145,7 +145,7 @@ func (d Deps) handleRecordEntraFederationObservation(c *echo.Context) error {
 	if len(raw) > maxEntraObservationBytes {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The observation document exceeds 64 KiB.")
 	}
-	observation, err := feddomain.DecodeEntraFederationObservation(raw)
+	observation, err := wsfeddomain.DecodeEntraFederationObservation(raw)
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
@@ -153,7 +153,7 @@ func (d Deps) handleRecordEntraFederationObservation(c *echo.Context) error {
 	switch {
 	case errors.Is(err, wsfedusecases.ErrEntraDomainNotConfigured):
 		return writeEntraDomainNotFound(c)
-	case errors.Is(err, feddomain.ErrInvalidEntraObservation):
+	case errors.Is(err, wsfeddomain.ErrInvalidEntraObservation):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	case errors.Is(err, wsfedports.ErrEntraObservationOutdated):
 		return support.WriteProblem(c, http.StatusConflict, "observation_outdated", "The observation was retrieved before the stored one.")
@@ -171,10 +171,10 @@ func (d Deps) handleRemoveEntraFederationDomain(c *echo.Context) error {
 	switch {
 	case errors.Is(err, wsfedusecases.ErrEntraDomainNotConfigured):
 		return writeEntraDomainNotFound(c)
-	case errors.Is(err, feddomain.ErrEntraFederationStillActive):
+	case errors.Is(err, wsfeddomain.ErrEntraFederationStillActive):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "entra_federation_still_active",
 			"Microsoft still sends this domain to IdMagic. Roll the domain back in Entra and retry; the conversion to Managed can take up to 60 minutes.")
-	case errors.Is(err, feddomain.ErrEntraRollbackUnconfirmed):
+	case errors.Is(err, wsfeddomain.ErrEntraRollbackUnconfirmed):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "entra_rollback_unconfirmed",
 			"The rollback in Entra could not be confirmed with Microsoft. Import a read-back observation to remove the domain on its basis.")
 	case err != nil:

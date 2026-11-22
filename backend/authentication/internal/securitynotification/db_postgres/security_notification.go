@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 
 	"github.com/jackc/pgx/v5"
@@ -19,7 +19,7 @@ type PreferenceRepository struct{ Pool sharedpg.DB }
 
 func (r *PreferenceRepository) queries() *Queries { return New(r.Pool) }
 
-func (r *PreferenceRepository) Find(ctx context.Context, userID string) (*domain.Preferences, error) {
+func (r *PreferenceRepository) Find(ctx context.Context, userID string) (*securitynotificationdomain.Preferences, error) {
 	row, err := r.queries().FindNotificationPreference(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil // 行が無いことは「すべて有効」であり、エラーではない。
@@ -27,14 +27,14 @@ func (r *PreferenceRepository) Find(ctx context.Context, userID string) (*domain
 	if err != nil {
 		return nil, err
 	}
-	disabled := make([]domain.Category, 0, len(row.DisabledCategories))
+	disabled := make([]securitynotificationdomain.Category, 0, len(row.DisabledCategories))
 	for _, value := range row.DisabledCategories {
-		disabled = append(disabled, domain.Category(value))
+		disabled = append(disabled, securitynotificationdomain.Category(value))
 	}
-	return &domain.Preferences{UserID: row.UserID, Disabled: disabled, UpdatedAt: row.UpdatedAt}, nil
+	return &securitynotificationdomain.Preferences{UserID: row.UserID, Disabled: disabled, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func (r *PreferenceRepository) Save(ctx context.Context, preferences domain.Preferences) error {
+func (r *PreferenceRepository) Save(ctx context.Context, preferences securitynotificationdomain.Preferences) error {
 	disabled := make([]string, 0, len(preferences.Disabled))
 	for _, category := range preferences.Disabled {
 		disabled = append(disabled, string(category))
@@ -52,7 +52,7 @@ func (r *KnownDeviceRepository) queries() *Queries { return New(r.Pool) }
 // Observe は挿入を先に試し、挿入できた場合だけ「新しい端末」を返す。既知の行では
 // last_seen_at を進めるだけである。同じ端末から同時に 2 つのサインインが来ても、
 // 挿入に成功するのはちょうど 1 つなので通知は 1 通に収まる。
-func (r *KnownDeviceRepository) Observe(ctx context.Context, device ports.KnownDevice) (bool, error) {
+func (r *KnownDeviceRepository) Observe(ctx context.Context, device securitynotificationports.KnownDevice) (bool, error) {
 	seenAt := device.SeenAt.UTC()
 	inserted, err := r.queries().InsertKnownSignInDevice(ctx, InsertKnownSignInDeviceParams{
 		UserID: device.UserID, DeviceHash: device.DeviceHash,

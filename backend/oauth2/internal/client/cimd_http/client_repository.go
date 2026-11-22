@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/client/ports"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	clientdomain "github.com/ambi/idmagic/backend/oauth2/internal/client/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -27,7 +27,7 @@ type DocumentFetcher interface {
 // in authorize.go, push_authorization_request.go, and client_auth.go need
 // no changes, since they already only call FindByID.
 type ClientRepositoryWithCIMD struct {
-	ports.OAuth2ClientRepository
+	clientports.OAuth2ClientRepository
 	Fetcher DocumentFetcher
 	Emit    func(spec.DomainEvent)
 }

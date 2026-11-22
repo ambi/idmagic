@@ -11,7 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
@@ -137,7 +137,7 @@ func BenchmarkSessionRepository_Find(b *testing.B) {
 	user := pgfixtures.SeedUser(b, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 	ctx := withTenant(context.Background(), tenant)
 	repo := &SessionRepository{Pool: db}
-	sess := &domain.LoginSession{
+	sess := &sessiondomain.LoginSession{
 		ID: pgfixtures.NewUUID(b), TenantID: tenant.ID, UserID: user.ID, AMR: []string{"pwd"},
 		ACR: "urn:idmagic:acr:pwd", ExpiresAt: pgtest.Now().Add(time.Hour),
 	}

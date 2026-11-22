@@ -18,10 +18,10 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication"
 	authmemory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
-	demousecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
-	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -61,10 +61,10 @@ func newAdminSessionsFixture(t *testing.T) adminSessionsFixture {
 	httpadapter.Register(e, httpadapter.Deps{
 		Issuer:        "http://idp.test",
 		UserRepo:      users,
-		AuthnResolver: demousecases.DemoHeaderResolver{},
+		AuthnResolver: authusecases.DemoHeaderResolver{},
 		Authentication: authentication.Module{
 			TrustedDeviceRepo: trusteddevicememory.NewTrustedDeviceRepository(),
-			SessionManager:    authusecases.NewSessionManager(sessionStore),
+			SessionManager:    sessionusecases.NewSessionManager(sessionStore),
 		},
 		OAuth2: oauth2.Module{RefreshStore: refreshStore},
 	})
@@ -73,7 +73,7 @@ func newAdminSessionsFixture(t *testing.T) adminSessionsFixture {
 
 func (f adminSessionsFixture) seedSession(t *testing.T, sid, userID string, authTime time.Time) {
 	t.Helper()
-	if err := f.sessionStore.Save(testing_tenant.Default(context.Background()), &authdomain.LoginSession{
+	if err := f.sessionStore.Save(testing_tenant.Default(context.Background()), &sessiondomain.LoginSession{
 		ID: sid, TenantID: tenancydomain.DefaultTenantID, UserID: userID, AuthTime: authTime.Unix(),
 		AMR: []string{"pwd"}, ACR: "urn:mace:incommon:iap:silver", ExpiresAt: authTime.Add(time.Hour),
 	}); err != nil {

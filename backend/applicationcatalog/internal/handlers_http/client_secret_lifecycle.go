@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -28,7 +28,7 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
+	clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
 	if clientID == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
@@ -63,7 +63,7 @@ func (d Deps) handleIssueOIDCClientSecret(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
+	clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
 	if clientID == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
@@ -101,7 +101,7 @@ func (d Deps) handleRevokeOIDCClientSecret(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
+	clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
 	if clientID == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}

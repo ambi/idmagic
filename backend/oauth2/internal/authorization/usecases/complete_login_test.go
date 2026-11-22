@@ -9,7 +9,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/authorization/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -26,7 +26,7 @@ func TestCompleteLoginRequiresCompletedAuthenticationAndConsent(t *testing.T) {
 			requests := memory.NewAuthorizationRequestStore()
 			codes := memory.NewAuthorizationCodeStore()
 			now := time.Now().UTC()
-			req := &domain.AuthorizationRequest{
+			req := &oauthdomain.AuthorizationRequest{
 				ID: "11111111-2222-4333-8444-555555555555", TenantID: tenancydomain.DefaultTenantID,
 				ClientID: "client-1", Scope: "openid", RedirectURI: "https://example.com/cb",
 				State: state, ExpiresAt: now.Add(10 * time.Minute),
@@ -73,7 +73,7 @@ func TestCompleteLogin(t *testing.T) {
 	reqID := "11111111-2222-4333-8444-555555555555"
 
 	t.Run("Succeeds", func(t *testing.T) {
-		req := &domain.AuthorizationRequest{
+		req := &oauthdomain.AuthorizationRequest{
 			ID:                  reqID,
 			TenantID:            tenancydomain.DefaultTenantID,
 			ClientID:            "client-1",
@@ -137,7 +137,7 @@ func TestCompleteLogin(t *testing.T) {
 	})
 
 	t.Run("MismatchedTenant", func(t *testing.T) {
-		req := &domain.AuthorizationRequest{
+		req := &oauthdomain.AuthorizationRequest{
 			ID:        "33333333-3333-3333-3333-333333333333",
 			TenantID:  "another-tenant",
 			State:     spec.AuthFlowReceived,
@@ -158,7 +158,7 @@ func TestCompleteLogin(t *testing.T) {
 	})
 
 	t.Run("RequestExpired", func(t *testing.T) {
-		req := &domain.AuthorizationRequest{
+		req := &oauthdomain.AuthorizationRequest{
 			ID:        "44444444-4444-4444-4444-444444444444",
 			TenantID:  tenancydomain.DefaultTenantID,
 			State:     spec.AuthFlowReceived,
@@ -185,7 +185,7 @@ func TestCompleteLogin(t *testing.T) {
 	})
 
 	t.Run("AlreadyProcessedState", func(t *testing.T) {
-		req := &domain.AuthorizationRequest{
+		req := &oauthdomain.AuthorizationRequest{
 			ID:        "55555555-5555-5555-5555-555555555555",
 			TenantID:  tenancydomain.DefaultTenantID,
 			State:     spec.AuthFlowCodeIssued,

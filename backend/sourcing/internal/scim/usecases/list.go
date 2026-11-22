@@ -1,11 +1,11 @@
 package usecases
 
-import "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+import scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 
 // paginate applies RFC 7644 §3.4.2.4 startIndex/count semantics to an
 // already-filtered result set. Shared by ListUsers and ListGroups.
 func paginate(items []map[string]any, query ListQuery) (ListResult, error) {
-	page, err := domain.NormalizePage(query.StartIndex, query.Count, query.HasCount, domain.MaxResults)
+	page, err := scimdomain.NormalizePage(query.StartIndex, query.Count, query.HasCount, scimdomain.MaxResults)
 	if err != nil {
 		return ListResult{}, err
 	}

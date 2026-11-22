@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 var (
@@ -23,11 +23,11 @@ var (
 
 // Deps は TokenVault のユースケースの依存である。
 type Deps struct {
-	Connectors  ports.ConnectorRepository
-	Connections ports.ConnectionRepository
-	Attempts    ports.AttemptStore
-	Upstream    ports.UpstreamClient
-	Verifier    ports.TokenVerifier
+	Connectors  tokenvaultports.ConnectorRepository
+	Connections tokenvaultports.ConnectionRepository
+	Attempts    tokenvaultports.AttemptStore
+	Upstream    tokenvaultports.UpstreamClient
+	Verifier    tokenvaultports.TokenVerifier
 	Emit        func(spec.DomainEvent)
 	Now         func() time.Time
 	// Sleep は更新の待機に使う。テストが時間を進められるよう差し替える。

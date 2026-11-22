@@ -22,7 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 
 	"github.com/beevik/etree"
@@ -92,9 +92,9 @@ func brokenRSTs() []brokenRST {
 }
 
 // issuedTokenEvent は捕捉した WsTrustTokenIssued のうち最初のものを返す。
-func issuedTokenEvent(events []spec.DomainEvent) *feddomain.WsTrustTokenIssued {
+func issuedTokenEvent(events []spec.DomainEvent) *wsfeddomain.WsTrustTokenIssued {
 	for _, event := range events {
-		if issued, ok := event.(*feddomain.WsTrustTokenIssued); ok {
+		if issued, ok := event.(*wsfeddomain.WsTrustTokenIssued); ok {
 			return issued
 		}
 	}
@@ -105,7 +105,7 @@ func issuedTokenEvent(events []spec.DomainEvent) *feddomain.WsTrustTokenIssued {
 func rejectedTokenReasons(events []spec.DomainEvent) []string {
 	var reasons []string
 	for _, event := range events {
-		if rejected, ok := event.(*feddomain.WsTrustTokenRejected); ok {
+		if rejected, ok := event.(*wsfeddomain.WsTrustTokenRejected); ok {
 			reasons = append(reasons, rejected.Reason)
 		}
 	}

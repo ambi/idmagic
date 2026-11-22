@@ -8,8 +8,8 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -36,13 +36,13 @@ type IntrospectionResponse struct {
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 	// DelegationMode は自律実行と利用者の代理の区別。リソースサーバーが act と
 	// principal 種別から各自で導出し直さずに済むよう、導出済みの値を返す。
-	DelegationMode domain.DelegationMode `json:"delegation_mode,omitempty"`
+	DelegationMode oauthdomain.DelegationMode `json:"delegation_mode,omitempty"`
 }
 
 type IntrospectDeps struct {
-	Introspector        ports.TokenIntrospector
-	RefreshStore        ports.RefreshTokenStore
-	AccessTokenDenylist ports.AccessTokenDenylist
+	Introspector        oauthports.TokenIntrospector
+	RefreshStore        oauthports.RefreshTokenStore
+	AccessTokenDenylist oauthports.AccessTokenDenylist
 	// AgentRepo は、トークンが発行時に記録した Agent の存在と状態、およびクライアントに
 	// 現在束縛された Agent を引く (REQ-OAUTH2-012)。nil なら Agent の判定を行わない。
 	AgentRepo agentports.AgentRepository
@@ -53,9 +53,9 @@ type IntrospectDeps struct {
 	RevocationEpochRepo ssports.AgentRevocationEpochRepository
 	// Consents は、代行のトークンの発行時の Agent への本人の付与を引く (REQ-OAUTH2-061)。
 	// AgentRepo がある配線で nil なら、代行のトークンを失効として扱う。
-	Consents ports.ConsentRepository
+	Consents oauthports.ConsentRepository
 	// Clients は、サブジェクトが利用者かクライアントかを見分ける。
-	Clients ports.OAuth2ClientRepository
+	Clients oauthports.OAuth2ClientRepository
 	// Users と UserEpochs は、サブジェクトの User の状態と失効エポックを引く (REQ-SHAREDSIGNALS-012)。
 	// Users か Clients が nil なら User の判定を行わない。
 	Users      userports.UserRepository
@@ -79,7 +79,7 @@ type IntrospectDeps struct {
 // IntrospectToken から切り出してあるのは、Bearer を受ける資源サーバー側の経路
 // (shared/http/support_http.Authenticator) とトークン交換の入力の検証が、同じ規則を
 // 二度実装せずに通すためである (REQ-OAUTH2-047、REQ-OAUTH2-048)。
-func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.IntrospectionResult) (bool, error) {
+func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *oauthports.IntrospectionResult) (bool, error) {
 	if r == nil || !r.Active {
 		return false, nil
 	}
@@ -97,7 +97,7 @@ func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.Int
 	if deps.AgentRepo == nil {
 		return false, nil
 	}
-	for _, agentID := range domain.MergeAgentChain([]string{r.AgentID}, r.AgentChain) {
+	for _, agentID := range oauthdomain.MergeAgentChain([]string{r.AgentID}, r.AgentChain) {
 		agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
 		if err != nil {
 			return false, err
@@ -153,8 +153,8 @@ func userRevoked(ctx context.Context, deps IntrospectDeps, tenantID, sub string,
 // 付与がもうトークンを許さないかを判定する (REQ-OAUTH2-061)。失効エポックは Agent 単位で、
 // 進めると他の利用者の代行まで止まるので使わない。granted_at より前の発行を無効にするのは、
 // 撤回の後の再付与で古いトークンを復活させないためである。
-func delegationWithdrawn(ctx context.Context, deps IntrospectDeps, tenantID string, r *ports.IntrospectionResult, issuedAt time.Time) (bool, error) {
-	agents := domain.MergeAgentChain([]string{r.AgentID}, r.AgentChain)
+func delegationWithdrawn(ctx context.Context, deps IntrospectDeps, tenantID string, r *oauthports.IntrospectionResult, issuedAt time.Time) (bool, error) {
+	agents := oauthdomain.MergeAgentChain([]string{r.AgentID}, r.AgentChain)
 	if len(r.Act) == 0 || len(agents) == 0 {
 		return false, nil
 	}
@@ -183,7 +183,7 @@ func delegationWithdrawn(ctx context.Context, deps IntrospectDeps, tenantID stri
 // トークンのサブジェクトはクライアント自身で、交換の後は別のクライアントのトークンになるので、
 // sub と client_id の比較では見分けられない。登録されたクライアントでなければ利用者として扱い、
 // 付与を求める側に倒す。
-func isUserSubject(ctx context.Context, clients ports.OAuth2ClientRepository, tenantID, sub string) (bool, error) {
+func isUserSubject(ctx context.Context, clients oauthports.OAuth2ClientRepository, tenantID, sub string) (bool, error) {
 	if sub == "" {
 		return false, nil
 	}
@@ -215,7 +215,7 @@ type RevocationCheckingIntrospector struct {
 	Deps IntrospectDeps
 }
 
-func (i RevocationCheckingIntrospector) IntrospectAccessToken(ctx context.Context, token string) (*ports.IntrospectionResult, error) {
+func (i RevocationCheckingIntrospector) IntrospectAccessToken(ctx context.Context, token string) (*oauthports.IntrospectionResult, error) {
 	r, err := i.Deps.Introspector.IntrospectAccessToken(ctx, token)
 	if err != nil || r == nil || !r.Active {
 		return r, err
@@ -225,7 +225,7 @@ func (i RevocationCheckingIntrospector) IntrospectAccessToken(ctx context.Contex
 		return nil, err
 	}
 	if revoked {
-		return &ports.IntrospectionResult{Active: false}, nil
+		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	return r, nil
 }
@@ -259,7 +259,7 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 // introspectRefreshToken は、ストアにレコードがあれば found=true とその応答を返す。
 // レコードがあれば無効でも found=true にし、アクセストークンとしては探させない。
 func introspectRefreshToken(ctx context.Context, deps IntrospectDeps, token string, now time.Time) (*IntrospectionResponse, bool, error) {
-	rec, err := deps.RefreshStore.FindByHash(ctx, domain.HashRefreshToken(token))
+	rec, err := deps.RefreshStore.FindByHash(ctx, oauthdomain.HashRefreshToken(token))
 	if err != nil {
 		return nil, false, err
 	}
@@ -283,7 +283,7 @@ func introspectRefreshToken(ctx context.Context, deps IntrospectDeps, token stri
 		JTI:      rec.ID,
 		// リフレッシュトークンは act を持たないので direct か autonomous になる。
 		// 同じ導出関数を通し、トークン種別ごとに規則が分かれないようにする。
-		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
+		DelegationMode: oauthdomain.DeriveDelegationMode(oauthdomain.DelegationSubject{
 			Sub: rec.UserID, ClientID: rec.ClientID,
 		}),
 	}
@@ -329,8 +329,8 @@ func introspectAccessToken(ctx context.Context, deps IntrospectDeps, token strin
 		// 提示形式は送信者制約から導く。active でないトークンには何も付けない
 		// (RFC 7662 §2.2)。制約なしの提示形式は Bearer なので、無条件に代入すると
 		// 失効したトークンの応答まで値を運んでしまう。
-		resp.TokenType = domain.PresentationTokenType(r.SenderConstraint)
-		resp.DelegationMode = domain.DeriveDelegationMode(domain.DelegationSubject{
+		resp.TokenType = oauthdomain.PresentationTokenType(r.SenderConstraint)
+		resp.DelegationMode = oauthdomain.DeriveDelegationMode(oauthdomain.DelegationSubject{
 			Sub: r.Sub, ClientID: r.ClientID, PrincipalType: r.PrincipalType, Act: r.Act,
 		})
 	}

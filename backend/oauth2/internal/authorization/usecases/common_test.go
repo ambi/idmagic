@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -20,42 +20,42 @@ func tenantContext() context.Context {
 }
 
 type fakeMcpResourceServerRepo struct {
-	byResource map[string]*domain.McpResourceServer
+	byResource map[string]*oauthdomain.McpResourceServer
 }
 
-func newFakeMcpResourceServerRepo(servers ...*domain.McpResourceServer) *fakeMcpResourceServerRepo {
-	r := &fakeMcpResourceServerRepo{byResource: map[string]*domain.McpResourceServer{}}
+func newFakeMcpResourceServerRepo(servers ...*oauthdomain.McpResourceServer) *fakeMcpResourceServerRepo {
+	r := &fakeMcpResourceServerRepo{byResource: map[string]*oauthdomain.McpResourceServer{}}
 	for _, server := range servers {
 		r.byResource[server.TenantID+"|"+server.Resource] = server
 	}
 	return r
 }
 
-func (r *fakeMcpResourceServerRepo) ListAll(context.Context, string) ([]*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) ListAll(context.Context, string) ([]*oauthdomain.McpResourceServer, error) {
 	return nil, nil
 }
 
-func (r *fakeMcpResourceServerRepo) FindByID(context.Context, string, string) (*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) FindByID(context.Context, string, string) (*oauthdomain.McpResourceServer, error) {
 	return nil, nil //nolint:nilnil // unused by these resource-indicator tests
 }
 
-func (r *fakeMcpResourceServerRepo) FindByResource(_ context.Context, tenantID, resource string) (*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) FindByResource(_ context.Context, tenantID, resource string) (*oauthdomain.McpResourceServer, error) {
 	return r.byResource[tenantID+"|"+resource], nil
 }
 
-func (r *fakeMcpResourceServerRepo) FindByClientID(context.Context, string, string) (*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) FindByClientID(context.Context, string, string) (*oauthdomain.McpResourceServer, error) {
 	return nil, nil //nolint:nilnil // 束縛のない登録を表す。
 }
 
-func (r *fakeMcpResourceServerRepo) Save(context.Context, *domain.McpResourceServer) error {
+func (r *fakeMcpResourceServerRepo) Save(context.Context, *oauthdomain.McpResourceServer) error {
 	return nil
 }
 func (r *fakeMcpResourceServerRepo) Delete(context.Context, string, string) error { return nil }
-func (r *fakeMcpResourceServerRepo) SaveIfUnchanged(context.Context, *domain.McpResourceServer, time.Time) (bool, error) {
+func (r *fakeMcpResourceServerRepo) SaveIfUnchanged(context.Context, *oauthdomain.McpResourceServer, time.Time) (bool, error) {
 	return false, nil
 }
 
-var _ ports.McpResourceServerRepository = (*fakeMcpResourceServerRepo)(nil)
+var _ oauthports.McpResourceServerRepository = (*fakeMcpResourceServerRepo)(nil)
 
 func assertOAuthError(t *testing.T, err error, code string) {
 	t.Helper()

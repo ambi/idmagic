@@ -15,14 +15,14 @@ import (
 	"strings"
 	"testing"
 
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 
 	"github.com/labstack/echo/v5"
 )
 
 type mockEmailSender struct{}
 
-func (m mockEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
+func (m mockEmailSender) SendEmail(ctx context.Context, message notificationports.EmailMessage) bool {
 	return true
 }
 

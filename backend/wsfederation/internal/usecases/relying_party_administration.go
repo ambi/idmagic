@@ -7,7 +7,7 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -23,12 +23,12 @@ type RelyingPartyAdministration struct {
 
 var _ wsfedports.RelyingPartyAdministration = RelyingPartyAdministration{}
 
-func (a RelyingPartyAdministration) Find(ctx context.Context, tenantID, wtrealm string) (*feddomain.WsFedRelyingParty, error) {
+func (a RelyingPartyAdministration) Find(ctx context.Context, tenantID, wtrealm string) (*wsfeddomain.WsFedRelyingParty, error) {
 	return a.RPRepo.FindByWtrealm(ctx, tenantID, wtrealm)
 }
 
 func (a RelyingPartyAdministration) CreateForApplication(ctx context.Context, in wsfedports.CreateApplicationRelyingPartyInput) error {
-	rp := &feddomain.WsFedRelyingParty{
+	rp := &wsfeddomain.WsFedRelyingParty{
 		TenantID: in.TenantID, Wtrealm: in.Wtrealm, DisplayName: in.DisplayName, ReplyURLs: in.ReplyURLs,
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 			Format: nonEmpty(in.NameIDFormat, defaultNameIDFormat), SourceAttribute: nonEmpty(in.NameIDSource, defaultNameIDSource),
@@ -39,7 +39,7 @@ func (a RelyingPartyAdministration) CreateForApplication(ctx context.Context, in
 }
 
 // CreateSeed は初期データの完全なクレーム方針にも管理操作と同じ検証を適用する。
-func (a RelyingPartyAdministration) CreateSeed(ctx context.Context, rp *feddomain.WsFedRelyingParty) error {
+func (a RelyingPartyAdministration) CreateSeed(ctx context.Context, rp *wsfeddomain.WsFedRelyingParty) error {
 	if err := rp.Validate(); err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ type RegisterRelyingPartyInput struct {
 // Entra の定型設定を持つ RP は ErrEntraRelyingParty で、Application に属する RP は ErrApplicationOwned で、
 // 長さの違反は Validate のエラーで拒否する。汎用の登録は Entra の定型設定と固定のクレームを捨てて
 // 置き換えるので、Entra の RP には届かせない。
-func (a RelyingPartyAdministration) Register(ctx context.Context, in RegisterRelyingPartyInput) (*feddomain.WsFedRelyingParty, bool, error) {
+func (a RelyingPartyAdministration) Register(ctx context.Context, in RegisterRelyingPartyInput) (*wsfeddomain.WsFedRelyingParty, bool, error) {
 	existing, err := a.RPRepo.FindByWtrealm(ctx, in.TenantID, in.Wtrealm)
 	if err != nil {
 		return nil, false, err
@@ -116,7 +116,7 @@ func (a RelyingPartyAdministration) Register(ctx context.Context, in RegisterRel
 	if err := refuseOwned(existing); err != nil {
 		return nil, false, err
 	}
-	rp := &feddomain.WsFedRelyingParty{
+	rp := &wsfeddomain.WsFedRelyingParty{
 		TenantID: in.TenantID, Wtrealm: in.Wtrealm, DisplayName: in.DisplayName, ReplyURLs: in.ReplyURLs,
 		Audience: in.Audience, ClaimPolicy: in.ClaimPolicy, CreatedAt: in.Now, UpdatedAt: in.Now,
 	}
@@ -146,7 +146,7 @@ func (a RelyingPartyAdministration) DeleteStandalone(ctx context.Context, tenant
 }
 
 // SaveEntra は、Entra のドメインフェデレーションの構成が組み立てた RP を、Validate の後に保存する。
-func (a RelyingPartyAdministration) SaveEntra(ctx context.Context, rp *feddomain.WsFedRelyingParty) error {
+func (a RelyingPartyAdministration) SaveEntra(ctx context.Context, rp *wsfeddomain.WsFedRelyingParty) error {
 	if err := rp.Validate(); err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (a RelyingPartyAdministration) SaveEntra(ctx context.Context, rp *feddomain
 }
 
 // refuseOwned は、汎用の管理 API が変えてはならない RP を拒否する。Entra の RP を先に判定する。
-func refuseOwned(rp *feddomain.WsFedRelyingParty) error {
+func refuseOwned(rp *wsfeddomain.WsFedRelyingParty) error {
 	switch {
 	case rp == nil:
 		return nil

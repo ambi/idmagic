@@ -9,14 +9,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
 // Default は ctx へ default テナントの ID だけを入れた文脈を返す。
 func Default(ctx context.Context) context.Context {
-	return tenantports.WithTenantID(ctx, domain.DefaultTenantID)
+	return tenantports.WithTenantID(ctx, tenancydomain.DefaultTenantID)
 }
 
 // ResolveDefault は、テナントを解決するミドルウェアの代わりに、要求の文脈へ default テナントを入れる。
@@ -33,7 +33,7 @@ func ResolveDefaultAt(issuer string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			const prefix = "/realms/default"
-			tenant := &domain.Tenant{ID: domain.DefaultTenantID, Realm: domain.DefaultRealm, Status: domain.TenantStatusActive, EndpointStyle: domain.TenantEndpointStylePath}
+			tenant := &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, Status: tenancydomain.TenantStatusActive, EndpointStyle: tenancydomain.TenantEndpointStylePath}
 			ctx := tenantports.WithTenant(c.Request().Context(), tenant, strings.TrimSuffix(issuer, "/")+prefix, prefix)
 			c.SetRequest(c.Request().WithContext(ctx))
 			c.Response().Header().Add("Vary", "Host")

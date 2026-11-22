@@ -30,7 +30,7 @@ import (
 	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -107,16 +107,16 @@ func newServerForAuthenticatorResetWithEvents(t *testing.T, options ...resetServ
 	defaultSignInPolicyRepo := signinpolicy.NewMemoryModule().DefaultRepo
 	hasher := testing_passwords.NewHasher()
 
-	secretHash := oauth2domain.HashClientSecret(demoClientSecret)
-	_ = clientRepo.Save(context.Background(), &oauth2domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(demoClientSecret)
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		ClientID: demoClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{demoRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  oauth2domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              oauth2domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 

@@ -5,20 +5,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 type PasswordChallengeStore struct {
 	mu    sync.Mutex
-	items map[key]domain.PasswordChallenge
+	items map[key]directorydomain.PasswordChallenge
 }
 
 func NewPasswordChallengeStore() *PasswordChallengeStore {
-	return &PasswordChallengeStore{items: map[key]domain.PasswordChallenge{}}
+	return &PasswordChallengeStore{items: map[key]directorydomain.PasswordChallenge{}}
 }
 
-func (s *PasswordChallengeStore) Enqueue(_ context.Context, item domain.PasswordChallenge, now time.Time) error {
+func (s *PasswordChallengeStore) Enqueue(_ context.Context, item directorydomain.PasswordChallenge, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	count := 0
@@ -27,17 +27,17 @@ func (s *PasswordChallengeStore) Enqueue(_ context.Context, item domain.Password
 			count++
 		}
 	}
-	if count >= domain.MaxPasswordChallenges {
-		return ports.ErrDelegationUnavailable
+	if count >= directorydomain.MaxPasswordChallenges {
+		return directoryinternalports.ErrDelegationUnavailable
 	}
 	if _, exists := s.items[key{item.TenantID, item.ID}]; exists {
-		return ports.ErrDelegationUnavailable
+		return directoryinternalports.ErrDelegationUnavailable
 	}
 	s.items[key{item.TenantID, item.ID}] = item
 	return nil
 }
 
-func (s *PasswordChallengeStore) Claim(_ context.Context, tenantID, connectorID string, revision int64, now time.Time) (*domain.PasswordChallenge, error) {
+func (s *PasswordChallengeStore) Claim(_ context.Context, tenantID, connectorID string, revision int64, now time.Time) (*directorydomain.PasswordChallenge, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for k, item := range s.items {
@@ -54,20 +54,20 @@ func (s *PasswordChallengeStore) Claim(_ context.Context, tenantID, connectorID 
 	return nil, nil
 }
 
-func (s *PasswordChallengeStore) Complete(_ context.Context, tenantID, connectorID, id string, revision int64, result domain.PasswordResult, now time.Time) error {
+func (s *PasswordChallengeStore) Complete(_ context.Context, tenantID, connectorID, id string, revision int64, result directorydomain.PasswordResult, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	k := key{tenantID, id}
 	item, ok := s.items[k]
 	if !ok || item.ConnectorID != connectorID || item.Revision != revision || !item.Delivered || !now.Before(item.ExpiresAt) || !result.Valid() || (item.Result != "" && item.Result != result) {
-		return ports.ErrDelegationUnavailable
+		return directoryinternalports.ErrDelegationUnavailable
 	}
 	item.Result = result
 	s.items[k] = item
 	return nil
 }
 
-func (s *PasswordChallengeStore) Find(_ context.Context, tenantID, id string) (*domain.PasswordChallenge, error) {
+func (s *PasswordChallengeStore) Find(_ context.Context, tenantID, id string) (*directorydomain.PasswordChallenge, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	item, ok := s.items[key{tenantID, id}]

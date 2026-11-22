@@ -33,7 +33,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -318,8 +318,8 @@ type RouteDeps struct {
 	SCIMGroups          groupports.SCIMGroupLookup
 	GroupAttrSchemaRepo groupports.TenantGroupAttributeSchemaRepository
 	Consents            func(context.Context, string) ([]userports.AccountConsent, error)
-	EmailSender         sharednotification.EmailSender
-	Notifier            sharednotification.Notifier
+	EmailSender         notificationports.EmailSender
+	Notifier            notificationports.Notifier
 	JobRepo             jobsports.JobRepository
 	JobEnqueuer         jobsports.Enqueuer
 	// JobCanceler はデータエクスポートの取り消しで、遷移、active_jobs の減算、JobCanceled の発行を Jobs に任せる。

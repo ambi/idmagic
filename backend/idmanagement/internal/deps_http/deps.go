@@ -16,7 +16,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -73,8 +73,8 @@ type Deps struct {
 	SessionStore          userports.SessionPurger
 	EmailChangeTokenStore userports.EmailChangeTokenStore
 	CSVArtifacts          idmports.CSVArtifactStore
-	EmailSender           sharednotification.EmailSender
-	Notifier              sharednotification.Notifier
+	EmailSender           notificationports.EmailSender
+	Notifier              notificationports.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
 	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository

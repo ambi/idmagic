@@ -7,7 +7,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 //spec:covers REQ-APPLICATION-018: HTTP の削除は専用のトークン、同意、資格情報、セッションと使用量を消し、他のアプリを維持する。
@@ -19,17 +19,17 @@ func TestHTTPApplicationDeletionRemovesClientState(t *testing.T) {
 	_, otherClientID, _ := f.createApplication(t)
 	now := time.Now().UTC()
 	for _, id := range []string{clientID, otherClientID} {
-		if err := f.oauth.RefreshStore.Save(t.Context(), &oauthdomain.RefreshTokenRecord{ID: id, Hash: id, ClientID: id, TenantID: tenantdomain.DefaultTenantID, UserID: "admin", IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.Add(24 * time.Hour)}); err != nil {
+		if err := f.oauth.RefreshStore.Save(t.Context(), &oauthdomain.RefreshTokenRecord{ID: id, Hash: id, ClientID: id, TenantID: tenancydomain.DefaultTenantID, UserID: "admin", IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: now.Add(24 * time.Hour)}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := f.oauth.ConsentRepo.Save(t.Context(), tenantdomain.DefaultTenantID, &oauthdomain.Consent{UserID: "admin", ClientID: clientID, State: oauthdomain.ConsentGranted, GrantedAt: now}); err != nil {
+	if err := f.oauth.ConsentRepo.Save(t.Context(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{UserID: "admin", ClientID: clientID, State: oauthdomain.ConsentGranted, GrantedAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	if err := quotas.CheckAndIncrement(t.Context(), tenantdomain.DefaultTenantID, tenantdomain.ResourceConsents, 1); err != nil {
+	if err := quotas.CheckAndIncrement(t.Context(), tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.oauth.ClientSessionStore.Upsert(t.Context(), &oauthdomain.ClientSession{TenantID: tenantdomain.DefaultTenantID, ClientID: clientID, Sid: "session", FirstIssuedAt: now, LastIssuedAt: now}); err != nil {
+	if err := f.oauth.ClientSessionStore.Upsert(t.Context(), &oauthdomain.ClientSession{TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, Sid: "session", FirstIssuedAt: now, LastIssuedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.oauth.RefreshStore.Save(t.Context(), &oauthdomain.RefreshTokenRecord{ID: "other-tenant", Hash: "other-tenant", ClientID: clientID, TenantID: "other-tenant", UserID: "admin"}); err != nil {
@@ -51,16 +51,16 @@ func TestHTTPApplicationDeletionRemovesClientState(t *testing.T) {
 	if token, err := f.oauth.RefreshStore.FindByHash(t.Context(), otherClientID); err != nil || token == nil {
 		t.Fatalf("other token=%+v error=%v", token, err)
 	}
-	if consent, err := f.oauth.ConsentRepo.Find(t.Context(), tenantdomain.DefaultTenantID, "admin", clientID); err != nil || consent != nil {
+	if consent, err := f.oauth.ConsentRepo.Find(t.Context(), tenancydomain.DefaultTenantID, "admin", clientID); err != nil || consent != nil {
 		t.Fatalf("consent=%+v error=%v", consent, err)
 	}
 	if credentials, err := f.clients.ListClientSecretCredentials(t.Context(), clientID); err != nil || len(credentials) != 0 {
 		t.Fatalf("credentials=%+v error=%v", credentials, err)
 	}
-	if sessions, err := f.oauth.ClientSessionStore.ListBySid(t.Context(), tenantdomain.DefaultTenantID, "session"); err != nil || len(sessions) != 0 {
+	if sessions, err := f.oauth.ClientSessionStore.ListBySid(t.Context(), tenancydomain.DefaultTenantID, "session"); err != nil || len(sessions) != 0 {
 		t.Fatalf("sessions=%+v error=%v", sessions, err)
 	}
-	usage, err := quotas.GetUsage(t.Context(), tenantdomain.DefaultTenantID)
+	usage, err := quotas.GetUsage(t.Context(), tenancydomain.DefaultTenantID)
 	if err != nil || usage.Applications != 1 || usage.OAuth2Clients != 1 || usage.Consents != 0 {
 		t.Fatalf("usage=%+v error=%v", usage, err)
 	}

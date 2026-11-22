@@ -5,14 +5,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/consent/ports"
-	"github.com/ambi/idmagic/backend/oauth2/internal/consent/domain"
+	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
+	consentdomain "github.com/ambi/idmagic/backend/oauth2/internal/consent/domain"
 )
 
 type Fixture struct {
-	Repository ports.ConsentRepository
+	Repository consentports.ConsentRepository
 	TenantID   string
-	Consent    *domain.Consent
+	Consent    *consentdomain.Consent
 }
 
 type NewFixture func(t *testing.T) Fixture
@@ -25,7 +25,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("Save: %v", err)
 	}
 	got, err := f.Repository.Find(ctx, f.TenantID, f.Consent.UserID, f.Consent.ClientID)
-	if err != nil || got == nil || got.State != domain.ConsentGranted {
+	if err != nil || got == nil || got.State != consentdomain.ConsentGranted {
 		t.Fatalf("Find = (%+v, %v)", got, err)
 	}
 	all, err := f.Repository.FindAll(ctx, f.TenantID)
@@ -36,7 +36,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("Revoke: %v", err)
 	}
 	got, err = f.Repository.Find(ctx, f.TenantID, f.Consent.UserID, f.Consent.ClientID)
-	if err != nil || got == nil || got.State != domain.ConsentRevoked || got.RevokedAt == nil {
+	if err != nil || got == nil || got.State != consentdomain.ConsentRevoked || got.RevokedAt == nil {
 		t.Fatalf("Find after revoke = (%+v, %v)", got, err)
 	}
 	// 撤回した行は撤回の時点で consents の使用量から減らしてあるので、削除の件数に数えない。

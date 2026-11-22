@@ -6,7 +6,7 @@ import (
 
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // Notifier は組込み既定カタログだけでなくテナント上書きも見なければならない。ここが
@@ -20,8 +20,8 @@ func TestAssembleNotificationAppliesTenantOverrides(t *testing.T) {
 		BrandingRepo:          tenancy.NewMemoryModule().BrandingRepo,
 		NotificationTemplates: templates,
 	}}
-	if err := tenants.Save(ctx, &domain.Tenant{
-		ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.", Status: domain.TenantStatusActive,
+	if err := tenants.Save(ctx, &tenancydomain.Tenant{
+		ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.", Status: tenancydomain.TenantStatusActive,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -68,9 +68,9 @@ func TestAssembleNotificationUsesTenantDefaultLocale(t *testing.T) {
 	ctx := context.Background()
 	tenants := tenancy.NewMemoryModule().TenantRepo
 	locale := "ja"
-	if err := tenants.Save(ctx, &domain.Tenant{
+	if err := tenants.Save(ctx, &tenancydomain.Tenant{
 		ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.",
-		Status: domain.TenantStatusActive, DefaultLocale: &locale,
+		Status: tenancydomain.TenantStatusActive, DefaultLocale: &locale,
 	}); err != nil {
 		t.Fatal(err)
 	}

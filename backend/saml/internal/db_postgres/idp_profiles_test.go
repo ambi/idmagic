@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/saml/domain"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,30 +23,30 @@ func TestSamlIdentityProviderProfileRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !defaultProfile.IsDefault || defaultProfile.ProfileID != domain.DefaultIDPProfileID {
+	if !defaultProfile.IsDefault || defaultProfile.ProfileID != samldomain.DefaultIDPProfileID {
 		t.Fatalf("default profile = %+v", defaultProfile)
 	}
 
-	dedicated := &domain.SamlIdentityProviderProfile{
-		TenantID: tenant.ID, ProfileID: "dedicated-a", Name: "Dedicated A", Mode: domain.IDPProfileModeDedicated,
+	dedicated := &samldomain.SamlIdentityProviderProfile{
+		TenantID: tenant.ID, ProfileID: "dedicated-a", Name: "Dedicated A", Mode: samldomain.IDPProfileModeDedicated,
 	}
 	if err := profiles.SaveIDPProfile(ctx, dedicated); err != nil {
 		t.Fatal(err)
 	}
-	if err := serviceProviders.Save(ctx, &domain.SamlServiceProvider{
+	if err := serviceProviders.Save(ctx, &samldomain.SamlServiceProvider{
 		TenantID: tenant.ID, EntityID: "urn:sp:a", IDPProfileID: dedicated.ProfileID,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := serviceProviders.Save(ctx, &domain.SamlServiceProvider{
+	if err := serviceProviders.Save(ctx, &samldomain.SamlServiceProvider{
 		TenantID: tenant.ID, EntityID: "urn:sp:b", IDPProfileID: dedicated.ProfileID,
-	}); !errors.Is(err, domain.ErrDedicatedIDPProfileCardinality) {
+	}); !errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
 		t.Fatalf("second dedicated binding error = %v", err)
 	}
-	if err := profiles.DeleteIDPProfile(ctx, tenant.ID, dedicated.ProfileID); !errors.Is(err, domain.ErrIDPProfileInUse) {
+	if err := profiles.DeleteIDPProfile(ctx, tenant.ID, dedicated.ProfileID); !errors.Is(err, samldomain.ErrIDPProfileInUse) {
 		t.Fatalf("delete in-use profile error = %v", err)
 	}
-	if err := profiles.DeleteIDPProfile(ctx, tenant.ID, domain.DefaultIDPProfileID); !errors.Is(err, domain.ErrDefaultIDPProfile) {
+	if err := profiles.DeleteIDPProfile(ctx, tenant.ID, samldomain.DefaultIDPProfileID); !errors.Is(err, samldomain.ErrDefaultIDPProfile) {
 		t.Fatalf("delete default profile error = %v", err)
 	}
 
@@ -77,7 +77,7 @@ func TestSaveIDPProfileSeesConcurrentCreationBeforeValidating(t *testing.T) {
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
 	if err := q.UpsertSamlIDPProfile(ctx, UpsertSamlIDPProfileParams{
-		TenantID: tenant.ID, ProfileID: "concurrent", Name: "Concurrent", Mode: string(domain.IDPProfileModeShared), CreatedAt: now, UpdatedAt: now,
+		TenantID: tenant.ID, ProfileID: "concurrent", Name: "Concurrent", Mode: string(samldomain.IDPProfileModeShared), CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -91,8 +91,8 @@ func TestSaveIDPProfileSeesConcurrentCreationBeforeValidating(t *testing.T) {
 
 	saved := make(chan error, 1)
 	go func() {
-		saved <- profiles.SaveIDPProfile(ctx, &domain.SamlIdentityProviderProfile{
-			TenantID: tenant.ID, ProfileID: "concurrent", Name: "Dedicated", Mode: domain.IDPProfileModeDedicated,
+		saved <- profiles.SaveIDPProfile(ctx, &samldomain.SamlIdentityProviderProfile{
+			TenantID: tenant.ID, ProfileID: "concurrent", Name: "Dedicated", Mode: samldomain.IDPProfileModeDedicated,
 		})
 	}()
 	waitForBlockedInsert(t, db)
@@ -100,14 +100,14 @@ func TestSaveIDPProfileSeesConcurrentCreationBeforeValidating(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := <-saved; !errors.Is(err, domain.ErrDedicatedIDPProfileCardinality) {
+	if err := <-saved; !errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
 		t.Fatalf("save error = %v, want ErrDedicatedIDPProfileCardinality", err)
 	}
 	stored, err := profiles.FindIDPProfileByID(ctx, tenant.ID, "concurrent")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Mode != domain.IDPProfileModeShared {
+	if stored.Mode != samldomain.IDPProfileModeShared {
 		t.Fatalf("mode = %q, want shared", stored.Mode)
 	}
 }

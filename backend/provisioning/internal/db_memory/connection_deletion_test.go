@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 )
 
 //spec:covers REQ-PROVISIONING-021: 削除と読み取りを並行させても、関連状態を破損せずすべて削除する。
@@ -17,15 +17,15 @@ func TestConnectionDeletionWithConcurrentReaders(t *testing.T) {
 	if err := connections.Register(ctx, conn, "secret"); err != nil {
 		t.Fatal(err)
 	}
-	task := &domain.ProvisioningTask{
-		ID: "task-1", TenantID: conn.TenantID, ConnectionID: conn.ApplicationID, SourceType: domain.SourceTypeUser,
-		SourceID: "user-1", SourceVersion: 1, Operation: domain.OperationCreate, Status: domain.TaskPending,
+	task := &provisioningdomain.ProvisioningTask{
+		ID: "task-1", TenantID: conn.TenantID, ConnectionID: conn.ApplicationID, SourceType: provisioningdomain.SourceTypeUser,
+		SourceID: "user-1", SourceVersion: 1, Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending,
 		CreatedAt: conn.CreatedAt, UpdatedAt: conn.UpdatedAt,
 	}
 	if _, err := tasks.Save(ctx, task); err != nil {
 		t.Fatal(err)
 	}
-	if err := links.Upsert(ctx, &domain.RemoteResourceLink{
+	if err := links.Upsert(ctx, &provisioningdomain.RemoteResourceLink{
 		TenantID: conn.TenantID, ConnectionID: conn.ApplicationID, SourceType: task.SourceType, SourceID: task.SourceID, RemoteID: "remote-1",
 	}); err != nil {
 		t.Fatal(err)

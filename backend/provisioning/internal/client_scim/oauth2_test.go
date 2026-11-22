@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 )
 
 // oauth2Downstream は、指定されたアクセストークンだけを受理する下流を組み立てる。
@@ -106,7 +106,7 @@ func (d *oauth2Downstream) client(t *testing.T, now func() time.Time) *Client {
 func createOnce(t *testing.T, client *Client) error {
 	t.Helper()
 	_, _, err := client.CreateUser(context.Background(),
-		[]domain.AttributeMappingRule{simpleRule("userName", "username")},
+		[]provisioningdomain.AttributeMappingRule{simpleRule("userName", "username")},
 		map[string]any{"username": "alice"})
 	return err
 }
@@ -337,8 +337,8 @@ func TestNewTokenSource_SelectsBySAuthMethod(t *testing.T) {
 	const secret = "stored-credential"
 
 	t.Run("bearer_token は保存した値をそのまま載せる", func(t *testing.T) {
-		source, err := newTokenSource(domain.ProvisioningConnectionCredentialMetadata{
-			AuthMethod: domain.AuthBearerToken,
+		source, err := newTokenSource(provisioningdomain.ProvisioningConnectionCredentialMetadata{
+			AuthMethod: provisioningdomain.AuthBearerToken,
 		}, secret, http.DefaultClient, time.Now)
 		if err != nil {
 			t.Fatal(err)
@@ -350,8 +350,8 @@ func TestNewTokenSource_SelectsBySAuthMethod(t *testing.T) {
 	})
 
 	t.Run("oauth2_client_credentials は秘密をそのまま載せない", func(t *testing.T) {
-		source, err := newTokenSource(domain.ProvisioningConnectionCredentialMetadata{
-			AuthMethod:     domain.AuthOAuth2ClientCredentials,
+		source, err := newTokenSource(provisioningdomain.ProvisioningConnectionCredentialMetadata{
+			AuthMethod:     provisioningdomain.AuthOAuth2ClientCredentials,
 			OAuth2TokenURL: "https://downstream.example.com/oauth2/token",
 			OAuth2ClientID: "idmagic-provisioner",
 		}, secret, http.DefaultClient, time.Now)
@@ -370,8 +370,8 @@ func TestNewTokenSource_SelectsBySAuthMethod(t *testing.T) {
 
 	t.Run("トークンエンドポイントが非公開アドレスなら組み立てを拒否する", func(t *testing.T) {
 		// SSRF: 運用者が入れた URL なので、SCIM の接点と同じ検査を通す。
-		_, err := newTokenSource(domain.ProvisioningConnectionCredentialMetadata{
-			AuthMethod:     domain.AuthOAuth2ClientCredentials,
+		_, err := newTokenSource(provisioningdomain.ProvisioningConnectionCredentialMetadata{
+			AuthMethod:     provisioningdomain.AuthOAuth2ClientCredentials,
 			OAuth2TokenURL: "http://127.0.0.1/oauth2/token",
 			OAuth2ClientID: "c",
 		}, secret, http.DefaultClient, time.Now)
@@ -382,8 +382,8 @@ func TestNewTokenSource_SelectsBySAuthMethod(t *testing.T) {
 
 	t.Run("知らない認証方式は拒否する", func(t *testing.T) {
 		// fail-closed: 知らない方式で秘密をそのまま送らない。
-		if _, err := newTokenSource(domain.ProvisioningConnectionCredentialMetadata{
-			AuthMethod: domain.ProvisioningAuthMethod("mutual_tls"),
+		if _, err := newTokenSource(provisioningdomain.ProvisioningConnectionCredentialMetadata{
+			AuthMethod: provisioningdomain.ProvisioningAuthMethod("mutual_tls"),
 		}, secret, http.DefaultClient, time.Now); err == nil {
 			t.Fatal("知らない認証方式を受理してはならない")
 		}

@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -20,15 +20,15 @@ type tenantCreateRequest struct {
 }
 
 type tenantUpdateRequest struct {
-	DisplayName            *string                        `json:"display_name,omitempty"`
-	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
-	MaxDelegationDepth     *int                           `json:"max_delegation_depth,omitempty"`
+	DisplayName            *string                               `json:"display_name,omitempty"`
+	PasswordPolicyOverride *tenancydomain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	MaxDelegationDepth     *int                                  `json:"max_delegation_depth,omitempty"`
 	// TrustedDeviceMaxAgeSeconds は信頼済みデバイスの有効期間 (秒)。0 は機能無効。
 	TrustedDeviceMaxAgeSeconds *int `json:"trusted_device_max_age_seconds,omitempty"`
 }
 
 type tenantEndpointStyleRequest struct {
-	EndpointStyle domain.TenantEndpointStyle `json:"endpoint_style"`
+	EndpointStyle tenancydomain.TenantEndpointStyle `json:"endpoint_style"`
 }
 
 func (d Deps) handleListTenants(c *echo.Context) error {
@@ -76,13 +76,13 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 
 // resolveTenantByRealm は admin API path の realm slug を UUID キーのテナントへ解決する。
 // usecase は UUID キーで扱うため、handler で realm→UUID を写像する。
-func (d Deps) resolveTenantByRealm(c *echo.Context, realm string) (*domain.Tenant, error) {
+func (d Deps) resolveTenantByRealm(c *echo.Context, realm string) (*tenancydomain.Tenant, error) {
 	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), realm)
 	if err != nil {
 		return nil, err
 	}
 	if tenant == nil {
-		return nil, tenantusecases.ErrTenantNotFound
+		return nil, tenancyusecases.ErrTenantNotFound
 	}
 	return tenant, nil
 }
@@ -100,14 +100,14 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	now := time.Now().UTC()
-	tenant, err := tenantusecases.Create(
+	tenant, err := tenancyusecases.Create(
 		c.Request().Context(), d.TenantRepo, input.Realm, input.DisplayName, now,
 	)
 	if err != nil {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantCreated{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
+		d.Emit(&tenancydomain.TenantCreated{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, tenant)
 }
@@ -129,9 +129,9 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	now := time.Now().UTC()
-	tenant, err := tenantusecases.Update(
+	tenant, err := tenancyusecases.Update(
 		c.Request().Context(), d.TenantRepo, target.ID,
-		tenantusecases.UpdateInput{
+		tenancyusecases.UpdateInput{
 			DisplayName:                input.DisplayName,
 			PasswordPolicyOverride:     input.PasswordPolicyOverride,
 			MaxDelegationDepth:         input.MaxDelegationDepth,
@@ -144,7 +144,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantUpdated{
+		d.Emit(&tenancydomain.TenantUpdated{
 			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			ChangedFields: tenantChangedFields(input),
 		})
@@ -171,14 +171,14 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	now := time.Now().UTC()
-	tenant, err := tenantusecases.SetEndpointStyle(
+	tenant, err := tenancyusecases.SetEndpointStyle(
 		c.Request().Context(), d.TenantRepo, target.ID, input.EndpointStyle, d.TenantBaseDomain, now,
 	)
 	if err != nil {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantEndpointStyleChanged{
+		d.Emit(&tenancydomain.TenantEndpointStyleChanged{
 			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			PreviousEndpointStyle: target.EffectiveEndpointStyle(), EndpointStyle: tenant.EffectiveEndpointStyle(),
 		})
@@ -203,11 +203,11 @@ func tenantChangedFields(input tenantUpdateRequest) []string {
 	return fields
 }
 
-func (d Deps) tenantPolicyFloor() tenantusecases.PolicyFloor {
-	return tenantusecases.PolicyFloor{
-		MinLength:    domain.PasswordPolicyMinLength,
-		MaxLength:    domain.PasswordPolicyMaxLength,
-		HistoryDepth: domain.PasswordPolicyHistoryDepth,
+func (d Deps) tenantPolicyFloor() tenancyusecases.PolicyFloor {
+	return tenancyusecases.PolicyFloor{
+		MinLength:    tenancydomain.PasswordPolicyMinLength,
+		MaxLength:    tenancydomain.PasswordPolicyMaxLength,
+		HistoryDepth: tenancydomain.PasswordPolicyHistoryDepth,
 	}
 }
 
@@ -232,7 +232,7 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 		return d.writeTenantError(c, err)
 	}
 	now := time.Now().UTC()
-	tenant, err := tenantusecases.SetDisabled(
+	tenant, err := tenancyusecases.SetDisabled(
 		c.Request().Context(), d.TenantRepo, target.ID, disabled, now,
 	)
 	if err != nil {
@@ -240,9 +240,9 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	}
 	if d.Emit != nil {
 		if disabled {
-			d.Emit(&domain.TenantDisabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
+			d.Emit(&tenancydomain.TenantDisabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 		} else {
-			d.Emit(&domain.TenantEnabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
+			d.Emit(&tenancydomain.TenantEnabled{At: now, ActorUserID: actor.ID, TenantID: tenant.ID})
 		}
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -250,20 +250,20 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 
 func (d Deps) writeTenantError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, tenantusecases.ErrTenantNotFound):
+	case errors.Is(err, tenancyusecases.ErrTenantNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
-	case errors.Is(err, tenantusecases.ErrTenantConflict):
+	case errors.Is(err, tenancyusecases.ErrTenantConflict):
 		return support.WriteProblem(c, http.StatusConflict, "tenant_conflict", "The tenant ID is already in use.")
-	case errors.Is(err, tenantusecases.ErrInvalidTenantID),
-		errors.Is(err, tenantusecases.ErrDisplayNameEmpty),
-		errors.Is(err, tenantusecases.ErrDefaultTenant),
-		errors.Is(err, domain.ErrEndpointStyleUnknown),
-		errors.Is(err, domain.ErrSubdomainStyleNoBase):
+	case errors.Is(err, tenancyusecases.ErrInvalidTenantID),
+		errors.Is(err, tenancyusecases.ErrDisplayNameEmpty),
+		errors.Is(err, tenancyusecases.ErrDefaultTenant),
+		errors.Is(err, tenancydomain.ErrEndpointStyleUnknown),
+		errors.Is(err, tenancydomain.ErrSubdomainStyleNoBase):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
-	case errors.Is(err, tenantusecases.ErrUnsupportedDefaultLocale):
+	case errors.Is(err, tenancyusecases.ErrUnsupportedDefaultLocale):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"The default locale has no bundled translation for notification emails.")
-	case errors.Is(err, tenantusecases.ErrPolicyOverrideWeaker):
+	case errors.Is(err, tenancyusecases.ErrPolicyOverrideWeaker):
 		floor := d.tenantPolicyFloor()
 		message := fmt.Sprintf(
 			"A tenant policy override cannot be weaker than the product baseline "+
@@ -272,9 +272,9 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 				"max_delegation_depth must be between 1 and %d, "+
 				"and trusted_device_max_age_seconds must be between 0 and %d",
 			floor.MinLength, floor.MaxLength, floor.HistoryDepth,
-			tenantusecases.PasswordMaxAgeDaysFloor, tenantusecases.PasswordMaxAgeDaysCeiling,
-			domain.DefaultMaxDelegationDepth,
-			domain.TrustedDeviceMaxAgeCeilingSeconds,
+			tenancyusecases.PasswordMaxAgeDaysFloor, tenancyusecases.PasswordMaxAgeDaysCeiling,
+			tenancydomain.DefaultMaxDelegationDepth,
+			tenancydomain.TrustedDeviceMaxAgeCeilingSeconds,
 		)
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "policy_override_weaker", message)
 	default:
@@ -319,7 +319,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		return support.WriteProblem(c, 400, "invalid_request", "invalid request body: "+err.Error())
 	}
 
-	quota := &domain.TenantQuota{
+	quota := &tenancydomain.TenantQuota{
 		Users:                req.Users,
 		Groups:               req.Groups,
 		Agents:               req.Agents,
@@ -342,7 +342,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		}
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantQuotaUpdated{
+		d.Emit(&tenancydomain.TenantQuotaUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: target.ID,
 			ChangedFields: quotaChangedFields(req),
 		})

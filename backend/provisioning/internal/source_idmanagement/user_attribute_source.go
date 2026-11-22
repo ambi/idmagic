@@ -9,8 +9,8 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 // UserAttributeSource resolves a User's attributes for
@@ -19,10 +19,10 @@ import (
 // id, preferred_username, display_name, given_name, family_name, email, active.
 type UserAttributeSource struct{ UserRepo userports.UserRepository }
 
-var _ ports.AttributeSource = (*UserAttributeSource)(nil)
+var _ provisioningports.AttributeSource = (*UserAttributeSource)(nil)
 
-func (s *UserAttributeSource) ResolveAttributes(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, sourceID string) (map[string]any, bool, error) {
-	if sourceType != domain.SourceTypeUser {
+func (s *UserAttributeSource) ResolveAttributes(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, sourceID string) (map[string]any, bool, error) {
+	if sourceType != provisioningdomain.SourceTypeUser {
 		return nil, false, nil
 	}
 	// FindBySubIncludingDeleted (not FindBySub): a deactivate/delete task

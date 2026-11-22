@@ -84,7 +84,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
-	sharedsignalsports "github.com/ambi/idmagic/backend/sharedsignals/ports"
+	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -96,7 +96,7 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/workloadidentity"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -238,8 +238,8 @@ type Stack struct {
 	// Agents と RevocationEpochs は WithAgentRevocation が配る。
 	Agents               agentports.AgentRepository
 	WorkloadIdentity     workloadidentity.Module
-	RevocationEpochs     sharedsignalsports.AgentRevocationEpochRepository
-	UserRevocationEpochs sharedsignalsports.UserRevocationEpochRepository
+	RevocationEpochs     ssports.AgentRevocationEpochRepository
+	UserRevocationEpochs ssports.UserRevocationEpochRepository
 	// AuditEvents は WithAudit が配る監査の保存先である。
 	AuditEvents auditports.AuditEventRepository
 
@@ -680,7 +680,7 @@ func WithWsFederation() Option {
 	return func(b *builder) {
 		b.deps.WsFederation = wsfederation.NewMemoryModule()
 		b.stack.WsFedRPs = b.deps.WsFederation.RPRepo
-		_ = b.stack.WsFedRPs.Save(context.Background(), &feddomain.WsFedRelyingParty{
+		_ = b.stack.WsFedRPs.Save(context.Background(), &wsfeddomain.WsFedRelyingParty{
 			Wtrealm:   WsFedRealm,
 			ReplyURLs: []string{WsFedReplyURL},
 			ClaimPolicy: claimdomain.ClaimMappingPolicy{

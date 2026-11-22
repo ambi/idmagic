@@ -3,10 +3,10 @@ package usecases
 import (
 	"time"
 
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 )
 
-var emit = sharedusecases.Emit
+var emit = oauthusecases.Emit
 
 func adminNow(now time.Time) time.Time {
 	if now.IsZero() {

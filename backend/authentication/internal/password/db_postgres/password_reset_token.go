@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -24,7 +24,7 @@ func NewPasswordResetTokenStore(pool sharedpg.DB, usersInTx func(pgx.Tx) userpor
 	return &PasswordResetTokenStore{pool: pool, usersInTx: usersInTx}
 }
 
-var _ authnports.PasswordResetTokenStore = (*PasswordResetTokenStore)(nil)
+var _ passwordports.PasswordResetTokenStore = (*PasswordResetTokenStore)(nil)
 
 func (s *PasswordResetTokenStore) Save(ctx context.Context, envelope actiontoken.Envelope) error {
 	if envelope.Purpose != actiontoken.PurposePasswordReset {
@@ -83,7 +83,7 @@ func (s *PasswordResetTokenStore) Find(
 // トークンは未使用のまま残り、同じトークンで作用が二回成功する状態を作らない。
 func (s *PasswordResetTokenStore) ConsumeAndApply(
 	ctx context.Context,
-	commit authnports.PasswordResetCommit,
+	commit passwordports.PasswordResetCommit,
 ) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -106,7 +106,7 @@ func (s *PasswordResetTokenStore) ConsumeAndApply(
 		return err
 	}
 	if updated == nil {
-		return authnports.ErrResetUserMissing
+		return passwordports.ErrResetUserMissing
 	}
 	if err := q.InsertPasswordHistory(ctx, InsertPasswordHistoryParams{
 		UserID: commit.UserID, Encoded: commit.PasswordEncoded, CreatedAt: commit.Now,

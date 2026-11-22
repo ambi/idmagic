@@ -7,7 +7,7 @@ import (
 	"time"
 
 	webauthnpg "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_postgres"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -23,7 +23,7 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	otherCtx := tenantports.WithTenant(context.Background(), other, "", "")
 	store := &webauthnpg.WebAuthnSessionStore{Pool: db}
 	now := pgtest.Now()
-	data := ports.WebAuthnSession{Payload: json.RawMessage(`{"challenge":"abc","user_id":"dXNlci0x"}`)}
+	data := webauthnports.WebAuthnSession{Payload: json.RawMessage(`{"challenge":"abc","user_id":"dXNlci0x"}`)}
 
 	if err := store.Save(ctx, "key-1", data, now.Add(time.Minute)); err != nil {
 		t.Fatalf("save: %v", err)

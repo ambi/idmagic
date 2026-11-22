@@ -24,10 +24,10 @@ import (
 
 	"github.com/ambi/idmagic/backend/accesscontrol"
 	authorizationmemory "github.com/ambi/idmagic/backend/accesscontrol/internal/db_memory"
-	authorizationdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	authorizationports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accesscontrolusecases "github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -46,7 +46,7 @@ import (
 // recordingAuthorizer は判定器へ渡った AuthZRequest を記録する。合成そのものは
 // 包んだ Authorizer が行うので、記録は製品の判定を変えない。
 type recordingAuthorizer struct {
-	inner    policyports.Authorizer
+	inner    accessports.Authorizer
 	mu       sync.Mutex
 	requests []spec.AuthZRequest
 }
@@ -93,12 +93,12 @@ func (unreachableAuthorizer) Authorize(context.Context, spec.AuthZRequest) (spec
 // unreachableTuples は関係タプルの読み出しだけを失敗させる。書き込みは通るので、
 // 事実を組み立てる段だけがストアへ到達できない状況になる。
 type unreachableTuples struct {
-	authorizationports.RelationTupleRepository
+	accessinternalports.RelationTupleRepository
 }
 
 func (unreachableTuples) ListSubjects(
-	context.Context, string, authorizationdomain.ObjectRef, string,
-) ([]authorizationdomain.SubjectRef, error) {
+	context.Context, string, accessdomain.ObjectRef, string,
+) ([]accessdomain.SubjectRef, error) {
 	return nil, errors.New("relation tuple store is unreachable")
 }
 
@@ -108,7 +108,7 @@ func (unreachableTuples) ListSubjects(
 // ゼロ値は製品と同じ組み立てになる。
 type standardsSeams struct {
 	// authorizer が nil でなければ、記録用 Authorizer の内側をこれに差し替える。
-	authorizer policyports.Authorizer
+	authorizer accessports.Authorizer
 	// noAuthorizer は評価器を持たない組み立てを作る。
 	noAuthorizer bool
 	// unreachableStore は関係タプルの読み出しを失敗させる。
@@ -147,7 +147,7 @@ func newStandardsFixture(t *testing.T, seams standardsSeams, agents ...*agentdom
 	}
 
 	store := authorizationmemory.NewStore()
-	var tuples authorizationports.RelationTupleRepository = authorizationmemory.NewRelationTupleRepository(store)
+	var tuples accessinternalports.RelationTupleRepository = authorizationmemory.NewRelationTupleRepository(store)
 	if seams.unreachableStore {
 		tuples = unreachableTuples{RelationTupleRepository: tuples}
 	}
@@ -155,7 +155,7 @@ func newStandardsFixture(t *testing.T, seams standardsSeams, agents ...*agentdom
 	if seams.authorizer != nil {
 		recorded.inner = seams.authorizer
 	}
-	var authorizer policyports.Authorizer = recorded
+	var authorizer accessports.Authorizer = recorded
 	if seams.noAuthorizer {
 		authorizer = nil
 	}
@@ -386,9 +386,9 @@ func TestAuthorizationDecisionRidesOnTheSubjectActionResourceContextEvaluation(t
 		if facts.SubjectPermitted {
 			t.Fatal("the fact must report the relation as not holding")
 		}
-		if !slices.Contains(facts.DenyReasons, authorizationdomain.ReasonNoRelationPath) {
+		if !slices.Contains(facts.DenyReasons, accessdomain.ReasonNoRelationPath) {
 			t.Fatalf("Relationship.DenyReasons = %v, want %s",
-				facts.DenyReasons, authorizationdomain.ReasonNoRelationPath)
+				facts.DenyReasons, accessdomain.ReasonNoRelationPath)
 		}
 	})
 
@@ -533,8 +533,8 @@ func TestAuthorizationFailsClosedWhenTheDecisionCannotBeAnswered(t *testing.T) {
 		if result.Permitted {
 			t.Fatal("reaching the traversal bound must not fall back to permit")
 		}
-		if !slices.Contains(result.Reasons, authorizationdomain.ReasonDepthExceeded) {
-			t.Fatalf("Reasons = %v, want %s", result.Reasons, authorizationdomain.ReasonDepthExceeded)
+		if !slices.Contains(result.Reasons, accessdomain.ReasonDepthExceeded) {
+			t.Fatalf("Reasons = %v, want %s", result.Reasons, accessdomain.ReasonDepthExceeded)
 		}
 	})
 }
@@ -620,7 +620,7 @@ func TestAccessibleResourceSearchIsSubjectFixedBoundedAndReportsTruncation(t *te
 	t.Run("the default traversal bound truncates and says so", func(t *testing.T) {
 		f := newStandardsFixture(t, standardsSeams{})
 		f.publishModel(t)
-		limit := usecases.DefaultMaxEnumeratedResources
+		limit := accesscontrolusecases.DefaultMaxEnumeratedResources
 		tuples := make([]map[string]any, 0, limit+1)
 		for i := range limit + 1 {
 			tuples = append(tuples, viewerGrant(fmt.Sprintf("d%04d", i), "user", "alice"))

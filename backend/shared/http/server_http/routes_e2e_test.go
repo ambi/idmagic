@@ -47,7 +47,7 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -84,18 +84,18 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, userports.UserRepo
 	codeStore := oauth2.NewMemoryModule().CodeStore
 	hasher := testing_passwords.NewHasher()
 
-	secretHash := domain.HashClientSecret(demoClientSecret)
-	_ = clientRepo.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(demoClientSecret)
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		ClientID: demoClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{demoRedirectURI},
 		GrantTypes: []spec.GrantType{
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
 	hash, err := hasher.Hash(demoPassword)
@@ -206,8 +206,8 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 	defaultSignInPolicyRepo := signinpolicy.NewMemoryModule().DefaultRepo
 	hasher := testing_passwords.NewHasher()
 
-	secretHash := domain.HashClientSecret(demoClientSecret)
-	_ = clientRepo.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(demoClientSecret)
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		ClientID: demoClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{demoRedirectURI},
 		GrantTypes: []spec.GrantType{
@@ -215,10 +215,10 @@ func newTOTPServerWithEvents(t *testing.T, opts totpServerOptions) (*httptest.Se
 			spec.GrantClientCredentials, spec.GrantDeviceCode,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		FirstParty:               opts.firstParty,
 		CreatedAt:                time.Now().UTC(),
 	})
@@ -1184,7 +1184,7 @@ func TestFirstPartyBrowserLoginRequiresTheSecondFactorUnderTheTenantDefault(t *t
 	if loginResult["next"] != "/realms/default/totp" || loginResult["redirect_to"] != "" {
 		t.Fatalf("login result=%v, want next=/realms/default/totp without a redirect", loginResult)
 	}
-	if issued := emittedOf[*domain.AuthorizationCodeIssued](events); len(issued) != 0 {
+	if issued := emittedOf[*oauthdomain.AuthorizationCodeIssued](events); len(issued) != 0 {
 		t.Fatalf("an authorization code was issued before the second factor: %+v", issued)
 	}
 

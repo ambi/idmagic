@@ -10,7 +10,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -33,38 +33,38 @@ type seedContributor struct {
 func ensureClient(ctx context.Context, repo interface {
 	FindByID(context.Context, string, string) (*oauthdomain.OAuth2Client, error)
 }, commands ResourceCommands, desired *oauthdomain.OAuth2Client, apply bool,
-) (domain.Operation, error) {
+) (seedingdomain.Operation, error) {
 	existing, err := repo.FindByID(ctx, desired.TenantID, desired.ClientID)
 	if err != nil {
-		return domain.Operation{}, err
+		return seedingdomain.Operation{}, err
 	}
-	op := domain.Operation{LogicalKey: "oauth2-client:" + desired.ClientID, Summary: "first-party client"}
+	op := seedingdomain.Operation{LogicalKey: "oauth2-client:" + desired.ClientID, Summary: "first-party client"}
 	if existing == nil {
-		op.Kind = domain.OperationCreate
+		op.Kind = seedingdomain.OperationCreate
 		if apply {
 			err = commands.CreateClient(ctx, desired)
 		}
 		return op, err
 	}
-	if domain.SameFirstPartyClient(existing, desired) {
-		op.Kind = domain.OperationNoop
+	if seedingdomain.SameFirstPartyClient(existing, desired) {
+		op.Kind = seedingdomain.OperationNoop
 		return op, nil
 	}
-	op.Kind = domain.OperationConflict
+	op.Kind = seedingdomain.OperationConflict
 	return op, nil
 }
 
-func (c *seedContributor) Plan(ctx context.Context, request domain.Request) (domain.Plan, error) {
+func (c *seedContributor) Plan(ctx context.Context, request seedingdomain.Request) (seedingdomain.Plan, error) {
 	operations, err := c.operations(ctx, request, false)
-	return domain.Plan{Operations: operations}, err
+	return seedingdomain.Plan{Operations: operations}, err
 }
 
-func (c *seedContributor) Apply(ctx context.Context, request domain.Request) error {
+func (c *seedContributor) Apply(ctx context.Context, request seedingdomain.Request) error {
 	_, err := c.operations(ctx, request, true)
 	return err
 }
 
-func (c *seedContributor) operations(ctx context.Context, request domain.Request, apply bool) ([]domain.Operation, error) {
+func (c *seedContributor) operations(ctx context.Context, request seedingdomain.Request, apply bool) ([]seedingdomain.Operation, error) {
 	now := time.Now().UTC()
 	redirectURIs := request.FirstPartyRedirectURIs
 	if len(redirectURIs) == 0 {
@@ -74,38 +74,38 @@ func (c *seedContributor) operations(ctx context.Context, request domain.Request
 			"http://localhost:8080/realms/default/callback",
 		}
 	}
-	operations := make([]domain.Operation, 0, 16)
-	appendOperation := func(operation domain.Operation, err error) error {
+	operations := make([]seedingdomain.Operation, 0, 16)
+	appendOperation := func(operation seedingdomain.Operation, err error) error {
 		if err != nil {
 			return err
 		}
 		operations = append(operations, operation)
-		if operation.Kind == domain.OperationConflict {
+		if operation.Kind == seedingdomain.OperationConflict {
 			return fmt.Errorf("seed drift at %s", operation.LogicalKey)
 		}
 		return nil
 	}
 	for _, resource := range c.manifest.Manifest.Resources {
-		if resource.Kind == domain.ResourceKindFirstPartyClients {
-			for _, client := range domain.FirstPartyClients(resource.Clients, redirectURIs, now) {
+		if resource.Kind == seedingdomain.ResourceKindFirstPartyClients {
+			for _, client := range seedingdomain.FirstPartyClients(resource.Clients, redirectURIs, now) {
 				if err := appendOperation(ensureClient(ctx, c.deps.ClientRepo, c.commands, client, apply)); err != nil {
 					return operations, err
 				}
 			}
 		}
 	}
-	if request.Profile == domain.ProfileBootstrap {
+	if request.Profile == seedingdomain.ProfileBootstrap {
 		return operations, nil
 	}
-	if request.Profile == domain.ProfilePerformance {
+	if request.Profile == seedingdomain.ProfilePerformance {
 		if len(c.manifest.Manifest.Generators) != 1 || c.manifest.Manifest.Generators[0].Kind != "performance_users" {
 			return operations, fmt.Errorf("performance manifest requires one performance_users generator")
 		}
 		return c.performanceOperations(ctx, request, apply, operations, now)
 	}
-	var demo *domain.Resource
+	var demo *seedingdomain.Resource
 	for index := range c.manifest.Manifest.Resources {
-		if c.manifest.Manifest.Resources[index].Kind == domain.ResourceKindDevelopmentDemo {
+		if c.manifest.Manifest.Resources[index].Kind == seedingdomain.ResourceKindDevelopmentDemo {
 			demo = &c.manifest.Manifest.Resources[index]
 			break
 		}
@@ -128,7 +128,7 @@ func (c *seedContributor) operations(ctx context.Context, request domain.Request
 	return demoOperations.items, err
 }
 
-func (c *seedContributor) performanceOperations(ctx context.Context, request domain.Request, apply bool, operations []domain.Operation, now time.Time) ([]domain.Operation, error) {
+func (c *seedContributor) performanceOperations(ctx context.Context, request seedingdomain.Request, apply bool, operations []seedingdomain.Operation, now time.Time) ([]seedingdomain.Operation, error) {
 	creates := 0
 	batchSize := request.EffectiveBatchSize()
 	for start := 0; start < request.Count; start += batchSize {
@@ -149,15 +149,15 @@ func (c *seedContributor) performanceOperations(ctx context.Context, request dom
 				continue
 			}
 			if !samePerformanceUser(existing, user) {
-				return append(operations, domain.Operation{LogicalKey: fmt.Sprintf("performance-user:%d", index), Kind: domain.OperationConflict, Summary: "synthetic user drift"}), fmt.Errorf("seed drift at performance-user:%d", index)
+				return append(operations, seedingdomain.Operation{LogicalKey: fmt.Sprintf("performance-user:%d", index), Kind: seedingdomain.OperationConflict, Summary: "synthetic user drift"}), fmt.Errorf("seed drift at performance-user:%d", index)
 			}
 		}
 	}
-	kind := domain.OperationNoop
+	kind := seedingdomain.OperationNoop
 	if creates > 0 {
-		kind = domain.OperationCreate
+		kind = seedingdomain.OperationCreate
 	}
-	return append(operations, domain.Operation{LogicalKey: "performance-users", Kind: kind, Summary: fmt.Sprintf("%d synthetic users", request.Count)}), nil
+	return append(operations, seedingdomain.Operation{LogicalKey: "performance-users", Kind: kind, Summary: fmt.Sprintf("%d synthetic users", request.Count)}), nil
 }
 
 func performanceUser(index int, generatorSeed string, now time.Time) *userdomain.User {

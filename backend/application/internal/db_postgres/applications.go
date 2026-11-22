@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
@@ -21,13 +21,13 @@ type ApplicationRepository struct {
 	ProtocolLinkers ProtocolLinkers
 }
 
-func applicationFromRow(row *Application) *domain.Application {
-	app := &domain.Application{
+func applicationFromRow(row *Application) *appdomain.Application {
+	app := &appdomain.Application{
 		TenantID:      row.TenantID,
 		ID:            row.ID,
 		Name:          row.Name,
-		Kind:          domain.ApplicationKind(row.Kind),
-		Status:        domain.ApplicationStatus(row.Status),
+		Kind:          appdomain.ApplicationKind(row.Kind),
+		Status:        appdomain.ApplicationStatus(row.Status),
 		IconURL:       row.IconUrl,
 		IconObjectKey: row.IconObjectKey,
 		LaunchURL:     row.LaunchUrl,
@@ -36,7 +36,7 @@ func applicationFromRow(row *Application) *domain.Application {
 		UpdatedAt:     row.UpdatedAt,
 	}
 	if row.ProtocolType.Valid {
-		app.Protocol = &domain.ApplicationProtocol{Type: domain.ApplicationProtocolType(row.ProtocolType.String)}
+		app.Protocol = &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolType(row.ProtocolType.String)}
 	}
 	if app.CategoryIDs == nil {
 		app.CategoryIDs = []string{}
@@ -44,7 +44,7 @@ func applicationFromRow(row *Application) *domain.Application {
 	return app
 }
 
-func (r *ApplicationRepository) hydrateProtocol(ctx context.Context, app *domain.Application) error {
+func (r *ApplicationRepository) hydrateProtocol(ctx context.Context, app *appdomain.Application) error {
 	if app.Protocol == nil {
 		return nil
 	}
@@ -55,22 +55,22 @@ func (r *ApplicationRepository) hydrateProtocol(ctx context.Context, app *domain
 		return err
 	}
 	switch app.Protocol.Type {
-	case domain.ApplicationProtocolOIDC:
+	case appdomain.ApplicationProtocolOIDC:
 		app.Protocol.ClientID = row
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		app.Protocol.EntityID = row
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		app.Protocol.Wtrealm = row
 	}
 	return nil
 }
 
-func (r *ApplicationRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.Application, error) {
+func (r *ApplicationRepository) ListAll(ctx context.Context, tenantID string) ([]*appdomain.Application, error) {
 	rows, err := New(r.Pool).ListApplicationsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.Application, 0, len(rows))
+	out := make([]*appdomain.Application, 0, len(rows))
 	for _, row := range rows {
 		app := applicationFromRow(row)
 		if err := r.hydrateProtocol(ctx, app); err != nil {
@@ -84,7 +84,7 @@ func (r *ApplicationRepository) ListAll(ctx context.Context, tenantID string) ([
 // ListPage implements ports.ApplicationRepository.ListPage (wi-159):
 // keyset pagination ordered by (name, id) ascending, strictly after the
 // given keyset ("", "" for the first page).
-func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error) {
+func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*appdomain.Application, error) {
 	q := New(r.Pool)
 	var rows []*Application
 	var err error
@@ -104,7 +104,7 @@ func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterNam
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.Application, 0, len(rows))
+	out := make([]*appdomain.Application, 0, len(rows))
 	for _, row := range rows {
 		app := applicationFromRow(row)
 		if err := r.hydrateProtocol(ctx, app); err != nil {
@@ -115,7 +115,7 @@ func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterNam
 	return out, nil
 }
 
-func (r *ApplicationRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error) {
+func (r *ApplicationRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*appdomain.Application, error) {
 	q := New(r.Pool)
 	var rows []*Application
 	var err error
@@ -131,7 +131,7 @@ func (r *ApplicationRepository) ListPageBefore(ctx context.Context, tenantID, be
 		return nil, err
 	}
 	slices.Reverse(rows)
-	out := make([]*domain.Application, 0, len(rows))
+	out := make([]*appdomain.Application, 0, len(rows))
 	for _, row := range rows {
 		app := applicationFromRow(row)
 		if err := r.hydrateProtocol(ctx, app); err != nil {
@@ -146,7 +146,7 @@ func (r *ApplicationRepository) Count(ctx context.Context, tenantID string) (int
 	return New(r.Pool).CountApplicationsByTenant(ctx, tenantID)
 }
 
-func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error) {
+func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicationID string) (*appdomain.Application, error) {
 	row, err := New(r.Pool).GetApplicationByID(ctx, GetApplicationByIDParams{
 		TenantID: tenantID, ID: applicationID,
 	})
@@ -163,7 +163,7 @@ func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicat
 	return app, nil
 }
 
-func (r *ApplicationRepository) FindByProtocol(ctx context.Context, tenantID string, protocolType domain.ApplicationProtocolType, key string) (*domain.Application, error) {
+func (r *ApplicationRepository) FindByProtocol(ctx context.Context, tenantID string, protocolType appdomain.ApplicationProtocolType, key string) (*appdomain.Application, error) {
 	if key == "" {
 		return nil, nil
 	}
@@ -185,11 +185,11 @@ func (r *ApplicationRepository) FindByProtocol(ctx context.Context, tenantID str
 	return app, nil
 }
 
-func (r *ApplicationRepository) Save(ctx context.Context, app *domain.Application) error {
+func (r *ApplicationRepository) Save(ctx context.Context, app *appdomain.Application) error {
 	return saveApplication(ctx, New(r.Pool), app)
 }
 
-func saveApplication(ctx context.Context, queries *Queries, app *domain.Application) error {
+func saveApplication(ctx context.Context, queries *Queries, app *appdomain.Application) error {
 	var protocolType pgtype.Text
 	if app.Protocol != nil {
 		protocolType = pgtype.Text{String: string(app.Protocol.Type), Valid: true}
@@ -214,24 +214,24 @@ func saveApplication(ctx context.Context, queries *Queries, app *domain.Applicat
 	})
 }
 
-func (r *ApplicationRepository) linkApplicationProtocol(ctx context.Context, tx pgx.Tx, queries *Queries, app *domain.Application) error {
+func (r *ApplicationRepository) linkApplicationProtocol(ctx context.Context, tx pgx.Tx, queries *Queries, app *appdomain.Application) error {
 	if app.Protocol == nil {
 		return nil
 	}
 	var key string
 	var link func(context.Context, pgx.Tx, string, string, string) error
 	switch app.Protocol.Type {
-	case domain.ApplicationProtocolOIDC:
+	case appdomain.ApplicationProtocolOIDC:
 		key = app.Protocol.ClientID
 		link = r.ProtocolLinkers.OIDC
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		key = app.Protocol.EntityID
 		link = r.ProtocolLinkers.SAML
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		key = app.Protocol.Wtrealm
 		link = r.ProtocolLinkers.WsFed
 	default:
-		return domain.ErrInvalidProtocolType
+		return appdomain.ErrInvalidProtocolType
 	}
 	if err := link(ctx, tx, app.TenantID, app.ID, key); err != nil {
 		return err
@@ -248,7 +248,7 @@ func (r *ApplicationRepository) linkApplicationProtocol(ctx context.Context, tx 
 	return nil
 }
 
-func (r *ApplicationRepository) Create(ctx context.Context, app *domain.Application) error {
+func (r *ApplicationRepository) Create(ctx context.Context, app *appdomain.Application) error {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -279,7 +279,7 @@ func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, ca
 // ApplicationIconStore は Application icon blob を PostgreSQL に保存する (wi-74)。
 type ApplicationIconStore struct{ Pool sharedpg.DB }
 
-func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.ApplicationIcon) error {
+func (s *ApplicationIconStore) Save(ctx context.Context, icon *appdomain.ApplicationIcon) error {
 	return New(s.Pool).UpsertApplicationIcon(ctx, UpsertApplicationIconParams{
 		ApplicationID: icon.ApplicationID, ID: icon.ID,
 		ContentType: icon.ContentType, SizeBytes: int32(icon.SizeBytes), Data: icon.Data, //nolint:gosec // G115: icon size is bounded by upload limits, well under int32 max
@@ -287,7 +287,7 @@ func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.Applicatio
 	})
 }
 
-func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID, id string) (*domain.ApplicationIcon, error) {
+func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID, id string) (*appdomain.ApplicationIcon, error) {
 	row, err := New(s.Pool).GetApplicationIcon(ctx, GetApplicationIconParams{
 		TenantID: tenantID, ApplicationID: applicationID, ID: id,
 	})
@@ -297,7 +297,7 @@ func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID
 	if err != nil {
 		return nil, err
 	}
-	return &domain.ApplicationIcon{
+	return &appdomain.ApplicationIcon{
 		TenantID: row.TenantID, ApplicationID: row.ApplicationID, ID: row.ID,
 		ContentType: row.ContentType, SizeBytes: int(row.SizeBytes), Data: row.Data,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
@@ -313,33 +313,33 @@ func (s *ApplicationIconStore) DeleteByApplication(ctx context.Context, tenantID
 // ApplicationAssignmentRepository は Application 割当を PostgreSQL に永続化する (wi-69)。
 type ApplicationAssignmentRepository struct{ Pool sharedpg.DB }
 
-func assignmentFromFields(tenantID, applicationID, subjectType, subjectID, visibility string, createdAt, updatedAt time.Time) *domain.ApplicationAssignment {
-	return &domain.ApplicationAssignment{
-		TenantID: tenantID, ApplicationID: applicationID, SubjectType: domain.AssignmentSubjectType(subjectType),
-		SubjectID: subjectID, Visibility: domain.AssignmentVisibility(visibility), CreatedAt: createdAt, UpdatedAt: updatedAt,
+func assignmentFromFields(tenantID, applicationID, subjectType, subjectID, visibility string, createdAt, updatedAt time.Time) *appdomain.ApplicationAssignment {
+	return &appdomain.ApplicationAssignment{
+		TenantID: tenantID, ApplicationID: applicationID, SubjectType: appdomain.AssignmentSubjectType(subjectType),
+		SubjectID: subjectID, Visibility: appdomain.AssignmentVisibility(visibility), CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }
 
-func (r *ApplicationAssignmentRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListAll(ctx context.Context, tenantID string) ([]*appdomain.ApplicationAssignment, error) {
 	rows, err := New(r.Pool).ListApplicationAssignmentsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ApplicationAssignment, 0, len(rows))
+	out := make([]*appdomain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context, tenantID, applicationID string) ([]*domain.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context, tenantID, applicationID string) ([]*appdomain.ApplicationAssignment, error) {
 	rows, err := New(r.Pool).ListApplicationAssignmentsByApplication(ctx, ListApplicationAssignmentsByApplicationParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ApplicationAssignment, 0, len(rows))
+	out := make([]*appdomain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
@@ -349,9 +349,9 @@ func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context,
 // ListPageByApplication implements ports.AssignmentRepository.ListPageByApplication
 // (wi-159): keyset pagination ordered by (subject_type, subject_id)
 // ascending, strictly after the given keyset ("", "" for the first page).
-func (r *ApplicationAssignmentRepository) ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*appdomain.ApplicationAssignment, error) {
 	q := New(r.Pool)
-	var out []*domain.ApplicationAssignment
+	var out []*appdomain.ApplicationAssignment
 	if afterSubjectType == "" && afterSubjectID == "" {
 		rows, err := q.ListApplicationAssignmentsByApplicationPage(ctx, ListApplicationAssignmentsByApplicationPageParams{
 			TenantID: tenantID, ApplicationID: applicationID,
@@ -379,7 +379,7 @@ func (r *ApplicationAssignmentRepository) ListPageByApplication(ctx context.Cont
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(ctx context.Context, tenantID, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(ctx context.Context, tenantID, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*appdomain.ApplicationAssignment, error) {
 	rows, err := New(r.Pool).ListApplicationAssignmentsByApplicationPageBefore(ctx, ListApplicationAssignmentsByApplicationPageBeforeParams{
 		TenantID: tenantID, ApplicationID: applicationID, BeforeSubjectType: beforeSubjectType,
 		BeforeSubjectID: beforeSubjectID,
@@ -389,16 +389,16 @@ func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(ctx contex
 		return nil, err
 	}
 	slices.Reverse(rows)
-	out := make([]*domain.ApplicationAssignment, 0, len(rows))
+	out := make([]*appdomain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, tenantID string, subjects []appports.SubjectRef) ([]*domain.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, tenantID string, subjects []appports.SubjectRef) ([]*appdomain.ApplicationAssignment, error) {
 	if len(subjects) == 0 {
-		return []*domain.ApplicationAssignment{}, nil
+		return []*appdomain.ApplicationAssignment{}, nil
 	}
 	types := make([]string, len(subjects))
 	ids := make([]string, len(subjects))
@@ -412,21 +412,21 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ApplicationAssignment, 0, len(rows))
+	out := make([]*appdomain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) Save(ctx context.Context, a *domain.ApplicationAssignment) error {
+func (r *ApplicationAssignmentRepository) Save(ctx context.Context, a *appdomain.ApplicationAssignment) error {
 	return New(r.Pool).UpsertApplicationAssignment(ctx, UpsertApplicationAssignmentParams{
 		ApplicationID: a.ApplicationID, SubjectType: string(a.SubjectType),
 		SubjectID: a.SubjectID, Visibility: string(a.Visibility), CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	})
 }
 
-func (r *ApplicationAssignmentRepository) Delete(ctx context.Context, tenantID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string) error {
+func (r *ApplicationAssignmentRepository) Delete(ctx context.Context, tenantID, applicationID string, subjectType appdomain.AssignmentSubjectType, subjectID string) error {
 	return New(r.Pool).DeleteApplicationAssignment(ctx, DeleteApplicationAssignmentParams{
 		TenantID: tenantID, ApplicationID: applicationID, SubjectType: string(subjectType), SubjectID: subjectID,
 	})
@@ -444,7 +444,7 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Contex
 // 契約の互換のために残すが SQL では用いない。
 type ApplicationOrderingRepository struct{ Pool sharedpg.DB }
 
-func (r *ApplicationOrderingRepository) Get(ctx context.Context, _ /*tenantID*/, userID string) (*domain.ApplicationOrdering, error) {
+func (r *ApplicationOrderingRepository) Get(ctx context.Context, _ /*tenantID*/, userID string) (*appdomain.ApplicationOrdering, error) {
 	row, err := New(r.Pool).GetApplicationOrdering(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -452,13 +452,13 @@ func (r *ApplicationOrderingRepository) Get(ctx context.Context, _ /*tenantID*/,
 	if err != nil {
 		return nil, err
 	}
-	return &domain.ApplicationOrdering{
+	return &appdomain.ApplicationOrdering{
 		UserID: row.UserID, ApplicationIDs: row.ApplicationIds,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }
 
-func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *domain.ApplicationOrdering) error {
+func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *appdomain.ApplicationOrdering) error {
 	ids := o.ApplicationIDs
 	if ids == nil {
 		ids = []string{}
@@ -472,26 +472,26 @@ func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *domain.Appl
 // すべてテナント境界に閉じる。
 type ApplicationCategoryRepository struct{ Pool sharedpg.DB }
 
-func categoryFromRow(row *ApplicationCategory) *domain.ApplicationCategory {
-	return &domain.ApplicationCategory{
+func categoryFromRow(row *ApplicationCategory) *appdomain.ApplicationCategory {
+	return &appdomain.ApplicationCategory{
 		TenantID: row.TenantID, ID: row.ID, Name: row.Name,
 		Position: int(row.Position), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 }
 
-func (r *ApplicationCategoryRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
+func (r *ApplicationCategoryRepository) ListAll(ctx context.Context, tenantID string) ([]*appdomain.ApplicationCategory, error) {
 	rows, err := New(r.Pool).ListApplicationCategoriesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ApplicationCategory, 0, len(rows))
+	out := make([]*appdomain.ApplicationCategory, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, categoryFromRow(row))
 	}
 	return out, nil
 }
 
-func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, categoryID string) (*domain.ApplicationCategory, error) {
+func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, categoryID string) (*appdomain.ApplicationCategory, error) {
 	row, err := New(r.Pool).GetApplicationCategoryByID(ctx, GetApplicationCategoryByIDParams{
 		TenantID: tenantID, ID: categoryID,
 	})
@@ -504,7 +504,7 @@ func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, 
 	return categoryFromRow(row), nil
 }
 
-func (r *ApplicationCategoryRepository) Save(ctx context.Context, c *domain.ApplicationCategory) error {
+func (r *ApplicationCategoryRepository) Save(ctx context.Context, c *appdomain.ApplicationCategory) error {
 	return New(r.Pool).UpsertApplicationCategory(ctx, UpsertApplicationCategoryParams{
 		TenantID: c.TenantID, ID: c.ID, Name: c.Name, Position: int32(c.Position), //nolint:gosec // G115: category position is a small manual-ordering index, well under int32 max
 		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,

@@ -4,23 +4,23 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-type OAuthError = sharedusecases.OAuthError
+type OAuthError = oauthusecases.OAuthError
 
 var (
-	NewOAuthError                = sharedusecases.NewOAuthError
-	errorCode                    = sharedusecases.ErrorCode
-	emit                         = sharedusecases.Emit
-	generateOpaqueToken          = sharedusecases.GenerateOpaqueToken
-	ParseAuthorizationDetails    = sharedusecases.ParseAuthorizationDetails
-	ValidateAuthorizationDetails = sharedusecases.ValidateAuthorizationDetails
-	ResolveResourceIndicator     = sharedusecases.ResolveResourceIndicator
+	NewOAuthError                = oauthusecases.NewOAuthError
+	errorCode                    = oauthusecases.ErrorCode
+	emit                         = oauthusecases.Emit
+	generateOpaqueToken          = oauthusecases.GenerateOpaqueToken
+	ParseAuthorizationDetails    = oauthusecases.ParseAuthorizationDetails
+	ValidateAuthorizationDetails = oauthusecases.ValidateAuthorizationDetails
+	ResolveResourceIndicator     = oauthusecases.ResolveResourceIndicator
 )
 
 // detailsRequest は、登録済みのクライアントが送った authorization_details である。
@@ -34,7 +34,7 @@ type detailsRequest struct {
 // 拒否したときは AuthorizationDetailsRejected を発行する。種類の保管先の障害は拒否ではないので発行しない。
 func acceptAuthorizationDetails(
 	ctx context.Context,
-	repo ports.AuthorizationDetailTypeRepository,
+	repo oauthports.AuthorizationDetailTypeRepository,
 	emitEvent func(spec.DomainEvent),
 	req detailsRequest,
 ) ([]spec.AuthorizationDetail, error) {
@@ -46,7 +46,7 @@ func acceptAuthorizationDetails(
 		return details, nil
 	}
 	if code := errorCode(err); code == "invalid_authorization_details" {
-		emit(emitEvent, &domain.AuthorizationDetailsRejected{
+		emit(emitEvent, &oauthdomain.AuthorizationDetailsRejected{
 			At: req.Now.UTC(), TenantID: tenantports.TenantID(ctx), ClientID: req.ClientID, Reason: code,
 		})
 	}

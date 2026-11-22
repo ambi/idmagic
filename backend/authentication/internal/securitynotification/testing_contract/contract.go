@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 )
 
 type Fixture struct {
-	Preferences ports.PreferenceRepository
-	Devices     ports.KnownDeviceRepository
+	Preferences securitynotificationports.PreferenceRepository
+	Devices     securitynotificationports.KnownDeviceRepository
 	UserID      string
 	OtherUserID string
 	Now         time.Time
@@ -28,7 +28,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		if got, err := f.Preferences.Find(ctx, f.UserID); err != nil || got != nil {
 			t.Fatalf("missing Find = (%+v, %v)", got, err)
 		}
-		prefs, err := domain.NewPreferences(f.UserID, []domain.Category{domain.CategoryNewDeviceSignIn}, f.Now)
+		prefs, err := securitynotificationdomain.NewPreferences(f.UserID, []securitynotificationdomain.Category{securitynotificationdomain.CategoryNewDeviceSignIn}, f.Now)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -36,7 +36,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 			t.Fatalf("Save: %v", err)
 		}
 		got, err := f.Preferences.Find(ctx, f.UserID)
-		if err != nil || got == nil || got.Allows(domain.CategoryNewDeviceSignIn) || !got.Allows(domain.CategoryCredentialChange) {
+		if err != nil || got == nil || got.Allows(securitynotificationdomain.CategoryNewDeviceSignIn) || !got.Allows(securitynotificationdomain.CategoryCredentialChange) {
 			t.Fatalf("Find = (%+v, %v), want saved disabled category", got, err)
 		}
 	})
@@ -44,7 +44,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Run("known devices", func(t *testing.T) {
 		f := newFixture(t)
 		ctx := context.Background()
-		device := ports.KnownDevice{UserID: f.UserID, DeviceHash: "hash-a", Label: "browser", SeenAt: f.Now}
+		device := securitynotificationports.KnownDevice{UserID: f.UserID, DeviceHash: "hash-a", Label: "browser", SeenAt: f.Now}
 		first, err := f.Devices.Observe(ctx, device)
 		if err != nil || !first {
 			t.Fatalf("first Observe = (%v, %v), want true", first, err)
@@ -54,7 +54,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		if err != nil || again {
 			t.Fatalf("second Observe = (%v, %v), want false", again, err)
 		}
-		other, err := f.Devices.Observe(ctx, ports.KnownDevice{UserID: f.OtherUserID, DeviceHash: "hash-a", SeenAt: f.Now})
+		other, err := f.Devices.Observe(ctx, securitynotificationports.KnownDevice{UserID: f.OtherUserID, DeviceHash: "hash-a", SeenAt: f.Now})
 		if err != nil || !other {
 			t.Fatalf("other user's Observe = (%v, %v), want true", other, err)
 		}

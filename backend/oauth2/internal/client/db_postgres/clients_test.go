@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/ambi/idmagic/backend/oauth2/internal/client/db_postgres"
-	"github.com/ambi/idmagic/backend/oauth2/internal/client/domain"
+	clientdomain "github.com/ambi/idmagic/backend/oauth2/internal/client/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -36,13 +36,13 @@ func TestOAuth2ClientRepositoryListPage(t *testing.T) {
 
 	ids := make([]string, 5)
 	for i := range ids {
-		c := &domain.OAuth2Client{
+		c := &clientdomain.OAuth2Client{
 			TenantID: tenant.ID, ClientID: pgfixtures.NewUUID(t), ClientType: spec.ClientConfidential,
 			ClientSecretHash: new("secret-hash"), RedirectURIs: []string{"https://client.example/cb"},
 			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-			TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "openid offline_access",
-			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
+			TokenEndpointAuthMethod: clientdomain.AuthMethodClientSecretBasic, Scope: "openid offline_access",
+			IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: clientdomain.FapiNone,
 			CreatedAt: base, UpdatedAt: base,
 		}
 		if err := repo.Save(ctx, c); err != nil {

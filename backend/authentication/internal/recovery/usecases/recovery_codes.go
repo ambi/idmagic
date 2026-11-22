@@ -15,8 +15,8 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
-	"github.com/ambi/idmagic/backend/authentication/recovery/domain"
-	authnports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -34,7 +34,7 @@ var ErrRecoveryCodeInvalid = errors.New("recovery code is invalid")
 // RecoveryCodesDeps は recovery code use case の依存。
 type RecoveryCodesDeps struct {
 	UserRepo         userports.UserRepository
-	RecoveryCodeRepo authnports.RecoveryCodeRepository
+	RecoveryCodeRepo recoveryports.RecoveryCodeRepository
 	Emit             func(spec.DomainEvent)
 }
 
@@ -65,14 +65,14 @@ func GenerateRecoveryCodes(
 		return nil, err
 	}
 	plain := make([]string, 0, recoveryCodeCount)
-	stored := make([]*domain.RecoveryCode, 0, recoveryCodeCount)
+	stored := make([]*recoverydomain.RecoveryCode, 0, recoveryCodeCount)
 	for range recoveryCodeCount {
 		code, err := generateRecoveryCode()
 		if err != nil {
 			return nil, err
 		}
 		plain = append(plain, code)
-		stored = append(stored, &domain.RecoveryCode{
+		stored = append(stored, &recoverydomain.RecoveryCode{
 			UserID: sub, CodeHash: hashRecoveryCode(code), GeneratedAt: now,
 		})
 	}
@@ -149,7 +149,7 @@ func ConsumeRecoveryCode(
 // RecoveryCodeStatusFor は残数表示用の状態を返す。
 func RecoveryCodeStatusFor(
 	ctx context.Context,
-	repo authnports.RecoveryCodeRepository,
+	repo recoveryports.RecoveryCodeRepository,
 	sub string,
 ) (*RecoveryCodeStatusResult, error) {
 	codes, err := repo.ListBySub(ctx, sub)
@@ -173,7 +173,7 @@ func RecoveryCodeStatusFor(
 
 func remainingRecoveryCodes(
 	ctx context.Context,
-	repo authnports.RecoveryCodeRepository,
+	repo recoveryports.RecoveryCodeRepository,
 	sub string,
 ) (int, error) {
 	codes, err := repo.ListBySub(ctx, sub)

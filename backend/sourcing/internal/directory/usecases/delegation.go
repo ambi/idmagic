@@ -8,23 +8,23 @@ import (
 
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type Delegation struct {
 	Service      *Service
-	Correlations ports.CorrelationRepository
-	Challenges   ports.PasswordChallengeStore
-	Locks        ports.IngestionRunRepository
+	Correlations directoryinternalports.CorrelationRepository
+	Challenges   directoryinternalports.PasswordChallengeStore
+	Locks        directoryinternalports.IngestionRunRepository
 	Users        userports.UserRepository
 	Now          func() time.Time
 }
 
 type PasswordVerification struct {
 	Delegated bool
-	Result    domain.PasswordResult
+	Result    directorydomain.PasswordResult
 }
 
 // WithPasswordConfigurationLock は短い設定変更と資格情報の保存だけを直列化する。
@@ -34,15 +34,15 @@ func (d *Delegation) WithPasswordConfigurationLock(ctx context.Context, apply fu
 	return d.Locks.WithConnectorLock(ctx, tenantID, "password-configuration", apply)
 }
 
-func (d *Delegation) RegisterEncryption(ctx context.Context, connector domain.Connector, jwk map[string]any) (string, error) {
+func (d *Delegation) RegisterEncryption(ctx context.Context, connector directorydomain.Connector, jwk map[string]any) (string, error) {
 	kid, err := tokens_jose.ValidateEncryptionJWK(jwk)
 	if err != nil || kid == connector.KeyID {
 		return "", ErrInvalidKey
 	}
 	err = d.WithPasswordConfigurationLock(ctx, func() error {
-		return d.Service.update(ctx, connector.TenantID, connector.ID, func(c domain.Connector, _ time.Time) (domain.Connector, bool, error) {
-			if c.Status != domain.StatusActive || c.KeyID != connector.KeyID {
-				return c, false, ports.ErrDelegationUnavailable
+		return d.Service.update(ctx, connector.TenantID, connector.ID, func(c directorydomain.Connector, _ time.Time) (directorydomain.Connector, bool, error) {
+			if c.Status != directorydomain.StatusActive || c.KeyID != connector.KeyID {
+				return c, false, directoryinternalports.ErrDelegationUnavailable
 			}
 			if c.EncryptionKeyID == kid {
 				return c, false, nil
@@ -56,13 +56,13 @@ func (d *Delegation) RegisterEncryption(ctx context.Context, connector domain.Co
 	return kid, err
 }
 
-func (d *Delegation) Configure(ctx context.Context, id string, enabled bool) (domain.Connector, error) {
+func (d *Delegation) Configure(ctx context.Context, id string, enabled bool) (directorydomain.Connector, error) {
 	tenantID := tenantports.TenantID(ctx)
 	err := d.WithPasswordConfigurationLock(ctx, func() error {
-		return d.Service.update(ctx, tenantID, id, func(c domain.Connector, _ time.Time) (domain.Connector, bool, error) {
+		return d.Service.update(ctx, tenantID, id, func(c directorydomain.Connector, _ time.Time) (directorydomain.Connector, bool, error) {
 			if enabled {
-				if c.Status != domain.StatusActive || c.EncryptionKeyID == "" || c.EncryptionPublicKey == nil {
-					return c, false, ports.ErrDelegationUnavailable
+				if c.Status != directorydomain.StatusActive || c.EncryptionKeyID == "" || c.EncryptionPublicKey == nil {
+					return c, false, directoryinternalports.ErrDelegationUnavailable
 				}
 				users, err := d.Correlations.List(ctx, tenantID, id)
 				if err != nil {
@@ -74,7 +74,7 @@ func (d *Delegation) Configure(ctx context.Context, id string, enabled bool) (do
 						return c, false, err
 					}
 					if u != nil && u.PasswordHash != "" {
-						return c, false, ports.ErrDelegationUnavailable
+						return c, false, directoryinternalports.ErrDelegationUnavailable
 					}
 				}
 			}
@@ -84,7 +84,7 @@ func (d *Delegation) Configure(ctx context.Context, id string, enabled bool) (do
 		})
 	})
 	if err != nil {
-		return domain.Connector{}, err
+		return directorydomain.Connector{}, err
 	}
 	return d.Service.Get(ctx, tenantID, id)
 }
@@ -93,14 +93,14 @@ func (d *Delegation) Verify(ctx context.Context, userID, password string) (Passw
 	tenantID := tenantports.TenantID(ctx)
 	corr, err := d.Correlations.FindByUser(ctx, tenantID, userID)
 	if err != nil {
-		return PasswordVerification{Delegated: true, Result: domain.PasswordConnectorUnavailable}, err
+		return PasswordVerification{Delegated: true, Result: directorydomain.PasswordConnectorUnavailable}, err
 	}
 	if corr == nil {
 		return PasswordVerification{}, nil
 	}
 	c, err := d.Service.Get(ctx, tenantID, corr.ConnectorID)
 	if err != nil {
-		return PasswordVerification{Delegated: true, Result: domain.PasswordConnectorUnavailable}, err
+		return PasswordVerification{Delegated: true, Result: directorydomain.PasswordConnectorUnavailable}, err
 	}
 	if !c.DelegatedAuthentication {
 		return PasswordVerification{}, nil
@@ -121,7 +121,7 @@ func (d *Delegation) AllowsLocalPassword(ctx context.Context, userID string) (bo
 	return err == nil && !c.DelegatedAuthentication, err
 }
 
-func (d *Delegation) Test(ctx context.Context, connectorID, userID, password string) (domain.PasswordResult, error) {
+func (d *Delegation) Test(ctx context.Context, connectorID, userID, password string) (directorydomain.PasswordResult, error) {
 	corr, err := d.Correlations.FindByUser(ctx, tenantports.TenantID(ctx), userID)
 	if err != nil {
 		return "", err
@@ -136,16 +136,16 @@ func (d *Delegation) Test(ctx context.Context, connectorID, userID, password str
 	return d.verify(ctx, c, corr.ExternalID, password)
 }
 
-func (d *Delegation) verify(ctx context.Context, c domain.Connector, externalID, password string) (domain.PasswordResult, error) {
+func (d *Delegation) verify(ctx context.Context, c directorydomain.Connector, externalID, password string) (directorydomain.PasswordResult, error) {
 	if password == "" || len(password) > 16384 {
-		return domain.PasswordInvalid, nil
+		return directorydomain.PasswordInvalid, nil
 	}
-	if c.Status != domain.StatusActive || c.EncryptionPublicKey == nil || c.EncryptionKeyID == "" {
-		return domain.PasswordConnectorUnavailable, nil
+	if c.Status != directorydomain.StatusActive || c.EncryptionPublicKey == nil || c.EncryptionKeyID == "" {
+		return directorydomain.PasswordConnectorUnavailable, nil
 	}
 	now := d.Now().UTC().Truncate(time.Microsecond)
-	challenge := domain.PasswordChallenge{ID: uuid.NewV4().String(), TenantID: c.TenantID, ConnectorID: c.ID, KeyID: c.EncryptionKeyID, Revision: c.Revision, ExpiresAt: now.Add(domain.PasswordChallengeLifetime)}
-	payload, err := json.Marshal(domain.PasswordPayload{ID: challenge.ID, TenantID: c.TenantID, ConnectorID: c.ID, KeyID: c.EncryptionKeyID, ExpiresAt: challenge.ExpiresAt, Operation: "verify_password", ExternalID: externalID, Password: password}) //nolint:gosec // 直後に公開鍵で暗号化し、平文はログと保存先へ出さない。
+	challenge := directorydomain.PasswordChallenge{ID: uuid.NewV4().String(), TenantID: c.TenantID, ConnectorID: c.ID, KeyID: c.EncryptionKeyID, Revision: c.Revision, ExpiresAt: now.Add(directorydomain.PasswordChallengeLifetime)}
+	payload, err := json.Marshal(directorydomain.PasswordPayload{ID: challenge.ID, TenantID: c.TenantID, ConnectorID: c.ID, KeyID: c.EncryptionKeyID, ExpiresAt: challenge.ExpiresAt, Operation: "verify_password", ExternalID: externalID, Password: password}) //nolint:gosec // 直後に公開鍵で暗号化し、平文はログと保存先へ出さない。
 	if err != nil {
 		return "", err
 	}
@@ -154,10 +154,10 @@ func (d *Delegation) verify(ctx context.Context, c domain.Connector, externalID,
 		return "", err
 	}
 	if err := d.Challenges.Sweep(ctx, now); err != nil {
-		return domain.PasswordConnectorUnavailable, err
+		return directorydomain.PasswordConnectorUnavailable, err
 	}
 	if err := d.Challenges.Enqueue(ctx, challenge, now); err != nil {
-		return domain.PasswordConnectorUnavailable, err
+		return directorydomain.PasswordConnectorUnavailable, err
 	}
 	completed := false
 	defer func() {
@@ -168,29 +168,29 @@ func (d *Delegation) verify(ctx context.Context, c domain.Connector, externalID,
 		defer cancel()
 		_ = d.Challenges.Delete(cleanup, c.TenantID, challenge.ID)
 	}()
-	wait, cancel := context.WithTimeout(ctx, domain.PasswordChallengeLifetime)
+	wait, cancel := context.WithTimeout(ctx, directorydomain.PasswordChallengeLifetime)
 	defer cancel()
 	tick := time.NewTicker(20 * time.Millisecond)
 	defer tick.Stop()
 	for {
 		select {
 		case <-wait.Done():
-			return domain.PasswordConnectorUnavailable, nil
+			return directorydomain.PasswordConnectorUnavailable, nil
 		case <-tick.C:
 			item, err := d.Challenges.Find(wait, c.TenantID, challenge.ID)
 			if err != nil {
-				return domain.PasswordConnectorUnavailable, err
+				return directorydomain.PasswordConnectorUnavailable, err
 			}
 			if item == nil || !d.Now().Before(challenge.ExpiresAt) {
-				return domain.PasswordConnectorUnavailable, nil
+				return directorydomain.PasswordConnectorUnavailable, nil
 			}
 			if item.Result != "" {
 				latest, err := d.Service.Get(wait, c.TenantID, c.ID)
 				if err != nil {
-					return domain.PasswordConnectorUnavailable, err
+					return directorydomain.PasswordConnectorUnavailable, err
 				}
-				if latest.Status != domain.StatusActive || latest.Revision != c.Revision || latest.EncryptionKeyID != c.EncryptionKeyID {
-					return domain.PasswordConnectorUnavailable, nil
+				if latest.Status != directorydomain.StatusActive || latest.Revision != c.Revision || latest.EncryptionKeyID != c.EncryptionKeyID {
+					return directorydomain.PasswordConnectorUnavailable, nil
 				}
 				completed = true
 				return item.Result, nil
@@ -199,14 +199,14 @@ func (d *Delegation) verify(ctx context.Context, c domain.Connector, externalID,
 	}
 }
 
-func (d *Delegation) Poll(ctx context.Context, c domain.Connector) (*domain.PasswordChallenge, error) {
-	if c.Status != domain.StatusActive || c.EncryptionKeyID == "" {
-		return nil, ports.ErrDelegationUnavailable
+func (d *Delegation) Poll(ctx context.Context, c directorydomain.Connector) (*directorydomain.PasswordChallenge, error) {
+	if c.Status != directorydomain.StatusActive || c.EncryptionKeyID == "" {
+		return nil, directoryinternalports.ErrDelegationUnavailable
 	}
 	if err := d.Challenges.Sweep(ctx, d.Now()); err != nil {
 		return nil, err
 	}
-	wait, cancel := context.WithTimeout(ctx, domain.PasswordPollLifetime)
+	wait, cancel := context.WithTimeout(ctx, directorydomain.PasswordPollLifetime)
 	defer cancel()
 	tick := time.NewTicker(20 * time.Millisecond)
 	defer tick.Stop()
@@ -215,8 +215,8 @@ func (d *Delegation) Poll(ctx context.Context, c domain.Connector) (*domain.Pass
 		if err != nil {
 			return nil, err
 		}
-		if latest.Status != domain.StatusActive || latest.Revision != c.Revision {
-			return nil, ports.ErrDelegationUnavailable
+		if latest.Status != directorydomain.StatusActive || latest.Revision != c.Revision {
+			return nil, directoryinternalports.ErrDelegationUnavailable
 		}
 		item, err := d.Challenges.Claim(wait, c.TenantID, c.ID, c.Revision, d.Now())
 		if err != nil || item != nil {
@@ -230,13 +230,13 @@ func (d *Delegation) Poll(ctx context.Context, c domain.Connector) (*domain.Pass
 	}
 }
 
-func (d *Delegation) Complete(ctx context.Context, c domain.Connector, id string, result domain.PasswordResult) error {
+func (d *Delegation) Complete(ctx context.Context, c directorydomain.Connector, id string, result directorydomain.PasswordResult) error {
 	latest, err := d.Service.Get(ctx, c.TenantID, c.ID)
 	if err != nil {
 		return err
 	}
-	if latest.Status != domain.StatusActive || latest.Revision != c.Revision {
-		return ports.ErrDelegationUnavailable
+	if latest.Status != directorydomain.StatusActive || latest.Revision != c.Revision {
+		return directoryinternalports.ErrDelegationUnavailable
 	}
 	return d.Challenges.Complete(ctx, c.TenantID, c.ID, id, c.Revision, result, d.Now())
 }

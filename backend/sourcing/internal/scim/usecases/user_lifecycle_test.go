@@ -14,7 +14,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 )
 
 // scimUserLifecycle は、組み立ての地点と同じく IdManagement の操作を SCIM のポートへ渡す。
@@ -23,7 +23,7 @@ func scimUserLifecycle(users userports.UserRepository) scimports.UserLifecycle {
 }
 
 type scimOwnerFixture struct {
-	u       *usecases.Usecases
+	u       *scimusecases.Usecases
 	users   userports.UserRepository
 	agents  agentports.AgentRepository
 	events  []string
@@ -37,7 +37,7 @@ func newScimOwnerFixture(t *testing.T) *scimOwnerFixture {
 	f := &scimOwnerFixture{users: idmanagement.NewMemoryModule().UserRepo, agents: idmanagement.NewMemoryModule().AgentRepo}
 	lifecycle := idmanagement.Module{UserRepo: f.users, AgentRepo: f.agents}.UserLifecycleCommands(idmanagement.LifecycleDeps{}, func(event spec.DomainEvent) error { f.events = append(f.events, event.EventType()); return nil }, ignoreRevocation{}, "scim")
 	refs, groups := scimmemory.NewScimRepository(), idmanagement.NewMemoryModule().GroupRepo
-	f.u = usecases.NewUsecases(refs, f.users, groups, lifecycle, func(spec.DomainEvent) {}, scimIdentityWrites(refs, f.users, groups, func(spec.DomainEvent) {}))
+	f.u = scimusecases.NewUsecases(refs, f.users, groups, lifecycle, func(spec.DomainEvent) {}, scimIdentityWrites(refs, f.users, groups, func(spec.DomainEvent) {}))
 	created, err := f.u.CreateUser(ctx, scimTenant, map[string]any{"userName": "alice", "active": true})
 	if err != nil {
 		t.Fatal(err)

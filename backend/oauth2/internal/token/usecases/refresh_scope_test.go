@@ -6,18 +6,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type refreshScopeGuard struct {
-	ports.TokenIssuer
+	oauthports.TokenIssuer
 	scopes []string
 }
 
-func (g *refreshScopeGuard) Precheck(_ context.Context, in ports.AccessTokenInput) error {
+func (g *refreshScopeGuard) Precheck(_ context.Context, in oauthports.AccessTokenInput) error {
 	g.scopes = in.Scopes
 	if !slices.Equal(in.Scopes, []string{"openid"}) {
 		return NewOAuthError("access_denied", "Only openid is allowed.")
@@ -37,9 +37,9 @@ func TestRefreshUsesEffectiveScopesForGuardAndIssuanceEvents(t *testing.T) {
 	var accessScopes, resourceScopes []string
 	f.deps.Emit = func(event spec.DomainEvent) {
 		switch e := event.(type) {
-		case *domain.AccessTokenIssued:
+		case *oauthdomain.AccessTokenIssued:
 			accessScopes = e.Scopes
-		case *domain.ResourceScopedTokenIssued:
+		case *oauthdomain.ResourceScopedTokenIssued:
 			resourceScopes = e.Scopes
 		}
 	}

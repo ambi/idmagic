@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 
@@ -21,7 +21,7 @@ func (r *TrustedDeviceRepository) queries() *Queries { return New(r.Pool) }
 func (r *TrustedDeviceRepository) FindBySelector(
 	ctx context.Context,
 	tenantID, selector string,
-) (*domain.TrustedDevice, error) {
+) (*trusteddevicedomain.TrustedDevice, error) {
 	row, err := r.queries().FindTrustedDeviceBySelector(ctx, FindTrustedDeviceBySelectorParams{
 		TenantID: tenantID, Selector: selector,
 	})
@@ -37,7 +37,7 @@ func (r *TrustedDeviceRepository) FindBySelector(
 func (r *TrustedDeviceRepository) FindByID(
 	ctx context.Context,
 	tenantID, userID, deviceID string,
-) (*domain.TrustedDevice, error) {
+) (*trusteddevicedomain.TrustedDevice, error) {
 	row, err := r.queries().FindTrustedDeviceByID(ctx, FindTrustedDeviceByIDParams{
 		TenantID: tenantID, UserID: userID, ID: deviceID,
 	})
@@ -54,21 +54,21 @@ func (r *TrustedDeviceRepository) ListActiveByUser(
 	ctx context.Context,
 	tenantID, userID string,
 	now time.Time,
-) ([]*domain.TrustedDevice, error) {
+) ([]*trusteddevicedomain.TrustedDevice, error) {
 	rows, err := r.queries().ListActiveTrustedDevicesByUser(ctx, ListActiveTrustedDevicesByUserParams{
 		TenantID: tenantID, UserID: userID, ExpiresAt: now,
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.TrustedDevice, 0, len(rows))
+	out := make([]*trusteddevicedomain.TrustedDevice, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, toDomain(row))
 	}
 	return out, nil
 }
 
-func (r *TrustedDeviceRepository) Save(ctx context.Context, device *domain.TrustedDevice) error {
+func (r *TrustedDeviceRepository) Save(ctx context.Context, device *trusteddevicedomain.TrustedDevice) error {
 	return r.queries().UpsertTrustedDevice(ctx, UpsertTrustedDeviceParams{
 		ID: device.ID, TenantID: device.TenantID, UserID: device.UserID,
 		Selector: device.Selector, VerifierHash: device.VerifierHash,
@@ -85,7 +85,7 @@ func (r *TrustedDeviceRepository) RevokeAllForUser(
 	tenantID, userID string,
 	reason spec.TrustedDeviceRevokeReason,
 	now time.Time,
-) ([]*domain.TrustedDevice, error) {
+) ([]*trusteddevicedomain.TrustedDevice, error) {
 	rows, err := r.queries().RevokeTrustedDevicesForUser(ctx, RevokeTrustedDevicesForUserParams{
 		TenantID: tenantID, UserID: userID,
 		RevokedAt:    pgtype.Timestamptz{Time: now, Valid: true},
@@ -94,7 +94,7 @@ func (r *TrustedDeviceRepository) RevokeAllForUser(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.TrustedDevice, 0, len(rows))
+	out := make([]*trusteddevicedomain.TrustedDevice, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, toDomain(row))
 	}
@@ -105,11 +105,11 @@ func (r *TrustedDeviceRepository) DeleteAllForSub(ctx context.Context, userID st
 	return r.queries().DeleteTrustedDevicesForSub(ctx, userID)
 }
 
-func toDomain(row *TrustedDevice) *domain.TrustedDevice {
+func toDomain(row *TrustedDevice) *trusteddevicedomain.TrustedDevice {
 	if row == nil {
 		return nil
 	}
-	device := &domain.TrustedDevice{
+	device := &trusteddevicedomain.TrustedDevice{
 		ID: row.ID, TenantID: row.TenantID, UserID: row.UserID,
 		Selector: row.Selector, VerifierHash: row.VerifierHash, Label: row.Label.String,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt, ExpiresAt: row.ExpiresAt,

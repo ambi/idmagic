@@ -14,17 +14,17 @@ import (
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestDeleteAdminOAuth2ClientRejectsApplicationOwnedClient(t *testing.T) {
 	ctx := tenantContext("acme")
 	repo := oauth2memory.NewClientRepository()
-	repo.Seed(&domain.OAuth2Client{
+	repo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: "acme", ClientID: "client-1", ApplicationID: "app-1",
 		ClientType: spec.ClientConfidential, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 	})
 
 	err := DeleteAdminOAuth2Client(ctx, AdminOAuth2ClientDeps{ClientRepo: repo, ClientDeletion: repositoryClientDeletion{repo: repo}}, "admin", "client-1", time.Now())
@@ -73,7 +73,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*domain.AdminOAuth2ClientCreated)
+		ev, ok := emitted[0].(*oauthdomain.AdminOAuth2ClientCreated)
 		if !ok {
 			t.Fatalf("expected AdminOAuth2ClientCreated event, got %T", emitted[0])
 		}
@@ -134,7 +134,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*domain.AdminOAuth2ClientUpdated)
+		ev, ok := emitted[0].(*oauthdomain.AdminOAuth2ClientUpdated)
 		if !ok {
 			t.Fatalf("expected AdminOAuth2ClientUpdated event, got %T", emitted[0])
 		}
@@ -227,7 +227,7 @@ func TestAdminOAuth2Client(t *testing.T) {
 		if len(emitted) != 1 {
 			t.Fatalf("expected 1 event, got %d", len(emitted))
 		}
-		ev, ok := emitted[0].(*domain.AdminOAuth2ClientDeleted)
+		ev, ok := emitted[0].(*oauthdomain.AdminOAuth2ClientDeleted)
 		if !ok {
 			t.Fatalf("expected AdminOAuth2ClientDeleted event, got %T", emitted[0])
 		}

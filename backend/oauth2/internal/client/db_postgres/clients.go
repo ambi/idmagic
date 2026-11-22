@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2pg "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -24,19 +24,19 @@ import (
 // (wi-173); Pool は oauth2pg.DBTX を構造的に満たす。
 type OAuth2ClientRepository struct{ Pool sharedpg.DB }
 
-func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
-	c := &domain.OAuth2Client{
+func clientFromRow(row *oauth2pg.Oauth2Client) (*oauthdomain.OAuth2Client, error) {
+	c := &oauthdomain.OAuth2Client{
 		TenantID:                           row.TenantID,
 		ClientID:                           row.ClientID,
 		ApplicationID:                      sharedpg.UUIDString(row.ApplicationID),
 		ClientType:                         spec.ClientType(row.ClientType),
-		TokenEndpointAuthMethod:            domain.TokenEndpointAuthMethod(row.TokenEndpointAuthMethod),
+		TokenEndpointAuthMethod:            oauthdomain.TokenEndpointAuthMethod(row.TokenEndpointAuthMethod),
 		Scope:                              row.Scope,
 		IDTokenSignedResponseAlg:           signingdomain.SignatureAlgorithm(row.IDTokenSignedResponseAlg),
 		RequirePushedAuthorizationRequests: row.RequirePushedAuthorizationRequests,
 		RequirePKCE:                        row.RequirePkce,
 		DpopBoundAccessTokens:              row.DpopBoundAccessTokens,
-		FapiProfile:                        domain.FapiProfile(row.FapiProfile),
+		FapiProfile:                        oauthdomain.FapiProfile(row.FapiProfile),
 		BackChannelLogoutSessionRequired:   row.BackchannelLogoutSessionRequired,
 		FrontChannelLogoutSessionRequired:  row.FrontchannelLogoutSessionRequired,
 		FirstParty:                         row.FirstParty,
@@ -85,7 +85,7 @@ func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
 	return c, c.Validate()
 }
 
-func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) FindByID(ctx context.Context, tenantID, clientID string) (*oauthdomain.OAuth2Client, error) {
 	row, err := oauth2pg.New(r.Pool).GetClientByID(ctx, oauth2pg.GetClientByIDParams{TenantID: tenantID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -104,12 +104,12 @@ func (r *OAuth2ClientRepository) LookupBindableClient(ctx context.Context, tenan
 	return true, client.AgentClientAuthMethodAllowed(), nil
 }
 
-func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) ([]*oauthdomain.OAuth2Client, error) {
 	rows, err := oauth2pg.New(r.Pool).ListClientsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.OAuth2Client, 0, len(rows))
+	out := make([]*oauthdomain.OAuth2Client, 0, len(rows))
 	for _, row := range rows {
 		c, err := clientFromRow(row)
 		if err != nil {
@@ -124,7 +124,7 @@ func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) (
 // : keyset pagination ordered by client_id ascending — matching the
 // admin handler's pre-existing re-sort of FindAll's rows — strictly after
 // afterClientID ("" for the first page).
-func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*oauthdomain.OAuth2Client, error) {
 	q := oauth2pg.New(r.Pool)
 	var rows []*oauth2pg.Oauth2Client
 	var err error
@@ -143,7 +143,7 @@ func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterCl
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.OAuth2Client, 0, len(rows))
+	out := make([]*oauthdomain.OAuth2Client, 0, len(rows))
 	for _, row := range rows {
 		c, err := clientFromRow(row)
 		if err != nil {
@@ -154,7 +154,7 @@ func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterCl
 	return out, nil
 }
 
-func (r *OAuth2ClientRepository) ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error) {
+func (r *OAuth2ClientRepository) ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*oauthdomain.OAuth2Client, error) {
 	rows, err := oauth2pg.New(r.Pool).ListClientsByTenantPageBefore(ctx, oauth2pg.ListClientsByTenantPageBeforeParams{
 		TenantID: tenantID, BeforeClientID: beforeClientID,
 		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
@@ -163,7 +163,7 @@ func (r *OAuth2ClientRepository) ListPageBefore(ctx context.Context, tenantID, b
 		return nil, err
 	}
 	slices.Reverse(rows)
-	out := make([]*domain.OAuth2Client, 0, len(rows))
+	out := make([]*oauthdomain.OAuth2Client, 0, len(rows))
 	for _, row := range rows {
 		client, err := clientFromRow(row)
 		if err != nil {
@@ -181,7 +181,7 @@ func textOrNil(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Client) error {
+func (r *OAuth2ClientRepository) Save(ctx context.Context, c *oauthdomain.OAuth2Client) error {
 	redirectURIs, err := json.Marshal(c.RedirectURIs)
 	if err != nil {
 		return err
@@ -242,8 +242,8 @@ func (r *OAuth2ClientRepository) Delete(ctx context.Context, tenantID, clientID 
 	return oauth2pg.New(r.Pool).DeleteClient(ctx, oauth2pg.DeleteClientParams{TenantID: tenantID, ClientID: clientID})
 }
 
-func credentialFromRow(row *oauth2pg.Oauth2ClientSecret) domain.ClientSecretCredential {
-	credential := domain.ClientSecretCredential{
+func credentialFromRow(row *oauth2pg.Oauth2ClientSecret) oauthdomain.ClientSecretCredential {
+	credential := oauthdomain.ClientSecretCredential{
 		ID: row.ID, ClientID: row.ClientID, SecretHash: row.SecretHash, CreatedAt: row.CreatedAt,
 	}
 	if row.ExpiresAt.Valid {
@@ -264,26 +264,26 @@ func timestamptzOrNil(value *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *value, Valid: true}
 }
 
-func (r *OAuth2ClientRepository) ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error) {
+func (r *OAuth2ClientRepository) ListClientSecretCredentials(ctx context.Context, clientID string) ([]oauthdomain.ClientSecretCredential, error) {
 	rows, err := oauth2pg.New(r.Pool).ListClientSecretCredentials(ctx, clientID)
 	if err != nil {
 		return nil, err
 	}
-	credentials := make([]domain.ClientSecretCredential, 0, len(rows))
+	credentials := make([]oauthdomain.ClientSecretCredential, 0, len(rows))
 	for _, row := range rows {
 		credentials = append(credentials, credentialFromRow(row))
 	}
 	return credentials, nil
 }
 
-func (r *OAuth2ClientRepository) SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
+func (r *OAuth2ClientRepository) SaveClientSecretCredential(ctx context.Context, credential oauthdomain.ClientSecretCredential) error {
 	return oauth2pg.New(r.Pool).InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
 		ID: credential.ID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
 		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	})
 }
 
-func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error {
+func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context, legacy *oauthdomain.ClientSecretCredential, credential oauthdomain.ClientSecretCredential, maxActive int, now time.Time) error {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -326,7 +326,7 @@ func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context
 	return tx.Commit(ctx)
 }
 
-func (r *OAuth2ClientRepository) UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
+func (r *OAuth2ClientRepository) UpdateClientSecretCredential(ctx context.Context, credential oauthdomain.ClientSecretCredential) error {
 	return oauth2pg.New(r.Pool).UpdateClientSecretCredential(ctx, oauth2pg.UpdateClientSecretCredentialParams{
 		ID: credential.ID, ClientID: credential.ClientID,
 		ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),

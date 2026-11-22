@@ -10,8 +10,8 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -30,8 +30,8 @@ func init() {
 // JobHandlerDeps are ProvisioningTaskHandler's dependencies.
 type JobHandlerDeps struct {
 	ExecuteTaskDeps ExecuteTaskDeps
-	ConnectionRepo  ports.ProvisioningConnectionRepository
-	TaskRepo        ports.ProvisioningTaskRepository
+	ConnectionRepo  provisioningports.ProvisioningConnectionRepository
+	TaskRepo        provisioningports.ProvisioningTaskRepository
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	Now func() time.Time
 	// Emit はプロビジョニングタスクの終端遷移と接続の隔離を、それぞれの保存の後に発行する。
@@ -86,7 +86,7 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 		if task == nil {
 			return nil, nil
 		}
-		if task.JobID != nil && (task.Status == domain.TaskPending || *task.JobID != job.ID) {
+		if task.JobID != nil && (task.Status == provisioningdomain.TaskPending || *task.JobID != job.ID) {
 			return nil, nil
 		}
 		event, execErr := ExecuteTask(ctx, deps.ExecuteTaskDeps, job.TenantID, params.TaskID, now())
@@ -108,7 +108,7 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 			// 終端済みのプロビジョニングタスクを再実行したときも判定するので、前回の判定の失敗はここで回収される。
 			return nil, settleFullResyncOfTask(ctx, deps, job.TenantID, params.TaskID, now())
 		}
-		failsClosed := errors.Is(execErr, ports.ErrRequiredAttributeUnresolved)
+		failsClosed := errors.Is(execErr, provisioningports.ErrRequiredAttributeUnresolved)
 		if !failsClosed && job.Attempts < job.MaxAttempts {
 			return nil, execErr // non-terminal: Jobs will retry, task stays in_flight
 		}
@@ -131,7 +131,7 @@ func ProvisioningTaskHandler(deps JobHandlerDeps) jobsports.Handler {
 
 // deadLetter settles the task as dead_letter and emits UserProvisioningFailed
 // once that status is saved.
-func deadLetter(ctx context.Context, deps JobHandlerDeps, tenantID, taskID, reason string, now time.Time) (*domain.ProvisioningTask, error) {
+func deadLetter(ctx context.Context, deps JobHandlerDeps, tenantID, taskID, reason string, now time.Time) (*provisioningdomain.ProvisioningTask, error) {
 	task, err := deps.TaskRepo.Find(ctx, tenantID, taskID)
 	if err != nil {
 		return nil, err
@@ -139,10 +139,10 @@ func deadLetter(ctx context.Context, deps JobHandlerDeps, tenantID, taskID, reas
 	if task == nil {
 		return nil, ErrTaskNotFound
 	}
-	if err := deps.TaskRepo.UpdateStatus(ctx, tenantID, taskID, domain.TaskDeadLetter, &reason); err != nil {
+	if err := deps.TaskRepo.UpdateStatus(ctx, tenantID, taskID, provisioningdomain.TaskDeadLetter, &reason); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.UserProvisioningFailed{
+	emit(deps.Emit, &provisioningdomain.UserProvisioningFailed{
 		At: now, TenantID: tenantID, ConnectionID: task.ConnectionID, TaskID: taskID,
 		SourceType: task.SourceType, SourceID: task.SourceID, Error: reason,
 	})
@@ -174,7 +174,7 @@ func recordConsecutiveFailure(ctx context.Context, deps JobHandlerDeps, tenantID
 		return err
 	}
 	conn.ConsecutiveFailureCount++
-	if conn.ConsecutiveFailureCount >= conn.QuarantineAfterConsecutiveFailure && conn.Health != domain.HealthQuarantined {
+	if conn.ConsecutiveFailureCount >= conn.QuarantineAfterConsecutiveFailure && conn.Health != provisioningdomain.HealthQuarantined {
 		return quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, deps.Notifier, conn, reason, now)
 	}
 	return deps.ConnectionRepo.Update(ctx, conn, nil)
@@ -182,14 +182,14 @@ func recordConsecutiveFailure(ctx context.Context, deps JobHandlerDeps, tenantID
 
 // quarantineConnection は接続を隔離して保存し、保存に成功した後で ConnectionQuarantined を発行して notification_email へ知らせる。
 // 連続失敗と誤削除ガードの両方の経路が使う。Notifier は fail-open なので、送信の失敗は隔離を取り消さない。
-func quarantineConnection(ctx context.Context, repo ports.ProvisioningConnectionRepository, emitFn func(spec.DomainEvent), notifier notificationports.Notifier, conn *domain.ProvisioningConnection, reason string, now time.Time) error {
+func quarantineConnection(ctx context.Context, repo provisioningports.ProvisioningConnectionRepository, emitFn func(spec.DomainEvent), notifier notificationports.Notifier, conn *provisioningdomain.ProvisioningConnection, reason string, now time.Time) error {
 	if err := conn.Quarantine(reason, now); err != nil {
 		return err
 	}
 	if err := repo.Update(ctx, conn, nil); err != nil {
 		return err
 	}
-	emit(emitFn, &domain.ConnectionQuarantined{
+	emit(emitFn, &provisioningdomain.ConnectionQuarantined{
 		At: now, TenantID: conn.TenantID, ApplicationID: conn.ApplicationID, Reason: reason, ConsecutiveFailures: conn.ConsecutiveFailureCount,
 	})
 	if notification, ok := quarantineNotification(conn); ok && notifier != nil {
@@ -204,7 +204,7 @@ const quarantinedAtLayout = "2006-01-02 15:04 UTC"
 // quarantineNotification は隔離した接続の通知を組み立てる。notification_email が未設定か空白だけなら false を返す。
 // 宛先は User ではないので受信者の言語は空のままテナントの既定言語に任せ、全キー共通の user_display_name は空にする。
 // 渡さないと、それを参照するテナントの上書きが描画に失敗し、通知が届かなくなる。
-func quarantineNotification(conn *domain.ProvisioningConnection) (notificationports.Notification, bool) {
+func quarantineNotification(conn *provisioningdomain.ProvisioningConnection) (notificationports.Notification, bool) {
 	if conn.NotificationEmail == nil || strings.TrimSpace(*conn.NotificationEmail) == "" {
 		return notificationports.Notification{}, false
 	}

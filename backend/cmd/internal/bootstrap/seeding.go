@@ -8,20 +8,20 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/seeding"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // Seed は環境のシークレットの提供元と各所有者の保存先を Seeding に結ぶ。
-func Seed(ctx context.Context, deps *Dependencies, request domain.Request, secretRoot string) (domain.Plan, error) {
+func Seed(ctx context.Context, deps *Dependencies, request seedingdomain.Request, secretRoot string) (seedingdomain.Plan, error) {
 	materialized, err := seeding.Prepare(request, secretRoot, os.Getenv)
 	if err != nil {
-		return domain.Plan{}, err
+		return seedingdomain.Plan{}, err
 	}
 	if deps.Tenancy.QuotaRepo == nil || deps.OAuth2.EventSink == nil || deps.Audit.AuditEventRepo == nil || deps.SeedRequestLock == nil {
-		return domain.Plan{}, errors.New("seed quota, event, audit and lock dependencies are required")
+		return seedingdomain.Plan{}, errors.New("seed quota, event, audit and lock dependencies are required")
 	}
 	seedDeps := *deps
 	if seedDeps.Authentication.PasswordHasher == nil {
@@ -41,10 +41,10 @@ func Seed(ctx context.Context, deps *Dependencies, request domain.Request, secre
 		Hasher: seedDeps.Authentication.PasswordHasher,
 	}, commands, materialized)
 	if err != nil {
-		return domain.Plan{}, err
+		return seedingdomain.Plan{}, err
 	}
-	if request.Mode == domain.ModeApply {
-		var plan domain.Plan
+	if request.Mode == seedingdomain.ModeApply {
+		var plan seedingdomain.Plan
 		err := deps.SeedRequestLock(ctx, request, func(ctx context.Context) error {
 			var runErr error
 			plan, runErr = seeding.Run(ctx, request, contributor)
@@ -56,10 +56,10 @@ func Seed(ctx context.Context, deps *Dependencies, request domain.Request, secre
 }
 
 // 既存のパッケージ内テストが使う名前を保ち、判断は Seeding に委ねる。
-func firstPartyClients(seeds []domain.FirstPartyClientSeed, redirectURIs []string, now time.Time) []*oauthdomain.OAuth2Client {
-	return domain.FirstPartyClients(seeds, redirectURIs, now)
+func firstPartyClients(seeds []seedingdomain.FirstPartyClientSeed, redirectURIs []string, now time.Time) []*oauthdomain.OAuth2Client {
+	return seedingdomain.FirstPartyClients(seeds, redirectURIs, now)
 }
 
 func sameClient(actual, desired *oauthdomain.OAuth2Client) bool {
-	return domain.SameFirstPartyClient(actual, desired)
+	return seedingdomain.SameFirstPartyClient(actual, desired)
 }

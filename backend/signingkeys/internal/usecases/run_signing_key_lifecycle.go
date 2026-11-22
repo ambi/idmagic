@@ -7,11 +7,11 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
 type SigningKeyLifecycleDeps struct {
-	KeyStore ports.KeyStore
+	KeyStore signingports.KeyStore
 	Emit     func(spec.DomainEvent)
 }
 
@@ -19,7 +19,7 @@ type SigningKeyLifecycleDeps struct {
 // ローテーションし、XML 鍵は鍵を持つスコープごとに次の鍵を準備するだけで有効にしない。連携先が
 // 新しい証明書を登録したかを、バッチは確かめられないからである。
 func RunSigningKeyLifecycle(ctx context.Context, deps SigningKeyLifecycleDeps, now time.Time, cadence, grace time.Duration) error {
-	signing := ports.WithKeyUsage(ctx, signingdomain.KeyUsageSigning)
+	signing := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageSigning)
 	if _, err := RotateSigningKeyIfDue(signing, RotateSigningKeyDeps{KeyStore: deps.KeyStore, Emit: deps.Emit, Grace: grace}, now, cadence); err != nil {
 		return err
 	}
@@ -28,7 +28,7 @@ func RunSigningKeyLifecycle(ctx context.Context, deps SigningKeyLifecycleDeps, n
 		return err
 	}
 	// ID-JAG の鍵は発行で初めて作るので、鍵を持たないテナントでは作らない。
-	idJag := ports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning)
+	idJag := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning)
 	idJagScopes, err := deps.KeyStore.KeyScopes(idJag)
 	if err != nil {
 		return err
@@ -41,13 +41,13 @@ func RunSigningKeyLifecycle(ctx context.Context, deps SigningKeyLifecycleDeps, n
 			return err
 		}
 	}
-	xml := ports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
+	xml := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
 	scopes, err := deps.KeyStore.KeyScopes(xml)
 	if err != nil {
 		return err
 	}
 	for _, scopeID := range scopes {
-		scoped := ports.WithKeyScope(xml, scopeID)
+		scoped := signingports.WithKeyScope(xml, scopeID)
 		if err := prepareFederationKeyIfDue(scoped, deps, now, cadence); err != nil {
 			return err
 		}
@@ -63,7 +63,7 @@ func prepareFederationKeyIfDue(ctx context.Context, deps SigningKeyLifecycleDeps
 	if err != nil || !signingdomain.PreparationDue(keys, now, cadence) {
 		return err
 	}
-	staged, ok := deps.KeyStore.(ports.FederationKeyStore)
+	staged, ok := deps.KeyStore.(signingports.FederationKeyStore)
 	if !ok {
 		return errors.New("the key store cannot publish XML keys")
 	}

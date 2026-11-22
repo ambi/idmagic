@@ -32,7 +32,7 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
@@ -64,7 +64,7 @@ type countingRequestStore struct {
 	saves atomic.Int64
 }
 
-func (s *countingRequestStore) Save(ctx context.Context, request *domain.AuthorizationRequest) error {
+func (s *countingRequestStore) Save(ctx context.Context, request *oauthdomain.AuthorizationRequest) error {
 	s.saves.Add(1)
 	return s.AuthorizationRequestStore.Save(ctx, request)
 }
@@ -87,8 +87,8 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 	now := time.Now().UTC()
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	secretHash := domain.HashClientSecret(arClientSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(arClientSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: arClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{arRedirectURI},
@@ -96,10 +96,10 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken, spec.GrantTokenExchange,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    arScope,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 
@@ -118,27 +118,27 @@ func newAuthorizationRequestFixture(t *testing.T) *arFixture {
 	// 上限のある型でないと、RFC9396-MONOTONIC-NARROWING の「狭めることだけを許す」を
 	// 区別する事例が作れない。
 	detailTypes := oauth2.NewMemoryModule().AuthzDetailTypeRepo
-	_ = detailTypes.Save(context.Background(), &domain.AuthorizationDetailType{
+	_ = detailTypes.Save(context.Background(), &oauthdomain.AuthorizationDetailType{
 		TenantID: tenancydomain.DefaultTenantID, Type: arDetailType,
 		Description: "支払いの開始", DisplayTemplate: "{actions} を実行する",
-		State: domain.DetailTypeEnabled,
-		Schema: domain.AuthorizationDetailsSchema{
-			Rules: []domain.AuthorizationDetailFieldRule{
+		State: oauthdomain.DetailTypeEnabled,
+		Schema: oauthdomain.AuthorizationDetailsSchema{
+			Rules: []oauthdomain.AuthorizationDetailFieldRule{
 				{
-					Name: "actions", Semantics: domain.DetailFieldSet, Required: true,
+					Name: "actions", Semantics: oauthdomain.DetailFieldSet, Required: true,
 					Allowed: []string{"initiate", "status"},
 				},
-				{Name: "instructedAmount", Semantics: domain.DetailFieldAtMost, Required: true},
+				{Name: "instructedAmount", Semantics: oauthdomain.DetailFieldAtMost, Required: true},
 			},
 		},
 		CreatedAt: now, UpdatedAt: now,
 	})
 
 	resourceServers := oauth2.NewMemoryModule().McpResourceServerRepo
-	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		ID: "rs-payments", Resource: arResource, Name: "Payments API",
 		Scopes: []string{"openid", "profile", "payments"},
-		State:  domain.McpResourceServerActive,
+		State:  oauthdomain.McpResourceServerActive,
 	})
 
 	tenants := tenancy.NewMemoryModule().TenantRepo
@@ -891,18 +891,18 @@ func TestRedirectURIMustMatchARegisteredValueExactly(t *testing.T) {
 // 秘密、グラント、スコープは fixture のクライアントと同じにし、redirect_uris だけを変える。
 func (f *arFixture) saveRedirectClient(t *testing.T, clientID string, redirectURIs ...string) {
 	t.Helper()
-	secretHash := domain.HashClientSecret(arClientSecret)
-	if err := f.clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(arClientSecret)
+	if err := f.clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: clientID, ClientSecretHash: &secretHash,
 		ClientType:               spec.ClientConfidential,
 		RedirectURIs:             redirectURIs,
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    arScope,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
@@ -1037,18 +1037,18 @@ func TestAuthorizationRequestMayOmitTheRedirectURIOfASingleRegistration(t *testi
 	}
 
 	const multiClientID = "authorization-request-multi-redirect-client"
-	secretHash := domain.HashClientSecret(arClientSecret)
-	if err := fixture.clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(arClientSecret)
+	if err := fixture.clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: multiClientID, ClientSecretHash: &secretHash,
 		ClientType:               spec.ClientConfidential,
 		RedirectURIs:             []string{arRedirectURI, "https://app.example/other"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    arScope,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 	"github.com/ambi/idmagic/backend/signinpolicy"
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 )
 
@@ -15,21 +15,21 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 
-	app := &domain.Application{
+	app := &appdomain.Application{
 		TenantID:    "acme",
 		ID:          "app-1",
 		Name:        "Zebra",
-		Kind:        domain.ApplicationFederated,
-		Status:      domain.ApplicationActive,
-		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "client-1"},
+		Kind:        appdomain.ApplicationFederated,
+		Status:      appdomain.ApplicationActive,
+		Protocol:    &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "client-1"},
 		CategoryIDs: []string{"cat-1", "cat-2"},
 	}
 	if err := repo.Save(ctx, app); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	// 名前順ソートを確認するために 2 件目を追加する。
-	if err := repo.Save(ctx, &domain.Application{
-		TenantID: "acme", ID: "app-2", Name: "Alpha", Kind: domain.ApplicationWeblink,
+	if err := repo.Save(ctx, &appdomain.Application{
+		TenantID: "acme", ID: "app-2", Name: "Alpha", Kind: appdomain.ApplicationWeblink,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -77,24 +77,24 @@ func TestApplicationRepositoryFindByProtocol(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 
-	app := &domain.Application{
+	app := &appdomain.Application{
 		TenantID: "acme", ID: "app-1", Name: "SP",
-		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "cid"},
+		Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "cid"},
 	}
 	if err := repo.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
 
 	cases := []struct {
-		bindingType domain.ApplicationProtocolType
+		bindingType appdomain.ApplicationProtocolType
 		key         string
 		wantFound   bool
 	}{
-		{domain.ApplicationProtocolOIDC, "cid", true},
-		{domain.ApplicationProtocolSAML, "urn:sp", false},
-		{domain.ApplicationProtocolWsFed, "urn:realm", false},
-		{domain.ApplicationProtocolOIDC, "other", false},
-		{domain.ApplicationProtocolOIDC, "", false},
+		{appdomain.ApplicationProtocolOIDC, "cid", true},
+		{appdomain.ApplicationProtocolSAML, "urn:sp", false},
+		{appdomain.ApplicationProtocolWsFed, "urn:realm", false},
+		{appdomain.ApplicationProtocolOIDC, "other", false},
+		{appdomain.ApplicationProtocolOIDC, "", false},
 	}
 	for _, c := range cases {
 		got, err := repo.FindByProtocol(ctx, "acme", c.bindingType, c.key)
@@ -106,7 +106,7 @@ func TestApplicationRepositoryFindByProtocol(t *testing.T) {
 		}
 	}
 	// 別テナントでは一致しない。
-	if got, _ := repo.FindByProtocol(ctx, "other", domain.ApplicationProtocolOIDC, "cid"); got != nil {
+	if got, _ := repo.FindByProtocol(ctx, "other", appdomain.ApplicationProtocolOIDC, "cid"); got != nil {
 		t.Fatal("binding lookup ignored tenant boundary")
 	}
 }
@@ -114,7 +114,7 @@ func TestApplicationRepositoryFindByProtocol(t *testing.T) {
 func TestApplicationRepositoryRemoveCategory(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
-	if err := repo.Save(ctx, &domain.Application{
+	if err := repo.Save(ctx, &appdomain.Application{
 		TenantID: "acme", ID: "app-1", Name: "A",
 		CategoryIDs: []string{"cat-1", "cat-2"},
 	}); err != nil {
@@ -133,7 +133,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	store := NewApplicationIconStore()
 
-	icon := &domain.ApplicationIcon{
+	icon := &appdomain.ApplicationIcon{
 		TenantID: "acme", ApplicationID: "app-1", ID: "k1",
 		ContentType: "image/png", SizeBytes: 3, Data: []byte{1, 2, 3},
 	}
@@ -234,11 +234,11 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationAssignmentRepository()
 
-	assignments := []*domain.ApplicationAssignment{
-		{TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: "u2", Visibility: domain.AssignmentVisible},
-		{TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: "u1", Visibility: domain.AssignmentVisible},
-		{TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectGroup, SubjectID: "g1", Visibility: domain.AssignmentHidden},
-		{TenantID: "acme", ApplicationID: "app-2", SubjectType: domain.AssignmentSubjectUser, SubjectID: "u9", Visibility: domain.AssignmentVisible},
+	assignments := []*appdomain.ApplicationAssignment{
+		{TenantID: "acme", ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "u2", Visibility: appdomain.AssignmentVisible},
+		{TenantID: "acme", ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "u1", Visibility: appdomain.AssignmentVisible},
+		{TenantID: "acme", ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectGroup, SubjectID: "g1", Visibility: appdomain.AssignmentHidden},
+		{TenantID: "acme", ApplicationID: "app-2", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "u9", Visibility: appdomain.AssignmentVisible},
 	}
 	for _, a := range assignments {
 		if err := repo.Save(ctx, a); err != nil {
@@ -254,7 +254,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	if len(byApp) != 3 {
 		t.Fatalf("ListByApplication len=%d want 3", len(byApp))
 	}
-	if byApp[0].SubjectType != domain.AssignmentSubjectGroup ||
+	if byApp[0].SubjectType != appdomain.AssignmentSubjectGroup ||
 		byApp[1].SubjectID != "u1" || byApp[2].SubjectID != "u2" {
 		t.Fatalf("ListByApplication order: %+v", byApp)
 	}
@@ -265,8 +265,8 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	}
 
 	bySubjects, err := repo.ListBySubjects(ctx, "acme", []appports.SubjectRef{
-		{Type: domain.AssignmentSubjectUser, ID: "u1"},
-		{Type: domain.AssignmentSubjectGroup, ID: "g1"},
+		{Type: appdomain.AssignmentSubjectUser, ID: "u1"},
+		{Type: appdomain.AssignmentSubjectGroup, ID: "g1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +275,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("ListBySubjects len=%d want 2", len(bySubjects))
 	}
 
-	if err := repo.Delete(ctx, "acme", "app-1", domain.AssignmentSubjectUser, "u1"); err != nil {
+	if err := repo.Delete(ctx, "acme", "app-1", appdomain.AssignmentSubjectUser, "u1"); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := repo.ListByApplication(ctx, "acme", "app-1"); len(got) != 2 {
@@ -298,7 +298,7 @@ func TestApplicationOrderingRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationOrderingRepository()
 
-	ordering := &domain.ApplicationOrdering{
+	ordering := &appdomain.ApplicationOrdering{
 		UserID: "u1", ApplicationIDs: []string{"app-1", "app-2"},
 	}
 	if err := repo.Save(ctx, ordering); err != nil {
@@ -324,7 +324,7 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationCategoryRepository()
 
-	categories := []*domain.ApplicationCategory{
+	categories := []*appdomain.ApplicationCategory{
 		{TenantID: "acme", ID: "c1", Name: "B", Position: 2},
 		{TenantID: "acme", ID: "c2", Name: "A", Position: 1},
 		{TenantID: "acme", ID: "c3", Name: "C", Position: 1},
@@ -364,16 +364,16 @@ func TestApplicationAssignmentRepositoryListPage(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationAssignmentRepository()
 	for _, sid := range []string{"u3", "u1", "u2", "u4", "u5"} {
-		if err := repo.Save(ctx, &domain.ApplicationAssignment{
-			TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: sid,
-			Visibility: domain.AssignmentVisible,
+		if err := repo.Save(ctx, &appdomain.ApplicationAssignment{
+			TenantID: "acme", ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: sid,
+			Visibility: appdomain.AssignmentVisible,
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := repo.Save(ctx, &domain.ApplicationAssignment{
-		TenantID: "acme", ApplicationID: "app-2", SubjectType: domain.AssignmentSubjectUser, SubjectID: "other-app",
-		Visibility: domain.AssignmentVisible,
+	if err := repo.Save(ctx, &appdomain.ApplicationAssignment{
+		TenantID: "acme", ApplicationID: "app-2", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "other-app",
+		Visibility: appdomain.AssignmentVisible,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -406,14 +406,14 @@ func TestApplicationRepositoryListPage(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
-		if err := repo.Save(ctx, &domain.Application{
-			TenantID: "acme", ID: name + "-id", Name: name, Kind: domain.ApplicationWeblink,
+		if err := repo.Save(ctx, &appdomain.Application{
+			TenantID: "acme", ID: name + "-id", Name: name, Kind: appdomain.ApplicationWeblink,
 		}); err != nil {
 			t.Fatalf("save %s: %v", name, err)
 		}
 	}
-	if err := repo.Save(ctx, &domain.Application{
-		TenantID: "other-tenant", ID: "zulu-id", Name: "Zulu", Kind: domain.ApplicationWeblink,
+	if err := repo.Save(ctx, &appdomain.Application{
+		TenantID: "other-tenant", ID: "zulu-id", Name: "Zulu", Kind: appdomain.ApplicationWeblink,
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -7,7 +7,7 @@ import (
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/internal/db_memory"
 	authnports "github.com/ambi/idmagic/backend/authentication/internal/ports"
-	"github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 )
 
 func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {
@@ -25,7 +25,7 @@ func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {
 		}
 	}
 
-	views, err := usecases.ListAuthEventBuckets(ctx, store, "acme", time.Time{}, "", 0)
+	views, err := authusecases.ListAuthEventBuckets(ctx, store, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {
 }
 
 func TestListAuthEventBucketsNilStoreReturnsEmpty(t *testing.T) {
-	views, err := usecases.ListAuthEventBuckets(context.Background(), nil, "acme", time.Time{}, "", 0)
+	views, err := authusecases.ListAuthEventBuckets(context.Background(), nil, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

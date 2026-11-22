@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/recovery/domain"
-	"github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
+	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 )
 
 type Fixture struct {
-	Repository ports.RecoveryCodeRepository
+	Repository recoveryports.RecoveryCodeRepository
 	UserID     string
 	Now        time.Time
 }
@@ -25,7 +25,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if got, err := f.Repository.ListBySub(ctx, f.UserID); err != nil || len(got) != 0 {
 		t.Fatalf("empty ListBySub = (%+v, %v)", got, err)
 	}
-	codes := []*domain.RecoveryCode{
+	codes := []*recoverydomain.RecoveryCode{
 		{UserID: f.UserID, CodeHash: "hash-a", GeneratedAt: f.Now},
 		{UserID: f.UserID, CodeHash: "hash-b", GeneratedAt: f.Now.Add(time.Second)},
 	}

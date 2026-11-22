@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
@@ -25,12 +25,12 @@ func textOrNil(value string) pgtype.Text { return pgtype.Text{String: value, Val
 
 func tokenFromRow(id, tenantID, userID, jti, clientID string, scopeValues []string, audience string,
 	dpopJKT, description pgtype.Text, createdAt time.Time, expiresAt, revokedAt pgtype.Timestamptz,
-) (*domain.ApiToken, error) {
-	scopes, err := domain.ParseScopes(scopeValues)
+) (*apitokendomain.ApiToken, error) {
+	scopes, err := apitokendomain.ParseScopes(scopeValues)
 	if err != nil {
 		return nil, err
 	}
-	token := &domain.ApiToken{
+	token := &apitokendomain.ApiToken{
 		ID: id, TenantID: tenantID, UserID: userID, JTI: jti, ClientID: clientID,
 		Scopes: scopes, Audience: audience, DPoPJKT: dpopJKT.String, Description: description.String, CreatedAt: createdAt,
 	}
@@ -45,7 +45,7 @@ func tokenFromRow(id, tenantID, userID, jti, clientID string, scopeValues []stri
 	return token, nil
 }
 
-func (r *Repository) Save(ctx context.Context, token *domain.ApiToken) error {
+func (r *Repository) Save(ctx context.Context, token *apitokendomain.ApiToken) error {
 	return New(r.Pool).SaveApiToken(ctx, SaveApiTokenParams{
 		ID: token.ID, TenantID: token.TenantID,
 		UserID: token.UserID, Jti: token.JTI, ClientID: token.ClientID, Scopes: token.Scopes.Strings(),
@@ -54,7 +54,7 @@ func (r *Repository) Save(ctx context.Context, token *domain.ApiToken) error {
 	})
 }
 
-func (r *Repository) FindByJTI(ctx context.Context, tenantID, jti string) (*domain.ApiToken, error) {
+func (r *Repository) FindByJTI(ctx context.Context, tenantID, jti string) (*apitokendomain.ApiToken, error) {
 	row, err := New(r.Pool).FindApiTokenByJTI(ctx, FindApiTokenByJTIParams{TenantID: tenantID, Jti: jti})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -65,12 +65,12 @@ func (r *Repository) FindByJTI(ctx context.Context, tenantID, jti string) (*doma
 	return tokenFromRow(row.ID, row.TenantID, row.UserID, row.Jti, row.ClientID, row.Scopes, row.Audience, row.DpopJkt, row.Description, row.CreatedAt, row.ExpiresAt, row.RevokedAt)
 }
 
-func (r *Repository) List(ctx context.Context, tenantID string) ([]*domain.ApiToken, error) {
+func (r *Repository) List(ctx context.Context, tenantID string) ([]*apitokendomain.ApiToken, error) {
 	rows, err := New(r.Pool).ListApiTokensByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*domain.ApiToken, 0, len(rows))
+	result := make([]*apitokendomain.ApiToken, 0, len(rows))
 	for _, row := range rows {
 		token, err := tokenFromRow(row.ID, row.TenantID, row.UserID, row.Jti, row.ClientID, row.Scopes, row.Audience, row.DpopJkt, row.Description, row.CreatedAt, row.ExpiresAt, row.RevokedAt)
 		if err != nil {

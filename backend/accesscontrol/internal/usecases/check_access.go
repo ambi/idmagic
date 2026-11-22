@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -26,9 +26,9 @@ type Actor struct {
 // CheckAccessInput は 1 回の判定の入力。
 type CheckAccessInput struct {
 	TenantID           string
-	Resource           domain.ObjectRef
+	Resource           accessdomain.ObjectRef
 	Relation           string
-	Subject            domain.SubjectRef
+	Subject            accessdomain.SubjectRef
 	ActorChain         []Actor
 	MinimumConsistency string
 	// GrantedScopes は提示されたトークンのスコープ集合。
@@ -92,12 +92,12 @@ func checkAccess(ctx context.Context, d Deps, input CheckAccessInput, now time.T
 	result := CheckAccessResult{
 		Permitted:    response.Permit,
 		ModelVersion: model.Version,
-		Consistency:  domain.EncodeConsistencyToken(input.TenantID, storeVersion),
+		Consistency:  accessdomain.EncodeConsistencyToken(input.TenantID, storeVersion),
 		RelationPath: facts.RelationPath,
 		Reasons:      mergeReasons(response.Reasons, facts.DenyReasons),
 	}
 	if audit {
-		d.emit(&domain.FgaCheckEvaluated{
+		d.emit(&accessdomain.FgaCheckEvaluated{
 			At: now, TenantID: input.TenantID, ResourceType: input.Resource.Type,
 			ResourceIDDigest: ResourceIDDigest(input.TenantID, input.Resource),
 			Relation:         input.Relation, Permitted: result.Permitted, ModelVersion: model.Version,
@@ -121,7 +121,7 @@ type ListAccessibleResourcesInput struct {
 	TenantID           string
 	ResourceType       string
 	Relation           string
-	Subject            domain.SubjectRef
+	Subject            accessdomain.SubjectRef
 	ActorChain         []Actor
 	MinimumConsistency string
 	GrantedScopes      []string
@@ -151,7 +151,7 @@ func ListAccessibleResources(ctx context.Context, d Deps, input ListAccessibleRe
 		// FgaResourcesEnumerated にまとめる。
 		result, err := checkAccess(ctx, d, CheckAccessInput{
 			TenantID: input.TenantID,
-			Resource: domain.ObjectRef{Type: input.ResourceType, ID: id},
+			Resource: accessdomain.ObjectRef{Type: input.ResourceType, ID: id},
 			Relation: input.Relation, Subject: input.Subject, ActorChain: input.ActorChain,
 			MinimumConsistency: input.MinimumConsistency,
 			GrantedScopes:      input.GrantedScopes, RequiredScopes: input.RequiredScopes,
@@ -176,9 +176,9 @@ func ListAccessibleResources(ctx context.Context, d Deps, input ListAccessibleRe
 			return ListedResources{}, err
 		}
 		out.ModelVersion = model.Version
-		out.Consistency = domain.EncodeConsistencyToken(input.TenantID, version)
+		out.Consistency = accessdomain.EncodeConsistencyToken(input.TenantID, version)
 	}
-	d.emit(&domain.FgaResourcesEnumerated{
+	d.emit(&accessdomain.FgaResourcesEnumerated{
 		At: now, TenantID: input.TenantID, ResourceType: input.ResourceType, Relation: input.Relation,
 		CandidateCount: len(candidates), PermittedCount: len(out.ResourceIDs), Truncated: out.Truncated,
 		ModelVersion: out.ModelVersion, ActorChainDepth: len(input.ActorChain),
@@ -196,12 +196,12 @@ func (d Deps) assertConsistency(ctx context.Context, tenantID, token string) (in
 	if token == "" {
 		return storeVersion, nil
 	}
-	required, err := domain.DecodeConsistencyToken(token, tenantID)
+	required, err := accessdomain.DecodeConsistencyToken(token, tenantID)
 	if err != nil {
 		return 0, err
 	}
 	if storeVersion < required {
-		return 0, fmt.Errorf("%w: store is at %d, %d required", domain.ErrConsistencyNotSatisfied, storeVersion, required)
+		return 0, fmt.Errorf("%w: store is at %d, %d required", accessdomain.ErrConsistencyNotSatisfied, storeVersion, required)
 	}
 	return storeVersion, nil
 }
@@ -211,10 +211,10 @@ func (d Deps) assertConsistency(ctx context.Context, tenantID, token string) (in
 // ので、チェーン上の 1 段でも関係を欠けば ActorChainPermitted は立たない。
 func (d Deps) relationshipFacts(
 	ctx context.Context,
-	model *domain.AuthorizationModel,
+	model *accessdomain.AuthorizationModel,
 	input CheckAccessInput,
 ) (spec.AuthZRelationshipFacts, []spec.AuthZActor, error) {
-	opts := domain.CheckOptions{MaxDepth: d.MaxDepth}
+	opts := accessdomain.CheckOptions{MaxDepth: d.MaxDepth}
 	subjectDecision, err := model.Check(ctx, d.Tuples, input.TenantID, input.Resource, input.Relation, input.Subject, opts)
 	if err != nil {
 		return spec.AuthZRelationshipFacts{}, nil, err
@@ -231,7 +231,7 @@ func (d Deps) relationshipFacts(
 	actors := make([]spec.AuthZActor, 0, len(input.ActorChain))
 	for _, actor := range input.ActorChain {
 		decision, err := model.Check(ctx, d.Tuples, input.TenantID, input.Resource, input.Relation,
-			domain.SubjectRef{Type: actor.Type, ID: actor.ID}, opts)
+			accessdomain.SubjectRef{Type: actor.Type, ID: actor.ID}, opts)
 		if err != nil {
 			return spec.AuthZRelationshipFacts{}, nil, err
 		}
@@ -250,7 +250,7 @@ func (d Deps) relationshipFacts(
 // ResourceIDDigest は監査に残すリソース識別子のダイジェスト。テナントと型を
 // 混ぜるので、同じ資源への繰り返しアクセスは相関できるが、資源の名前そのものは
 // 監査ログから復元できない。
-func ResourceIDDigest(tenantID string, resource domain.ObjectRef) string {
+func ResourceIDDigest(tenantID string, resource accessdomain.ObjectRef) string {
 	sum := sha256.Sum256([]byte(tenantID + ":" + resource.Type + ":" + resource.ID))
 	return hex.EncodeToString(sum[:])[:16]
 }

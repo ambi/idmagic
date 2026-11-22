@@ -6,7 +6,7 @@ import (
 
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 // SignOutService は WS-Federation sign-out の返送先解決を所有する。
@@ -17,7 +17,7 @@ type SignOutService struct {
 // ResolveReply は wreply を wtrealm で解決した RP の許可集合に対して検証する。
 // 検証を通らない (または wtrealm/wreply 不在) なら空文字を返し、リダイレクトしない
 // (open redirect 防止)。エラーは「リダイレクトしない」判断へ畳む。
-func (s SignOutService) ResolveReply(ctx context.Context, tenantID string, req feddomain.WsFedSignInRequest) string {
+func (s SignOutService) ResolveReply(ctx context.Context, tenantID string, req wsfeddomain.WsFedSignInRequest) string {
 	if req.Wtrealm == "" || req.Wreply == "" {
 		return ""
 	}

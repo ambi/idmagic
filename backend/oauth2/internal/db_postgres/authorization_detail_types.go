@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,12 +23,12 @@ func textOrNil(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-func authorizationDetailTypeFromRow(row *AuthorizationDetailType) (*domain.AuthorizationDetailType, error) {
-	t := &domain.AuthorizationDetailType{
+func authorizationDetailTypeFromRow(row *AuthorizationDetailType) (*oauthdomain.AuthorizationDetailType, error) {
+	t := &oauthdomain.AuthorizationDetailType{
 		TenantID:        row.TenantID,
 		Type:            row.Type,
 		DisplayTemplate: row.DisplayTemplate,
-		State:           domain.AuthorizationDetailTypeState(row.State),
+		State:           oauthdomain.AuthorizationDetailTypeState(row.State),
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
 	}
@@ -43,12 +43,12 @@ func authorizationDetailTypeFromRow(row *AuthorizationDetailType) (*domain.Autho
 	return t, t.Validate()
 }
 
-func (r *AuthorizationDetailTypeRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) ListAll(ctx context.Context, tenantID string) ([]*oauthdomain.AuthorizationDetailType, error) {
 	rows, err := New(r.Pool).ListAuthorizationDetailTypesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.AuthorizationDetailType, 0, len(rows))
+	out := make([]*oauthdomain.AuthorizationDetailType, 0, len(rows))
 	for _, row := range rows {
 		t, err := authorizationDetailTypeFromRow(row)
 		if err != nil {
@@ -59,7 +59,7 @@ func (r *AuthorizationDetailTypeRepository) ListAll(ctx context.Context, tenantI
 	return out, nil
 }
 
-func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tenantID, detailType string) (*domain.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tenantID, detailType string) (*oauthdomain.AuthorizationDetailType, error) {
 	row, err := New(r.Pool).GetAuthorizationDetailType(ctx, GetAuthorizationDetailTypeParams{
 		TenantID: tenantID, Type: detailType,
 	})
@@ -72,7 +72,7 @@ func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tena
 	return authorizationDetailTypeFromRow(row)
 }
 
-func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *domain.AuthorizationDetailType) error {
+func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *oauthdomain.AuthorizationDetailType) error {
 	schema, err := json.Marshal(t.Schema)
 	if err != nil {
 		return err

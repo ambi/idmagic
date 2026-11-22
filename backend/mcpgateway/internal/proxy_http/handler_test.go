@@ -21,7 +21,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 )
@@ -74,9 +74,9 @@ func newHarness(t *testing.T, upstream http.HandlerFunc, change func(*Options)) 
 	options := Options{
 		Resource: resource, Upstream: upstreamURL, RealmURL: "https://id.example.test/realms/default",
 		MaxBodyBytes: 4096,
-		Mapping: domain.Mapping{
-			Methods: map[string]domain.OperationRule{"tools/list": {ResourceType: "mcp_server", Relation: "list", ResourceID: "main"}},
-			Tools:   map[string]domain.OperationRule{"read": {ResourceType: "document", Relation: "viewer", ResourceID: "d1"}},
+		Mapping: mcpgatewaydomain.Mapping{
+			Methods: map[string]mcpgatewaydomain.OperationRule{"tools/list": {ResourceType: "mcp_server", Relation: "list", ResourceID: "main"}},
+			Tools:   map[string]mcpgatewaydomain.OperationRule{"read": {ResourceType: "document", Relation: "viewer", ResourceID: "d1"}},
 		},
 		Evaluator: h.evaluator, Audit: slog.New(slog.NewJSONHandler(h.audit, nil)), Metrics: h.metrics,
 		Transport: http.DefaultTransport,
@@ -110,8 +110,8 @@ func toolRequest(t *testing.T, target, name string) *http.Request {
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer secret-token")
-	request.Header.Set("Mcp-Protocol-Version", domain.ProtocolVersion)
-	request.Header.Set("Mcp-Method", domain.MethodToolsCall)
+	request.Header.Set("Mcp-Protocol-Version", mcpgatewaydomain.ProtocolVersion)
+	request.Header.Set("Mcp-Method", mcpgatewaydomain.MethodToolsCall)
 	request.Header.Set("Mcp-Name", name)
 	return request
 }
@@ -350,7 +350,7 @@ func TestUnmappedToolIsNeverForwardedEvenWhenPermitted(t *testing.T) {
 	if h.evaluator.calls.Load() != 1 || h.evaluator.last.Operation.ResourceID != "drop_table" {
 		t.Fatalf("evaluation = %+v", h.evaluator.last)
 	}
-	if got := testutil.ToFloat64(h.metrics.requests.WithLabelValues("tools/call", domain.UnmappedTool, outcomeDenied)); got != 1 {
+	if got := testutil.ToFloat64(h.metrics.requests.WithLabelValues("tools/call", mcpgatewaydomain.UnmappedTool, outcomeDenied)); got != 1 {
 		t.Fatalf("metric = %v", got)
 	}
 }
@@ -383,7 +383,7 @@ func TestProtocolRejections(t *testing.T) {
 	request.Header = toolRequest(t, h.gateway.URL, "read").Header.Clone()
 	request.Header.Set("Mcp-Method", "initialize")
 	response, body := do(t, request)
-	if response.StatusCode != http.StatusNotFound || errorCode(body) != domain.CodeMethodNotFound {
+	if response.StatusCode != http.StatusNotFound || errorCode(body) != mcpgatewaydomain.CodeMethodNotFound {
 		t.Fatalf("initialize: status=%d body=%v", response.StatusCode, body)
 	}
 	if h.evaluator.calls.Load() != 0 || h.calls.Load() != 0 {
@@ -396,7 +396,7 @@ func TestProtocolRejections(t *testing.T) {
 	request.Header.Set("Mcp-Protocol-Version", "2025-11-25")
 	response, body = do(t, request)
 	failure, _ := body["error"].(map[string]any)
-	if response.StatusCode != http.StatusBadRequest || errorCode(body) != domain.CodeUnsupportedVersion || !strings.Contains(body2string(failure), `"supported":["2026-07-28"]`) {
+	if response.StatusCode != http.StatusBadRequest || errorCode(body) != mcpgatewaydomain.CodeUnsupportedVersion || !strings.Contains(body2string(failure), `"supported":["2026-07-28"]`) {
 		t.Fatalf("older: status=%d body=%v", response.StatusCode, body)
 	}
 }

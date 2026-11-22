@@ -10,7 +10,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -23,7 +23,7 @@ type resourceAccessResponse struct {
 	Decision             bool                       `json:"decision"`
 	Reasons              []string                   `json:"reasons,omitempty"`
 	Scope                string                     `json:"scope,omitempty"`
-	DelegationMode       domain.DelegationMode      `json:"delegation_mode,omitempty"`
+	DelegationMode       oauthdomain.DelegationMode `json:"delegation_mode,omitempty"`
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 	ApprovedOperation    *approvedOperationResponse `json:"approved_operation,omitempty"`
 	TokenExchangeGrant   string                     `json:"token_exchange_grant,omitempty"`

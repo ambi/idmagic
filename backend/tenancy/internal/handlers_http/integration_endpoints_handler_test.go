@@ -21,19 +21,19 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantmemory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 
 	"github.com/labstack/echo/v5"
 )
 
-func integrationEndpointServer(t *testing.T, endpointStyle tenantdomain.TenantEndpointStyle) *echo.Echo {
+func integrationEndpointServer(t *testing.T, endpointStyle tenancydomain.TenantEndpointStyle) *echo.Echo {
 	t.Helper()
 	const tenantID = "11111111-1111-4111-8111-111111111111"
 	tenantRepo := tenantmemory.NewTenantRepository()
-	if err := tenantRepo.Save(context.Background(), &tenantdomain.Tenant{
-		ID: tenantID, Realm: "acme", DisplayName: "Acme", Status: tenantdomain.TenantStatusActive,
+	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
+		ID: tenantID, Realm: "acme", DisplayName: "Acme", Status: tenancydomain.TenantStatusActive,
 		EndpointStyle: endpointStyle, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func (s stubIntegrationAuthnResolver) Resolve(context.Context, authdomain.Header
 //spec:covers EX-TENANCY-001-01: path 形式の正規 issuer から各プロトコルの公開 URL と署名証明書情報を導出し、秘密を返さない。
 //verify:operation GetAdminIntegrationEndpoints: 200 JSON は正規 issuer から導く URL と証明書の指紋を含み、秘密の値を含まず no-store で返す。
 func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
-	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStylePath)
+	e := integrationEndpointServer(t, tenancydomain.TenantEndpointStylePath)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/integration-endpoints", http.NoBody)
 	req.Host = "idp.example"
@@ -126,7 +126,7 @@ func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
 
 //spec:covers EX-TENANCY-001-01: subdomain 形式ではリクエスト先テナントの host を正規 issuer として返す。
 func TestAdminIntegrationEndpointsUseCanonicalSubdomainIssuer(t *testing.T) {
-	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStyleSubdomain)
+	e := integrationEndpointServer(t, tenancydomain.TenantEndpointStyleSubdomain)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/integration-endpoints", http.NoBody)
 	req.Host = "acme.idp.example"

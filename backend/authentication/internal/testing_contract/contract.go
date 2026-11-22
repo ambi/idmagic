@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/ports"
+	authnports "github.com/ambi/idmagic/backend/authentication/internal/ports"
 )
 
 type Fixture struct {
-	Store   ports.AuthEventBucketStore
+	Store   authnports.AuthEventBucketStore
 	TenantA string
 	TenantB string
 	Now     time.Time
@@ -23,15 +23,15 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Run("aggregate and isolate tenants", func(t *testing.T) {
 		f := newFixture(t)
 		ctx := context.Background()
-		first, err := f.Store.Record(ctx, ports.AuthEventBucketFailedLogin, f.TenantA, "key-a", f.Now)
+		first, err := f.Store.Record(ctx, authnports.AuthEventBucketFailedLogin, f.TenantA, "key-a", f.Now)
 		if err != nil || !first.FirstInWindow || first.Bucket.Count != 1 {
 			t.Fatalf("first Record = (%+v, %v)", first, err)
 		}
-		second, err := f.Store.Record(ctx, ports.AuthEventBucketFailedLogin, f.TenantA, "key-a", f.Now.Add(time.Second))
+		second, err := f.Store.Record(ctx, authnports.AuthEventBucketFailedLogin, f.TenantA, "key-a", f.Now.Add(time.Second))
 		if err != nil || second.FirstInWindow || second.Bucket.Count != 2 {
 			t.Fatalf("second Record = (%+v, %v)", second, err)
 		}
-		if _, err := f.Store.Record(ctx, ports.AuthEventBucketFailedLogin, f.TenantB, "key-a", f.Now); err != nil {
+		if _, err := f.Store.Record(ctx, authnports.AuthEventBucketFailedLogin, f.TenantB, "key-a", f.Now); err != nil {
 			t.Fatalf("other tenant Record: %v", err)
 		}
 		for tenantID, want := range map[string]int{f.TenantA: 2, f.TenantB: 1} {
@@ -46,8 +46,8 @@ func Run(t *testing.T, newFixture NewFixture) {
 		f := newFixture(t)
 		ctx := context.Background()
 		for i := range 3 {
-			at := f.Now.Add(time.Duration(i) * ports.AuthEventBucketWindow)
-			if _, err := f.Store.Record(ctx, ports.AuthEventBucketFailedLogin, f.TenantA, "key", at); err != nil {
+			at := f.Now.Add(time.Duration(i) * authnports.AuthEventBucketWindow)
+			if _, err := f.Store.Record(ctx, authnports.AuthEventBucketFailedLogin, f.TenantA, "key", at); err != nil {
 				t.Fatalf("Record #%d: %v", i, err)
 			}
 		}

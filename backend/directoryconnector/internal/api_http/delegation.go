@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 )
 
 func (c *Client) RegisterEncryption(ctx context.Context, jwk map[string]any) (string, error) {
@@ -20,8 +20,8 @@ func (c *Client) RegisterEncryption(ctx context.Context, jwk map[string]any) (st
 	return response.KeyID, err
 }
 
-func (c *Client) PollPassword(ctx context.Context) (*domain.PasswordChallenge, error) {
-	var challenge domain.PasswordChallenge
+func (c *Client) PollPassword(ctx context.Context) (*directoryconnectordomain.PasswordChallenge, error) {
+	var challenge directoryconnectordomain.PasswordChallenge
 	err := c.signedCall(ctx, "/password-challenges", nil, &challenge)
 	if err != nil {
 		return nil, err

@@ -5,13 +5,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 type Fixture struct {
-	Repository ports.OAuth2ClientRepository
-	Client     *domain.OAuth2Client
+	Repository clientports.OAuth2ClientRepository
+	Client     *oauthdomain.OAuth2Client
 }
 
 type NewFixture func(t *testing.T) Fixture

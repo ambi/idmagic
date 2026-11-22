@@ -6,23 +6,23 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/internal/usecases"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/internal/usecases"
 )
 
 func TestHandlerRegistry_LookupReturnsRegisteredHandler(t *testing.T) {
-	r := usecases.NewHandlerRegistry()
+	r := jobsusecases.NewHandlerRegistry()
 	called := false
-	r.Register(domain.KindNoopEcho, func(ctx context.Context, job *domain.Job) (json.RawMessage, error) {
+	r.Register(jobsdomain.KindNoopEcho, func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
 		called = true
 		return json.RawMessage(`{}`), nil
 	})
 
-	h, err := r.Lookup(domain.KindNoopEcho)
+	h, err := r.Lookup(jobsdomain.KindNoopEcho)
 	if err != nil {
 		t.Fatalf("Lookup() error = %v", err)
 	}
-	if _, err := h(context.Background(), &domain.Job{}); err != nil {
+	if _, err := h(context.Background(), &jobsdomain.Job{}); err != nil {
 		t.Fatalf("handler() error = %v", err)
 	}
 	if !called {
@@ -31,9 +31,9 @@ func TestHandlerRegistry_LookupReturnsRegisteredHandler(t *testing.T) {
 }
 
 func TestHandlerRegistry_LookupUnregisteredReturnsErr(t *testing.T) {
-	r := usecases.NewHandlerRegistry()
-	_, err := r.Lookup(domain.KindNoopEcho)
-	if !errors.Is(err, usecases.ErrHandlerNotRegistered) {
+	r := jobsusecases.NewHandlerRegistry()
+	_, err := r.Lookup(jobsdomain.KindNoopEcho)
+	if !errors.Is(err, jobsusecases.ErrHandlerNotRegistered) {
 		t.Errorf("Lookup() error = %v, want ErrHandlerNotRegistered", err)
 	}
 }
@@ -47,8 +47,8 @@ func TestHandlerRegistry_RegisterPanicsOnInvalidKind(t *testing.T) {
 			t.Error("Register() with an invalid JobKind should panic")
 		}
 	}()
-	r := usecases.NewHandlerRegistry()
-	r.Register(domain.JobKind("not_a_registered_kind"), func(ctx context.Context, job *domain.Job) (json.RawMessage, error) {
+	r := jobsusecases.NewHandlerRegistry()
+	r.Register(jobsdomain.JobKind("not_a_registered_kind"), func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
 		return nil, nil
 	})
 }

@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func parDepsWithResourceServer(servers ...*domain.McpResourceServer) (PARDeps, *oauth2memory.OAuth2ClientRepository) {
+func parDepsWithResourceServer(servers ...*oauthdomain.McpResourceServer) (PARDeps, *oauth2memory.OAuth2ClientRepository) {
 	clientRepo := oauth2memory.NewClientRepository()
 	deps := PARDeps{
 		ClientRepo:            clientRepo,
@@ -24,7 +24,7 @@ func parDepsWithResourceServer(servers ...*domain.McpResourceServer) (PARDeps, *
 func TestPushAuthorizationRequest_unregisteredResource_rejectedFailClosed(t *testing.T) {
 	ctx := tenantContext()
 	deps, clientRepo := parDepsWithResourceServer()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1",
 		RedirectURIs: []string{"https://example.com/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantAuthorizationCode},
@@ -40,13 +40,13 @@ func TestPushAuthorizationRequest_unregisteredResource_rejectedFailClosed(t *tes
 
 func TestPushAuthorizationRequest_registeredResource_accepted(t *testing.T) {
 	ctx := tenantContext()
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"mcp.read"}, State: oauthdomain.McpResourceServerActive,
 	}
 	deps, clientRepo := parDepsWithResourceServer(rs)
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1",
 		RedirectURIs: []string{"https://example.com/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantAuthorizationCode},

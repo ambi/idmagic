@@ -12,26 +12,26 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // CaptureDeps are CaptureLifecycleEvent's dependencies.
 type CaptureDeps struct {
-	ConnectionRepo ports.ProvisioningConnectionRepository
-	TaskRepo       ports.ProvisioningTaskRepository
+	ConnectionRepo provisioningports.ProvisioningConnectionRepository
+	TaskRepo       provisioningports.ProvisioningTaskRepository
 	AssignmentRepo appports.AssignmentRepository
 }
 
-var _ ports.ProvisioningCapture = CaptureFunc(nil)
+var _ provisioningports.ProvisioningCapture = CaptureFunc(nil)
 
 // CaptureFunc adapts CaptureLifecycleEvent's dependency-injected signature to
 // the ports.ProvisioningCapture interface, so callers (IdManagement,
 // Application) can hold a single injected value.
-type CaptureFunc func(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error
+type CaptureFunc func(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, subjectID string, trigger provisioningports.ProvisioningTrigger, applicationID string, now time.Time) error
 
-func (f CaptureFunc) CaptureLifecycleEvent(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error {
+func (f CaptureFunc) CaptureLifecycleEvent(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, subjectID string, trigger provisioningports.ProvisioningTrigger, applicationID string, now time.Time) error {
 	if f == nil {
 		return nil
 	}
@@ -39,8 +39,8 @@ func (f CaptureFunc) CaptureLifecycleEvent(ctx context.Context, tenantID string,
 }
 
 // NewCapture binds deps into a ports.ProvisioningCapture, for composition-root wiring.
-func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
-	return CaptureFunc(func(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error {
+func NewCapture(deps CaptureDeps) provisioningports.ProvisioningCapture {
+	return CaptureFunc(func(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, subjectID string, trigger provisioningports.ProvisioningTrigger, applicationID string, now time.Time) error {
 		return CaptureLifecycleEvent(ctx, deps, tenantID, sourceType, subjectID, trigger, applicationID, now)
 	})
 }
@@ -54,13 +54,13 @@ func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
 // grace_period_days を持つ接続への User の削除（delete に変換されたもの）は、プロビジョニングタスクの代わりに
 // ScheduledDeprovision を保存する。割り当ての追加は、その Application の古い予約を取り消し、
 // User の再有効化は、すべての接続の古い予約を取り消す。
-func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error {
+func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, subjectID string, trigger provisioningports.ProvisioningTrigger, applicationID string, now time.Time) error {
 	connections, err := deps.ConnectionRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}
 	version := now.UnixNano()
-	if trigger == ports.TriggerAssignmentAdded {
+	if trigger == provisioningports.TriggerAssignmentAdded {
 		// 猶予期間中に適用範囲へ戻った User の削除予約を取り消す。接続の状態や create の
 		// 可否に関係なく取り消すのは、戻った User を下流から消す理由が残らないためである。
 		if _, err := deps.TaskRepo.CancelScheduledDeprovisions(ctx, tenantID, applicationID, subjectID, version, now); err != nil {
@@ -68,7 +68,7 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 		}
 	}
 	for _, conn := range connections {
-		if trigger == ports.TriggerUserEnabled {
+		if trigger == provisioningports.TriggerUserEnabled {
 			// 猶予期間中に復元した User の削除予約を、すべての接続で取り消す。無効化からの再有効化には
 			// 予約がないので何も変わらない。接続の状態によらない理由は、割り当ての追加と同じである。
 			if _, err := deps.TaskRepo.CancelScheduledDeprovisions(ctx, tenantID, conn.ApplicationID, subjectID, version, now); err != nil {
@@ -106,16 +106,16 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 		if err != nil {
 			return err
 		}
-		if graceDays := conn.DeprovisionPolicy.GracePeriodDays; trigger == ports.TriggerUserDeleted && op == domain.OperationDelete && graceDays > 0 {
-			reservation := domain.NewScheduledDeprovision(id, tenantID, conn.ApplicationID, subjectID, version, now, graceDays)
+		if graceDays := conn.DeprovisionPolicy.GracePeriodDays; trigger == provisioningports.TriggerUserDeleted && op == provisioningdomain.OperationDelete && graceDays > 0 {
+			reservation := provisioningdomain.NewScheduledDeprovision(id, tenantID, conn.ApplicationID, subjectID, version, now, graceDays)
 			if _, err := deps.TaskRepo.ScheduleDeprovision(ctx, reservation); err != nil {
 				return err
 			}
 			continue
 		}
-		task := &domain.ProvisioningTask{
+		task := &provisioningdomain.ProvisioningTask{
 			ID: id, TenantID: tenantID, ConnectionID: conn.ApplicationID, SourceType: sourceType, SourceID: subjectID,
-			SourceVersion: version, Operation: op, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+			SourceVersion: version, Operation: op, Status: provisioningdomain.TaskPending, CreatedAt: now, UpdatedAt: now,
 		}
 		if _, err := deps.TaskRepo.Save(ctx, task); err != nil {
 			return err
@@ -124,12 +124,12 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 	return nil
 }
 
-func isAssignmentTrigger(trigger ports.ProvisioningTrigger) bool {
-	return trigger == ports.TriggerAssignmentAdded || trigger == ports.TriggerAssignmentRemoved
+func isAssignmentTrigger(trigger provisioningports.ProvisioningTrigger) bool {
+	return trigger == provisioningports.TriggerAssignmentAdded || trigger == provisioningports.TriggerAssignmentRemoved
 }
 
-func inScope(ctx context.Context, deps CaptureDeps, conn domain.ProvisioningConnection, tenantID, userID string) (bool, error) {
-	if conn.Scope == domain.ScopeAllUsers {
+func inScope(ctx context.Context, deps CaptureDeps, conn provisioningdomain.ProvisioningConnection, tenantID, userID string) (bool, error) {
+	if conn.Scope == provisioningdomain.ScopeAllUsers {
 		return true, nil
 	}
 	if deps.AssignmentRepo == nil {
@@ -150,37 +150,37 @@ func inScope(ctx context.Context, deps CaptureDeps, conn domain.ProvisioningConn
 // translateTrigger maps trigger to the downstream operation for conn, honoring
 // its feature flags and (for delete/unassign) its DeprovisionPolicy. ok=false
 // means no task should be created (feature disabled or policy=none).
-func translateTrigger(trigger ports.ProvisioningTrigger, conn domain.ProvisioningConnection) (domain.ProvisioningOperation, bool, error) {
+func translateTrigger(trigger provisioningports.ProvisioningTrigger, conn provisioningdomain.ProvisioningConnection) (provisioningdomain.ProvisioningOperation, bool, error) {
 	switch trigger {
-	case ports.TriggerUserCreated, ports.TriggerAssignmentAdded:
-		return domain.OperationCreate, conn.FeatureFlags.CreateUsers, nil
-	case ports.TriggerUserAttributes, ports.TriggerUserEnabled:
-		return domain.OperationUpdate, conn.FeatureFlags.UpdateUsers, nil
-	case ports.TriggerUserDisabled:
-		return domain.OperationDeactivate, conn.FeatureFlags.DeactivateUsers, nil
-	case ports.TriggerUserDeleted:
+	case provisioningports.TriggerUserCreated, provisioningports.TriggerAssignmentAdded:
+		return provisioningdomain.OperationCreate, conn.FeatureFlags.CreateUsers, nil
+	case provisioningports.TriggerUserAttributes, provisioningports.TriggerUserEnabled:
+		return provisioningdomain.OperationUpdate, conn.FeatureFlags.UpdateUsers, nil
+	case provisioningports.TriggerUserDisabled:
+		return provisioningdomain.OperationDeactivate, conn.FeatureFlags.DeactivateUsers, nil
+	case provisioningports.TriggerUserDeleted:
 		return deprovisionOperation(conn.DeprovisionPolicy.OnDelete, conn.FeatureFlags)
-	case ports.TriggerAssignmentRemoved:
+	case provisioningports.TriggerAssignmentRemoved:
 		return deprovisionOperation(conn.DeprovisionPolicy.OnUnassign, conn.FeatureFlags)
-	case ports.TriggerGroupCreated:
-		return domain.OperationCreate, conn.FeatureFlags.PushGroups, nil
-	case ports.TriggerGroupAttributes, ports.TriggerGroupMembership:
+	case provisioningports.TriggerGroupCreated:
+		return provisioningdomain.OperationCreate, conn.FeatureFlags.PushGroups, nil
+	case provisioningports.TriggerGroupAttributes, provisioningports.TriggerGroupMembership:
 		// メンバーシップの変更も Group の更新としてプロビジョニングする。下流への書き込みは
 		// executeGroupTask が members の増分 PATCH として組み立てる。
-		return domain.OperationUpdate, conn.FeatureFlags.PushGroups, nil
-	case ports.TriggerGroupDeleted:
+		return provisioningdomain.OperationUpdate, conn.FeatureFlags.PushGroups, nil
+	case provisioningports.TriggerGroupDeleted:
 		// Group の削除は User の deprovision policy を借りない。User を無効化する
 		// という選択肢が Group には無く、下流に残すか消すかの 2 つしかないためである。
-		return domain.OperationDelete, conn.FeatureFlags.PushGroups, nil
+		return provisioningdomain.OperationDelete, conn.FeatureFlags.PushGroups, nil
 	default:
 		return "", false, fmt.Errorf("provisioning: unknown trigger %q", trigger)
 	}
 }
 
-func isGroupTrigger(trigger ports.ProvisioningTrigger) bool {
+func isGroupTrigger(trigger provisioningports.ProvisioningTrigger) bool {
 	switch trigger {
-	case ports.TriggerGroupCreated, ports.TriggerGroupAttributes,
-		ports.TriggerGroupDeleted, ports.TriggerGroupMembership:
+	case provisioningports.TriggerGroupCreated, provisioningports.TriggerGroupAttributes,
+		provisioningports.TriggerGroupDeleted, provisioningports.TriggerGroupMembership:
 		return true
 	default:
 		return false
@@ -191,14 +191,14 @@ func isGroupTrigger(trigger ports.ProvisioningTrigger) bool {
 // The connection's GroupPushConfig owns this, not the User scope: `all_users`
 // says nothing about which groups to send, and an unset config means the
 // capability was never configured, so nothing is in scope (fail-closed).
-func groupInScope(conn domain.ProvisioningConnection, groupID string) bool {
+func groupInScope(conn provisioningdomain.ProvisioningConnection, groupID string) bool {
 	if conn.GroupPush == nil {
 		return false
 	}
 	switch conn.GroupPush.Selection {
-	case domain.GroupSelectionExplicit:
+	case provisioningdomain.GroupSelectionExplicit:
 		return slices.Contains(conn.GroupPush.ExplicitGroupIDs, groupID)
-	case domain.GroupSelectionAssignedGroups:
+	case provisioningdomain.GroupSelectionAssignedGroups:
 		// 割り当てを持つ Group に限る、が本来の意味だが、割り当ての主体種別は
 		// いま User だけである。Group の割り当てが入るまでは、push_groups を
 		// 有効にした接続のすべての Group を対象とする。
@@ -208,10 +208,10 @@ func groupInScope(conn domain.ProvisioningConnection, groupID string) bool {
 	}
 }
 
-func deprovisionOperation(action domain.ProvisioningDeprovisionAction, flags domain.ProvisioningFeatureFlags) (domain.ProvisioningOperation, bool, error) {
+func deprovisionOperation(action provisioningdomain.ProvisioningDeprovisionAction, flags provisioningdomain.ProvisioningFeatureFlags) (provisioningdomain.ProvisioningOperation, bool, error) {
 	if !action.Valid() {
 		return "", false, fmt.Errorf("provisioning: invalid deprovision action %q", action)
 	}
-	op, enabled := domain.DeprovisionOperation(action, flags)
+	op, enabled := provisioningdomain.DeprovisionOperation(action, flags)
 	return op, enabled, nil
 }

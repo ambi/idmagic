@@ -6,30 +6,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type staticHintVerifier struct {
-	claims *ports.IDTokenHintClaims
+	claims *oauthports.IDTokenHintClaims
 	err    error
 }
 
-func (s staticHintVerifier) VerifyIDTokenHint(context.Context, string) (*ports.IDTokenHintClaims, error) {
+func (s staticHintVerifier) VerifyIDTokenHint(context.Context, string) (*oauthports.IDTokenHintClaims, error) {
 	return s.claims, s.err
 }
 
 func seedEndSessionClient(t *testing.T, repo *memory.OAuth2ClientRepository, clientID string, redirectURIs []string) {
 	t.Helper()
-	repo.Seed(&domain.OAuth2Client{
+	repo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: clientID, ClientType: spec.ClientPublic,
 		RedirectURIs:            redirectURIs,
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
 		Scope:                   "openid",
 		CreatedAt:               time.Now().UTC(),
 	})
@@ -78,7 +78,7 @@ func TestResolveEndSessionResolvesSidAndClientFromHint(t *testing.T) {
 
 	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
 		ClientRepo:   repo,
-		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Sid: "session-1", Subject: "alice"}},
+		HintVerifier: staticHintVerifier{claims: &oauthports.IDTokenHintClaims{Audience: "web-app", Sid: "session-1", Subject: "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestResolveEndSessionResolvesSidAndClientFromHint(t *testing.T) {
 
 func TestResolveEndSessionRejectsClientIDMismatchWithHint(t *testing.T) {
 	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
-		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Sid: "session-1"}},
+		HintVerifier: staticHintVerifier{claims: &oauthports.IDTokenHintClaims{Audience: "web-app", Sid: "session-1"}},
 	}, EndSessionInput{ClientID: "other-app", IDTokenHint: "hint-token"})
 	if target != nil {
 		t.Fatalf("expected no target on mismatch, got %#v", target)
@@ -145,7 +145,7 @@ func (s staticSessionOwner) LoginSessionOwner(_ context.Context, sid string) (st
 //spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-05: sid を持たない id_token_hint はログアウト対象を
 func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
 	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
-		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice"}},
+		HintVerifier: staticHintVerifier{claims: &oauthports.IDTokenHintClaims{Audience: "web-app", Subject: "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	if target != nil {
 		t.Fatalf("sid を欠くヒントで対象が解決された: %#v", target)
@@ -161,7 +161,7 @@ func TestResolveEndSessionRejectsIDTokenHintWithoutSid(t *testing.T) {
 //spec:covers REQ-OAUTH2-024 / EX-OAUTH2-024-06: sid が示す LoginSession の主体と sub が違うヒントは、
 func TestResolveEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
 	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
-		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "mallory", Sid: "session-1"}},
+		HintVerifier: staticHintVerifier{claims: &oauthports.IDTokenHintClaims{Audience: "web-app", Subject: "mallory", Sid: "session-1"}},
 		SessionOwner: staticSessionOwner{owners: map[string]string{"session-1": "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	if target != nil {
@@ -176,7 +176,7 @@ func TestResolveEndSessionRejectsIDTokenHintForAnotherSubject(t *testing.T) {
 // 主体が一致するヒントは従来どおり sid を解決する。
 func TestResolveEndSessionResolvesSidWhenSubjectOwnsTheSession(t *testing.T) {
 	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
-		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-1"}},
+		HintVerifier: staticHintVerifier{claims: &oauthports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-1"}},
 		SessionOwner: staticSessionOwner{owners: map[string]string{"session-1": "alice"}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	if err != nil {
@@ -191,7 +191,7 @@ func TestResolveEndSessionResolvesSidWhenSubjectOwnsTheSession(t *testing.T) {
 // 照合する相手が無いだけなので拒否はせず、解決結果をそのまま返す。
 func TestResolveEndSessionAcceptsHintWhoseSidHasNoSession(t *testing.T) {
 	target, err := ResolveEndSession(testing_tenant.Default(context.Background()), EndSessionDeps{
-		HintVerifier: staticHintVerifier{claims: &ports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-gone"}},
+		HintVerifier: staticHintVerifier{claims: &oauthports.IDTokenHintClaims{Audience: "web-app", Subject: "alice", Sid: "session-gone"}},
 		SessionOwner: staticSessionOwner{owners: map[string]string{}},
 	}, EndSessionInput{IDTokenHint: "hint-token"})
 	if err != nil {

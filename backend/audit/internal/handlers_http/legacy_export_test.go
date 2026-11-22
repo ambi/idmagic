@@ -8,28 +8,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/domain"
-	"github.com/ambi/idmagic/backend/audit/internal/usecases"
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditdomain "github.com/ambi/idmagic/backend/audit/domain"
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
 )
 
 type legacyExportEvents struct {
-	ports.AuditEventRepository
-	record *ports.AuditEventRecord
+	auditports.AuditEventRepository
+	record *auditports.AuditEventRecord
 	calls  int
 }
 
-func (r *legacyExportEvents) List(context.Context, ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {
+func (r *legacyExportEvents) List(context.Context, auditports.AuditEventQuery) ([]*auditports.AuditEventRecord, error) {
 	r.calls++
-	return []*ports.AuditEventRecord{r.record}, nil
+	return []*auditports.AuditEventRecord{r.record}, nil
 }
 
 //spec:covers REQ-AUDIT-012: 二つの同期枠が使用中なら読まずに拒否し、バイト超過でも部分 JSON を送らない。
 func TestLegacyAuditExportConcurrencyAndByteBounds(t *testing.T) {
-	repo := &legacyExportEvents{record: &ports.AuditEventRecord{ID: "event", TenantID: "a", Type: "UserAuthenticated", OccurredAt: time.Now(), Payload: map[string]any{"data": strings.Repeat("x", 17<<20)}}}
-	deps := Deps{AuditEventRepo: repo, Exports: usecases.ExportDeps{Events: repo, Codec: support.NewCursorCodec([]byte("test-export"))}, ExportPolicy: domain.DefaultExportPolicy()}
+	repo := &legacyExportEvents{record: &auditports.AuditEventRecord{ID: "event", TenantID: "a", Type: "UserAuthenticated", OccurredAt: time.Now(), Payload: map[string]any{"data": strings.Repeat("x", 17<<20)}}}
+	deps := Deps{AuditEventRepo: repo, Exports: auditusecases.ExportDeps{Events: repo, Codec: support.NewCursorCodec([]byte("test-export"))}, ExportPolicy: auditdomain.DefaultExportPolicy()}
 	actor := &support.Principal{ID: "owner", TenantID: "a"}
 	for range 2 {
 		legacyExportSlots <- struct{}{}

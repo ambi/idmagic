@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -27,7 +27,7 @@ func TestSessionStore(t *testing.T) {
 	store := NewSessionStore()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		sess := &authdomain.LoginSession{
+		sess := &sessiondomain.LoginSession{
 			ID:                    "sess-1",
 			TenantID:              "tenant-1",
 			UserID:                "user-1",
@@ -65,7 +65,7 @@ func TestSessionStore(t *testing.T) {
 	})
 
 	t.Run("Expiration with Clock", func(t *testing.T) {
-		sessExpired := &authdomain.LoginSession{
+		sessExpired := &sessiondomain.LoginSession{
 			ID:                    "sess-expired",
 			TenantID:              "tenant-1",
 			UserID:                "user-1",
@@ -101,7 +101,7 @@ func TestSessionStore(t *testing.T) {
 	})
 
 	t.Run("Revoke is idempotent tombstone", func(t *testing.T) {
-		sess := &authdomain.LoginSession{
+		sess := &sessiondomain.LoginSession{
 			ID: "sess-revoke", TenantID: "tenant-1", UserID: "user-1",
 			ExpiresAt: time.Now().Add(1 * time.Hour),
 		}
@@ -134,7 +134,7 @@ func TestSessionStore(t *testing.T) {
 	})
 
 	t.Run("Touch is coarse-grained", func(t *testing.T) {
-		sess := &authdomain.LoginSession{
+		sess := &sessiondomain.LoginSession{
 			ID: "sess-touch", TenantID: "tenant-1", UserID: "user-1",
 			ExpiresAt: time.Now().Add(1 * time.Hour),
 		}
@@ -157,21 +157,21 @@ func TestSessionStore(t *testing.T) {
 
 	t.Run("ListBySub", func(t *testing.T) {
 		// すでに user-1 / sess-1 がある
-		sessPending := &authdomain.LoginSession{
+		sessPending := &sessiondomain.LoginSession{
 			ID:                    "sess-pending",
 			TenantID:              storeTenant,
 			UserID:                "user-1",
 			AuthenticationPending: true, // Pending
 			ExpiresAt:             time.Now().Add(1 * time.Hour),
 		}
-		sessOtherSub := &authdomain.LoginSession{
+		sessOtherSub := &sessiondomain.LoginSession{
 			ID:                    "sess-other",
 			TenantID:              storeTenant,
 			UserID:                "user-other",
 			AuthenticationPending: false,
 			ExpiresAt:             time.Now().Add(1 * time.Hour),
 		}
-		sessWillExpire := &authdomain.LoginSession{
+		sessWillExpire := &sessiondomain.LoginSession{
 			ID:                    "sess-will-expire",
 			TenantID:              storeTenant,
 			UserID:                "user-1",
@@ -223,9 +223,9 @@ func TestSessionStore(t *testing.T) {
 	t.Run("DeleteExpiredBatch", func(t *testing.T) {
 		store := NewSessionStore()
 		now := time.Now()
-		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-1", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(-time.Hour)})
-		_ = store.Save(ctx, &authdomain.LoginSession{ID: "old-2", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(-time.Minute)})
-		_ = store.Save(ctx, &authdomain.LoginSession{ID: "fresh", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(time.Hour)})
+		_ = store.Save(ctx, &sessiondomain.LoginSession{ID: "old-1", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(-time.Hour)})
+		_ = store.Save(ctx, &sessiondomain.LoginSession{ID: "old-2", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(-time.Minute)})
+		_ = store.Save(ctx, &sessiondomain.LoginSession{ID: "fresh", TenantID: storeTenant, UserID: "u", ExpiresAt: now.Add(time.Hour)})
 
 		deleted, err := store.DeleteExpiredBatch(ctx, now, 1)
 		if err != nil {
@@ -256,7 +256,7 @@ func TestSessionStoreIsolatesTenants(t *testing.T) {
 	store := NewSessionStore()
 	owner := tenantContext("tenant-owner")
 	intruder := tenantContext("tenant-intruder")
-	if err := store.Save(owner, &authdomain.LoginSession{
+	if err := store.Save(owner, &sessiondomain.LoginSession{
 		ID: "sess-owned", TenantID: "tenant-owner", UserID: "user-1",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}); err != nil {
@@ -291,7 +291,7 @@ func TestSessionStoreIsolatesTenants(t *testing.T) {
 	}
 }
 
-func sessionIDs(list []*authdomain.LoginSession) []string {
+func sessionIDs(list []*sessiondomain.LoginSession) []string {
 	ids := make([]string, len(list))
 	for i, s := range list {
 		ids[i] = s.ID

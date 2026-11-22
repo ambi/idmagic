@@ -4,8 +4,8 @@ import (
 	"context"
 
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 // GroupAttributeSource resolves a Group's attributes for
@@ -24,10 +24,10 @@ type GroupAttributeSource struct {
 	UserRepo any
 }
 
-var _ ports.AttributeSource = (*GroupAttributeSource)(nil)
+var _ provisioningports.AttributeSource = (*GroupAttributeSource)(nil)
 
-func (s *GroupAttributeSource) ResolveAttributes(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, sourceID string) (map[string]any, bool, error) {
-	if sourceType != domain.SourceTypeGroup {
+func (s *GroupAttributeSource) ResolveAttributes(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, sourceID string) (map[string]any, bool, error) {
+	if sourceType != provisioningdomain.SourceTypeGroup {
 		return nil, false, nil
 	}
 	group, err := s.GroupRepo.FindByID(ctx, tenantID, sourceID)
@@ -54,20 +54,20 @@ func (s *GroupAttributeSource) ResolveAttributes(ctx context.Context, tenantID s
 // The provisioning engine holds one ports.AttributeSource, so a connection that
 // pushes both Users and Groups needs the two adapters behind a single value.
 type CombinedAttributeSource struct {
-	User  ports.AttributeSource
-	Group ports.AttributeSource
+	User  provisioningports.AttributeSource
+	Group provisioningports.AttributeSource
 }
 
-var _ ports.AttributeSource = CombinedAttributeSource{}
+var _ provisioningports.AttributeSource = CombinedAttributeSource{}
 
-func (s CombinedAttributeSource) ResolveAttributes(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, sourceID string) (map[string]any, bool, error) {
+func (s CombinedAttributeSource) ResolveAttributes(ctx context.Context, tenantID string, sourceType provisioningdomain.ProvisioningSourceType, sourceID string) (map[string]any, bool, error) {
 	switch sourceType {
-	case domain.SourceTypeUser:
+	case provisioningdomain.SourceTypeUser:
 		if s.User == nil {
 			return nil, false, nil
 		}
 		return s.User.ResolveAttributes(ctx, tenantID, sourceType, sourceID)
-	case domain.SourceTypeGroup:
+	case provisioningdomain.SourceTypeGroup:
 		if s.Group == nil {
 			return nil, false, nil
 		}
@@ -82,7 +82,7 @@ func (s CombinedAttributeSource) ResolveAttributes(ctx context.Context, tenantID
 // the outbound side follows it (see the work item's Out of Scope).
 type GroupMemberSource struct{ GroupRepo groupports.GroupRepository }
 
-var _ ports.GroupMemberSource = (*GroupMemberSource)(nil)
+var _ provisioningports.GroupMemberSource = (*GroupMemberSource)(nil)
 
 func (s *GroupMemberSource) ListMemberUserIDs(ctx context.Context, tenantID, groupID string) ([]string, error) {
 	members, err := s.GroupRepo.ListMembersByGroup(ctx, tenantID, groupID)

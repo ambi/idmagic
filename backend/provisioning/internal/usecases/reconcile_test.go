@@ -14,13 +14,13 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 )
 
 type reconcileFixture struct {
 	t              *testing.T
-	deps           usecases.ReconcileDeps
+	deps           provisioningusecases.ReconcileDeps
 	connRepo       *memory.ProvisioningConnectionRepository
 	taskRepo       *memory.ProvisioningTaskRepository
 	linkRepo       *memory.RemoteResourceLinkRepository
@@ -28,7 +28,7 @@ type reconcileFixture struct {
 	assignmentRepo appports.AssignmentRepository
 }
 
-func newReconcileFixture(t *testing.T, conn *domain.ProvisioningConnection) *reconcileFixture {
+func newReconcileFixture(t *testing.T, conn *provisioningdomain.ProvisioningConnection) *reconcileFixture {
 	t.Helper()
 	f := &reconcileFixture{
 		t: t, taskRepo: memory.NewProvisioningTaskRepository(),
@@ -36,7 +36,7 @@ func newReconcileFixture(t *testing.T, conn *domain.ProvisioningConnection) *rec
 		assignmentRepo: application.NewMemoryModule().AssignmentRepo,
 	}
 	f.connRepo = memory.NewProvisioningConnectionRepository(f.taskRepo, f.linkRepo)
-	f.deps = usecases.ReconcileDeps{
+	f.deps = provisioningusecases.ReconcileDeps{
 		ConnectionRepo: f.connRepo, TaskRepo: f.taskRepo, LinkRepo: f.linkRepo, UserRepo: f.userRepo, AssignmentRepo: f.assignmentRepo,
 	}
 	if err := f.connRepo.Register(context.Background(), conn, "secret"); err != nil {
@@ -58,7 +58,7 @@ func (f *reconcileFixture) saveUser(tenantID, id string, status idmdomain.UserSt
 
 func (f *reconcileFixture) linkActiveUser(connectionID, userID string) {
 	f.t.Helper()
-	link := domain.NewRemoteResourceLink(connectionID, testTenantID, domain.SourceTypeUser, userID)
+	link := provisioningdomain.NewRemoteResourceLink(connectionID, testTenantID, provisioningdomain.SourceTypeUser, userID)
 	_ = link.ApplySync(time.Now().UnixNano(), "remote-"+userID, userID, nil, time.Now())
 	link.Active = true
 	if err := f.linkRepo.Upsert(context.Background(), link); err != nil {
@@ -68,14 +68,14 @@ func (f *reconcileFixture) linkActiveUser(connectionID, userID string) {
 
 func (f *reconcileFixture) reconcile(now time.Time) int {
 	f.t.Helper()
-	created, err := usecases.ReconcileConnections(context.Background(), f.deps, 100, now)
+	created, err := provisioningusecases.ReconcileConnections(context.Background(), f.deps, 100, now)
 	if err != nil {
 		f.t.Fatalf("ReconcileConnections() error = %v", err)
 	}
 	return created
 }
 
-func (f *reconcileFixture) tasks(connectionID string) []*domain.ProvisioningTask {
+func (f *reconcileFixture) tasks(connectionID string) []*provisioningdomain.ProvisioningTask {
 	f.t.Helper()
 	tasks, err := f.taskRepo.ListByConnection(context.Background(), testTenantID, connectionID, nil, 100)
 	if err != nil {
@@ -86,8 +86,8 @@ func (f *reconcileFixture) tasks(connectionID string) []*domain.ProvisioningTask
 
 // 猶予期間つきの削除は、削除のプロビジョニングタスクではなく予約として保存し、期限の到来後に実体化する。
 func TestReconcileConnections_SchedulesTheDeletionOfADeletedUserWithAGracePeriod(t *testing.T) {
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
-	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
+	conn.DeprovisionPolicy.OnDelete = provisioningdomain.DeprovisionDelete
 	conn.DeprovisionPolicy.GracePeriodDays = 7
 	f := newReconcileFixture(t, conn)
 	f.saveUser(testTenantID, "u-deleted", idmdomain.UserStatusDeleted)
@@ -111,7 +111,7 @@ func TestReconcileConnections_SchedulesTheDeletionOfADeletedUserWithAGracePeriod
 
 // 削除済みの User の読み取りはテナントを取らないので、リンクが別テナントの User を指していれば手を出さない。
 func TestReconcileConnections_LeavesALinkToAnotherTenantsUserAlone(t *testing.T) {
-	f := newReconcileFixture(t, activeConnection("app-1", domain.ScopeAllUsers))
+	f := newReconcileFixture(t, activeConnection("app-1", provisioningdomain.ScopeAllUsers))
 	f.saveUser("tenant-b", "u-foreign", idmdomain.UserStatusDeleted)
 	f.linkActiveUser("app-1", "u-foreign")
 
@@ -122,7 +122,7 @@ func TestReconcileConnections_LeavesALinkToAnotherTenantsUserAlone(t *testing.T)
 
 // assigned_only の接続では、割り当てのある User だけがスコープに入る。
 func TestReconcileConnections_ScopesAnAssignedOnlyConnectionByAssignments(t *testing.T) {
-	f := newReconcileFixture(t, activeConnection("app-1", domain.ScopeAssignedOnly))
+	f := newReconcileFixture(t, activeConnection("app-1", provisioningdomain.ScopeAssignedOnly))
 	f.saveUser(testTenantID, "u-assigned", idmdomain.UserStatusActive)
 	f.saveUser(testTenantID, "u-unassigned", idmdomain.UserStatusActive)
 	if err := f.assignmentRepo.Save(context.Background(), &appdomain.ApplicationAssignment{
@@ -136,20 +136,20 @@ func TestReconcileConnections_ScopesAnAssignedOnlyConnectionByAssignments(t *tes
 		t.Fatalf("created = %d, want 1", created)
 	}
 	tasks := f.tasks("app-1")
-	if len(tasks) != 1 || tasks[0].SourceID != "u-assigned" || tasks[0].Operation != domain.OperationCreate {
+	if len(tasks) != 1 || tasks[0].SourceID != "u-assigned" || tasks[0].Operation != provisioningdomain.OperationCreate {
 		t.Fatalf("tasks = %+v, want one create for u-assigned", tasks)
 	}
 }
 
 // 隔離中と無効の接続にはインクリメンタル同期を実行しない。インクリメンタル同期が隔離を迂回して下流へ書き込むと、隔離の意味がなくなる。
 func TestReconcileConnections_SkipsQuarantinedAndDisabledConnections(t *testing.T) {
-	quarantined := activeConnection("app-q", domain.ScopeAllUsers)
-	quarantined.Health = domain.HealthQuarantined
+	quarantined := activeConnection("app-q", provisioningdomain.ScopeAllUsers)
+	quarantined.Health = provisioningdomain.HealthQuarantined
 	now := time.Now().UTC()
 	quarantined.QuarantinedAt = &now
 	f := newReconcileFixture(t, quarantined)
-	disabled := activeConnection("app-d", domain.ScopeAllUsers)
-	disabled.Status = domain.ConnectionDisabled
+	disabled := activeConnection("app-d", provisioningdomain.ScopeAllUsers)
+	disabled.Status = provisioningdomain.ConnectionDisabled
 	if err := f.connRepo.Register(context.Background(), disabled, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}

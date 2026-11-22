@@ -9,10 +9,10 @@ import (
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/db_memory"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/handlers_http"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 	"github.com/ambi/idmagic/backend/accesscontrol/internal/principals_idmanagement"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accesscontrolusecases "github.com/ambi/idmagic/backend/accesscontrol/internal/usecases"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -25,8 +25,8 @@ import (
 // Module は AccessControl の管理 API と判定経路が必要とする依存を持つ。
 // bootstrap が永続層 (memory / postgres) ごとに組み立てて渡す。
 type Module struct {
-	TupleRepo ports.RelationTupleRepository
-	ModelRepo ports.AuthorizationModelRepository
+	TupleRepo accessinternalports.RelationTupleRepository
+	ModelRepo accessinternalports.AuthorizationModelRepository
 }
 
 // NewMemoryModule はプロセス内に保存する Module を作る。
@@ -55,7 +55,7 @@ type RouteDeps struct {
 	Agents agentports.AgentRepository
 	Users  userports.UserRepository
 	// Authorizer はローカルとリモートを差し替えられる AuthZEN ポート。
-	Authorizer policyports.Authorizer
+	Authorizer accessports.Authorizer
 }
 
 // AdminRolePolicyResponse は組み立て地点を通した HTTP テストで応答を読むための型である。
@@ -65,17 +65,17 @@ type AdminRolePolicyResponse = handlers_http.AdminRolePolicyResponse
 type RelationCheckerDeps struct {
 	Agents     agentports.AgentRepository
 	Users      userports.UserRepository
-	Authorizer policyports.Authorizer
+	Authorizer accessports.Authorizer
 	Emit       func(spec.DomainEvent)
 }
 
 // RelationChecker は、外部の資源の評価へ関係の判定を渡す入口を返す。
 // 保存先を組み立てていない Module は nil を返し、呼び出し側が評価不能として扱う。
-func (m Module) RelationChecker(d RelationCheckerDeps) policyports.RelationChecker {
+func (m Module) RelationChecker(d RelationCheckerDeps) accessports.RelationChecker {
 	if m.TupleRepo == nil || m.ModelRepo == nil {
 		return nil
 	}
-	return usecases.RelationChecker{Deps: usecases.Deps{
+	return accesscontrolusecases.RelationChecker{Deps: accesscontrolusecases.Deps{
 		Tuples: m.TupleRepo, Models: m.ModelRepo,
 		Principals: principals_idmanagement.Resolver{Agents: d.Agents, Users: d.Users},
 		Authorizer: d.Authorizer, Emit: d.Emit,

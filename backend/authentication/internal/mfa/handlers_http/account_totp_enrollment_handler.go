@@ -8,7 +8,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -30,8 +30,8 @@ type mfaFactorRemoveRequest struct {
 	Code string `json:"code"`
 }
 
-func accountMfaDeps(d httpdeps.Deps) authusecases.AccountMfaDeps {
-	return authusecases.AccountMfaDeps{
+func accountMfaDeps(d httpdeps.Deps) mfausecases.AccountMfaDeps {
+	return mfausecases.AccountMfaDeps{
 		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo, TrustedDevices: d.TrustedDeviceRevoker(),
 		Emit: d.Emit, Issuer: d.Issuer,
 	}
@@ -45,7 +45,7 @@ func HandleStartTotpEnrollment(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	start, err := authusecases.StartTOTPEnrollment(c.Request().Context(), accountMfaDeps(d), sub)
+	start, err := mfausecases.StartTOTPEnrollment(c.Request().Context(), accountMfaDeps(d), sub)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -68,8 +68,8 @@ func HandleConfirmTotpEnrollment(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if err := authusecases.ConfirmTOTPEnrollment(c.Request().Context(), accountMfaDeps(d),
-		authusecases.ConfirmTOTPEnrollmentInput{
+	if err := mfausecases.ConfirmTOTPEnrollment(c.Request().Context(), accountMfaDeps(d),
+		mfausecases.ConfirmTOTPEnrollmentInput{
 			Sub: sub, Secret: input.Secret, Code: input.Code, Now: time.Now().UTC(),
 		}); err != nil {
 		return httpdeps.WriteAccountError(c, err)
@@ -91,8 +91,8 @@ func HandleRemoveTotpFactor(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if err := authusecases.RemoveTOTPFactor(c.Request().Context(), accountMfaDeps(d),
-		authusecases.RemoveTOTPFactorInput{Sub: sub, Code: input.Code, Now: time.Now().UTC()}); err != nil {
+	if err := mfausecases.RemoveTOTPFactor(c.Request().Context(), accountMfaDeps(d),
+		mfausecases.RemoveTOTPFactorInput{Sub: sub, Code: input.Code, Now: time.Now().UTC()}); err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")

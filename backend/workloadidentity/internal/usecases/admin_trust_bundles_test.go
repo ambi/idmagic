@@ -15,23 +15,23 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 )
 
 func withTenant(tenantID string) context.Context {
 	return tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenantID}, "https://idp.example", "")
 }
 
-func newAdminDeps() usecases.AdminWorkloadIdentityDeps {
-	return usecases.AdminWorkloadIdentityDeps{
+func newAdminDeps() workloadusecases.AdminWorkloadIdentityDeps {
+	return workloadusecases.AdminWorkloadIdentityDeps{
 		TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),
 		BindingRepo:     workloadmemory.NewAgentWorkloadBindingRepository(),
 	}
 }
 
-func validRegisterInput() usecases.RegisterWorkloadTrustBundleInput {
+func validRegisterInput() workloadusecases.RegisterWorkloadTrustBundleInput {
 	uri := "https://issuer.example/jwks.json"
-	return usecases.RegisterWorkloadTrustBundleInput{
+	return workloadusecases.RegisterWorkloadTrustBundleInput{
 		Name: "prod-cluster", TrustDomain: "example.org", Issuer: "https://issuer.example",
 		JWKSURI: &uri, AcceptedAudiences: []string{"https://idmagic.example/token"},
 	}
@@ -43,7 +43,7 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 	ctx := withTenant("tenant-a")
 	now := time.Now().UTC()
 
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 		in.Name = "other"
 		in.Issuer = "https://other.example"
 		in.JWKSURI = nil
-		if _, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, in, now); !errors.Is(err, usecases.ErrTrustBundleMissingJWKS) {
+		if _, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, in, now); !errors.Is(err, workloadusecases.ErrTrustBundleMissingJWKS) {
 			t.Fatalf("err = %v, want ErrTrustBundleMissingJWKS", err)
 		}
 	})
@@ -67,7 +67,7 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 	t.Run("rejects duplicate name in the same tenant", func(t *testing.T) {
 		in := validRegisterInput()
 		in.Issuer = "https://different-issuer.example"
-		if _, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, in, now); !errors.Is(err, usecases.ErrTrustBundleNameConflict) {
+		if _, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, in, now); !errors.Is(err, workloadusecases.ErrTrustBundleNameConflict) {
 			t.Fatalf("err = %v, want ErrTrustBundleNameConflict", err)
 		}
 	})
@@ -79,14 +79,14 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 	t.Run("rejects duplicate issuer in the same tenant", func(t *testing.T) {
 		in := validRegisterInput()
 		in.Name = "different-name"
-		if _, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, in, now); !errors.Is(err, usecases.ErrTrustBundleIssuerConflict) {
+		if _, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, in, now); !errors.Is(err, workloadusecases.ErrTrustBundleIssuerConflict) {
 			t.Fatalf("err = %v, want ErrTrustBundleIssuerConflict", err)
 		}
 	})
 
 	t.Run("allows the same issuer in a different tenant", func(t *testing.T) {
 		otherCtx := withTenant("tenant-b")
-		if _, err := usecases.RegisterWorkloadTrustBundle(otherCtx, deps, validRegisterInput(), now); err != nil {
+		if _, err := workloadusecases.RegisterWorkloadTrustBundle(otherCtx, deps, validRegisterInput(), now); err != nil {
 			t.Fatalf("cross-tenant registration should succeed: %v", err)
 		}
 	})
@@ -95,11 +95,11 @@ func TestRegisterWorkloadTrustBundle(t *testing.T) {
 func TestGetWorkloadTrustBundle_CrossTenantIsNotFound(t *testing.T) {
 	deps := newAdminDeps()
 	now := time.Now().UTC()
-	bundle, err := usecases.RegisterWorkloadTrustBundle(withTenant("tenant-a"), deps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(withTenant("tenant-a"), deps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
-	if _, err := usecases.GetWorkloadTrustBundle(withTenant("tenant-b"), deps, bundle.ID); !errors.Is(err, usecases.ErrTrustBundleNotFound) {
+	if _, err := workloadusecases.GetWorkloadTrustBundle(withTenant("tenant-b"), deps, bundle.ID); !errors.Is(err, workloadusecases.ErrTrustBundleNotFound) {
 		t.Fatalf("err = %v, want ErrTrustBundleNotFound", err)
 	}
 }
@@ -117,14 +117,14 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 	// 検証側と同じ repository を共有し、状態を変えるたびに交換を試す。
 	f := newFixture(t)
 	var events []string
-	deps := usecases.AdminWorkloadIdentityDeps{
+	deps := workloadusecases.AdminWorkloadIdentityDeps{
 		TrustBundleRepo: f.deps.TrustBundleRepo,
 		BindingRepo:     f.deps.BindingRepo,
 		Emit:            func(e spec.DomainEvent) { events = append(events, e.EventType()) },
 	}
 	ctx := withTenant(testTenant)
 	now := f.now
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
@@ -132,9 +132,9 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
 	exchange := func() error {
-		_, err := usecases.VerifyWorkloadAttestation(
+		_, err := workloadusecases.VerifyWorkloadAttestation(
 			context.Background(), f.deps, testTenant,
-			usecases.VerifyWorkloadAttestationInput{ClientID: "agent_1-client", SubjectToken: token}, f.now,
+			workloadusecases.VerifyWorkloadAttestationInput{ClientID: "agent_1-client", SubjectToken: token}, f.now,
 		)
 		return err
 	}
@@ -142,7 +142,7 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 		t.Fatalf("exchange while enabled: %v", err)
 	}
 
-	disabled, err := usecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now)
+	disabled, err := workloadusecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now)
 	if err != nil {
 		t.Fatalf("DisableWorkloadTrustBundle: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestWorkloadTrustBundleDisableEnableLifecycle(t *testing.T) {
 		t.Fatal("a disabled trust bundle must stop the credential exchange")
 	}
 
-	enabled, err := usecases.EnableWorkloadTrustBundle(ctx, deps, bundle.ID, now)
+	enabled, err := workloadusecases.EnableWorkloadTrustBundle(ctx, deps, bundle.ID, now)
 	if err != nil {
 		t.Fatalf("EnableWorkloadTrustBundle: %v", err)
 	}
@@ -174,12 +174,12 @@ func TestUpdateWorkloadTrustBundlePreservesIssuer(t *testing.T) {
 	deps := newAdminDeps()
 	ctx := withTenant("tenant-a")
 	now := time.Now().UTC()
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
 	newName := "prod-cluster-renamed"
-	updated, err := usecases.UpdateWorkloadTrustBundle(ctx, deps, bundle.ID, usecases.UpdateWorkloadTrustBundleInput{Name: &newName}, now)
+	updated, err := workloadusecases.UpdateWorkloadTrustBundle(ctx, deps, bundle.ID, workloadusecases.UpdateWorkloadTrustBundleInput{Name: &newName}, now)
 	if err != nil {
 		t.Fatalf("UpdateWorkloadTrustBundle: %v", err)
 	}
@@ -197,19 +197,19 @@ func TestDeleteWorkloadTrustBundleCascadesBindings(t *testing.T) {
 	agentDeps := newAdminBindingDeps(t)
 	ctx := withTenant("tenant-a")
 	now := time.Now().UTC()
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, agentDeps.AdminWorkloadIdentityDeps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, agentDeps.AdminWorkloadIdentityDeps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
 	agentID := seedActiveAgent(ctx, t, agentDeps.AgentRepo, "tenant-a")
-	binding, err := usecases.CreateAgentWorkloadBinding(ctx, agentDeps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
+	binding, err := workloadusecases.CreateAgentWorkloadBinding(ctx, agentDeps, bundle.ID, workloadusecases.CreateAgentWorkloadBindingInput{
 		SubjectPattern: "spiffe://example.org/ns/prod/sa/*", AgentID: agentID,
 	}, now)
 	if err != nil {
 		t.Fatalf("CreateAgentWorkloadBinding: %v", err)
 	}
 
-	if err := usecases.DeleteWorkloadTrustBundle(ctx, agentDeps.AdminWorkloadIdentityDeps, bundle.ID, now); err != nil {
+	if err := workloadusecases.DeleteWorkloadTrustBundle(ctx, agentDeps.AdminWorkloadIdentityDeps, bundle.ID, now); err != nil {
 		t.Fatalf("DeleteWorkloadTrustBundle: %v", err)
 	}
 	remaining, err := agentDeps.BindingRepo.FindByID(ctx, "tenant-a", binding.ID)
@@ -225,7 +225,7 @@ func TestRefreshWorkloadTrustBundleJWKS(t *testing.T) {
 	deps := newAdminDeps()
 	ctx := withTenant("tenant-a")
 	now := time.Now().UTC()
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestRefreshWorkloadTrustBundleJWKS(t *testing.T) {
 		deps.FetchJWKS = func(context.Context, *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error) {
 			return []map[string]any{{"kid": "k1"}}, nil
 		}
-		res, err := usecases.RefreshWorkloadTrustBundleJWKS(ctx, deps, bundle.ID, now)
+		res, err := workloadusecases.RefreshWorkloadTrustBundleJWKS(ctx, deps, bundle.ID, now)
 		if err != nil {
 			t.Fatalf("RefreshWorkloadTrustBundleJWKS: %v", err)
 		}
@@ -258,7 +258,7 @@ func TestJWKSRefreshPreservesConcurrentConfigurationChanges(t *testing.T) {
 			deps := newAdminDeps()
 			ctx := withTenant("tenant-a")
 			now := time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC)
-			bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
+			bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps, validRegisterInput(), now)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -268,23 +268,23 @@ func TestJWKSRefreshPreservesConcurrentConfigurationChanges(t *testing.T) {
 				if fetched.ID != bundle.ID || fetched.TenantID != "tenant-a" || fetched.JWKSURI == nil || *fetched.JWKSURI != *bundle.JWKSURI {
 					t.Fatalf("取得元=%+v, want the original trust bundle", fetched)
 				}
-				if _, err := usecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now.Add(time.Minute)); err != nil {
+				if _, err := workloadusecases.DisableWorkloadTrustBundle(ctx, deps, bundle.ID, now.Add(time.Minute)); err != nil {
 					t.Fatal(err)
 				}
-				in := usecases.UpdateWorkloadTrustBundleInput{
+				in := workloadusecases.UpdateWorkloadTrustBundleInput{
 					Name: new("edited while fetching"), AcceptedAudiences: []string{"replacement-audience"},
 				}
 				if tc.changeURI {
 					in.JWKSURI = new("https://issuer.example/replacement-jwks")
 				}
-				edited, err = usecases.UpdateWorkloadTrustBundle(ctx, deps, bundle.ID, in, now.Add(time.Minute))
+				edited, err = workloadusecases.UpdateWorkloadTrustBundle(ctx, deps, bundle.ID, in, now.Add(time.Minute))
 				if err != nil {
 					t.Fatal(err)
 				}
 				return fetchedKeys, nil
 			}
 			refreshedAt := now.Add(2 * time.Minute)
-			result, err := usecases.RefreshWorkloadTrustBundleJWKS(ctx, deps, bundle.ID, refreshedAt)
+			result, err := workloadusecases.RefreshWorkloadTrustBundleJWKS(ctx, deps, bundle.ID, refreshedAt)
 			if err != nil || result == nil || !result.Reachable || result.KeyCount != 1 {
 				t.Fatalf("refresh=(%+v, %v), want reachable", result, err)
 			}

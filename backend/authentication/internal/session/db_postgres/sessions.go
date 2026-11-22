@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -25,10 +25,10 @@ type SessionRepository struct{ Pool sharedpg.DB }
 
 func (r *SessionRepository) queries() *Queries { return New(r.Pool) }
 
-func (r *SessionRepository) Save(ctx context.Context, sess *domain.LoginSession) error {
+func (r *SessionRepository) Save(ctx context.Context, sess *sessiondomain.LoginSession) error {
 	pendingPurpose := sess.PendingPurpose
 	if pendingPurpose == "" {
-		pendingPurpose = domain.LoginPendingNone
+		pendingPurpose = sessiondomain.LoginPendingNone
 	}
 	return r.queries().UpsertAuthenticationSession(ctx, UpsertAuthenticationSessionParams{
 		ID:                    sess.ID,
@@ -46,7 +46,7 @@ func (r *SessionRepository) Save(ctx context.Context, sess *domain.LoginSession)
 	})
 }
 
-func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*domain.LoginSession, error) {
+func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*sessiondomain.LoginSession, error) {
 	row, err := r.queries().FindActiveAuthenticationSession(ctx, FindActiveAuthenticationSessionParams{
 		ID:        sessionID,
 		TenantID:  tenantports.TenantID(ctx),
@@ -61,7 +61,7 @@ func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*domain
 	return sessionFromActiveRow(row), nil
 }
 
-func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID string) (*domain.LoginSession, error) {
+func (r *SessionRepository) FindOwned(ctx context.Context, sessionID, userID string) (*sessiondomain.LoginSession, error) {
 	row, err := r.queries().FindOwnedAuthenticationSession(ctx, FindOwnedAuthenticationSessionParams{
 		ID:       sessionID,
 		TenantID: tenantports.TenantID(ctx),
@@ -94,7 +94,7 @@ func (r *SessionRepository) CountActive(ctx context.Context, tenantID string, no
 }
 
 func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now time.Time) error {
-	cutoff := now.Add(-domain.LoginSessionTouchInterval)
+	cutoff := now.Add(-sessiondomain.LoginSessionTouchInterval)
 	return r.queries().TouchAuthenticationSession(ctx, TouchAuthenticationSessionParams{
 		ID:           sessionID,
 		TenantID:     tenantports.TenantID(ctx),
@@ -103,7 +103,7 @@ func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now tim
 	})
 }
 
-func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*domain.LoginSession, error) {
+func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error) {
 	rows, err := r.queries().ListActiveAuthenticationSessionsByUser(ctx, ListActiveAuthenticationSessionsByUserParams{
 		TenantID:  tenantports.TenantID(ctx),
 		UserID:    sub,
@@ -113,12 +113,12 @@ func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*domai
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.LoginSession, 0, len(rows))
+	out := make([]*sessiondomain.LoginSession, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, &domain.LoginSession{
+		out = append(out, &sessiondomain.LoginSession{
 			ID: row.ID, TenantID: row.TenantID, UserID: row.UserID, AuthTime: row.AuthTime,
 			AMR: row.Amr, ACR: row.Acr, AuthenticationPending: row.AuthenticationPending,
-			PendingPurpose:     domain.LoginPendingPurpose(row.PendingPurpose),
+			PendingPurpose:     sessiondomain.LoginPendingPurpose(row.PendingPurpose),
 			EnrollmentDeadline: timestamptzPtr(row.EnrollmentDeadline), EnrollmentBypassID: uuidPtr(row.EnrollmentBypassID),
 			StepUpAt: row.StepUpAt, ExpiresAt: row.ExpiresAt, LastSeenAt: row.LastSeenAt,
 			RevokedAt: timestamptzPtr(row.RevokedAt), RevokeReason: sessionEndReasonPtr(row.RevokeReason),
@@ -150,22 +150,22 @@ func sessionEndReasonPtr(t pgtype.Text) *spec.SessionEndReason {
 	return &r
 }
 
-func sessionFromActiveRow(row *FindActiveAuthenticationSessionRow) *domain.LoginSession {
-	return &domain.LoginSession{
+func sessionFromActiveRow(row *FindActiveAuthenticationSessionRow) *sessiondomain.LoginSession {
+	return &sessiondomain.LoginSession{
 		ID: row.ID, TenantID: row.TenantID, UserID: row.UserID, AuthTime: row.AuthTime,
 		AMR: row.Amr, ACR: row.Acr, AuthenticationPending: row.AuthenticationPending,
-		PendingPurpose:     domain.LoginPendingPurpose(row.PendingPurpose),
+		PendingPurpose:     sessiondomain.LoginPendingPurpose(row.PendingPurpose),
 		EnrollmentDeadline: timestamptzPtr(row.EnrollmentDeadline), EnrollmentBypassID: uuidPtr(row.EnrollmentBypassID),
 		StepUpAt: row.StepUpAt, ExpiresAt: row.ExpiresAt, LastSeenAt: row.LastSeenAt,
 		RevokedAt: timestamptzPtr(row.RevokedAt), RevokeReason: sessionEndReasonPtr(row.RevokeReason),
 	}
 }
 
-func sessionFromOwnedRow(row *FindOwnedAuthenticationSessionRow) *domain.LoginSession {
-	return &domain.LoginSession{
+func sessionFromOwnedRow(row *FindOwnedAuthenticationSessionRow) *sessiondomain.LoginSession {
+	return &sessiondomain.LoginSession{
 		ID: row.ID, TenantID: row.TenantID, UserID: row.UserID, AuthTime: row.AuthTime,
 		AMR: row.Amr, ACR: row.Acr, AuthenticationPending: row.AuthenticationPending,
-		PendingPurpose:     domain.LoginPendingPurpose(row.PendingPurpose),
+		PendingPurpose:     sessiondomain.LoginPendingPurpose(row.PendingPurpose),
 		EnrollmentDeadline: timestamptzPtr(row.EnrollmentDeadline), EnrollmentBypassID: uuidPtr(row.EnrollmentBypassID),
 		StepUpAt: row.StepUpAt, ExpiresAt: row.ExpiresAt, LastSeenAt: row.LastSeenAt,
 		RevokedAt: timestamptzPtr(row.RevokedAt), RevokeReason: sessionEndReasonPtr(row.RevokeReason),

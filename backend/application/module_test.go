@@ -7,7 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -32,17 +32,17 @@ func TestIDManagementSubjectDirectoryIsTenantScoped(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		subjectType domain.AssignmentSubjectType
+		subjectType appdomain.AssignmentSubjectType
 		subjectID   string
 		want        bool
 	}{
-		{name: "tenant user", subjectType: domain.AssignmentSubjectUser, subjectID: "tenant-user", want: true},
-		{name: "foreign user", subjectType: domain.AssignmentSubjectUser, subjectID: "foreign-user"},
-		{name: "missing user", subjectType: domain.AssignmentSubjectUser, subjectID: "missing-user"},
-		{name: "tenant group", subjectType: domain.AssignmentSubjectGroup, subjectID: "tenant-group", want: true},
-		{name: "foreign group", subjectType: domain.AssignmentSubjectGroup, subjectID: "foreign-group"},
-		{name: "missing group", subjectType: domain.AssignmentSubjectGroup, subjectID: "missing-group"},
-		{name: "invalid type", subjectType: domain.AssignmentSubjectType("invalid"), subjectID: "tenant-user"},
+		{name: "tenant user", subjectType: appdomain.AssignmentSubjectUser, subjectID: "tenant-user", want: true},
+		{name: "foreign user", subjectType: appdomain.AssignmentSubjectUser, subjectID: "foreign-user"},
+		{name: "missing user", subjectType: appdomain.AssignmentSubjectUser, subjectID: "missing-user"},
+		{name: "tenant group", subjectType: appdomain.AssignmentSubjectGroup, subjectID: "tenant-group", want: true},
+		{name: "foreign group", subjectType: appdomain.AssignmentSubjectGroup, subjectID: "foreign-group"},
+		{name: "missing group", subjectType: appdomain.AssignmentSubjectGroup, subjectID: "missing-group"},
+		{name: "invalid type", subjectType: appdomain.AssignmentSubjectType("invalid"), subjectID: "tenant-user"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -80,14 +80,14 @@ func TestIDManagementSubjectDirectoryPropagatesLookupFailures(t *testing.T) {
 	tests := []struct {
 		name        string
 		directory   idManagementSubjectDirectory
-		subjectType domain.AssignmentSubjectType
+		subjectType appdomain.AssignmentSubjectType
 	}{
 		{
-			name: "user", subjectType: domain.AssignmentSubjectUser,
+			name: "user", subjectType: appdomain.AssignmentSubjectUser,
 			directory: idManagementSubjectDirectory{users: failingUserRepository{err: lookupFailure}},
 		},
 		{
-			name: "group", subjectType: domain.AssignmentSubjectGroup,
+			name: "group", subjectType: appdomain.AssignmentSubjectGroup,
 			directory: idManagementSubjectDirectory{groups: failingGroupRepository{err: lookupFailure}},
 		},
 	}

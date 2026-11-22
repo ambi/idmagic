@@ -5,12 +5,12 @@ import (
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/signinpolicy/internal/db_memory"
 	"github.com/ambi/idmagic/backend/signinpolicy/internal/db_postgres"
-	"github.com/ambi/idmagic/backend/signinpolicy/ports"
+	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 )
 
 type Module struct {
-	ApplicationRepo ports.SignInPolicyRepository
-	DefaultRepo     ports.DefaultSignInPolicyRepository
+	ApplicationRepo policyports.SignInPolicyRepository
+	DefaultRepo     policyports.DefaultSignInPolicyRepository
 }
 
 func NewMemoryModule() Module {

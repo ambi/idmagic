@@ -8,8 +8,8 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 // 決定4: id_token_hint は本 OP が署名した ID Token のみを受理し、署名・iss を
@@ -21,8 +21,8 @@ func TestVerifyIDTokenHintReturnsClaimsForValidToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
-		Client: &domain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
 	if err != nil {
@@ -49,8 +49,8 @@ func TestVerifyIDTokenHintRejectsTamperedSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 	signer := NewJWTSigner("https://idp.test", ks)
-	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
-		Client: &domain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
+	token, err := signer.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
 	if err != nil {
@@ -76,8 +76,8 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	otherIssuerSigner := NewJWTSigner("https://other-idp.test", otherKS)
-	token, err := otherIssuerSigner.SignIDToken(testing_tenant.Default(context.Background()), ports.IDTokenInput{
-		Client: &domain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
+	token, err := otherIssuerSigner.SignIDToken(testing_tenant.Default(context.Background()), oauthports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "web-app"}, User: idTokenTestUser(),
 		Scopes: []string{"openid"}, Sid: "session-1",
 	})
 	if err != nil {

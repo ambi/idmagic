@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 )
 
 type Fixture struct {
-	Workflows  ports.LifecycleWorkflowRepository
+	Workflows  igports.LifecycleWorkflowRepository
 	TenantA    string
 	TenantB    string
 	WorkflowID string
@@ -27,16 +27,16 @@ func Run(t *testing.T, newFixture NewFixture) {
 	ctx := context.Background()
 	description := "offboarding"
 	enabledRevision := int64(1)
-	workflow := &domain.LifecycleWorkflow{
+	workflow := &igdomain.LifecycleWorkflow{
 		ID: f.WorkflowID, TenantID: f.TenantA, Name: "Leaver", Description: &description,
-		Status: domain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: &enabledRevision,
+		Status: igdomain.LifecycleWorkflowEnabled, CurrentRevision: 1, EnabledRevision: &enabledRevision,
 		CreatedAt: f.Now, UpdatedAt: f.Now,
 	}
 	if err := f.Workflows.Save(ctx, workflow); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	otherWorkflow := &domain.LifecycleWorkflow{
-		ID: f.OtherID, TenantID: f.TenantA, Name: "Joiner", Status: domain.LifecycleWorkflowDraft,
+	otherWorkflow := &igdomain.LifecycleWorkflow{
+		ID: f.OtherID, TenantID: f.TenantA, Name: "Joiner", Status: igdomain.LifecycleWorkflowDraft,
 		CurrentRevision: 1, CreatedAt: f.Now, UpdatedAt: f.Now,
 	}
 	if err := f.Workflows.Save(ctx, otherWorkflow); err != nil {
@@ -53,16 +53,16 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err != nil || len(listed) != 2 || listed[0].ID != f.OtherID || listed[1].ID != f.WorkflowID {
 		t.Fatalf("List = (%+v, %v)", listed, err)
 	}
-	revision := &domain.LifecycleWorkflowRevision{
+	revision := &igdomain.LifecycleWorkflowRevision{
 		WorkflowID: f.WorkflowID, TenantID: f.TenantA, Revision: 1,
-		Trigger: domain.WorkflowTrigger{Kind: domain.WorkflowTriggerUserCreated},
-		Actions: []domain.WorkflowAction{{Kind: domain.WorkflowActionDisableUser}}, CreatedAt: f.Now,
+		Trigger: igdomain.WorkflowTrigger{Kind: igdomain.WorkflowTriggerUserCreated},
+		Actions: []igdomain.WorkflowAction{{Kind: igdomain.WorkflowActionDisableUser}}, CreatedAt: f.Now,
 	}
 	if err := f.Workflows.SaveRevision(ctx, revision); err != nil {
 		t.Fatalf("SaveRevision: %v", err)
 	}
 	foundRevision, err := f.Workflows.FindRevision(ctx, f.TenantA, f.WorkflowID, 1)
-	if err != nil || foundRevision == nil || len(foundRevision.Actions) != 1 || foundRevision.Actions[0].Kind != domain.WorkflowActionDisableUser {
+	if err != nil || foundRevision == nil || len(foundRevision.Actions) != 1 || foundRevision.Actions[0].Kind != igdomain.WorkflowActionDisableUser {
 		t.Fatalf("FindRevision = (%+v, %v)", foundRevision, err)
 	}
 	if missing, err := f.Workflows.FindRevision(ctx, f.TenantA, f.WorkflowID, 2); err != nil || missing != nil {

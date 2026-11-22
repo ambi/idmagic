@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -15,7 +15,7 @@ var ErrTrustedDeviceRevokerMissing = errors.New("trusted device revoker is not w
 
 // RequireRevoker は、REQ-AUTHENTICATION-028 の契機となるユースケースが入口で呼び、失効の契約が
 // 渡されていなければ ErrTrustedDeviceRevokerMissing を返す。
-func RequireRevoker(revoker ports.UserDeviceRevoker) error {
+func RequireRevoker(revoker trusteddeviceports.UserDeviceRevoker) error {
 	if revoker == nil {
 		return ErrTrustedDeviceRevokerMissing
 	}
@@ -28,7 +28,7 @@ func RequireRevoker(revoker ports.UserDeviceRevoker) error {
 // emit が nil なら発行を省く。
 func RevokeOnCredentialChange(
 	ctx context.Context,
-	revoker ports.UserDeviceRevoker,
+	revoker trusteddeviceports.UserDeviceRevoker,
 	emit func(spec.DomainEvent) error,
 	tenantID, userID string,
 	reason spec.TrustedDeviceRevokeReason,

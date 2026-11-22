@@ -7,7 +7,7 @@ import (
 
 	auditmemory "github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 )
 
 //spec:covers REQ-AUTHENTICATION-014, EX-AUTHENTICATION-014-01: サインイン履歴に自分のテナントの自分の UserAuthenticated だけが返り、第二要素を使ったサインインが pwd と第二要素の amr を持つ完了後の 1 件として現れることを固定する。
@@ -43,7 +43,7 @@ func TestListSignInActivityFiltersBySubTenantAndType(t *testing.T) {
 		Payload: map[string]any{"userId": "alice", "amr": []any{"pwd", "otp"}},
 	})
 
-	got, err := usecases.ListSignInActivity(ctx, store, "t1", "alice", 0)
+	got, err := authusecases.ListSignInActivity(ctx, store, "t1", "alice", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestListSignInActivityClampsLimit(t *testing.T) {
 	ctx := context.Background()
 	store := auditmemory.NewAuditEventStore(0)
 	base := time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC)
-	for i := range usecases.SignInActivityMaxLimit + 20 {
+	for i := range authusecases.SignInActivityMaxLimit + 20 {
 		if err := store.Append(ctx, &auditports.AuditEventRecord{
 			ID: string(rune('a' + (i % 26))), TenantID: "t1", Type: "UserAuthenticated",
 			OccurredAt: base.Add(time.Duration(i) * time.Minute),
@@ -73,17 +73,17 @@ func TestListSignInActivityClampsLimit(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := usecases.ListSignInActivity(ctx, store, "t1", "alice", 1000)
+	got, err := authusecases.ListSignInActivity(ctx, store, "t1", "alice", 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) > usecases.SignInActivityMaxLimit {
-		t.Fatalf("len(got)=%d exceeds max %d", len(got), usecases.SignInActivityMaxLimit)
+	if len(got) > authusecases.SignInActivityMaxLimit {
+		t.Fatalf("len(got)=%d exceeds max %d", len(got), authusecases.SignInActivityMaxLimit)
 	}
 }
 
 func TestListSignInActivityNilRepo(t *testing.T) {
-	got, err := usecases.ListSignInActivity(context.Background(), nil, "t1", "alice", 10)
+	got, err := authusecases.ListSignInActivity(context.Background(), nil, "t1", "alice", 10)
 	if err != nil {
 		t.Fatal(err)
 	}

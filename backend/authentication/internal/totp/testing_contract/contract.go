@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
-	"github.com/ambi/idmagic/backend/authentication/totp/ports"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type Fixture struct {
-	Repository ports.MfaFactorRepository
+	Repository totpports.MfaFactorRepository
 	Context    func(context.Context) context.Context
 	UserID     string
 	Now        time.Time
@@ -28,7 +28,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("missing Find = (%+v, %v)", got, err)
 	}
 	secret, label := "JBSWY3DPEHPK3PXP", "Authenticator"
-	factor := &domain.MfaFactor{UserID: f.UserID, Type: spec.MfaFactorTOTP, Secret: &secret, Label: &label, CreatedAt: f.Now}
+	factor := &totpdomain.MfaFactor{UserID: f.UserID, Type: spec.MfaFactorTOTP, Secret: &secret, Label: &label, CreatedAt: f.Now}
 	if err := f.Repository.Save(ctx, factor); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

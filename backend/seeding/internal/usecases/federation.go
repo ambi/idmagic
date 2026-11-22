@@ -12,14 +12,14 @@ import (
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
-func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository, seed seedingdomain.DevelopmentDemoSeed, operations *resourceOperations, commands ResourceCommands) error {
+func SeedWsFedRelyingParty(ctx context.Context, repo wsfedports.WsFedRelyingPartyRepository, seed seedingdomain.DevelopmentDemoSeed, operations *resourceOperations, commands ResourceCommands) error {
 	now := time.Now().UTC()
-	rp := &domain.WsFedRelyingParty{
+	rp := &wsfeddomain.WsFedRelyingParty{
 		TenantID:    tenancydomain.DefaultTenantID,
 		Wtrealm:     seed.WsFedRealm,
 		DisplayName: seed.WsFedDisplayName,
@@ -76,7 +76,7 @@ func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProv
 	})
 }
 
-func sameWsFedRelyingParty(actual, desired *domain.WsFedRelyingParty) bool {
+func sameWsFedRelyingParty(actual, desired *wsfeddomain.WsFedRelyingParty) bool {
 	left, right := *actual, *desired
 	// カタログへの所属は Application の保存が管理し、RP の seed の項目には含めない。
 	left.ApplicationID, right.ApplicationID = "", ""

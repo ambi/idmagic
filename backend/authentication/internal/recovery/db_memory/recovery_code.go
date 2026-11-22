@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/recovery/domain"
+	recoverydomain "github.com/ambi/idmagic/backend/authentication/recovery/domain"
 )
 
 // =====================================================================
@@ -14,20 +14,20 @@ import (
 
 type RecoveryCodeRepository struct {
 	mu    sync.Mutex
-	codes map[string][]*domain.RecoveryCode // key: sub
+	codes map[string][]*recoverydomain.RecoveryCode // key: sub
 }
 
 func NewRecoveryCodeRepository() *RecoveryCodeRepository {
-	return &RecoveryCodeRepository{codes: map[string][]*domain.RecoveryCode{}}
+	return &RecoveryCodeRepository{codes: map[string][]*recoverydomain.RecoveryCode{}}
 }
 
 func (r *RecoveryCodeRepository) ListBySub(
 	_ context.Context,
 	sub string,
-) ([]*domain.RecoveryCode, error) {
+) ([]*recoverydomain.RecoveryCode, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*domain.RecoveryCode{}
+	out := []*recoverydomain.RecoveryCode{}
 	for _, c := range r.codes[sub] {
 		out = append(out, cloneRecoveryCode(c))
 	}
@@ -37,11 +37,11 @@ func (r *RecoveryCodeRepository) ListBySub(
 func (r *RecoveryCodeRepository) ReplaceAll(
 	_ context.Context,
 	sub string,
-	codes []*domain.RecoveryCode,
+	codes []*recoverydomain.RecoveryCode,
 ) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	stored := make([]*domain.RecoveryCode, 0, len(codes))
+	stored := make([]*recoverydomain.RecoveryCode, 0, len(codes))
 	for _, c := range codes {
 		stored = append(stored, cloneRecoveryCode(c))
 	}
@@ -74,7 +74,7 @@ func (r *RecoveryCodeRepository) DeleteAllForSub(_ context.Context, sub string) 
 	return nil
 }
 
-func cloneRecoveryCode(c *domain.RecoveryCode) *domain.RecoveryCode {
+func cloneRecoveryCode(c *recoverydomain.RecoveryCode) *recoverydomain.RecoveryCode {
 	if c == nil {
 		return nil
 	}

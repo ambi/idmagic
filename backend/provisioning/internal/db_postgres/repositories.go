@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
@@ -74,9 +74,9 @@ func fromPgUUID(u pgtype.UUID) *string {
 // ProvisioningConnectionRepository is the PostgreSQL ports.ProvisioningConnectionRepository.
 type ProvisioningConnectionRepository struct{ Pool sharedpg.DB }
 
-var _ ports.ProvisioningConnectionRepository = (*ProvisioningConnectionRepository)(nil)
+var _ provisioningports.ProvisioningConnectionRepository = (*ProvisioningConnectionRepository)(nil)
 
-func (r *ProvisioningConnectionRepository) Register(ctx context.Context, conn *domain.ProvisioningConnection, secret string) error {
+func (r *ProvisioningConnectionRepository) Register(ctx context.Context, conn *provisioningdomain.ProvisioningConnection, secret string) error {
 	if err := conn.Validate(); err != nil {
 		return err
 	}
@@ -117,12 +117,12 @@ func (r *ProvisioningConnectionRepository) Register(ctx context.Context, conn *d
 		UpdatedAt:                          conn.UpdatedAt,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ports.ErrConnectionAlreadyExists
+		return provisioningports.ErrConnectionAlreadyExists
 	}
 	return err
 }
 
-func (r *ProvisioningConnectionRepository) Update(ctx context.Context, conn *domain.ProvisioningConnection, secret *string) error {
+func (r *ProvisioningConnectionRepository) Update(ctx context.Context, conn *provisioningdomain.ProvisioningConnection, secret *string) error {
 	if err := conn.Validate(); err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ type connectionJSON struct {
 	featureFlags, capabilities, groupPush, mappings, matching, deprovision []byte
 }
 
-func marshalConnectionJSON(conn *domain.ProvisioningConnection) (connectionJSON, error) {
+func marshalConnectionJSON(conn *provisioningdomain.ProvisioningConnection) (connectionJSON, error) {
 	var j connectionJSON
 	var err error
 	if j.featureFlags, err = json.Marshal(conn.FeatureFlags); err != nil {
@@ -224,19 +224,19 @@ func marshalConnectionJSON(conn *domain.ProvisioningConnection) (connectionJSON,
 	return j, nil
 }
 
-func mapConnection(c *domain.ProvisioningConnection, featureFlagsRaw, capabilitiesRaw, groupPushRaw, mappingsRaw, matchingRaw, deprovisionRaw []byte) error {
+func mapConnection(c *provisioningdomain.ProvisioningConnection, featureFlagsRaw, capabilitiesRaw, groupPushRaw, mappingsRaw, matchingRaw, deprovisionRaw []byte) error {
 	if err := json.Unmarshal(featureFlagsRaw, &c.FeatureFlags); err != nil {
 		return err
 	}
 	if len(capabilitiesRaw) > 0 {
-		var caps domain.ProvisioningCapabilities
+		var caps provisioningdomain.ProvisioningCapabilities
 		if err := json.Unmarshal(capabilitiesRaw, &caps); err != nil {
 			return err
 		}
 		c.Capabilities = &caps
 	}
 	if len(groupPushRaw) > 0 {
-		var gp domain.GroupPushConfig
+		var gp provisioningdomain.GroupPushConfig
 		if err := json.Unmarshal(groupPushRaw, &gp); err != nil {
 			return err
 		}
@@ -254,27 +254,27 @@ func mapConnection(c *domain.ProvisioningConnection, featureFlagsRaw, capabiliti
 	return c.Validate()
 }
 
-func mapFindConnection(row *FindProvisioningConnectionRow) (*domain.ProvisioningConnection, error) {
-	c := &domain.ProvisioningConnection{
+func mapFindConnection(row *FindProvisioningConnectionRow) (*provisioningdomain.ProvisioningConnection, error) {
+	c := &provisioningdomain.ProvisioningConnection{
 		ApplicationID: row.ApplicationID,
 		TenantID:      row.TenantID,
-		Status:        domain.ProvisioningConnectionStatus(row.Status),
+		Status:        provisioningdomain.ProvisioningConnectionStatus(row.Status),
 		BaseURL:       row.BaseUrl,
-		Credential: domain.ProvisioningConnectionCredentialMetadata{
+		Credential: provisioningdomain.ProvisioningConnectionCredentialMetadata{
 			CredentialID:   row.CredentialID,
-			AuthMethod:     domain.ProvisioningAuthMethod(row.AuthMethod),
+			AuthMethod:     provisioningdomain.ProvisioningAuthMethod(row.AuthMethod),
 			OAuth2TokenURL: row.CredentialOauth2TokenUrl,
 			OAuth2ClientID: row.CredentialOauth2ClientID,
 			OAuth2Scope:    row.CredentialOauth2Scope,
 			CreatedAt:      row.CredentialCreatedAt,
 			RotatedAt:      fromPgTimestamptz(row.CredentialRotatedAt),
 		},
-		Scope:                             domain.ProvisioningScope(row.Scope),
+		Scope:                             provisioningdomain.ProvisioningScope(row.Scope),
 		RateLimitPerMinute:                int(row.RateLimitPerMinute),
 		MaxAttempts:                       int(row.MaxAttempts),
 		NotificationEmail:                 fromPgText(row.NotificationEmail),
 		QuarantineAfterConsecutiveFailure: int(row.QuarantineAfterConsecutiveFailures),
-		Health:                            domain.ProvisioningHealth(row.Health),
+		Health:                            provisioningdomain.ProvisioningHealth(row.Health),
 		ConsecutiveFailureCount:           int(row.ConsecutiveFailureCount),
 		LastFullSyncAt:                    fromPgTimestamptz(row.LastFullSyncAt),
 		QuarantinedAt:                     fromPgTimestamptz(row.QuarantinedAt),
@@ -288,27 +288,27 @@ func mapFindConnection(row *FindProvisioningConnectionRow) (*domain.Provisioning
 	return c, nil
 }
 
-func mapListConnection(row *ListProvisioningConnectionsByTenantRow) (*domain.ProvisioningConnection, error) {
-	c := &domain.ProvisioningConnection{
+func mapListConnection(row *ListProvisioningConnectionsByTenantRow) (*provisioningdomain.ProvisioningConnection, error) {
+	c := &provisioningdomain.ProvisioningConnection{
 		ApplicationID: row.ApplicationID,
 		TenantID:      row.TenantID,
-		Status:        domain.ProvisioningConnectionStatus(row.Status),
+		Status:        provisioningdomain.ProvisioningConnectionStatus(row.Status),
 		BaseURL:       row.BaseUrl,
-		Credential: domain.ProvisioningConnectionCredentialMetadata{
+		Credential: provisioningdomain.ProvisioningConnectionCredentialMetadata{
 			CredentialID:   row.CredentialID,
-			AuthMethod:     domain.ProvisioningAuthMethod(row.AuthMethod),
+			AuthMethod:     provisioningdomain.ProvisioningAuthMethod(row.AuthMethod),
 			OAuth2TokenURL: row.CredentialOauth2TokenUrl,
 			OAuth2ClientID: row.CredentialOauth2ClientID,
 			OAuth2Scope:    row.CredentialOauth2Scope,
 			CreatedAt:      row.CredentialCreatedAt,
 			RotatedAt:      fromPgTimestamptz(row.CredentialRotatedAt),
 		},
-		Scope:                             domain.ProvisioningScope(row.Scope),
+		Scope:                             provisioningdomain.ProvisioningScope(row.Scope),
 		RateLimitPerMinute:                int(row.RateLimitPerMinute),
 		MaxAttempts:                       int(row.MaxAttempts),
 		NotificationEmail:                 fromPgText(row.NotificationEmail),
 		QuarantineAfterConsecutiveFailure: int(row.QuarantineAfterConsecutiveFailures),
-		Health:                            domain.ProvisioningHealth(row.Health),
+		Health:                            provisioningdomain.ProvisioningHealth(row.Health),
 		ConsecutiveFailureCount:           int(row.ConsecutiveFailureCount),
 		LastFullSyncAt:                    fromPgTimestamptz(row.LastFullSyncAt),
 		QuarantinedAt:                     fromPgTimestamptz(row.QuarantinedAt),
@@ -322,7 +322,7 @@ func mapListConnection(row *ListProvisioningConnectionsByTenantRow) (*domain.Pro
 	return c, nil
 }
 
-func (r *ProvisioningConnectionRepository) Find(ctx context.Context, tenantID, applicationID string) (*domain.ProvisioningConnection, error) {
+func (r *ProvisioningConnectionRepository) Find(ctx context.Context, tenantID, applicationID string) (*provisioningdomain.ProvisioningConnection, error) {
 	row, err := New(r.Pool).FindProvisioningConnection(ctx, FindProvisioningConnectionParams{
 		TenantID:      tenantID,
 		ApplicationID: applicationID,
@@ -354,12 +354,12 @@ func (r *ProvisioningConnectionRepository) Delete(ctx context.Context, tenantID,
 	})
 }
 
-func (r *ProvisioningConnectionRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error) {
+func (r *ProvisioningConnectionRepository) ListAll(ctx context.Context, tenantID string) ([]*provisioningdomain.ProvisioningConnection, error) {
 	rows, err := New(r.Pool).ListProvisioningConnectionsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningConnection, 0, len(rows))
+	out := make([]*provisioningdomain.ProvisioningConnection, 0, len(rows))
 	for _, row := range rows {
 		conn, err := mapListConnection(row)
 		if err != nil {
@@ -373,9 +373,9 @@ func (r *ProvisioningConnectionRepository) ListAll(ctx context.Context, tenantID
 // RemoteResourceLinkRepository is the PostgreSQL ports.RemoteResourceLinkRepository.
 type RemoteResourceLinkRepository struct{ Pool sharedpg.DB }
 
-var _ ports.RemoteResourceLinkRepository = (*RemoteResourceLinkRepository)(nil)
+var _ provisioningports.RemoteResourceLinkRepository = (*RemoteResourceLinkRepository)(nil)
 
-func (r *RemoteResourceLinkRepository) Find(ctx context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) (*domain.RemoteResourceLink, error) {
+func (r *RemoteResourceLinkRepository) Find(ctx context.Context, connectionID string, sourceType provisioningdomain.ProvisioningSourceType, sourceID string) (*provisioningdomain.RemoteResourceLink, error) {
 	row, err := New(r.Pool).FindRemoteResourceLink(ctx, FindRemoteResourceLinkParams{
 		ConnectionID: connectionID,
 		SourceType:   string(sourceType),
@@ -390,31 +390,31 @@ func (r *RemoteResourceLinkRepository) Find(ctx context.Context, connectionID st
 	return mapLink(row), nil
 }
 
-func (r *RemoteResourceLinkRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.RemoteResourceLink, error) {
+func (r *RemoteResourceLinkRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, sourceType provisioningdomain.ProvisioningSourceType) ([]*provisioningdomain.RemoteResourceLink, error) {
 	rows, err := New(r.Pool).ListRemoteResourceLinksByConnection(ctx, ListRemoteResourceLinksByConnectionParams{
 		TenantID: tenantID, ConnectionID: connectionID, SourceType: string(sourceType),
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.RemoteResourceLink, 0, len(rows))
+	out := make([]*provisioningdomain.RemoteResourceLink, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, mapLink(row))
 	}
 	return out, nil
 }
 
-func (r *RemoteResourceLinkRepository) Delete(ctx context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) error {
+func (r *RemoteResourceLinkRepository) Delete(ctx context.Context, connectionID string, sourceType provisioningdomain.ProvisioningSourceType, sourceID string) error {
 	return New(r.Pool).DeleteRemoteResourceLink(ctx, DeleteRemoteResourceLinkParams{
 		ConnectionID: connectionID, SourceType: string(sourceType), SourceID: sourceID,
 	})
 }
 
-func mapLink(row *ProvisioningRemoteLink) *domain.RemoteResourceLink {
-	return &domain.RemoteResourceLink{
+func mapLink(row *ProvisioningRemoteLink) *provisioningdomain.RemoteResourceLink {
+	return &provisioningdomain.RemoteResourceLink{
 		ConnectionID:      row.ConnectionID,
 		TenantID:          row.TenantID,
-		SourceType:        domain.ProvisioningSourceType(row.SourceType),
+		SourceType:        provisioningdomain.ProvisioningSourceType(row.SourceType),
 		SourceID:          row.SourceID,
 		RemoteID:          row.RemoteID,
 		ExternalID:        row.ExternalID,
@@ -425,7 +425,7 @@ func mapLink(row *ProvisioningRemoteLink) *domain.RemoteResourceLink {
 	}
 }
 
-func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *domain.RemoteResourceLink) error {
+func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *provisioningdomain.RemoteResourceLink) error {
 	return New(r.Pool).UpsertRemoteResourceLink(ctx, UpsertRemoteResourceLinkParams{
 		ConnectionID:      link.ConnectionID,
 		TenantID:          link.TenantID,
@@ -443,18 +443,18 @@ func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *domain.
 // ProvisioningTaskRepository is the PostgreSQL ports.ProvisioningTaskRepository.
 type ProvisioningTaskRepository struct{ Pool sharedpg.DB }
 
-var _ ports.ProvisioningTaskRepository = (*ProvisioningTaskRepository)(nil)
+var _ provisioningports.ProvisioningTaskRepository = (*ProvisioningTaskRepository)(nil)
 
-func mapTask(row *ProvisioningTask) (*domain.ProvisioningTask, error) {
-	d := &domain.ProvisioningTask{
+func mapTask(row *ProvisioningTask) (*provisioningdomain.ProvisioningTask, error) {
+	d := &provisioningdomain.ProvisioningTask{
 		ID:            row.ID,
 		TenantID:      row.TenantID,
 		ConnectionID:  row.ConnectionID,
-		SourceType:    domain.ProvisioningSourceType(row.SourceType),
+		SourceType:    provisioningdomain.ProvisioningSourceType(row.SourceType),
 		SourceID:      row.SourceID,
 		SourceVersion: row.SourceVersion,
-		Operation:     domain.ProvisioningOperation(row.Operation),
-		Status:        domain.ProvisioningTaskStatus(row.Status),
+		Operation:     provisioningdomain.ProvisioningOperation(row.Operation),
+		Status:        provisioningdomain.ProvisioningTaskStatus(row.Status),
 		JobID:         fromPgUUID(row.JobID),
 		LastError:     fromPgText(row.LastError),
 		CreatedAt:     row.CreatedAt,
@@ -464,7 +464,7 @@ func mapTask(row *ProvisioningTask) (*domain.ProvisioningTask, error) {
 	return d, d.Validate()
 }
 
-func (r *ProvisioningTaskRepository) Save(ctx context.Context, d *domain.ProvisioningTask) (bool, error) {
+func (r *ProvisioningTaskRepository) Save(ctx context.Context, d *provisioningdomain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
@@ -492,7 +492,7 @@ func (r *ProvisioningTaskRepository) Save(ctx context.Context, d *domain.Provisi
 	return true, nil
 }
 
-func (r *ProvisioningTaskRepository) Find(ctx context.Context, tenantID, taskID string) (*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) Find(ctx context.Context, tenantID, taskID string) (*provisioningdomain.ProvisioningTask, error) {
 	row, err := New(r.Pool).FindProvisioningTask(ctx, FindProvisioningTaskParams{
 		TenantID: tenantID,
 		ID:       taskID,
@@ -506,7 +506,7 @@ func (r *ProvisioningTaskRepository) Find(ctx context.Context, tenantID, taskID 
 	return mapTask(row)
 }
 
-func (r *ProvisioningTaskRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, limit int) ([]*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, status *provisioningdomain.ProvisioningTaskStatus, limit int) ([]*provisioningdomain.ProvisioningTask, error) {
 	var rows []*ProvisioningTask
 	var err error
 	if status != nil {
@@ -526,7 +526,7 @@ func (r *ProvisioningTaskRepository) ListByConnection(ctx context.Context, tenan
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningTask, 0, len(rows))
+	out := make([]*provisioningdomain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
 		d, err := mapTask(row)
 		if err != nil {
@@ -541,7 +541,7 @@ func (r *ProvisioningTaskRepository) ListByConnection(ctx context.Context, tenan
 // ports.ProvisioningTaskRepository.ListPageByConnection (wi-159)
 // : keyset pagination ordered by (created_at, id) descending —
 // matching ListByConnection's pre-existing "most recent first" order.
-func (r *ProvisioningTaskRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *provisioningdomain.ProvisioningTaskStatus, sourceType *provisioningdomain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*provisioningdomain.ProvisioningTask, error) {
 	q := New(r.Pool)
 	filterStatus, filterSourceType := "", ""
 	if status != nil {
@@ -568,7 +568,7 @@ func (r *ProvisioningTaskRepository) ListPageByConnection(ctx context.Context, t
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningTask, 0, len(rows))
+	out := make([]*provisioningdomain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
 		d, err := mapTask(row)
 		if err != nil {
@@ -579,7 +579,7 @@ func (r *ProvisioningTaskRepository) ListPageByConnection(ctx context.Context, t
 	return out, nil
 }
 
-func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningTaskStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *provisioningdomain.ProvisioningTaskStatus, sourceType *provisioningdomain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*provisioningdomain.ProvisioningTask, error) {
 	filterStatus, filterSourceType := "", ""
 	if status != nil {
 		filterStatus = string(*status)
@@ -596,7 +596,7 @@ func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(ctx context.Cont
 		return nil, err
 	}
 	slices.Reverse(rows)
-	out := make([]*domain.ProvisioningTask, 0, len(rows))
+	out := make([]*provisioningdomain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
 		task, err := mapTask(row)
 		if err != nil {
@@ -607,7 +607,7 @@ func (r *ProvisioningTaskRepository) ListPageBeforeByConnection(ctx context.Cont
 	return out, nil
 }
 
-func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]*provisioningdomain.ProvisioningTask, error) {
 	var cursor pgtype.Timestamptz
 	if !afterCreatedAt.IsZero() {
 		cursor = pgTimestamptz(&afterCreatedAt)
@@ -622,7 +622,7 @@ func (r *ProvisioningTaskRepository) ListUnenqueued(ctx context.Context, afterCr
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningTask, 0, len(rows))
+	out := make([]*provisioningdomain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
 		d, err := mapTask(row)
 		if err != nil {
@@ -643,7 +643,7 @@ func (r *ProvisioningTaskRepository) AttachJob(ctx context.Context, tenantID, ta
 	return affected == 1, err
 }
 
-func (r *ProvisioningTaskRepository) UpdateStatus(ctx context.Context, tenantID, taskID string, status domain.ProvisioningTaskStatus, lastError *string) error {
+func (r *ProvisioningTaskRepository) UpdateStatus(ctx context.Context, tenantID, taskID string, status provisioningdomain.ProvisioningTaskStatus, lastError *string) error {
 	return New(r.Pool).UpdateProvisioningTaskStatus(ctx, UpdateProvisioningTaskStatusParams{
 		TenantID:  tenantID,
 		ID:        taskID,
@@ -667,7 +667,7 @@ func (r *ProvisioningTaskRepository) RetryDeadLetter(ctx context.Context, tenant
 	return affected == 1, err
 }
 
-func (r *ProvisioningTaskRepository) ScheduleDeprovision(ctx context.Context, s *domain.ScheduledDeprovision) (bool, error) {
+func (r *ProvisioningTaskRepository) ScheduleDeprovision(ctx context.Context, s *provisioningdomain.ScheduledDeprovision) (bool, error) {
 	affected, err := New(r.Pool).InsertProvisioningScheduledDeprovision(ctx, InsertProvisioningScheduledDeprovisionParams{
 		ID:            s.ID,
 		TenantID:      s.TenantID,
@@ -692,7 +692,7 @@ func (r *ProvisioningTaskRepository) CancelScheduledDeprovisions(ctx context.Con
 	return int(affected), err
 }
 
-func (r *ProvisioningTaskRepository) ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*domain.ScheduledDeprovision, error) {
+func (r *ProvisioningTaskRepository) ListDueDeprovisions(ctx context.Context, now time.Time, limit int) ([]*provisioningdomain.ScheduledDeprovision, error) {
 	rows, err := New(r.Pool).ListDueProvisioningScheduledDeprovisions(ctx, ListDueProvisioningScheduledDeprovisionsParams{
 		Now:       now,
 		PageLimit: int32(limit), //nolint:gosec // safe downcast
@@ -700,11 +700,11 @@ func (r *ProvisioningTaskRepository) ListDueDeprovisions(ctx context.Context, no
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ScheduledDeprovision, 0, len(rows))
+	out := make([]*provisioningdomain.ScheduledDeprovision, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, &domain.ScheduledDeprovision{
+		out = append(out, &provisioningdomain.ScheduledDeprovision{
 			ID: row.ID, TenantID: row.TenantID, ConnectionID: row.ConnectionID, UserID: row.UserID,
-			SourceVersion: row.SourceVersion, DueAt: row.DueAt, Status: domain.ScheduledDeprovisionStatus(row.Status),
+			SourceVersion: row.SourceVersion, DueAt: row.DueAt, Status: provisioningdomain.ScheduledDeprovisionStatus(row.Status),
 			TaskID: fromPgUUID(row.TaskID), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		})
 	}
@@ -713,7 +713,7 @@ func (r *ProvisioningTaskRepository) ListDueDeprovisions(ctx context.Context, no
 
 // MaterializeDeprovision は予約の遷移とプロビジョニングタスクの挿入を一文で行う。プロビジョニングタスクの内容は予約の行から
 // 組み立てるため、d からは識別子と作成時刻だけを使う。
-func (r *ProvisioningTaskRepository) MaterializeDeprovision(ctx context.Context, s *domain.ScheduledDeprovision, d *domain.ProvisioningTask) (bool, error) {
+func (r *ProvisioningTaskRepository) MaterializeDeprovision(ctx context.Context, s *provisioningdomain.ScheduledDeprovision, d *provisioningdomain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
@@ -730,15 +730,15 @@ func (r *ProvisioningConnectionRepository) ListTenantsWithActiveConnections(ctx 
 	return New(r.Pool).ListTenantsWithActiveProvisioningConnections(ctx)
 }
 
-func mapFullResync(row *ProvisioningFullResync) *domain.FullResync {
-	return &domain.FullResync{
-		ID: row.ID, TenantID: row.TenantID, ConnectionID: row.ConnectionID, Status: domain.FullResyncStatus(row.Status),
+func mapFullResync(row *ProvisioningFullResync) *provisioningdomain.FullResync {
+	return &provisioningdomain.FullResync{
+		ID: row.ID, TenantID: row.TenantID, ConnectionID: row.ConnectionID, Status: provisioningdomain.FullResyncStatus(row.Status),
 		TotalTasks: int(row.TotalTasks), SucceededCount: int(row.SucceededCount), FailedCount: int(row.FailedCount),
 		StartedAt: row.StartedAt, CompletedAt: fromPgTimestamptz(row.CompletedAt),
 	}
 }
 
-func (r *ProvisioningTaskRepository) SaveFullResync(ctx context.Context, fr *domain.FullResync) error {
+func (r *ProvisioningTaskRepository) SaveFullResync(ctx context.Context, fr *provisioningdomain.FullResync) error {
 	return New(r.Pool).InsertProvisioningFullResync(ctx, InsertProvisioningFullResyncParams{
 		ID: fr.ID, TenantID: fr.TenantID, ConnectionID: fr.ConnectionID, Status: string(fr.Status),
 		TotalTasks:     int32(fr.TotalTasks),     //nolint:gosec // safe downcast
@@ -750,7 +750,7 @@ func (r *ProvisioningTaskRepository) SaveFullResync(ctx context.Context, fr *dom
 
 // SaveFullResyncTask はプロビジョニングタスクの挿入と関連付けを一文で行う。d の job_id、last_error、completed_at は
 // 作成直後のプロビジョニングタスクには無いので書き込まない。
-func (r *ProvisioningTaskRepository) SaveFullResyncTask(ctx context.Context, fullResyncID string, d *domain.ProvisioningTask) (bool, error) {
+func (r *ProvisioningTaskRepository) SaveFullResyncTask(ctx context.Context, fullResyncID string, d *provisioningdomain.ProvisioningTask) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
@@ -762,7 +762,7 @@ func (r *ProvisioningTaskRepository) SaveFullResyncTask(ctx context.Context, ful
 	return linked == 1, err
 }
 
-func (r *ProvisioningTaskRepository) FindFullResyncByTask(ctx context.Context, tenantID, taskID string) (*domain.FullResync, error) {
+func (r *ProvisioningTaskRepository) FindFullResyncByTask(ctx context.Context, tenantID, taskID string) (*provisioningdomain.FullResync, error) {
 	row, err := New(r.Pool).FindProvisioningFullResyncByTask(ctx, FindProvisioningFullResyncByTaskParams{TenantID: tenantID, TaskID: taskID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -773,15 +773,15 @@ func (r *ProvisioningTaskRepository) FindFullResyncByTask(ctx context.Context, t
 	return mapFullResync(row), nil
 }
 
-func (r *ProvisioningTaskRepository) TallyFullResync(ctx context.Context, tenantID, fullResyncID string) (domain.FullResyncTally, error) {
+func (r *ProvisioningTaskRepository) TallyFullResync(ctx context.Context, tenantID, fullResyncID string) (provisioningdomain.FullResyncTally, error) {
 	row, err := New(r.Pool).TallyProvisioningFullResync(ctx, TallyProvisioningFullResyncParams{TenantID: tenantID, FullResyncID: fullResyncID})
 	if err != nil {
-		return domain.FullResyncTally{}, err
+		return provisioningdomain.FullResyncTally{}, err
 	}
-	return domain.FullResyncTally{Succeeded: int(row.Succeeded), Failed: int(row.Failed)}, nil
+	return provisioningdomain.FullResyncTally{Succeeded: int(row.Succeeded), Failed: int(row.Failed)}, nil
 }
 
-func (r *ProvisioningTaskRepository) CompleteFullResync(ctx context.Context, fr *domain.FullResync) (bool, error) {
+func (r *ProvisioningTaskRepository) CompleteFullResync(ctx context.Context, fr *provisioningdomain.FullResync) (bool, error) {
 	completed, err := New(r.Pool).CompleteProvisioningFullResync(ctx, CompleteProvisioningFullResyncParams{
 		TenantID: fr.TenantID, ID: fr.ID,
 		SucceededCount: int32(fr.SucceededCount), //nolint:gosec // safe downcast
@@ -791,14 +791,14 @@ func (r *ProvisioningTaskRepository) CompleteFullResync(ctx context.Context, fr 
 	return completed == 1, err
 }
 
-func (r *ProvisioningTaskRepository) ListUnsettledByConnection(ctx context.Context, tenantID, connectionID string, sourceType domain.ProvisioningSourceType) ([]*domain.ProvisioningTask, error) {
+func (r *ProvisioningTaskRepository) ListUnsettledByConnection(ctx context.Context, tenantID, connectionID string, sourceType provisioningdomain.ProvisioningSourceType) ([]*provisioningdomain.ProvisioningTask, error) {
 	rows, err := New(r.Pool).ListUnsettledProvisioningTasksByConnection(ctx, ListUnsettledProvisioningTasksByConnectionParams{
 		TenantID: tenantID, ConnectionID: connectionID, SourceType: string(sourceType),
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.ProvisioningTask, 0, len(rows))
+	out := make([]*provisioningdomain.ProvisioningTask, 0, len(rows))
 	for _, row := range rows {
 		d, err := mapTask(row)
 		if err != nil {

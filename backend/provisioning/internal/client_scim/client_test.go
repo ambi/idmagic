@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
@@ -23,8 +23,8 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 // sourceKey directly to targetPath, for tests that only care about wire
 // behavior (method, status handling) rather than mapping semantics (covered by
 // TestBuildResource_* in mapping_test.go).
-func simpleRule(targetPath, sourceKey string) domain.AttributeMappingRule {
-	return domain.AttributeMappingRule{TargetPath: targetPath, SourceKind: domain.SourceKindAttribute, SourceKey: sourceKey, ApplyOn: domain.ApplyCreateAndUpdate}
+func simpleRule(targetPath, sourceKey string) provisioningdomain.AttributeMappingRule {
+	return provisioningdomain.AttributeMappingRule{TargetPath: targetPath, SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: sourceKey, ApplyOn: provisioningdomain.ApplyCreateAndUpdate}
 }
 
 //spec:covers RFC7644-OUT-DISCOVERY: `/ServiceProviderConfig` から 5 つの対応可否を読む。
@@ -69,7 +69,7 @@ func TestClient_CreateUser_ReturnsRemoteID(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": "remote-1", "userName": "alice"})
 	})
-	remoteID, etag, err := client.CreateUser(context.Background(), []domain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
+	remoteID, etag, err := client.CreateUser(context.Background(), []provisioningdomain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
 	if err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
@@ -87,9 +87,9 @@ func TestClient_CreateUser_ReturnsConflictErrorOn409(t *testing.T) {
 		w.WriteHeader(http.StatusConflict)
 		_ = json.NewEncoder(w).Encode(map[string]any{"detail": "userName already exists"})
 	})
-	_, _, err := client.CreateUser(context.Background(), []domain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
-	var conflict *ports.ConflictError
-	if !ports.AsConflictError(err, &conflict) {
+	_, _, err := client.CreateUser(context.Background(), []provisioningdomain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
+	var conflict *provisioningports.ConflictError
+	if !provisioningports.AsConflictError(err, &conflict) {
 		t.Fatalf("CreateUser() error = %v, want *ports.ConflictError", err)
 	}
 }
@@ -115,7 +115,7 @@ func TestClient_UpdateUser_UsesPatchWhenSupported(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": "remote-1"})
 	})
-	if _, err := client.UpdateUser(context.Background(), "remote-1", []domain.AttributeMappingRule{simpleRule("active", "active")}, map[string]any{"active": false}, true); err != nil {
+	if _, err := client.UpdateUser(context.Background(), "remote-1", []provisioningdomain.AttributeMappingRule{simpleRule("active", "active")}, map[string]any{"active": false}, true); err != nil {
 		t.Fatalf("UpdateUser() error = %v", err)
 	}
 	if gotMethod != http.MethodPatch {
@@ -131,7 +131,7 @@ func TestClient_UpdateUser_FallsBackToPutWhenPatchUnsupported(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": "remote-1"})
 	})
-	if _, err := client.UpdateUser(context.Background(), "remote-1", []domain.AttributeMappingRule{simpleRule("active", "active")}, map[string]any{"active": false}, false); err != nil {
+	if _, err := client.UpdateUser(context.Background(), "remote-1", []provisioningdomain.AttributeMappingRule{simpleRule("active", "active")}, map[string]any{"active": false}, false); err != nil {
 		t.Fatalf("UpdateUser() error = %v", err)
 	}
 	if gotMethod != http.MethodPut {
@@ -168,9 +168,9 @@ func TestClient_RetryAfter_ParsedFrom429(t *testing.T) {
 		w.Header().Set("Retry-After", "30")
 		w.WriteHeader(http.StatusTooManyRequests)
 	})
-	_, _, err := client.CreateUser(context.Background(), []domain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
-	var retryable *ports.RetryableError
-	if !ports.AsRetryableError(err, &retryable) {
+	_, _, err := client.CreateUser(context.Background(), []provisioningdomain.AttributeMappingRule{simpleRule("userName", "username")}, map[string]any{"username": "alice"})
+	var retryable *provisioningports.RetryableError
+	if !provisioningports.AsRetryableError(err, &retryable) {
 		t.Fatalf("CreateUser() error = %v, want *ports.RetryableError", err)
 	}
 	if retryable.RetryAfter != 30*time.Second {
@@ -222,7 +222,7 @@ func TestClient_CreateGroup_ReturnsRemoteID(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": "remote-group-1"})
 	})
-	remoteID, _, err := client.CreateGroup(context.Background(), []domain.AttributeMappingRule{simpleRule("displayName", "display_name")}, map[string]any{"display_name": "Engineers"})
+	remoteID, _, err := client.CreateGroup(context.Background(), []provisioningdomain.AttributeMappingRule{simpleRule("displayName", "display_name")}, map[string]any{"display_name": "Engineers"})
 	if err != nil {
 		t.Fatalf("CreateGroup() error = %v", err)
 	}

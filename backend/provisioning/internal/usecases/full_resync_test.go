@@ -11,16 +11,16 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // fullResyncFixture は all_users の接続と User を置き、StartFullResync とジョブハンドラーの発行を一つに記録する。
 type fullResyncFixture struct {
 	t        *testing.T
-	admin    usecases.AdminDeps
-	handler  usecases.JobHandlerDeps
+	admin    provisioningusecases.AdminDeps
+	handler  provisioningusecases.JobHandlerDeps
 	client   *fakeTargetClient
 	taskRepo *memory.ProvisioningTaskRepository
 	events   []spec.DomainEvent
@@ -32,18 +32,18 @@ func newFullResyncFixture(t *testing.T, userIDs ...string) *fullResyncFixture {
 	attrSource := &fakeAttributeSource{attrs: map[string]any{"preferred_username": "someone"}, exists: true}
 	handlerDeps, connRepo, taskRepo := newJobHandlerDeps(client, attrSource)
 	now := time.Now().UTC()
-	conn := &domain.ProvisioningConnection{
-		ApplicationID: "app-1", TenantID: testTenantID, Status: domain.ConnectionActive,
+	conn := &provisioningdomain.ProvisioningConnection{
+		ApplicationID: "app-1", TenantID: testTenantID, Status: provisioningdomain.ConnectionActive,
 		BaseURL:      "https://downstream.example.com/scim/v2",
-		Credential:   domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
-		FeatureFlags: domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true},
-		Scope:        domain.ScopeAllUsers,
-		Matching:     domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate,
+		Credential:   provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
+		FeatureFlags: provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true},
+		Scope:        provisioningdomain.ScopeAllUsers,
+		Matching:     provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate,
 		},
 		RateLimitPerMinute: 60, MaxAttempts: testJobMaxAttempts, QuarantineAfterConsecutiveFailure: 10,
-		Health: domain.HealthOK, CreatedAt: now, UpdatedAt: now,
+		Health: provisioningdomain.HealthOK, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := connRepo.Register(context.Background(), conn, "tok"); err != nil {
 		t.Fatal(err)
@@ -53,26 +53,26 @@ func newFullResyncFixture(t *testing.T, userIDs ...string) *fullResyncFixture {
 		_ = users.Save(context.Background(), &userdomain.User{ID: id, TenantID: testTenantID, PreferredUsername: id, CreatedAt: now, UpdatedAt: now})
 	}
 	f := &fullResyncFixture{t: t, handler: handlerDeps, client: client, taskRepo: taskRepo}
-	f.admin = usecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, UserRepo: users, Emit: f.record}
+	f.admin = provisioningusecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, UserRepo: users, Emit: f.record}
 	f.handler.Emit = f.record
 	return f
 }
 
 func (f *fullResyncFixture) record(event spec.DomainEvent) { f.events = append(f.events, event) }
 
-func (f *fullResyncFixture) completed() []*domain.FullResyncCompleted {
-	var out []*domain.FullResyncCompleted
+func (f *fullResyncFixture) completed() []*provisioningdomain.FullResyncCompleted {
+	var out []*provisioningdomain.FullResyncCompleted
 	for _, event := range f.events {
-		if c, ok := event.(*domain.FullResyncCompleted); ok {
+		if c, ok := event.(*provisioningdomain.FullResyncCompleted); ok {
 			out = append(out, c)
 		}
 	}
 	return out
 }
 
-func (f *fullResyncFixture) start() []*domain.ProvisioningTask {
+func (f *fullResyncFixture) start() []*provisioningdomain.ProvisioningTask {
 	f.t.Helper()
-	if _, err := usecases.StartFullResync(context.Background(), f.admin, testTenantID, "app-1", time.Now().UTC()); err != nil {
+	if _, err := provisioningusecases.StartFullResync(context.Background(), f.admin, testTenantID, "app-1", time.Now().UTC()); err != nil {
 		f.t.Fatalf("StartFullResync() error = %v", err)
 	}
 	tasks, err := f.taskRepo.ListByConnection(context.Background(), testTenantID, "app-1", nil, 50)
@@ -82,9 +82,9 @@ func (f *fullResyncFixture) start() []*domain.ProvisioningTask {
 	return tasks
 }
 
-func (f *fullResyncFixture) run(task *domain.ProvisioningTask, attempts int) error {
+func (f *fullResyncFixture) run(task *provisioningdomain.ProvisioningTask, attempts int) error {
 	f.t.Helper()
-	_, err := usecases.ProvisioningTaskHandler(f.handler)(context.Background(), newTestJob(f.t, task.ID, attempts))
+	_, err := provisioningusecases.ProvisioningTaskHandler(f.handler)(context.Background(), newTestJob(f.t, task.ID, attempts))
 	return err
 }
 
@@ -144,7 +144,7 @@ func TestFullResyncCountsADuplicatedSubjectOnce(t *testing.T) {
 		t.Fatalf("Find() = %+v, %v", conn, err)
 	}
 	conn.FeatureFlags.PushGroups = true
-	conn.GroupPush = &domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1", "g1"}}
+	conn.GroupPush = &provisioningdomain.GroupPushConfig{Selection: provisioningdomain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1", "g1"}}
 	if err := f.admin.ConnectionRepo.Update(context.Background(), conn, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -164,10 +164,10 @@ func TestFullResyncCountsADuplicatedSubjectOnce(t *testing.T) {
 // 最後の二件を同時に終えた二つのジョブが、どちらも running を読んで完了を判定する場面を決定的に再現する。
 type staleFullResyncRepo struct {
 	*memory.ProvisioningTaskRepository
-	stale *domain.FullResync
+	stale *provisioningdomain.FullResync
 }
 
-func (r staleFullResyncRepo) FindFullResyncByTask(context.Context, string, string) (*domain.FullResync, error) {
+func (r staleFullResyncRepo) FindFullResyncByTask(context.Context, string, string) (*provisioningdomain.FullResync, error) {
 	clone := *r.stale
 	return &clone, nil
 }
@@ -207,7 +207,7 @@ func TestStartFullResyncCompletesAnEmptyScopeImmediately(t *testing.T) {
 //spec:covers EX-PROVISIONING-013-01: フル同期に属さないプロビジョニングタスクの終端化は完了イベントを発行しない。
 func TestTaskOutsideAFullResyncDoesNotComplete(t *testing.T) {
 	f := newFullResyncFixture(t, "u1")
-	task := saveTask(t, f.taskRepo, domain.OperationCreate, 1)
+	task := saveTask(t, f.taskRepo, provisioningdomain.OperationCreate, 1)
 	if err := f.run(task, 1); err != nil {
 		t.Fatalf("run() error = %v", err)
 	}

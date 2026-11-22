@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,22 +17,22 @@ import (
 // 条件付きの更新で行い、読んでから書く間の別の保存を上書きしない。
 type AgentGuardrailPolicyRepository struct{ Pool sharedpg.DB }
 
-func agentGuardrailFromRow(tenantID, scopeKey string, limits []byte, updatedAt time.Time) (*domain.AgentGuardrailPolicy, error) {
-	policy := &domain.AgentGuardrailPolicy{TenantID: tenantID, AgentID: scopeKey, UpdatedAt: updatedAt}
+func agentGuardrailFromRow(tenantID, scopeKey string, limits []byte, updatedAt time.Time) (*oauthdomain.AgentGuardrailPolicy, error) {
+	policy := &oauthdomain.AgentGuardrailPolicy{TenantID: tenantID, AgentID: scopeKey, UpdatedAt: updatedAt}
 	if err := json.Unmarshal(limits, &policy.AgentGuardrailLimits); err != nil {
 		return nil, err
 	}
 	return policy, nil
 }
 
-func (r *AgentGuardrailPolicyRepository) ListEffective(ctx context.Context, tenantID string, agentIDs []string) ([]*domain.AgentGuardrailPolicy, error) {
+func (r *AgentGuardrailPolicyRepository) ListEffective(ctx context.Context, tenantID string, agentIDs []string) ([]*oauthdomain.AgentGuardrailPolicy, error) {
 	rows, err := New(r.Pool).ListEffectiveAgentGuardrailPolicies(ctx, ListEffectiveAgentGuardrailPoliciesParams{
 		TenantID: tenantID, Column2: append([]string{""}, agentIDs...),
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.AgentGuardrailPolicy, 0, len(rows))
+	out := make([]*oauthdomain.AgentGuardrailPolicy, 0, len(rows))
 	for _, row := range rows {
 		policy, err := agentGuardrailFromRow(row.TenantID, row.ScopeKey, row.Limits, row.UpdatedAt)
 		if err != nil {
@@ -43,7 +43,7 @@ func (r *AgentGuardrailPolicyRepository) ListEffective(ctx context.Context, tena
 	return out, nil
 }
 
-func (r *AgentGuardrailPolicyRepository) Find(ctx context.Context, tenantID, agentID string) (*domain.AgentGuardrailPolicy, error) {
+func (r *AgentGuardrailPolicyRepository) Find(ctx context.Context, tenantID, agentID string) (*oauthdomain.AgentGuardrailPolicy, error) {
 	row, err := New(r.Pool).GetAgentGuardrailPolicy(ctx, GetAgentGuardrailPolicyParams{TenantID: tenantID, ScopeKey: agentID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -54,7 +54,7 @@ func (r *AgentGuardrailPolicyRepository) Find(ctx context.Context, tenantID, age
 	return agentGuardrailFromRow(row.TenantID, row.ScopeKey, row.Limits, row.UpdatedAt)
 }
 
-func (r *AgentGuardrailPolicyRepository) Save(ctx context.Context, policy *domain.AgentGuardrailPolicy, expectedVersion string) error {
+func (r *AgentGuardrailPolicyRepository) Save(ctx context.Context, policy *oauthdomain.AgentGuardrailPolicy, expectedVersion string) error {
 	limits, err := json.Marshal(policy.AgentGuardrailLimits)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (r *AgentGuardrailPolicyRepository) Save(ctx context.Context, policy *domai
 		return err
 	}
 	if affected == 0 {
-		return ports.ErrAgentGuardrailConflict
+		return oauthports.ErrAgentGuardrailConflict
 	}
 	return nil
 }

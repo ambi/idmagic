@@ -20,7 +20,7 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	jose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -112,7 +112,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 		claims["token_use"] = "managed_api_token"
 	}
 	if in.ToolDiscovery {
-		claims["token_use"] = domain.McpToolDiscoveryTokenUse
+		claims["token_use"] = oauthdomain.McpToolDiscoveryTokenUse
 	}
 	if in.Act != nil {
 		claims["act"] = in.Act
@@ -141,7 +141,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	// 非人間 identity として識別できるよう agent_id / principal_type を付与する。
 	if in.AgentID != "" {
 		claims["agent_id"] = in.AgentID
-		claims["principal_type"] = domain.PrincipalTypeAgent
+		claims["principal_type"] = oauthdomain.PrincipalTypeAgent
 	}
 	// 発行時に権限を支えた Agent。失効判定が現在の束縛ではなくこの集合を読む (REQ-OAUTH2-012)。
 	if len(in.AgentChain) > 0 {
@@ -302,7 +302,7 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 	}
 	// 一覧取得用のトークンは MCP サーバーへ渡すだけで、IdMagic のどの入口でも受け付けない
 	// (REQ-OAUTH2-096)。/introspect、交換、評価、管理 API と account API の検証がここを通る。
-	if use, _ := payload["token_use"].(string); use == domain.McpToolDiscoveryTokenUse {
+	if use, _ := payload["token_use"].(string); use == oauthdomain.McpToolDiscoveryTokenUse {
 		return &oauthports.IntrospectionResult{Active: false}, nil
 	}
 	res := &oauthports.IntrospectionResult{Active: true}
@@ -328,7 +328,7 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 		res.Iat = int64(v)
 	}
 	if cnf, ok := payload["cnf"].(map[string]any); ok {
-		sc := &domain.SenderConstraint{}
+		sc := &oauthdomain.SenderConstraint{}
 		if jkt, ok := cnf["jkt"].(string); ok {
 			sc.Type = spec.SenderConstraintDPoP
 			sc.JKT = jkt

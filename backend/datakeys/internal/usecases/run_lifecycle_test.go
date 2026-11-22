@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 )
@@ -42,7 +42,7 @@ func (j *lifecycleJobs) Enqueue(_ context.Context, input jobsports.EnqueueInput,
 //spec:covers REQ-DATAKEYS-007: 経過が周期の直前なら対象にせず、ちょうど周期とその直後なら対象にする。
 func TestRotationDueBoundary(t *testing.T) {
 	activated := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	key := &domain.TenantDataEncryptionKey{CreatedAt: activated.Add(-time.Hour), ActivatedAt: &activated}
+	key := &datakeysdomain.TenantDataEncryptionKey{CreatedAt: activated.Add(-time.Hour), ActivatedAt: &activated}
 	for _, tc := range []struct {
 		name string
 		now  time.Time
@@ -52,7 +52,7 @@ func TestRotationDueBoundary(t *testing.T) {
 		{"exactly", activated.Add(lifecycleCadence), true},
 		{"just after", activated.Add(lifecycleCadence + time.Nanosecond), true},
 	} {
-		if got := domain.RotationDue(key, tc.now, lifecycleCadence); got != tc.want {
+		if got := datakeysdomain.RotationDue(key, tc.now, lifecycleCadence); got != tc.want {
 			t.Errorf("%s: RotationDue = %v, want %v", tc.name, got, tc.want)
 		}
 	}
@@ -60,8 +60,8 @@ func TestRotationDueBoundary(t *testing.T) {
 
 func TestRotationDueFallsBackToCreatedAtWithoutActivation(t *testing.T) {
 	created := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	key := &domain.TenantDataEncryptionKey{CreatedAt: created}
-	if !domain.RotationDue(key, created.Add(lifecycleCadence), lifecycleCadence) {
+	key := &datakeysdomain.TenantDataEncryptionKey{CreatedAt: created}
+	if !datakeysdomain.RotationDue(key, created.Add(lifecycleCadence), lifecycleCadence) {
 		t.Fatal("key without activated_at should age from created_at")
 	}
 }
@@ -122,7 +122,7 @@ func TestRunTenantDataKeyLifecycleSkipsTenantWithoutDataKey(t *testing.T) {
 	if err := RunTenantDataKeyLifecycle(t.Context(), deps, "tenant-a", time.Now().UTC(), lifecycleCadence); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deps.Repository.FindActive(t.Context(), "tenant-a"); !errors.Is(err, domain.ErrNoActiveDataKey) {
+	if _, err := deps.Repository.FindActive(t.Context(), "tenant-a"); !errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		t.Fatalf("FindActive error = %v, want ErrNoActiveDataKey", err)
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 )
 
 // =====================================================================
@@ -15,20 +15,20 @@ import (
 
 type WebAuthnCredentialRepository struct {
 	mu          sync.RWMutex
-	credentials map[string]*domain.WebAuthnCredential // key: credential_id
+	credentials map[string]*webauthndomain.WebAuthnCredential // key: credential_id
 }
 
 func NewWebAuthnCredentialRepository() *WebAuthnCredentialRepository {
-	return &WebAuthnCredentialRepository{credentials: map[string]*domain.WebAuthnCredential{}}
+	return &WebAuthnCredentialRepository{credentials: map[string]*webauthndomain.WebAuthnCredential{}}
 }
 
 func (r *WebAuthnCredentialRepository) ListBySub(
 	_ context.Context,
 	sub string,
-) ([]*domain.WebAuthnCredential, error) {
+) ([]*webauthndomain.WebAuthnCredential, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := []*domain.WebAuthnCredential{}
+	out := []*webauthndomain.WebAuthnCredential{}
 	for _, c := range r.credentials {
 		if c.UserID == sub {
 			out = append(out, cloneWebAuthnCredential(c))
@@ -40,7 +40,7 @@ func (r *WebAuthnCredentialRepository) ListBySub(
 func (r *WebAuthnCredentialRepository) FindByCredentialID(
 	_ context.Context,
 	credentialID string,
-) (*domain.WebAuthnCredential, error) {
+) (*webauthndomain.WebAuthnCredential, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneWebAuthnCredential(r.credentials[credentialID]), nil
@@ -48,12 +48,12 @@ func (r *WebAuthnCredentialRepository) FindByCredentialID(
 
 func (r *WebAuthnCredentialRepository) Save(
 	_ context.Context,
-	credential *domain.WebAuthnCredential,
+	credential *webauthndomain.WebAuthnCredential,
 ) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.credentials[credential.CredentialID]; exists {
-		return ports.ErrWebAuthnCredentialExists
+		return webauthnports.ErrWebAuthnCredentialExists
 	}
 	r.credentials[credential.CredentialID] = cloneWebAuthnCredential(credential)
 	return nil
@@ -99,7 +99,7 @@ func (r *WebAuthnCredentialRepository) DeleteAllForSub(_ context.Context, sub st
 	return nil
 }
 
-func cloneWebAuthnCredential(c *domain.WebAuthnCredential) *domain.WebAuthnCredential {
+func cloneWebAuthnCredential(c *webauthndomain.WebAuthnCredential) *webauthndomain.WebAuthnCredential {
 	if c == nil {
 		return nil
 	}

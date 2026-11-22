@@ -18,7 +18,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/labstack/echo/v5"
 )
 
@@ -75,8 +75,8 @@ func TestAuditExportHTTPAuthorization(t *testing.T) {
 			ctx := context.Background()
 			tenantID, realm, base, roles := "acme", "acme", "/api/admin/v1/audit-events/exports", []string{"admin"}
 			if system {
-				tenantID = tenantdomain.DefaultTenantID
-				realm = tenantdomain.DefaultRealm
+				tenantID = tenancydomain.DefaultTenantID
+				realm = tenancydomain.DefaultRealm
 				base = "/api/admin/v1/system/audit-events/exports"
 				roles = []string{"system_admin"}
 			}
@@ -87,7 +87,7 @@ func TestAuditExportHTTPAuthorization(t *testing.T) {
 			}
 			resolver := &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: []string{"pwd", "otp"}}}
 			module := audit.NewMemoryModule(0)
-			for _, id := range []string{"acme", tenantdomain.DefaultTenantID} {
+			for _, id := range []string{"acme", tenancydomain.DefaultTenantID} {
 				if err := module.AuditEventRepo.Append(ctx, auditEvent(id, "UserAuthenticated", "user", time.Now().Add(-time.Minute))); err != nil {
 					t.Fatal(err)
 				}

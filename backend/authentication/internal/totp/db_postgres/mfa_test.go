@@ -6,7 +6,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
@@ -42,7 +42,7 @@ func TestMfaFactorRepositoryRoundTrip(t *testing.T) {
 	repo := &MfaFactorRepository{Pool: db, Cipher: newTestCipher(t, tenant.ID)}
 
 	now := pgfixtures.TestClock()
-	factor := &domain.MfaFactor{
+	factor := &totpdomain.MfaFactor{
 		UserID:    user.ID,
 		Type:      spec.MfaFactorTOTP,
 		Secret:    new("secret"),
@@ -129,7 +129,7 @@ func TestMfaFactorRepositoryDecryptFailsClosedForWrongTenant(t *testing.T) {
 	ctx := tenantports.WithTenant(context.Background(), tenant, "", "")
 	repo := &MfaFactorRepository{Pool: db, Cipher: cipher}
 
-	factor := &domain.MfaFactor{UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("secret"), CreatedAt: pgfixtures.TestClock()}
+	factor := &totpdomain.MfaFactor{UserID: user.ID, Type: spec.MfaFactorTOTP, Secret: new("secret"), CreatedAt: pgfixtures.TestClock()}
 	if err := repo.Save(ctx, factor); err != nil {
 		t.Fatalf("save: %v", err)
 	}

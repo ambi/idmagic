@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/saml/domain"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 )
 
 func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
@@ -18,7 +18,7 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if defaultProfile.ProfileID != domain.DefaultIDPProfileID || !defaultProfile.IsDefault {
+	if defaultProfile.ProfileID != samldomain.DefaultIDPProfileID || !defaultProfile.IsDefault {
 		t.Fatalf("default profile = %+v", defaultProfile)
 	}
 	profiles, err := repo.ListIDPProfilesByTenant(ctx, "tenant-a")
@@ -29,20 +29,20 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 		t.Fatalf("profiles = %d, want 1", len(profiles))
 	}
 
-	dedicated := &domain.SamlIdentityProviderProfile{
-		TenantID: "tenant-a", ProfileID: "dedicated-a", Name: "Dedicated A", Mode: domain.IDPProfileModeDedicated,
+	dedicated := &samldomain.SamlIdentityProviderProfile{
+		TenantID: "tenant-a", ProfileID: "dedicated-a", Name: "Dedicated A", Mode: samldomain.IDPProfileModeDedicated,
 	}
 	if err := repo.SaveIDPProfile(ctx, dedicated); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Save(ctx, &domain.SamlServiceProvider{
+	if err := repo.Save(ctx, &samldomain.SamlServiceProvider{
 		TenantID: "tenant-a", EntityID: "urn:sp:a", IDPProfileID: dedicated.ProfileID,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Save(ctx, &domain.SamlServiceProvider{
+	if err := repo.Save(ctx, &samldomain.SamlServiceProvider{
 		TenantID: "tenant-a", EntityID: "urn:sp:b", IDPProfileID: dedicated.ProfileID,
-	}); !errors.Is(err, domain.ErrDedicatedIDPProfileCardinality) {
+	}); !errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
 		t.Fatalf("second dedicated binding error = %v", err)
 	}
 	// 拒否した保存は何も残さない。エラーだけを読むと、返り値はエラーでも書き込みは
@@ -50,15 +50,15 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 	if bound, err := repo.ListAll(ctx, "tenant-a"); err != nil || len(bound) != 1 || bound[0].EntityID != "urn:sp:a" {
 		t.Fatalf("refused save left %+v (err=%v), want only urn:sp:a", bound, err)
 	}
-	if err := repo.DeleteIDPProfile(ctx, "tenant-a", dedicated.ProfileID); !errors.Is(err, domain.ErrIDPProfileInUse) {
+	if err := repo.DeleteIDPProfile(ctx, "tenant-a", dedicated.ProfileID); !errors.Is(err, samldomain.ErrIDPProfileInUse) {
 		t.Fatalf("delete in-use profile error = %v", err)
 	}
-	if err := repo.DeleteIDPProfile(ctx, "tenant-a", domain.DefaultIDPProfileID); !errors.Is(err, domain.ErrDefaultIDPProfile) {
+	if err := repo.DeleteIDPProfile(ctx, "tenant-a", samldomain.DefaultIDPProfileID); !errors.Is(err, samldomain.ErrDefaultIDPProfile) {
 		t.Fatalf("delete default profile error = %v", err)
 	}
 
-	shared := &domain.SamlIdentityProviderProfile{
-		TenantID: "tenant-a", ProfileID: "shared", Name: "Shared", Mode: domain.IDPProfileModeShared,
+	shared := &samldomain.SamlIdentityProviderProfile{
+		TenantID: "tenant-a", ProfileID: "shared", Name: "Shared", Mode: samldomain.IDPProfileModeShared,
 	}
 	if err := repo.SaveIDPProfile(ctx, shared); err != nil {
 		t.Fatal(err)

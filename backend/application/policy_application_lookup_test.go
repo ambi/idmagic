@@ -5,25 +5,25 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 )
 
 type failedPolicyApplicationLookup struct {
-	ports.ApplicationRepository
+	appports.ApplicationRepository
 	err error
 }
 
-func (r failedPolicyApplicationLookup) FindByID(context.Context, string, string) (*domain.Application, error) {
+func (r failedPolicyApplicationLookup) FindByID(context.Context, string, string) (*appdomain.Application, error) {
 	return nil, r.err
 }
 
 //spec:covers REQ-APPLICATION-009: ポリシー管理へ同じテナントのアプリの実在だけを供給する。
 func TestPolicyApplicationLookupKeepsTheTenantAndStoreFailure(t *testing.T) {
 	module := NewMemoryModule()
-	if err := module.Repo.Save(t.Context(), &domain.Application{
+	if err := module.Repo.Save(t.Context(), &appdomain.Application{
 		TenantID: "tenant-a", ID: "app-1", Name: "Payroll",
-		Kind: domain.ApplicationWeblink, Status: domain.ApplicationActive,
+		Kind: appdomain.ApplicationWeblink, Status: appdomain.ApplicationActive,
 	}); err != nil {
 		t.Fatal(err)
 	}

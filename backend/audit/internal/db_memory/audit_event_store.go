@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
@@ -22,14 +22,14 @@ const (
 
 type AuditEventStore struct {
 	mu        sync.RWMutex
-	events    []*ports.AuditEventRecord
-	byID      map[string]*ports.AuditEventRecord
+	events    []*auditports.AuditEventRecord
+	byID      map[string]*auditports.AuditEventRecord
 	maxEvents int
-	capture   func(context.Context, *ports.AuditEventRecord) error
+	capture   func(context.Context, *auditports.AuditEventRecord) error
 }
 
 // SetCapture は新しい記録と同時に行う作用を結ぶ。失敗すると記録を追記しない。
-func (s *AuditEventStore) SetCapture(capture func(context.Context, *ports.AuditEventRecord) error) {
+func (s *AuditEventStore) SetCapture(capture func(context.Context, *auditports.AuditEventRecord) error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.capture = capture
@@ -41,13 +41,13 @@ func NewAuditEventStore(maxEvents int) *AuditEventStore {
 		maxEvents = 10000
 	}
 	return &AuditEventStore{
-		events:    make([]*ports.AuditEventRecord, 0, 1024),
-		byID:      map[string]*ports.AuditEventRecord{},
+		events:    make([]*auditports.AuditEventRecord, 0, 1024),
+		byID:      map[string]*auditports.AuditEventRecord{},
 		maxEvents: maxEvents,
 	}
 }
 
-func (s *AuditEventStore) Append(ctx context.Context, rec *ports.AuditEventRecord) error {
+func (s *AuditEventStore) Append(ctx context.Context, rec *auditports.AuditEventRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rec.ID == "" || rec.Type == "" {
@@ -73,7 +73,7 @@ func (s *AuditEventStore) Append(ctx context.Context, rec *ports.AuditEventRecor
 	return nil
 }
 
-func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*ports.AuditEventRecord, error) {
+func (s *AuditEventStore) List(_ context.Context, q auditports.AuditEventQuery) ([]*auditports.AuditEventRecord, error) {
 	limit := q.Limit
 	if limit <= 0 {
 		limit = auditDefaultListLimit
@@ -85,14 +85,14 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	defer s.mu.RUnlock()
 	if !q.FromEnd && q.BeforeOccurredAt.IsZero() && q.BeforeID == "" {
 		// 前進ページは一致件数によらず limit 件だけ保持する。
-		compare := func(a, b *ports.AuditEventRecord) int {
+		compare := func(a, b *auditports.AuditEventRecord) int {
 			if order := b.OccurredAt.Compare(a.OccurredAt); order != 0 {
 				return order
 			}
 			return strings.Compare(b.ID, a.ID)
 		}
-		page := make([]*ports.AuditEventRecord, 0, limit)
-		boundary := &ports.AuditEventRecord{OccurredAt: q.AfterOccurredAt, ID: q.AfterID}
+		page := make([]*auditports.AuditEventRecord, 0, limit)
+		boundary := &auditports.AuditEventRecord{OccurredAt: q.AfterOccurredAt, ID: q.AfterID}
 		for _, rec := range s.events {
 			if !auditEventMatches(rec, q) || (!q.AfterOccurredAt.IsZero() && compare(rec, boundary) <= 0) {
 				continue
@@ -110,14 +110,14 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	}
 	// Filter first, then apply the signed keyset boundary in canonical
 	// (occurred_at DESC, id DESC) order.
-	result := make([]*ports.AuditEventRecord, 0, auditMaxListLimit)
+	result := make([]*auditports.AuditEventRecord, 0, auditMaxListLimit)
 	for _, rec := range s.events {
 		if !auditEventMatches(rec, q) {
 			continue
 		}
 		result = append(result, rec)
 	}
-	key := func(rec *ports.AuditEventRecord) (string, string) {
+	key := func(rec *auditports.AuditEventRecord) (string, string) {
 		return rec.OccurredAt.UTC().Format(time.RFC3339Nano), rec.ID
 	}
 	if q.FromEnd {
@@ -138,7 +138,7 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	return result, nil
 }
 
-func (s *AuditEventStore) Count(_ context.Context, q ports.AuditEventQuery) (int64, error) {
+func (s *AuditEventStore) Count(_ context.Context, q auditports.AuditEventQuery) (int64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var count int64
@@ -167,7 +167,7 @@ func (s *AuditEventStore) LatestByAgent(_ context.Context, tenantID string, agen
 	return latest, nil
 }
 
-func (s *AuditEventStore) FindByID(_ context.Context, id string) (*ports.AuditEventRecord, error) {
+func (s *AuditEventStore) FindByID(_ context.Context, id string) (*auditports.AuditEventRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.byID[id], nil
@@ -175,7 +175,7 @@ func (s *AuditEventStore) FindByID(_ context.Context, id string) (*ports.AuditEv
 
 // DeleteOlderThan は 保持期間 sweep。type ごとに cutoff より古い行を物理削除し、
 // 削除件数を返す。idempotent で、複数回呼んでも収束する。
-func (s *AuditEventStore) DeleteOlderThan(_ context.Context, cutoff ports.RetentionCutoff) (int64, error) {
+func (s *AuditEventStore) DeleteOlderThan(_ context.Context, cutoff auditports.RetentionCutoff) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var deleted int64
@@ -196,7 +196,7 @@ func (s *AuditEventStore) DeleteOlderThan(_ context.Context, cutoff ports.Retent
 	return deleted, nil
 }
 
-func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) bool {
+func auditEventMatches(rec *auditports.AuditEventRecord, q auditports.AuditEventQuery) bool {
 	if !q.AllTenants && q.TenantID != "" && rec.TenantID != q.TenantID {
 		return false
 	}
@@ -233,18 +233,18 @@ func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) boo
 // auditFilterExprMatches は 1 filter 式を sidecar 検索属性に照合する。PostgreSQL の
 // EXISTS 照合と同じ意味論 (eq / in の完全一致、contains の部分一致) を保つ。属性が多値の
 // 場合、EXISTS と同じくいずれか 1 つの値が一致すれば真とする。
-func auditFilterExprMatches(rec *ports.AuditEventRecord, expr ports.AuditFilterExpression) bool {
+func auditFilterExprMatches(rec *auditports.AuditEventRecord, expr auditports.AuditFilterExpression) bool {
 	values, ok := rec.SearchAttributes[expr.Field]
 	if !ok {
 		return false
 	}
 	return slices.ContainsFunc(values, func(val string) bool {
 		switch expr.Operator {
-		case ports.OpEq:
+		case auditports.OpEq:
 			return len(expr.Values) == 1 && val == expr.Values[0]
-		case ports.OpIn:
+		case auditports.OpIn:
 			return slices.Contains(expr.Values, val)
-		case ports.OpContains:
+		case auditports.OpContains:
 			return len(expr.Values) == 1 && strings.Contains(strings.ToLower(val), strings.ToLower(expr.Values[0]))
 		default:
 			return false
@@ -253,10 +253,10 @@ func auditFilterExprMatches(rec *ports.AuditEventRecord, expr ports.AuditFilterE
 }
 
 // auditQMatches は q を raw 保存された属性値に対する部分一致で照合する (PII 列は対象外)。
-func auditQMatches(rec *ports.AuditEventRecord, query string) bool {
+func auditQMatches(rec *auditports.AuditEventRecord, query string) bool {
 	needle := strings.ToLower(query)
 	for field, values := range rec.SearchAttributes {
-		attr, ok := ports.LookupSearchAttribute(field)
+		attr, ok := auditports.LookupSearchAttribute(field)
 		if !ok || !attr.RawStorable {
 			continue
 		}

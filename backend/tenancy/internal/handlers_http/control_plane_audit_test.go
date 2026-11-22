@@ -27,7 +27,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -48,7 +48,7 @@ type quotaSaveFailingRepository struct {
 	*memory.QuotaRepository
 }
 
-func (quotaSaveFailingRepository) SetQuota(context.Context, string, *domain.TenantQuota) error {
+func (quotaSaveFailingRepository) SetQuota(context.Context, string, *tenancydomain.TenantQuota) error {
 	return errors.New("quota store unavailable")
 }
 
@@ -67,14 +67,14 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 	now := time.Now().UTC()
 
 	tenantRepo := memory.NewTenantRepository()
-	for _, tenant := range []*domain.Tenant{
+	for _, tenant := range []*tenancydomain.Tenant{
 		{
-			ID: domain.DefaultTenantID, Realm: domain.DefaultRealm, DisplayName: "Default",
-			Status: domain.TenantStatusActive, CreatedAt: now,
+			ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
+			Status: tenancydomain.TenantStatusActive, CreatedAt: now,
 		},
 		{
 			ID: auditTestTenantID, Realm: auditTestRealm, DisplayName: "Acme",
-			Status: domain.TenantStatusActive, EndpointStyle: domain.TenantEndpointStylePath, CreatedAt: now,
+			Status: tenancydomain.TenantStatusActive, EndpointStyle: tenancydomain.TenantEndpointStylePath, CreatedAt: now,
 		},
 	} {
 		if err := tenantRepo.Save(testing_tenant.Default(context.Background()), tenant); err != nil {
@@ -84,7 +84,7 @@ func newAuditTestServer(t *testing.T, opts auditTestOptions) *auditTestServer {
 
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	actor := &userdomain.User{
-		ID: auditTestActor, PreferredUsername: auditTestActor, TenantID: domain.DefaultTenantID,
+		ID: auditTestActor, PreferredUsername: auditTestActor, TenantID: tenancydomain.DefaultTenantID,
 		Roles: []string{"system_admin"}, CreatedAt: now, UpdatedAt: now,
 	}
 	_ = userRepo.Save(context.Background(), actor)

@@ -37,7 +37,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -147,15 +147,15 @@ func TestHandleListAccountConsentsReturnsGrantedConsentsOnly(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
 	now := time.Now().UTC()
-	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice", ClientID: "client-granted", Scopes: []string{"openid"},
-		State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice", ClientID: "client-revoked", Scopes: []string{"openid"},
-		State: consentdomain.ConsentRevoked, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentRevoked, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -185,9 +185,9 @@ func TestHandleRevokeAccountConsentRequiresBrowserVerification(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
 	now := time.Now().UTC()
-	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice", ClientID: "some-client", Scopes: []string{"openid"},
-		State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestHandleRevokeAccountConsentRequiresBrowserVerification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored == nil || stored.State != consentdomain.ConsentGranted {
+	if stored == nil || stored.State != oauthdomain.ConsentGranted {
 		t.Fatalf("refused revocation changed consent: %#v", stored)
 	}
 }
@@ -210,9 +210,9 @@ func TestHandleRevokeAccountConsentSucceeds(t *testing.T) {
 	f := newAccountHandlerFixture(t)
 	f.seedUser(t, "alice")
 	now := time.Now().UTC()
-	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "alice", ClientID: "client-1", Scopes: []string{"openid"},
-		State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestHandleRevokeAccountConsentSucceeds(t *testing.T) {
 	f.e.ServeHTTP(response, request)
 	authContractEmpty(t, response)
 	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "alice", "client-1")
-	if err != nil || stored == nil || stored.State != consentdomain.ConsentRevoked || stored.RevokedAt == nil {
+	if err != nil || stored == nil || stored.State != oauthdomain.ConsentRevoked || stored.RevokedAt == nil {
 		t.Fatalf("revoked consent=%+v err=%v", stored, err)
 	}
 }
@@ -273,9 +273,9 @@ func (f *accountHandlerFixture) seedGrantedConsents(t *testing.T, sub string, cl
 		if err := f.quotas.CheckAndIncrement(context.Background(), tenancydomain.DefaultTenantID, tenancydomain.ResourceConsents, 1); err != nil {
 			t.Fatal(err)
 		}
-		if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+		if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 			UserID: sub, ClientID: clientID, Scopes: []string{"openid"},
-			State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+			State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -326,9 +326,9 @@ func TestHandleRevokeAccountConsentWithoutConsentReturnsNotFound(t *testing.T) {
 	f.seedUser(t, "alice")
 	f.seedUser(t, "bob")
 	now := time.Now().UTC()
-	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &consentdomain.Consent{
+	if err := f.consents.Save(context.Background(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "bob", ClientID: "client-1", Scopes: []string{"openid"},
-		State: consentdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
+		State: oauthdomain.ConsentGranted, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestHandleRevokeAccountConsentWithoutConsentReturnsNotFound(t *testing.T) {
 	f.e.ServeHTTP(response, request)
 	authContractProblem(t, response, http.StatusNotFound, "consent_not_found")
 	stored, err := f.consents.Find(context.Background(), tenancydomain.DefaultTenantID, "bob", "client-1")
-	if err != nil || stored == nil || stored.State != consentdomain.ConsentGranted {
+	if err != nil || stored == nil || stored.State != oauthdomain.ConsentGranted {
 		t.Fatalf("other user's consent=%+v err=%v", stored, err)
 	}
 }

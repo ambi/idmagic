@@ -24,7 +24,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -32,25 +32,25 @@ import (
 type refreshFixture struct {
 	deps   RefreshDeps
 	token  string
-	record *domain.RefreshTokenRecord
+	record *oauthdomain.RefreshTokenRecord
 }
 
-func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time, ttl time.Duration) refreshFixture {
+func newRefreshFixture(t *testing.T, sc *oauthdomain.SenderConstraint, now time.Time, ttl time.Duration) refreshFixture {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	refreshStore := oauth2memory.NewRefreshTokenStore()
 	issuer := &fakeTokenIssuer{}
 
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientConfidential,
 		RedirectURIs:             []string{"https://client.example/cb"},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	_ = userRepo.Save(context.Background(), &userdomain.User{
@@ -58,7 +58,7 @@ func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time,
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, sc, nil, nil, now, entropy.Crypto())
+	gen, err := oauthdomain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, sc, nil, nil, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestRefreshTokensRejectsAbsoluteTTLExpired(t *testing.T) {
 
 func TestRefreshTokensRejectsDPoPSenderConstraintMismatch(t *testing.T) {
 	now := time.Now().UTC()
-	sc := &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "expected-jkt"}
+	sc := &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "expected-jkt"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	_, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID:     "client",
@@ -114,7 +114,7 @@ func TestRefreshTokensRejectsDPoPSenderConstraintMismatch(t *testing.T) {
 
 func TestRefreshTokensRejectsMTLSSenderConstraintMismatch(t *testing.T) {
 	now := time.Now().UTC()
-	sc := &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint"}
+	sc := &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	_, err := RefreshTokens(testing_tenant.Default(context.Background()), f.deps, RefreshInput{
 		ClientID:     "client",
@@ -132,7 +132,7 @@ func TestRefreshTokensRejectsMTLSSenderConstraintMismatch(t *testing.T) {
 
 func TestRefreshTokensAcceptsMatchingDPoPProof(t *testing.T) {
 	now := time.Now().UTC()
-	sc := &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "matching-jkt"}
+	sc := &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "matching-jkt"}
 	f := newRefreshFixture(t, sc, now, time.Hour)
 	// tenant context が無いと FindByID は default を期待するが、Seed では明示せず
 	// oauth2memory.OAuth2ClientRepository が空 tenant_id でマッチするため通る。

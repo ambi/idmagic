@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssusecases "github.com/ambi/idmagic/backend/sharedsignals/internal/usecases"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -53,7 +53,7 @@ func TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers(t *testing.T) {
 		seedReceiveStream(t, d, ssdomain.SsfStreamStatusEnabled)
 		now := time.Now().UTC()
 		seedReceiveAgent(t, d, agentID)
-		if _, err := d.agentRepo.AddBinding(context.Background(), &agentmodel.AgentCredentialBinding{
+		if _, err := d.agentRepo.AddBinding(context.Background(), &agentdomain.AgentCredentialBinding{
 			AgentID: agentID, ClientID: boundClientID, CreatedAt: now,
 		}); err != nil {
 			t.Fatalf("seed binding: %v", err)
@@ -227,7 +227,7 @@ func TestReceiveSecurityEventTopLevelSubject(t *testing.T) {
 			seedReceiveAgent(t, d, agentID)
 			seedReceiveAgent(t, d, otherAgentID)
 			now := time.Now().UTC()
-			if _, err := d.agentRepo.AddBinding(context.Background(), &agentmodel.AgentCredentialBinding{AgentID: agentID, ClientID: clientID, CreatedAt: now}); err != nil {
+			if _, err := d.agentRepo.AddBinding(context.Background(), &agentdomain.AgentCredentialBinding{AgentID: agentID, ClientID: clientID, CreatedAt: now}); err != nil {
 				t.Fatal(err)
 			}
 			err := ssusecases.ReceiveSecurityEvent(receiveTestCtx(), d.deps, receiveTestStreamID, "token", now)

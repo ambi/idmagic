@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -68,21 +68,21 @@ type TokenExchangeGrantStore struct {
 
 type tokenExchangeGrantEntry struct {
 	tenantID string
-	grant    domain.TokenExchangeGrant
+	grant    oauthdomain.TokenExchangeGrant
 }
 
 func NewTokenExchangeGrantStore() *TokenExchangeGrantStore {
 	return &TokenExchangeGrantStore{grants: map[string]tokenExchangeGrantEntry{}}
 }
 
-func (s *TokenExchangeGrantStore) Save(ctx context.Context, grantHash string, grant domain.TokenExchangeGrant) error {
+func (s *TokenExchangeGrantStore) Save(ctx context.Context, grantHash string, grant oauthdomain.TokenExchangeGrant) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.grants[grantHash] = tokenExchangeGrantEntry{tenantID: tenantports.TenantID(ctx), grant: grant}
 	return nil
 }
 
-func (s *TokenExchangeGrantStore) Claim(ctx context.Context, grantHash string, grant domain.TokenExchangeGrant, now time.Time) (bool, error) {
+func (s *TokenExchangeGrantStore) Claim(ctx context.Context, grantHash string, grant oauthdomain.TokenExchangeGrant, now time.Time) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry, ok := s.grants[grantHash]

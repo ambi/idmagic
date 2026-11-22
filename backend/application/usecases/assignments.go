@@ -9,27 +9,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type AssignmentDeps struct {
-	Repo             ports.ApplicationRepository
-	AssignmentRepo   ports.AssignmentRepository
-	SubjectDirectory ports.SubjectDirectory
-	OrderingRepo     ports.ApplicationOrderingRepository
+	Repo             appports.ApplicationRepository
+	AssignmentRepo   appports.AssignmentRepository
+	SubjectDirectory appports.SubjectDirectory
+	OrderingRepo     appports.ApplicationOrderingRepository
 	Emit             func(spec.DomainEvent)
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
-	ProvisioningNotifier ports.ProvisioningNotifier
+	ProvisioningNotifier appports.ProvisioningNotifier
 }
 
 // notifyProvisioning is a best-effort call: a nil notifier or an error must not
 // fail the assignment operation that already committed (mirrors
 // idmanagement/usecases.notifyProvisioning's log-don't-fail treatment).
-func notifyProvisioning(ctx context.Context, deps AssignmentDeps, tenantID, applicationID, userID string, trigger ports.ProvisioningTrigger, now time.Time) {
+func notifyProvisioning(ctx context.Context, deps AssignmentDeps, tenantID, applicationID, userID string, trigger appports.ProvisioningTrigger, now time.Time) {
 	if deps.ProvisioningNotifier == nil {
 		return
 	}
@@ -41,13 +41,13 @@ func notifyProvisioning(ctx context.Context, deps AssignmentDeps, tenantID, appl
 type AssignApplicationInput struct {
 	ActorUserID   string
 	ApplicationID string
-	SubjectType   domain.AssignmentSubjectType
+	SubjectType   appdomain.AssignmentSubjectType
 	SubjectID     string
-	Visibility    domain.AssignmentVisibility
+	Visibility    appdomain.AssignmentVisibility
 	Now           time.Time
 }
 
-func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplicationInput) (*domain.ApplicationAssignment, error) {
+func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplicationInput) (*appdomain.ApplicationAssignment, error) {
 	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
@@ -65,7 +65,7 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 	}
 	visibility := in.Visibility
 	if visibility == "" {
-		visibility = domain.AssignmentVisible
+		visibility = appdomain.AssignmentVisible
 	}
 	if !visibility.Valid() {
 		return nil, ErrInvalidVisibility
@@ -80,7 +80,7 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 	if !subjectExists {
 		return nil, ErrSubjectNotFound
 	}
-	assignment := &domain.ApplicationAssignment{
+	assignment := &appdomain.ApplicationAssignment{
 		TenantID:      tenantID,
 		ApplicationID: in.ApplicationID,
 		SubjectType:   in.SubjectType,
@@ -92,28 +92,28 @@ func AssignApplication(ctx context.Context, deps AssignmentDeps, in AssignApplic
 	if err := deps.AssignmentRepo.Save(ctx, assignment); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationAssigned{
+	emit(deps.Emit, &appdomain.ApplicationAssigned{
 		At: assignment.CreatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: in.ApplicationID,
 		SubjectType: string(in.SubjectType), SubjectID: subjectID,
 	})
-	if in.SubjectType == domain.AssignmentSubjectUser {
-		notifyProvisioning(ctx, deps, tenantID, in.ApplicationID, subjectID, ports.ProvisioningAssignmentAdded, assignment.CreatedAt)
+	if in.SubjectType == appdomain.AssignmentSubjectUser {
+		notifyProvisioning(ctx, deps, tenantID, in.ApplicationID, subjectID, appports.ProvisioningAssignmentAdded, assignment.CreatedAt)
 	}
 	return assignment, nil
 }
 
-func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string, now time.Time) error {
+func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, applicationID string, subjectType appdomain.AssignmentSubjectType, subjectID string, now time.Time) error {
 	tenantID := tenantports.TenantID(ctx)
 	if err := deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, subjectType, subjectID); err != nil {
 		return err
 	}
 	emitAt := adminNow(now)
-	emit(deps.Emit, &domain.ApplicationUnassigned{
+	emit(deps.Emit, &appdomain.ApplicationUnassigned{
 		At: emitAt, TenantID: tenantID, ActorUserID: actorUserID, ApplicationID: applicationID,
 		SubjectType: string(subjectType), SubjectID: subjectID,
 	})
-	if subjectType == domain.AssignmentSubjectUser {
-		notifyProvisioning(ctx, deps, tenantID, applicationID, subjectID, ports.ProvisioningAssignmentRemoved, emitAt)
+	if subjectType == appdomain.AssignmentSubjectUser {
+		notifyProvisioning(ctx, deps, tenantID, applicationID, subjectID, appports.ProvisioningAssignmentRemoved, emitAt)
 	}
 	return nil
 }
@@ -121,7 +121,7 @@ func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, 
 // ListAssignments returns up to limit+1 assignments after the given keyset
 // (wi-159) — callers pass limit+1 to detect whether a next page
 // exists, then trim to limit before responding.
-func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*appdomain.ApplicationAssignment, error) {
 	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
@@ -133,22 +133,22 @@ func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, af
 	return deps.AssignmentRepo.ListPageByApplication(ctx, tenantID, applicationID, afterSubjectType, afterSubjectID, limit)
 }
 
-func ListAssignmentsBefore(ctx context.Context, deps AssignmentDeps, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+func ListAssignmentsBefore(ctx context.Context, deps AssignmentDeps, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*appdomain.ApplicationAssignment, error) {
 	return deps.AssignmentRepo.ListPageBeforeByApplication(ctx, tenantports.TenantID(ctx), applicationID, beforeSubjectType, beforeSubjectID, limit)
 }
 
 // ListMyApplications は subjects (利用者本人 + 所属グループ) に割当済みで visible な
 // active Application を name 昇順・重複排除して返す。hidden 割当は除外する (wi-69)。
-func ListMyApplications(ctx context.Context, deps AssignmentDeps, subjects []ports.SubjectRef) ([]*domain.Application, error) {
+func ListMyApplications(ctx context.Context, deps AssignmentDeps, subjects []appports.SubjectRef) ([]*appdomain.Application, error) {
 	tenantID := tenantports.TenantID(ctx)
 	assignments, err := deps.AssignmentRepo.ListBySubjects(ctx, tenantID, subjects)
 	if err != nil {
 		return nil, err
 	}
 	seen := map[string]struct{}{}
-	out := make([]*domain.Application, 0, len(assignments))
+	out := make([]*appdomain.Application, 0, len(assignments))
 	for _, assignment := range assignments {
-		if assignment.Visibility != domain.AssignmentVisible {
+		if assignment.Visibility != appdomain.AssignmentVisible {
 			continue
 		}
 		if _, ok := seen[assignment.ApplicationID]; ok {
@@ -158,23 +158,23 @@ func ListMyApplications(ctx context.Context, deps AssignmentDeps, subjects []por
 		if err != nil {
 			return nil, err
 		}
-		if app == nil || app.Status != domain.ApplicationActive {
+		if app == nil || app.Status != appdomain.ApplicationActive {
 			continue
 		}
 		// service kind は M2M クライアントでありポータルタイルを持たない (Okta の API Services 相当)。
-		if app.Kind == domain.ApplicationService {
+		if app.Kind == appdomain.ApplicationService {
 			continue
 		}
 		seen[assignment.ApplicationID] = struct{}{}
 		out = append(out, app)
 	}
-	slices.SortFunc(out, func(a, b *domain.Application) int { return strings.Compare(a.Name, b.Name) })
+	slices.SortFunc(out, func(a, b *appdomain.Application) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
 }
 
 // IsSubjectAssigned は subjects のいずれかが当該 Application に割当済みかを返す。
 // フェデレーション開始経路の fail-closed 割当ゲートに用いる (wi-69, AssignmentGatesProtocol)。
-func IsSubjectAssigned(ctx context.Context, repo ports.AssignmentRepository, tenantID, applicationID string, subjects []ports.SubjectRef) (bool, error) {
+func IsSubjectAssigned(ctx context.Context, repo appports.AssignmentRepository, tenantID, applicationID string, subjects []appports.SubjectRef) (bool, error) {
 	assignments, err := repo.ListBySubjects(ctx, tenantID, subjects)
 	if err != nil {
 		return false, err

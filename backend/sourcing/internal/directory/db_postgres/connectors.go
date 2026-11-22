@@ -10,16 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 // ConnectorRepository は Directory Connector を PostgreSQL に保存する。
 type ConnectorRepository struct{ Pool sharedpg.DB }
 
-var _ ports.ConnectorRepository = (*ConnectorRepository)(nil)
+var _ directoryinternalports.ConnectorRepository = (*ConnectorRepository)(nil)
 
-func (r *ConnectorRepository) Create(ctx context.Context, c domain.Connector) error {
+func (r *ConnectorRepository) Create(ctx context.Context, c directorydomain.Connector) error {
 	publicKey, err := encodeKey(c.PublicKey)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func (r *ConnectorRepository) Create(ctx context.Context, c domain.Connector) er
 	})
 }
 
-func (r *ConnectorRepository) Update(ctx context.Context, c domain.Connector) error {
+func (r *ConnectorRepository) Update(ctx context.Context, c directorydomain.Connector) error {
 	publicKey, err := encodeKey(c.PublicKey)
 	if err != nil {
 		return err
@@ -61,12 +61,12 @@ func (r *ConnectorRepository) Update(ctx context.Context, c domain.Connector) er
 		return err
 	}
 	if updated == 0 {
-		return ports.ErrStaleConnector
+		return directoryinternalports.ErrStaleConnector
 	}
 	return nil
 }
 
-func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*domain.Connector, error) {
+func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*directorydomain.Connector, error) {
 	// 列は uuid なので、形式の外の ID は問い合わせずに不在として扱う。
 	if !sharedpg.IsUUIDText(id) {
 		return nil, nil
@@ -74,18 +74,18 @@ func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*d
 	return found(New(r.Pool).FindDirectoryConnector(ctx, FindDirectoryConnectorParams{TenantID: tenantID, ID: id}))
 }
 
-func (r *ConnectorRepository) FindByEnrollmentTokenHash(ctx context.Context, tenantID, tokenHash string) (*domain.Connector, error) {
+func (r *ConnectorRepository) FindByEnrollmentTokenHash(ctx context.Context, tenantID, tokenHash string) (*directorydomain.Connector, error) {
 	return found(New(r.Pool).FindDirectoryConnectorByEnrollmentTokenHash(ctx, FindDirectoryConnectorByEnrollmentTokenHashParams{
 		TenantID: tenantID, EnrollmentTokenHash: text(tokenHash),
 	}))
 }
 
-func (r *ConnectorRepository) List(ctx context.Context, tenantID string) ([]domain.Connector, error) {
+func (r *ConnectorRepository) List(ctx context.Context, tenantID string) ([]directorydomain.Connector, error) {
 	rows, err := New(r.Pool).ListDirectoryConnectors(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domain.Connector, 0, len(rows))
+	result := make([]directorydomain.Connector, 0, len(rows))
 	for _, row := range rows {
 		connector, err := toDomain(row)
 		if err != nil {
@@ -102,7 +102,7 @@ func (r *ConnectorRepository) TouchLastSeen(ctx context.Context, tenantID, id st
 	})
 }
 
-func found(row *DirectoryConnector, err error) (*domain.Connector, error) {
+func found(row *DirectoryConnector, err error) (*directorydomain.Connector, error) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -116,13 +116,13 @@ func found(row *DirectoryConnector, err error) (*domain.Connector, error) {
 	return &connector, nil
 }
 
-func toDomain(row *DirectoryConnector) (domain.Connector, error) {
-	connector := domain.Connector{
-		TenantID: row.TenantID, ID: row.ID, DisplayName: row.DisplayName, Status: domain.ConnectorStatus(row.Status),
+func toDomain(row *DirectoryConnector) (directorydomain.Connector, error) {
+	connector := directorydomain.Connector{
+		TenantID: row.TenantID, ID: row.ID, DisplayName: row.DisplayName, Status: directorydomain.ConnectorStatus(row.Status),
 		EnrollmentTokenHash: row.EnrollmentTokenHash.String, KeyID: row.KeyID.String,
 		CreatedAt: row.CreatedAt.UTC(), Revision: row.Revision,
 		EncryptionKeyID: row.EncryptionKeyID.String, DelegatedAuthentication: row.DelegatedAuthentication,
-		Thresholds: domain.DisableThresholds{Count: int(row.AccidentalDeletionCountThreshold), Percent: int(row.AccidentalDeletionPercentThreshold)},
+		Thresholds: directorydomain.DisableThresholds{Count: int(row.AccidentalDeletionCountThreshold), Percent: int(row.AccidentalDeletionPercentThreshold)},
 		EnrolledAt: pointer(row.EnrolledAt), LastSeenAt: pointer(row.LastSeenAt), DisabledAt: pointer(row.DisabledAt),
 	}
 	if row.EnrollmentExpiresAt.Valid {
@@ -130,12 +130,12 @@ func toDomain(row *DirectoryConnector) (domain.Connector, error) {
 	}
 	if row.PublicKey != nil {
 		if err := json.Unmarshal(row.PublicKey, &connector.PublicKey); err != nil {
-			return domain.Connector{}, err
+			return directorydomain.Connector{}, err
 		}
 	}
 	if row.EncryptionPublicKey != nil {
 		if err := json.Unmarshal(row.EncryptionPublicKey, &connector.EncryptionPublicKey); err != nil {
-			return domain.Connector{}, err
+			return directorydomain.Connector{}, err
 		}
 	}
 	return connector, nil

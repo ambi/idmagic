@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/ports"
+	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
+	negotiateports "github.com/ambi/idmagic/backend/authentication/internal/negotiate/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -22,17 +22,17 @@ type Users interface {
 
 // Service は検証と対応付けを編成し、セッションと HTTP の継続は呼び出し側に残す。
 type Service struct {
-	configs  map[string]domain.Config
-	verifier ports.Verifier
-	replay   ports.ReplayStore
+	configs  map[string]negotiatedomain.Config
+	verifier negotiateports.Verifier
+	replay   negotiateports.ReplayStore
 	users    Users
 }
 
-func New(configs []domain.Config, verifier ports.Verifier, replay ports.ReplayStore, users Users) (*Service, error) {
+func New(configs []negotiatedomain.Config, verifier negotiateports.Verifier, replay negotiateports.ReplayStore, users Users) (*Service, error) {
 	if verifier == nil || replay == nil || users == nil {
 		return nil, fmt.Errorf("negotiate: verifier, replay store and users are required")
 	}
-	s := &Service{configs: make(map[string]domain.Config), verifier: verifier, replay: replay, users: users}
+	s := &Service{configs: make(map[string]negotiatedomain.Config), verifier: verifier, replay: replay, users: users}
 	services := make(map[string]bool)
 	for _, config := range configs {
 		if err := config.Validate(); err != nil {

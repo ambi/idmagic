@@ -9,7 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/mediavalidation"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -32,21 +32,21 @@ type BrandingUpdateInput struct {
 	ProductName  *string
 	PrimaryColor *string
 	AccentColor  *string
-	FooterLink1  *domain.TenantFooterLink
-	FooterLink2  *domain.TenantFooterLink
+	FooterLink1  *tenancydomain.TenantFooterLink
+	FooterLink2  *tenancydomain.TenantFooterLink
 	FooterText   *string
 }
 
 // GetBranding は tenant の branding を返す。未設定なら tenant_id だけを持つ空の
 // TenantBranding を返し、呼び出し側 (HTTP 層) が常に non-nil を扱えるようにする
 // (TenantUserAttributeSchema と同型のパターン)。
-func GetBranding(ctx context.Context, repo tenantports.TenantBrandingRepository, tenantID string) (*domain.TenantBranding, error) {
+func GetBranding(ctx context.Context, repo tenantports.TenantBrandingRepository, tenantID string) (*tenancydomain.TenantBranding, error) {
 	branding, err := repo.FindByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	if branding == nil {
-		return &domain.TenantBranding{TenantID: tenantID}, nil
+		return &tenancydomain.TenantBranding{TenantID: tenantID}, nil
 	}
 	return branding, nil
 }
@@ -56,14 +56,14 @@ func GetBranding(ctx context.Context, repo tenantports.TenantBrandingRepository,
 func UpdateBranding(
 	ctx context.Context, repo tenantports.TenantBrandingRepository,
 	tenantID string, input BrandingUpdateInput, now time.Time,
-) (*domain.TenantBranding, error) {
+) (*tenancydomain.TenantBranding, error) {
 	existing, err := repo.FindByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	branding := &domain.TenantBranding{TenantID: tenantID}
+	branding := &tenancydomain.TenantBranding{TenantID: tenantID}
 	if existing != nil {
-		branding = &domain.TenantBranding{}
+		branding = &tenancydomain.TenantBranding{}
 		*branding = *existing
 	}
 	branding.TenantID = tenantID
@@ -99,8 +99,8 @@ func UpdateBranding(
 	return branding, nil
 }
 
-func normalizeFooterLink(link domain.TenantFooterLink) domain.TenantFooterLink {
-	return domain.TenantFooterLink{Label: strings.TrimSpace(link.Label), URL: strings.TrimSpace(link.URL)}
+func normalizeFooterLink(link tenancydomain.TenantFooterLink) tenancydomain.TenantFooterLink {
+	return tenancydomain.TenantFooterLink{Label: strings.TrimSpace(link.Label), URL: strings.TrimSpace(link.URL)}
 }
 
 // DetectBrandingAssetContentType は backend/shared/mediavalidation の magic byte 判定に
@@ -123,7 +123,7 @@ func DetectBrandingAssetContentType(data []byte) (string, error) {
 
 // UploadBrandingAssetInput は branding ロゴ / favicon のアップロード入力。
 type UploadBrandingAssetInput struct {
-	Kind      domain.TenantBrandingAssetKind
+	Kind      tenancydomain.TenantBrandingAssetKind
 	ObjectKey string
 	Data      []byte
 	URL       string
@@ -135,7 +135,7 @@ type UploadBrandingAssetInput struct {
 func UploadBrandingAsset(
 	ctx context.Context, brandingRepo tenantports.TenantBrandingRepository, assetStore tenantports.TenantBrandingAssetStore,
 	tenantID string, in UploadBrandingAssetInput,
-) (*domain.TenantBranding, error) {
+) (*tenancydomain.TenantBranding, error) {
 	if !in.Kind.Valid() {
 		return nil, ErrInvalidBrandingAssetKind
 	}
@@ -151,7 +151,7 @@ func UploadBrandingAsset(
 			return nil, err
 		}
 	}
-	asset := &domain.TenantBrandingAsset{
+	asset := &tenancydomain.TenantBrandingAsset{
 		TenantID: tenantID, Kind: in.Kind, ID: objectKey,
 		ContentType: contentType, SizeBytes: len(in.Data), Data: slices.Clone(in.Data),
 		CreatedAt: now, UpdatedAt: now,
@@ -164,17 +164,17 @@ func UploadBrandingAsset(
 	if err != nil {
 		return nil, err
 	}
-	branding := &domain.TenantBranding{TenantID: tenantID}
+	branding := &tenancydomain.TenantBranding{TenantID: tenantID}
 	if existing != nil {
-		branding = &domain.TenantBranding{}
+		branding = &tenancydomain.TenantBranding{}
 		*branding = *existing
 	}
 	branding.TenantID = tenantID
 	switch in.Kind {
-	case domain.TenantBrandingAssetKindLogo:
+	case tenancydomain.TenantBrandingAssetKindLogo:
 		branding.LogoObjectKey = objectKey
 		branding.LogoURL = in.URL
-	case domain.TenantBrandingAssetKindFavicon:
+	case tenancydomain.TenantBrandingAssetKindFavicon:
 		branding.FaviconObjectKey = objectKey
 		branding.FaviconURL = in.URL
 	}
@@ -196,8 +196,8 @@ func UploadBrandingAsset(
 // DeleteApplicationIcon と同じく冪等)。
 func DeleteBrandingAsset(
 	ctx context.Context, brandingRepo tenantports.TenantBrandingRepository, assetStore tenantports.TenantBrandingAssetStore,
-	tenantID string, kind domain.TenantBrandingAssetKind, now time.Time,
-) (*domain.TenantBranding, error) {
+	tenantID string, kind tenancydomain.TenantBrandingAssetKind, now time.Time,
+) (*tenancydomain.TenantBranding, error) {
 	if !kind.Valid() {
 		return nil, ErrInvalidBrandingAssetKind
 	}
@@ -209,15 +209,15 @@ func DeleteBrandingAsset(
 		return nil, err
 	}
 	if existing == nil {
-		return &domain.TenantBranding{TenantID: tenantID}, nil
+		return &tenancydomain.TenantBranding{TenantID: tenantID}, nil
 	}
 	updated := *existing
 	updated.TenantID = tenantID
 	switch kind {
-	case domain.TenantBrandingAssetKindLogo:
+	case tenancydomain.TenantBrandingAssetKindLogo:
 		updated.LogoObjectKey = ""
 		updated.LogoURL = ""
-	case domain.TenantBrandingAssetKindFavicon:
+	case tenancydomain.TenantBrandingAssetKindFavicon:
 		updated.FaviconObjectKey = ""
 		updated.FaviconURL = ""
 	}

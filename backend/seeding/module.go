@@ -4,34 +4,34 @@ package seeding
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	seedingpostgres "github.com/ambi/idmagic/backend/seeding/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/seeding/internal/manifests_yaml"
-	"github.com/ambi/idmagic/backend/seeding/internal/usecases"
+	seedingusecases "github.com/ambi/idmagic/backend/seeding/internal/usecases"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func PostgresRequestLock(pool *pgxpool.Pool) func(context.Context, domain.Request, func(context.Context) error) error {
-	return func(ctx context.Context, request domain.Request, apply func(context.Context) error) error {
+func PostgresRequestLock(pool *pgxpool.Pool) func(context.Context, seedingdomain.Request, func(context.Context) error) error {
+	return func(ctx context.Context, request seedingdomain.Request, apply func(context.Context) error) error {
 		return seedingpostgres.WithRequestLock(ctx, pool, request, apply)
 	}
 }
 
 type (
-	MaterializedManifest = usecases.MaterializedManifest
-	ResourceDependencies = usecases.ResourceDependencies
-	ResourceCommands     = usecases.ResourceCommands
+	MaterializedManifest = seedingusecases.MaterializedManifest
+	ResourceDependencies = seedingusecases.ResourceDependencies
+	ResourceCommands     = seedingusecases.ResourceCommands
 )
 
-func NewContributor(deps ResourceDependencies, commands ResourceCommands, manifest MaterializedManifest) (usecases.Contributor, error) {
-	return usecases.NewContributor(deps, commands, manifest)
+func NewContributor(deps ResourceDependencies, commands ResourceCommands, manifest MaterializedManifest) (seedingusecases.Contributor, error) {
+	return seedingusecases.NewContributor(deps, commands, manifest)
 }
 
-func LocateDefaultPath(profile domain.Profile) (string, error) {
+func LocateDefaultPath(profile seedingdomain.Profile) (string, error) {
 	return manifests_yaml.LocateDefaultPath(profile)
 }
 
-func Prepare(request domain.Request, secretRoot string, getenv func(string) string) (MaterializedManifest, error) {
+func Prepare(request seedingdomain.Request, secretRoot string, getenv func(string) string) (MaterializedManifest, error) {
 	path := request.ManifestPath
 	if path == "" {
 		var err error
@@ -44,12 +44,12 @@ func Prepare(request domain.Request, secretRoot string, getenv func(string) stri
 	if err != nil {
 		return MaterializedManifest{}, err
 	}
-	return usecases.MaterializeManifest(request, manifest, manifests_yaml.SecretResolver{
+	return seedingusecases.MaterializeManifest(request, manifest, manifests_yaml.SecretResolver{
 		SecretRoot: secretRoot,
 		Getenv:     getenv,
 	})
 }
 
-func Run(ctx context.Context, request domain.Request, contributor usecases.Contributor) (domain.Plan, error) {
-	return usecases.Run(ctx, request, contributor)
+func Run(ctx context.Context, request seedingdomain.Request, contributor seedingusecases.Contributor) (seedingdomain.Plan, error) {
+	return seedingusecases.Run(ctx, request, contributor)
 }

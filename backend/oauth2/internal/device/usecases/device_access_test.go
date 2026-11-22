@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	deviceports "github.com/ambi/idmagic/backend/oauth2/internal/device/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
@@ -28,7 +28,7 @@ func TestApproveUserCodeEnforcesApplicationAccess(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			before, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(issued.UserCode))
+			before, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(issued.UserCode))
 			app := application.NewMemoryModule()
 			record := &appdomain.Application{
 				TenantID: before.TenantID, ID: "app", Name: "Device", Kind: appdomain.ApplicationFederated,
@@ -107,7 +107,7 @@ func TestApproveUserCodeRefusesWhenAccessCannotBeEvaluated(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			before, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(issued.UserCode))
+			before, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(issued.UserCode))
 			var gate deviceports.ApplicationGate = application.NewMemoryModule().Gate(nil, nil, nil)
 			switch condition {
 			case "missing gate":
@@ -117,7 +117,7 @@ func TestApproveUserCodeRefusesWhenAccessCannotBeEvaluated(t *testing.T) {
 			case "foreign tenant":
 				ctx = tenantContext("other")
 			case "expired":
-				now = now.Add(domain.DeviceCodeTTL + time.Second)
+				now = now.Add(oauthdomain.DeviceCodeTTL + time.Second)
 			}
 			var events []spec.DomainEvent
 			f.verifyDeps.Emit = func(event spec.DomainEvent) { events = append(events, event) }

@@ -18,7 +18,7 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -65,14 +65,14 @@ func seedActiveAgentBoundTo(t *testing.T, f tokenFixture, clientID string) {
 	}
 }
 
-func seedSharedSecretAgentClient(f tokenFixture, method domain.TokenEndpointAuthMethod) {
-	hash := domain.HashClientSecret(agentClientSecret)
-	f.clientRepo.Seed(&domain.OAuth2Client{
+func seedSharedSecretAgentClient(f tokenFixture, method oauthdomain.TokenEndpointAuthMethod) {
+	hash := oauthdomain.HashClientSecret(agentClientSecret)
+	f.clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: agentClientID, ClientSecretHash: &hash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://app.example/cb"},
 		GrantTypes: agentClientGrants, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: method, Scope: "openid profile",
-		FapiProfile: domain.FapiNone, CreatedAt: time.Now().UTC(),
+		FapiProfile: oauthdomain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 }
 
@@ -80,13 +80,13 @@ func seedSharedSecretAgentClient(f tokenFixture, method domain.TokenEndpointAuth
 func seedPrivateKeyJWTAgentClient(t *testing.T, f tokenFixture) *testing_clientauth.PrivateKeyJWT {
 	t.Helper()
 	credential := testing_clientauth.NewPrivateKeyJWT(t, agentClientID)
-	f.clientRepo.Seed(&domain.OAuth2Client{
+	f.clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: agentClientID,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://app.example/cb"},
 		GrantTypes: agentClientGrants, ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
 		JWKS:                    credential.JWKS(), Scope: "openid profile",
-		FapiProfile: domain.FapiNone, CreatedAt: time.Now().UTC(),
+		FapiProfile: oauthdomain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 	return credential
 }
@@ -137,8 +137,8 @@ func postAgentToken(t *testing.T, f tokenFixture, form url.Values, basic bool) (
 //
 //spec:covers AIMS00-AGENT-CLIENT-AUTH, EX-OAUTH2-055-01: Agent に束縛した client_secret_basic と client_secret_post のクライアントは、正しいシークレットでも client_credentials、トークン交換、認可コード、リフレッシュトークンのすべてで 401 invalid_client を受け、トークンを得られないこと。
 func TestAgentBoundSharedSecretClientIsRefusedOnEveryGrant(t *testing.T) {
-	for _, method := range []domain.TokenEndpointAuthMethod{
-		domain.AuthMethodClientSecretBasic, domain.AuthMethodClientSecretPost,
+	for _, method := range []oauthdomain.TokenEndpointAuthMethod{
+		oauthdomain.AuthMethodClientSecretBasic, oauthdomain.AuthMethodClientSecretPost,
 	} {
 		f := newTokenServer(t)
 		seedSharedSecretAgentClient(f, method)
@@ -146,7 +146,7 @@ func TestAgentBoundSharedSecretClientIsRefusedOnEveryGrant(t *testing.T) {
 
 		for grant, form := range grantForms() {
 			t.Run(string(method)+"/"+grant, func(t *testing.T) {
-				basic := method == domain.AuthMethodClientSecretBasic
+				basic := method == oauthdomain.AuthMethodClientSecretBasic
 				if !basic {
 					form.Set("client_id", agentClientID)
 					form.Set("client_secret", agentClientSecret)
@@ -174,7 +174,7 @@ func TestAgentClientSwitchedToSharedSecretAfterBindingIsRefused(t *testing.T) {
 		t.Fatalf("前提が壊れている: 切り替え前の発行が status=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	seedSharedSecretAgentClient(f, domain.AuthMethodClientSecretPost)
+	seedSharedSecretAgentClient(f, oauthdomain.AuthMethodClientSecretPost)
 	after := grantForms()["token_exchange"]
 	after.Set("client_id", agentClientID)
 	after.Set("client_secret", agentClientSecret)

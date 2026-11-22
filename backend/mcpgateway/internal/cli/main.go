@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/catalog_http"
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/proxy_http"
@@ -69,7 +69,7 @@ func Load(path string, audit io.Writer) (*Gateway, error) {
 			HTTPClient: backchannel,
 		},
 		DownstreamResource: config.DownstreamResource, Downstream: downstream,
-		RequestStateKey: domain.RequestStateKey(config.ClientSecret),
+		RequestStateKey: mcpgatewaydomain.RequestStateKey(config.ClientSecret),
 		Audit:           slog.New(slog.NewJSONHandler(audit, nil)),
 		Metrics:         metrics,
 		Transport:       upstreamTransport,

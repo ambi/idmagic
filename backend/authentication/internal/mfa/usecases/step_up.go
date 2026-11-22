@@ -13,7 +13,7 @@ import (
 
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 
-	"github.com/ambi/idmagic/backend/authentication/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/internal/recovery/usecases"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/internal/totp/usecases"
@@ -114,7 +114,7 @@ func StepUpStart(
 		return nil, authusecases.ErrUserNotFound
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.StepUpRequested{
+		deps.Emit(&authdomain.StepUpRequested{
 			At: time.Now().UTC(), TenantID: tenantports.TenantID(ctx), UserID: sub, SessionID: sessionID,
 		})
 	}
@@ -194,7 +194,7 @@ func CompleteStepUp(ctx context.Context, deps StepUpDeps, in CompleteStepUpInput
 		}
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.StepUpCompleted{
+		deps.Emit(&authdomain.StepUpCompleted{
 			At: now, TenantID: tenantports.TenantID(ctx), UserID: in.Sub,
 			SessionID: in.SessionID, Method: string(in.Method),
 		})

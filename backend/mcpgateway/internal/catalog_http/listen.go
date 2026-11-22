@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
 
 // 間隔と上限は REQ-MCPGATEWAY-012 が定める。
@@ -168,7 +168,7 @@ type listenRequestBody struct {
 
 func (l Listener) listenRequest(ctx context.Context) (*http.Request, error) {
 	message := listenRequestBody{JSONRPC: "2.0", ID: listenRequestID, Method: "subscriptions/listen"}
-	message.Params.Meta.ProtocolVersion = domain.ProtocolVersion
+	message.Params.Meta.ProtocolVersion = mcpgatewaydomain.ProtocolVersion
 	message.Params.Notifications.ToolsListChanged = true
 	body, err := json.Marshal(message)
 	if err != nil {
@@ -180,7 +180,7 @@ func (l Listener) listenRequest(ctx context.Context) (*http.Request, error) {
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
-	request.Header.Set("Mcp-Protocol-Version", domain.ProtocolVersion)
+	request.Header.Set("Mcp-Protocol-Version", mcpgatewaydomain.ProtocolVersion)
 	request.Header.Set("Mcp-Method", "subscriptions/listen")
 	return request, nil
 }

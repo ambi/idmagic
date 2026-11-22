@@ -14,8 +14,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -40,11 +40,11 @@ type stubIssuerTrust struct {
 	subjects map[string]string
 }
 
-func (s stubIssuerTrust) ResolveIssuer(_ context.Context, _, issuer string) (*ports.IDJAGTrustedIssuer, error) {
+func (s stubIssuerTrust) ResolveIssuer(_ context.Context, _, issuer string) (*oauthports.IDJAGTrustedIssuer, error) {
 	if issuer != redeemIssuer {
 		return nil, nil //nolint:nilnil // 信頼しない発行者を表す。
 	}
-	return &ports.IDJAGTrustedIssuer{ProviderID: "idp", JWKS: s.jwks}, nil
+	return &oauthports.IDJAGTrustedIssuer{ProviderID: "idp", JWKS: s.jwks}, nil
 }
 
 func (s stubIssuerTrust) ProviderExists(context.Context, string, string) (bool, error) {
@@ -85,9 +85,9 @@ func newIDJAGRedeemFixture(t *testing.T) *idJagRedeemFixture {
 	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC().Truncate(time.Second)
 	clients := oauth2memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{ClientID: redeemClient, ClientType: spec.ClientConfidential, Scope: "chat.read chat.history", CreatedAt: now})
-	clients.Seed(&domain.OAuth2Client{ClientID: "other-client", ClientType: spec.ClientConfidential, Scope: "chat.read", CreatedAt: now})
-	clients.Seed(&domain.OAuth2Client{ClientID: "public-client", ClientType: spec.ClientPublic, Scope: "chat.read", CreatedAt: now})
+	clients.Seed(&oauthdomain.OAuth2Client{ClientID: redeemClient, ClientType: spec.ClientConfidential, Scope: "chat.read chat.history", CreatedAt: now})
+	clients.Seed(&oauthdomain.OAuth2Client{ClientID: "other-client", ClientType: spec.ClientConfidential, Scope: "chat.read", CreatedAt: now})
+	clients.Seed(&oauthdomain.OAuth2Client{ClientID: "public-client", ClientType: spec.ClientPublic, Scope: "chat.read", CreatedAt: now})
 	users := idmanagement.NewMemoryModule().UserRepo
 	for id, status := range map[string]idmdomain.UserStatus{"local-1": idmdomain.UserStatusActive, "local-suspended": idmdomain.UserStatusDisabled} {
 		if err := users.Save(ctx, &userdomain.User{ID: id, TenantID: kernel.DefaultTenantID, PreferredUsername: id, Lifecycle: userdomain.UserLifecycle{Status: status}}); err != nil {
@@ -95,7 +95,7 @@ func newIDJAGRedeemFixture(t *testing.T) *idJagRedeemFixture {
 		}
 	}
 	policies := oauth2memory.NewCrossAppAccessPolicyRepository()
-	if err := policies.CreateRedeemPolicy(ctx, &domain.CrossAppAccessRedeemPolicy{
+	if err := policies.CreateRedeemPolicy(ctx, &oauthdomain.CrossAppAccessRedeemPolicy{
 		TenantID: kernel.DefaultTenantID, ID: "p1", ProviderID: "idp", ClientID: redeemClient, Scopes: []string{"chat.read", "chat.history"},
 	}); err != nil {
 		t.Fatal(err)
@@ -112,8 +112,8 @@ func newIDJAGRedeemFixture(t *testing.T) *idJagRedeemFixture {
 			subjects: map[string]string{redeemExternal: "local-1", "suspended": "local-suspended", "ghost": "local-ghost"},
 		},
 		ResourceServers: newFakeMcpResourceServerRepo(
-			&domain.McpResourceServer{TenantID: kernel.DefaultTenantID, ID: "r1", Resource: redeemResource, Name: "chat", Scopes: []string{"chat.read", "chat.history"}, State: domain.McpResourceServerActive},
-			&domain.McpResourceServer{TenantID: kernel.DefaultTenantID, ID: "r2", Resource: "https://disabled.example/", Name: "off", Scopes: []string{"chat.read"}, State: domain.McpResourceServerDisabled},
+			&oauthdomain.McpResourceServer{TenantID: kernel.DefaultTenantID, ID: "r1", Resource: redeemResource, Name: "chat", Scopes: []string{"chat.read", "chat.history"}, State: oauthdomain.McpResourceServerActive},
+			&oauthdomain.McpResourceServer{TenantID: kernel.DefaultTenantID, ID: "r2", Resource: "https://disabled.example/", Name: "off", Scopes: []string{"chat.read"}, State: oauthdomain.McpResourceServerDisabled},
 		),
 		Replay: oauth2memory.NewClientAssertionReplayStore(), TokenIssuer: f.issuer,
 		Emit: func(event spec.DomainEvent) { f.events = append(f.events, event) },
@@ -143,9 +143,9 @@ func TestRedeemIDJAG_REQ_OAUTH2_069(t *testing.T) {
 	if got.Sub != "local-1" || len(got.Audiences) != 1 || got.Audiences[0] != redeemResource || got.Client.ClientID != redeemClient || got.Act != nil {
 		t.Fatalf("token input = %+v", got)
 	}
-	var redeemed *domain.IdJagRedeemed
+	var redeemed *oauthdomain.IdJagRedeemed
 	for _, event := range f.events {
-		if e, ok := event.(*domain.IdJagRedeemed); ok {
+		if e, ok := event.(*oauthdomain.IdJagRedeemed); ok {
 			redeemed = e
 		}
 	}
@@ -253,7 +253,7 @@ func TestRedeemIDJAGRefusals_REQ_OAUTH2_069(t *testing.T) {
 			if len(f.events) != 1 {
 				t.Fatalf("events = %+v", f.events)
 			}
-			if rejected, ok := f.events[0].(*domain.IdJagRejected); !ok || rejected.Reason != tc.code || rejected.Stage != "redeem" {
+			if rejected, ok := f.events[0].(*oauthdomain.IdJagRejected); !ok || rejected.Reason != tc.code || rejected.Stage != "redeem" {
 				t.Fatalf("event = %+v", f.events[0])
 			}
 		})

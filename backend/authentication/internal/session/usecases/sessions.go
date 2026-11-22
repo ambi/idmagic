@@ -13,8 +13,8 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
-	authnports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -22,11 +22,11 @@ import (
 )
 
 // ErrSessionNotFound は session/domain が定義する同じ値の別名である。errors.Is の判定は変わらない。
-var ErrSessionNotFound = domain.ErrSessionNotFound
+var ErrSessionNotFound = sessiondomain.ErrSessionNotFound
 
 // SessionDeps はセッション use case の依存。
 type SessionDeps struct {
-	Store authnports.SessionStore
+	Store sessionports.SessionStore
 	Emit  func(spec.DomainEvent)
 	// QuotaRepo frees the tenant's active_sessions Hard Quota slot when a
 	// session ends (wi-160). The increment side lives in
@@ -55,7 +55,7 @@ func revokeDevicesOnSessionRevoke(ctx context.Context, deps SessionDeps, userID 
 func endSession(
 	ctx context.Context,
 	deps SessionDeps,
-	sess *domain.LoginSession,
+	sess *sessiondomain.LoginSession,
 	actorUserID string,
 	reason spec.SessionEndReason,
 	allSessions bool,
@@ -88,7 +88,7 @@ type SessionView struct {
 // 一致するものを Current=true でマークする。
 func ListSessions(
 	ctx context.Context,
-	store authnports.SessionStore,
+	store sessionports.SessionStore,
 	sub, currentSessionID string,
 ) ([]SessionView, error) {
 	if store == nil {
@@ -183,7 +183,7 @@ type AdminSessionView struct {
 // 一覧する (wi-28, 決定9)。ListUserSignInActivity と同じアクセス制御
 // パターン (TenantAdministrator, resource=User/input.user_id) を前提とし、
 // アクセス制御自体は HTTP 層が担う。
-func AdminListSessions(ctx context.Context, store authnports.SessionStore, targetUserID string) ([]AdminSessionView, error) {
+func AdminListSessions(ctx context.Context, store sessionports.SessionStore, targetUserID string) ([]AdminSessionView, error) {
 	if store == nil {
 		return []AdminSessionView{}, nil
 	}
@@ -285,7 +285,7 @@ func endActiveSession(ctx context.Context, deps SessionDeps, sid string, reason 
 
 func emitSessionEnded(
 	emit func(spec.DomainEvent),
-	sess *domain.LoginSession,
+	sess *sessiondomain.LoginSession,
 	actorUserID string,
 	reason spec.SessionEndReason,
 	allSessions bool,

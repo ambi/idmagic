@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 )
 
 func FuzzPendingPaginationPreservesChronology(f *testing.F) {
@@ -19,19 +19,19 @@ func FuzzPendingPaginationPreservesChronology(f *testing.F) {
 		zone := time.FixedZone("input", int(offsetMinutes%840)*60)
 		first := time.Unix(1_700_000_000, int64(uint64(firstNanos)%1_000_000_000)).In(zone)
 		second := time.Unix(1_700_000_000, int64(uint64(secondNanos)%1_000_000_000))
-		var expected []*domain.ProvisioningTask
+		var expected []*provisioningdomain.ProvisioningTask
 		for index, at := range []time.Time{first, second, first.UTC()} {
 			id := []string{"a", "b", "c"}[index]
-			task := &domain.ProvisioningTask{
-				ID: id, TenantID: "tenant", ConnectionID: "connection", SourceType: domain.SourceTypeUser, SourceID: id,
-				SourceVersion: 1, Operation: domain.OperationDelete, Status: domain.TaskPending, CreatedAt: at, UpdatedAt: at,
+			task := &provisioningdomain.ProvisioningTask{
+				ID: id, TenantID: "tenant", ConnectionID: "connection", SourceType: provisioningdomain.SourceTypeUser, SourceID: id,
+				SourceVersion: 1, Operation: provisioningdomain.OperationDelete, Status: provisioningdomain.TaskPending, CreatedAt: at, UpdatedAt: at,
 			}
 			if _, err := repo.Save(ctx, task); err != nil {
 				t.Fatal(err)
 			}
 			expected = append(expected, task)
 		}
-		slices.SortFunc(expected, func(a, b *domain.ProvisioningTask) int {
+		slices.SortFunc(expected, func(a, b *provisioningdomain.ProvisioningTask) int {
 			if comparison := a.CreatedAt.Compare(b.CreatedAt); comparison != 0 {
 				return comparison
 			}

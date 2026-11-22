@@ -22,7 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -42,15 +42,15 @@ func TestCreateProtocolApplicationRefusesAnExistingKey(t *testing.T) {
 			name: "entra relying party",
 			seed: func(t *testing.T, _ func(map[string]any) string, _ saml.Module, rps wsfederation.Module) map[string]any {
 				t.Helper()
-				saveRelyingParty(t, rps, &feddomain.WsFedRelyingParty{
-					TenantID: tenantID, Wtrealm: feddomain.EntraRealm, ReplyURLs: []string{"https://login.microsoftonline.com/login.srf"},
-					EntraProfile: &feddomain.EntraFederationProfile{SourceAnchorAttribute: "object_guid"},
+				saveRelyingParty(t, rps, &wsfeddomain.WsFedRelyingParty{
+					TenantID: tenantID, Wtrealm: wsfeddomain.EntraRealm, ReplyURLs: []string{"https://login.microsoftonline.com/login.srf"},
+					EntraProfile: &wsfeddomain.EntraFederationProfile{SourceAnchorAttribute: "object_guid"},
 				})
-				return map[string]any{"name": "Fake Entra", "type": "wsfed", "wtrealm": feddomain.EntraRealm, "reply_urls": []string{"https://attacker.example/reply"}}
+				return map[string]any{"name": "Fake Entra", "type": "wsfed", "wtrealm": wsfeddomain.EntraRealm, "reply_urls": []string{"https://attacker.example/reply"}}
 			},
 			unchanged: func(t *testing.T, _ saml.Module, rps wsfederation.Module) {
 				t.Helper()
-				rp := findRelyingParty(t, rps, feddomain.EntraRealm)
+				rp := findRelyingParty(t, rps, wsfeddomain.EntraRealm)
 				if rp.EntraProfile == nil || !slices.Equal(rp.ReplyURLs, []string{"https://login.microsoftonline.com/login.srf"}) {
 					t.Fatalf("entra relying party changed: %+v", rp)
 				}
@@ -74,7 +74,7 @@ func TestCreateProtocolApplicationRefusesAnExistingKey(t *testing.T) {
 			name: "unbound relying party",
 			seed: func(t *testing.T, _ func(map[string]any) string, _ saml.Module, rps wsfederation.Module) map[string]any {
 				t.Helper()
-				saveRelyingParty(t, rps, &feddomain.WsFedRelyingParty{
+				saveRelyingParty(t, rps, &wsfeddomain.WsFedRelyingParty{
 					TenantID: tenantID, Wtrealm: "urn:rp:registered", ReplyURLs: []string{"https://registered.example/reply"},
 				})
 				return map[string]any{"name": "Adopter", "type": "wsfed", "wtrealm": "urn:rp:registered", "reply_urls": []string{"https://adopter.example/reply"}}
@@ -299,7 +299,7 @@ func listApplicationNames(t *testing.T, e *echo.Echo, csrf string, cookie *http.
 	return names
 }
 
-func saveRelyingParty(t *testing.T, rps wsfederation.Module, rp *feddomain.WsFedRelyingParty) {
+func saveRelyingParty(t *testing.T, rps wsfederation.Module, rp *wsfeddomain.WsFedRelyingParty) {
 	t.Helper()
 	rp.ClaimPolicy = claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{Format: "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified", SourceAttribute: "user_id"}}
 	rp.CreatedAt = time.Now().UTC()
@@ -308,7 +308,7 @@ func saveRelyingParty(t *testing.T, rps wsfederation.Module, rp *feddomain.WsFed
 	}
 }
 
-func findRelyingParty(t *testing.T, rps wsfederation.Module, wtrealm string) *feddomain.WsFedRelyingParty {
+func findRelyingParty(t *testing.T, rps wsfederation.Module, wtrealm string) *wsfeddomain.WsFedRelyingParty {
 	t.Helper()
 	rp, err := rps.RPRepo.FindByWtrealm(context.Background(), tenancydomain.DefaultTenantID, wtrealm)
 	if err != nil || rp == nil {

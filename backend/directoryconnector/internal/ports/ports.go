@@ -6,7 +6,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 )
 
 // Directory は、同期の回ごとに LDAP へ接続する。Connect は TLS を確立して bind した後に返る。
@@ -16,17 +16,17 @@ type Directory interface {
 
 type DirectorySession interface {
 	// RootInfo は RootDSE から差分の位置に使う値を読む。AD でない方言では空を返す。
-	RootInfo(ctx context.Context) (domain.RootInfo, error)
+	RootInfo(ctx context.Context) (directoryconnectordomain.RootInfo, error)
 	// Search はページングして検索し、ページごとに page を呼ぶ。page の失敗で検索を止める。
-	Search(ctx context.Context, baseDN, filter string, attributes []string, page func([]domain.Entry) error) error
+	Search(ctx context.Context, baseDN, filter string, attributes []string, page func([]directoryconnectordomain.Entry) error) error
 	Close() error
 }
 
 // IngestionAPI は Connector API である。各呼び出しは新しい JWT で署名する。
 type IngestionAPI interface {
 	Heartbeat(ctx context.Context) error
-	StartRun(ctx context.Context, mode domain.Mode) (runID string, err error)
-	SendBatch(ctx context.Context, runID, batchID string, items []domain.Item) error
+	StartRun(ctx context.Context, mode directoryconnectordomain.Mode) (runID string, err error)
+	SendBatch(ctx context.Context, runID, batchID string, items []directoryconnectordomain.Item) error
 	CompleteRun(ctx context.Context, runID string, itemCount int) error
 }
 
@@ -43,8 +43,8 @@ func (e *APIError) Error() string {
 
 type CursorStore interface {
 	// Load は保存した位置を返す。位置がなければ nil を返す。
-	Load(ctx context.Context) (*domain.Cursor, error)
-	Save(ctx context.Context, cursor domain.Cursor) error
+	Load(ctx context.Context) (*directoryconnectordomain.Cursor, error)
+	Save(ctx context.Context, cursor directoryconnectordomain.Cursor) error
 }
 
 // Enrollment は登録の応答のうち、以後の JWT に使う値である。

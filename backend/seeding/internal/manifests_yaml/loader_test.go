@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 )
 
 // 読み込んで、両方の型付きリソースを計画器へ渡せる形に統合する。
@@ -109,7 +109,7 @@ func mustWrite(t *testing.T, path, contents string) {
 }
 
 func TestDefaultPath(t *testing.T) {
-	if got := DefaultPath(domain.ProfileTest); got != filepath.FromSlash("seed/manifests/test.yaml") {
+	if got := DefaultPath(seedingdomain.ProfileTest); got != filepath.FromSlash("seed/manifests/test.yaml") {
 		t.Fatalf("DefaultPath(test) = %q", got)
 	}
 }

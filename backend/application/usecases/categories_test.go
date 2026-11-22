@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 )
@@ -137,7 +137,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "Payroll", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)
@@ -185,7 +185,7 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 		t.Fatalf("create category: %v", err)
 	}
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "Payroll", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("create app: %v", err)

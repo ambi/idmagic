@@ -16,12 +16,12 @@ import (
 	dsig "github.com/russellhaering/goxmldsig"
 
 	federationmemory "github.com/ambi/idmagic/backend/authentication/internal/federation/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 )
 
 func TestBuildAuthnRequestBindsDestinationACSAndRequestID(t *testing.T) {
 	connection := testSAMLConnection(t)
-	attempt := domain.FederatedLoginAttempt{State: "relay", RequestID: "_request-1"}
+	attempt := federationdomain.FederatedLoginAttempt{State: "relay", RequestID: "_request-1"}
 	redirect, err := BuildAuthnRequest(connection, attempt, "https://broker.example/callback", time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +38,7 @@ func TestValidateResponseChecksSignatureCorrelationAudienceAndClaims(t *testing.
 	replay := federationmemory.NewRepositories().Replay
 	claims, err := ValidateResponse(
 		context.Background(), connection,
-		domain.FederatedLoginAttempt{RequestID: "_request-1"},
+		federationdomain.FederatedLoginAttempt{RequestID: "_request-1"},
 		base64.StdEncoding.EncodeToString(response),
 		"https://broker.example/callback", now, replay,
 	)
@@ -50,7 +50,7 @@ func TestValidateResponseChecksSignatureCorrelationAudienceAndClaims(t *testing.
 	}
 	if _, err := ValidateResponse(
 		context.Background(), connection,
-		domain.FederatedLoginAttempt{RequestID: "_request-1"},
+		federationdomain.FederatedLoginAttempt{RequestID: "_request-1"},
 		base64.StdEncoding.EncodeToString(response),
 		"https://broker.example/callback", now, replay,
 	); err == nil {
@@ -104,13 +104,13 @@ func pemCertificate(t *testing.T, notBefore, notAfter time.Time) string {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
 
-func testSAMLConnection(t *testing.T) domain.IdentityProviderConnection {
+func testSAMLConnection(t *testing.T) federationdomain.IdentityProviderConnection {
 	t.Helper()
 	connection, _, _ := testSAMLConnectionWithKey(t)
 	return connection
 }
 
-func testSAMLConnectionWithKey(t *testing.T) (domain.IdentityProviderConnection, *rsa.PrivateKey, *x509.Certificate) {
+func testSAMLConnectionWithKey(t *testing.T) (federationdomain.IdentityProviderConnection, *rsa.PrivateKey, *x509.Certificate) {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -134,16 +134,16 @@ func testSAMLConnectionWithKey(t *testing.T) (domain.IdentityProviderConnection,
 		t.Fatal(err)
 	}
 	certPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
-	return domain.IdentityProviderConnection{
+	return federationdomain.IdentityProviderConnection{
 		ID: "saml", TenantID: "tenant", DisplayName: "SAML",
-		Protocol: domain.ProtocolSAML, Status: domain.ConnectionActive,
+		Protocol: federationdomain.ProtocolSAML, Status: federationdomain.ConnectionActive,
 		Issuer: "https://idp.example", SAMLSSOURL: "https://idp.example/sso",
 		SAMLEntityID: "https://idp.example", SAMLSigningCertificates: []string{certPEM},
-		ClaimMapping: domain.ClaimMapping{
+		ClaimMapping: federationdomain.ClaimMapping{
 			Subject: "NameID", Username: "email", Email: "email",
 			EmailVerified: "email_verified", Name: "name",
 		},
-		LinkingPolicy: domain.LinkingNone,
+		LinkingPolicy: federationdomain.LinkingNone,
 	}, key, cert
 }
 

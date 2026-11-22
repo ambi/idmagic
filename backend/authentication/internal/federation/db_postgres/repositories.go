@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -39,7 +39,7 @@ type ConnectionRepository struct {
 	Cipher federationports.SecretCipher
 }
 
-func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProviderConnection) error {
+func (r *ConnectionRepository) Save(ctx context.Context, c *federationdomain.IdentityProviderConnection) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProvi
 // to the legacy plaintext column unchanged. Anything else is treated as a real secret value and
 // is always encrypted, never written in plaintext (mirrors MfaFactorRepository.Save).
 func (r *ConnectionRepository) resolveSecretColumns(
-	ctx context.Context, c *domain.IdentityProviderConnection,
+	ctx context.Context, c *federationdomain.IdentityProviderConnection,
 ) (secretReference string, keyVersion pgtype.Int4, ciphertext []byte, err error) {
 	switch {
 	case c.SecretReference == "":
@@ -131,17 +131,17 @@ func (r *ConnectionRepository) resolveStoredSecret(
 	)
 }
 
-func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdentityProviderConnectionRow) (*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdentityProviderConnectionRow) (*federationdomain.IdentityProviderConnection, error) {
 	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
 	if err != nil {
 		return nil, err
 	}
-	c := &domain.IdentityProviderConnection{
+	c := &federationdomain.IdentityProviderConnection{
 		TenantID:              row.TenantID,
 		ID:                    row.ID,
 		DisplayName:           row.DisplayName,
-		Protocol:              domain.Protocol(row.Protocol),
-		Status:                domain.ConnectionStatus(row.Status),
+		Protocol:              federationdomain.Protocol(row.Protocol),
+		Status:                federationdomain.ConnectionStatus(row.Status),
 		Issuer:                row.Issuer,
 		ClientID:              row.ClientID,
 		SecretReference:       secretReference,
@@ -150,7 +150,7 @@ func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdent
 		JWKSURI:               row.JwksUri,
 		SAMLSSOURL:            row.SamlSsoUrl,
 		SAMLEntityID:          row.SamlEntityID,
-		LinkingPolicy:         domain.LinkingPolicy(row.LinkingPolicy),
+		LinkingPolicy:         federationdomain.LinkingPolicy(row.LinkingPolicy),
 		JITProvisioning:       row.JitProvisioning,
 		MetadataRefreshedAt:   fromTimestamptz(row.MetadataRefreshedAt),
 		CreatedAt:             row.CreatedAt,
@@ -168,17 +168,17 @@ func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdent
 	return c, c.Validate()
 }
 
-func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *ListIdentityProviderConnectionsRow) (*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *ListIdentityProviderConnectionsRow) (*federationdomain.IdentityProviderConnection, error) {
 	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
 	if err != nil {
 		return nil, err
 	}
-	c := &domain.IdentityProviderConnection{
+	c := &federationdomain.IdentityProviderConnection{
 		TenantID:              row.TenantID,
 		ID:                    row.ID,
 		DisplayName:           row.DisplayName,
-		Protocol:              domain.Protocol(row.Protocol),
-		Status:                domain.ConnectionStatus(row.Status),
+		Protocol:              federationdomain.Protocol(row.Protocol),
+		Status:                federationdomain.ConnectionStatus(row.Status),
 		Issuer:                row.Issuer,
 		ClientID:              row.ClientID,
 		SecretReference:       secretReference,
@@ -187,7 +187,7 @@ func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *Li
 		JWKSURI:               row.JwksUri,
 		SAMLSSOURL:            row.SamlSsoUrl,
 		SAMLEntityID:          row.SamlEntityID,
-		LinkingPolicy:         domain.LinkingPolicy(row.LinkingPolicy),
+		LinkingPolicy:         federationdomain.LinkingPolicy(row.LinkingPolicy),
 		JITProvisioning:       row.JitProvisioning,
 		MetadataRefreshedAt:   fromTimestamptz(row.MetadataRefreshedAt),
 		CreatedAt:             row.CreatedAt,
@@ -205,7 +205,7 @@ func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *Li
 	return c, c.Validate()
 }
 
-func (r *ConnectionRepository) Find(ctx context.Context, tenantID, id string) (*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) Find(ctx context.Context, tenantID, id string) (*federationdomain.IdentityProviderConnection, error) {
 	row, err := New(r.Pool).FindIdentityProviderConnection(ctx, FindIdentityProviderConnectionParams{
 		TenantID: tenantID,
 		ID:       id,
@@ -219,12 +219,12 @@ func (r *ConnectionRepository) Find(ctx context.Context, tenantID, id string) (*
 	return r.mapConnection(ctx, row)
 }
 
-func (r *ConnectionRepository) List(ctx context.Context, tenantID string) ([]*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) List(ctx context.Context, tenantID string) ([]*federationdomain.IdentityProviderConnection, error) {
 	rows, err := New(r.Pool).ListIdentityProviderConnections(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.IdentityProviderConnection, 0, len(rows))
+	out := make([]*federationdomain.IdentityProviderConnection, 0, len(rows))
 	for _, row := range rows {
 		c, err := r.mapConnectionListRow(ctx, row)
 		if err != nil {
@@ -244,7 +244,7 @@ func (r *ConnectionRepository) Delete(ctx context.Context, tenantID, id string) 
 
 type IdentityRepository struct{ Pool sharedpg.DB }
 
-func (r *IdentityRepository) Create(ctx context.Context, identity *domain.FederatedIdentity) error {
+func (r *IdentityRepository) Create(ctx context.Context, identity *federationdomain.FederatedIdentity) error {
 	if err := identity.Validate(); err != nil {
 		return err
 	}
@@ -263,8 +263,8 @@ func (r *IdentityRepository) Create(ctx context.Context, identity *domain.Federa
 	return err
 }
 
-func mapIdentity(row *FederatedIdentity) *domain.FederatedIdentity {
-	return &domain.FederatedIdentity{
+func mapIdentity(row *FederatedIdentity) *federationdomain.FederatedIdentity {
+	return &federationdomain.FederatedIdentity{
 		TenantID:        row.TenantID,
 		ProviderID:      row.ProviderID,
 		ExternalSubject: row.ExternalSubject,
@@ -274,7 +274,7 @@ func mapIdentity(row *FederatedIdentity) *domain.FederatedIdentity {
 	}
 }
 
-func (r *IdentityRepository) FindBySubject(ctx context.Context, tenantID, providerID, subject string) (*domain.FederatedIdentity, error) {
+func (r *IdentityRepository) FindBySubject(ctx context.Context, tenantID, providerID, subject string) (*federationdomain.FederatedIdentity, error) {
 	row, err := New(r.Pool).FindFederatedIdentityBySubject(ctx, FindFederatedIdentityBySubjectParams{
 		TenantID:        tenantID,
 		ProviderID:      providerID,
@@ -289,7 +289,7 @@ func (r *IdentityRepository) FindBySubject(ctx context.Context, tenantID, provid
 	return mapIdentity(row), nil
 }
 
-func (r *IdentityRepository) FindByUserProvider(ctx context.Context, tenantID, providerID, userID string) (*domain.FederatedIdentity, error) {
+func (r *IdentityRepository) FindByUserProvider(ctx context.Context, tenantID, providerID, userID string) (*federationdomain.FederatedIdentity, error) {
 	row, err := New(r.Pool).FindFederatedIdentityByUserProvider(ctx, FindFederatedIdentityByUserProviderParams{
 		TenantID:    tenantID,
 		ProviderID:  providerID,
@@ -304,7 +304,7 @@ func (r *IdentityRepository) FindByUserProvider(ctx context.Context, tenantID, p
 	return mapIdentity(row), nil
 }
 
-func (r *IdentityRepository) ListByUser(ctx context.Context, tenantID, userID string) ([]*domain.FederatedIdentity, error) {
+func (r *IdentityRepository) ListByUser(ctx context.Context, tenantID, userID string) ([]*federationdomain.FederatedIdentity, error) {
 	rows, err := New(r.Pool).ListFederatedIdentitiesByUser(ctx, ListFederatedIdentitiesByUserParams{
 		TenantID:    tenantID,
 		LocalUserID: userID,
@@ -312,7 +312,7 @@ func (r *IdentityRepository) ListByUser(ctx context.Context, tenantID, userID st
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.FederatedIdentity, 0, len(rows))
+	out := make([]*federationdomain.FederatedIdentity, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, mapIdentity(row))
 	}
@@ -335,7 +335,7 @@ func (r *IdentityRepository) Delete(ctx context.Context, tenantID, providerID, u
 
 type AttemptStore struct{ Pool sharedpg.DB }
 
-func (s *AttemptStore) Save(ctx context.Context, a *domain.FederatedLoginAttempt) error {
+func (s *AttemptStore) Save(ctx context.Context, a *federationdomain.FederatedLoginAttempt) error {
 	return New(s.Pool).SaveFederatedLoginAttempt(ctx, SaveFederatedLoginAttemptParams{
 		TenantID:   a.TenantID,
 		State:      a.State,
@@ -352,7 +352,7 @@ func (s *AttemptStore) Save(ctx context.Context, a *domain.FederatedLoginAttempt
 	})
 }
 
-func (s *AttemptStore) Consume(ctx context.Context, tenantID, state string, now time.Time) (*domain.FederatedLoginAttempt, error) {
+func (s *AttemptStore) Consume(ctx context.Context, tenantID, state string, now time.Time) (*federationdomain.FederatedLoginAttempt, error) {
 	row, err := New(s.Pool).ConsumeFederatedLoginAttempt(ctx, ConsumeFederatedLoginAttemptParams{
 		TenantID:   tenantID,
 		State:      state,
@@ -365,11 +365,11 @@ func (s *AttemptStore) Consume(ctx context.Context, tenantID, state string, now 
 				linkUserID = str
 			}
 		}
-		return &domain.FederatedLoginAttempt{
+		return &federationdomain.FederatedLoginAttempt{
 			State:        row.State,
 			TenantID:     row.TenantID,
 			ProviderID:   row.ProviderID,
-			Protocol:     domain.Protocol(row.Protocol),
+			Protocol:     federationdomain.Protocol(row.Protocol),
 			Nonce:        row.Nonce,
 			PKCEVerifier: row.PkceVerifier,
 			RequestID:    row.RequestID,

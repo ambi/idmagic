@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/ambi/idmagic/backend/shared/tenantcontext"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 type resolvedTenant struct {
-	tenant *domain.Tenant
+	tenant *tenancydomain.Tenant
 	issuer string
 	prefix string
 }
@@ -22,10 +22,10 @@ func (r resolvedTenant) TenantID() string {
 }
 
 func (r resolvedTenant) HTTPLocation() (string, string, bool) {
-	return r.issuer, r.prefix, r.tenant != nil && r.tenant.EffectiveEndpointStyle() == domain.TenantEndpointStyleSubdomain
+	return r.issuer, r.prefix, r.tenant != nil && r.tenant.EffectiveEndpointStyle() == tenancydomain.TenantEndpointStyleSubdomain
 }
 
-func WithTenant(ctx context.Context, tenant *domain.Tenant, issuer, urlPrefix string) context.Context {
+func WithTenant(ctx context.Context, tenant *tenancydomain.Tenant, issuer, urlPrefix string) context.Context {
 	return tenantcontext.WithScope(ctx, resolvedTenant{tenant: tenant, issuer: strings.TrimSuffix(issuer, "/"), prefix: strings.TrimSuffix(urlPrefix, "/")})
 }
 
@@ -34,7 +34,7 @@ func WithTenantID(ctx context.Context, tenantID string) context.Context {
 	return tenantcontext.WithID(ctx, tenantID)
 }
 
-func Tenant(ctx context.Context) *domain.Tenant {
+func Tenant(ctx context.Context) *tenancydomain.Tenant {
 	resolved, _ := tenantcontext.Current(ctx).(resolvedTenant)
 	return resolved.tenant
 }

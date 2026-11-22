@@ -3,14 +3,14 @@ package handlers_http
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/apitoken/ports"
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 // ResourceAuthenticator は、共有の HTTP 支援の Bearer 認証へ、管理発行の API アクセストークンと
 // その有効な記録の照合を渡す。
 type ResourceAuthenticator struct {
-	Authenticator ports.Authenticator
+	Authenticator apitokenports.Authenticator
 }
 
 // AuthenticateApiToken は、トークンの有効な記録が持つ利用者、クライアント、粒度スコープを返す。

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	consentports "github.com/ambi/idmagic/backend/oauth2/consent/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -20,7 +20,9 @@ type failConsentSave struct {
 
 var errConsentSave = errors.New("consent store unavailable")
 
-func (failConsentSave) Save(context.Context, string, *domain.Consent) error { return errConsentSave }
+func (failConsentSave) Save(context.Context, string, *oauthdomain.Consent) error {
+	return errConsentSave
+}
 
 // quotaTenantID は使用量を観測するテストのテナントである。
 const quotaTenantID = "acme"

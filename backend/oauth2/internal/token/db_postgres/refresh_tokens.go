@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2pg "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -23,7 +23,7 @@ func (s *RefreshTokenStore) DeleteForClient(ctx context.Context, _, clientID str
 	return s.queries().DeleteRefreshTokensForClient(ctx, clientID)
 }
 
-func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*domain.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*oauthdomain.RefreshTokenRecord, error) {
 	row, err := s.queries().GetRefreshTokenByHash(ctx, hash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -34,7 +34,7 @@ func (s *RefreshTokenStore) FindByHash(ctx context.Context, hash string) (*domai
 	return refreshFromRow(row)
 }
 
-func (s *RefreshTokenStore) Save(ctx context.Context, rec *domain.RefreshTokenRecord) error {
+func (s *RefreshTokenStore) Save(ctx context.Context, rec *oauthdomain.RefreshTokenRecord) error {
 	params, err := refreshInsertParams(rec)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (s *RefreshTokenStore) Save(ctx context.Context, rec *domain.RefreshTokenRe
 	return s.queries().InsertRefreshToken(ctx, params)
 }
 
-func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *domain.RefreshTokenRecord) (*domain.RefreshTokenRecord, error) {
+func (s *RefreshTokenStore) Rotate(ctx context.Context, parentID string, next *oauthdomain.RefreshTokenRecord) (*oauthdomain.RefreshTokenRecord, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -94,8 +94,8 @@ func (s *RefreshTokenStore) DeleteAllForSub(ctx context.Context, sub string) err
 	return s.queries().DeleteRefreshTokensForSub(ctx, sub)
 }
 
-func refreshFromRow(row *oauth2pg.GetRefreshTokenByHashRow) (*domain.RefreshTokenRecord, error) {
-	rec := &domain.RefreshTokenRecord{
+func refreshFromRow(row *oauth2pg.GetRefreshTokenByHashRow) (*oauthdomain.RefreshTokenRecord, error) {
+	rec := &oauthdomain.RefreshTokenRecord{
 		ID: row.ID, Hash: row.Hash, FamilyID: row.FamilyID,
 		ClientID: row.ClientID, UserID: row.UserID, IssuedAt: row.IssuedAt, ExpiresAt: row.ExpiresAt,
 		AbsoluteExpiresAt: row.AbsoluteExpiresAt, Revoked: row.Revoked, Rotated: row.Rotated,
@@ -127,7 +127,7 @@ func refreshFromRow(row *oauth2pg.GetRefreshTokenByHashRow) (*domain.RefreshToke
 	return rec, rec.Validate()
 }
 
-func refreshInsertParams(rec *domain.RefreshTokenRecord) (oauth2pg.InsertRefreshTokenParams, error) {
+func refreshInsertParams(rec *oauthdomain.RefreshTokenRecord) (oauth2pg.InsertRefreshTokenParams, error) {
 	scopes, err := json.Marshal(rec.Scopes)
 	if err != nil {
 		return oauth2pg.InsertRefreshTokenParams{}, err

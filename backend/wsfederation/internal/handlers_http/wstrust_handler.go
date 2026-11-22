@@ -9,7 +9,7 @@ import (
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 	wsfedusecases "github.com/ambi/idmagic/backend/wsfederation/internal/usecases"
 
@@ -25,18 +25,18 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	}
 	rst, err := wstrust.ParseRST(body, now)
 	if err != nil {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, Reason: err.Error()})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, Reason: err.Error()})
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	expectedTo := d.federationEndpoints(c).ActiveURL
 	if rst.To != expectedTo {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "To does not match active STS endpoint"})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "To does not match active STS endpoint"})
 		return c.String(http.StatusBadRequest, "To does not match active STS endpoint")
 	}
 	if ok, err := d.recordWsTrustMessageID(c, rst.MessageID, now); err != nil {
 		return err
 	} else if !ok {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "replayed MessageID"})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "replayed MessageID"})
 		return c.String(http.StatusBadRequest, "replayed MessageID")
 	}
 
@@ -45,7 +45,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		return err
 	}
 	if rp == nil {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unknown relying party"})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "unknown relying party"})
 		return c.String(http.StatusBadRequest, "unknown relying party")
 	}
 	clientIP := c.RealIP()
@@ -56,12 +56,12 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		return err
 	}
 	if authenticated.Refusal != signinports.PasswordRefusalNone {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: string(authenticated.Refusal)})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: string(authenticated.Refusal)})
 		return c.String(http.StatusUnauthorized, "invalid credentials")
 	}
 	if authenticated.PasswordChangeRequired {
 		// WS-Trust には変更の画面がないので、変更を求めている資格情報でトークンを作らない。
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "password change required"})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: "password change required"})
 		return c.String(http.StatusForbidden, "password change required")
 	}
 	user := authenticated.User
@@ -77,7 +77,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		return err
 	}
 	if decision.RejectReason != "" {
-		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
+		d.emit(&wsfeddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
 		return c.String(decision.RejectStatus, decision.RejectReason)
 	}
 	result := decision.ClaimResult
@@ -95,7 +95,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		NotBefore:    now.Add(-1 * time.Minute),
 		NotOnOrAfter: now.Add(assertionLifetime),
 		AuthnInstant: now,
-		AuthnContext: authnContext(feddomain.AuthnPassword),
+		AuthnContext: authnContext(wsfeddomain.AuthnPassword),
 		NameIDFormat: result.NameIDFormat,
 		NameIDValue:  result.NameIDValue,
 		Attributes:   assertionAttributes(result.Claims),
@@ -107,7 +107,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "rstr build failed")
 	}
-	d.emit(&feddomain.WsTrustTokenIssued{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, UserID: user.ID})
+	d.emit(&wsfeddomain.WsTrustTokenIssued{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, UserID: user.ID})
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.Blob(http.StatusOK, "application/soap+xml; charset=utf-8", out)
 }

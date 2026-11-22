@@ -36,7 +36,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	authorizationdomain "github.com/ambi/idmagic/backend/oauth2/internal/authorization/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	devicedomain "github.com/ambi/idmagic/backend/oauth2/internal/device/domain"
@@ -86,9 +86,9 @@ func newRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *refusal
 	ctx := context.Background()
 
 	clients := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(refusalClientSecret)
+	secretHash := oauthdomain.HashClientSecret(refusalClientSecret)
 	for _, tenantID := range []string{tenancydomain.DefaultTenantID, refusalOtherTenant} {
-		clients.Seed(&domain.OAuth2Client{
+		clients.Seed(&oauthdomain.OAuth2Client{
 			TenantID: tenantID, ClientID: refusalClientID, ClientSecretHash: &secretHash,
 			ClientType:   spec.ClientConfidential,
 			RedirectURIs: []string{refusalRedirectURI},
@@ -97,9 +97,9 @@ func newRefusalServer(t *testing.T, options ...func(*httpadapter.Deps)) *refusal
 				spec.GrantClientCredentials, spec.GrantDeviceCode,
 			},
 			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-			TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretPost,
 			Scope:                   "openid profile offline_access",
-			FapiProfile:             domain.FapiNone,
+			FapiProfile:             oauthdomain.FapiNone,
 			CreatedAt:               now,
 		})
 	}
@@ -212,7 +212,7 @@ func seedRefreshToken(
 	t.Helper()
 	now := time.Now().UTC()
 	record := &tokendomain.RefreshTokenRecord{
-		ID: uuid.NewV4().String(), TenantID: tenantID, Hash: domain.HashRefreshToken(token),
+		ID: uuid.NewV4().String(), TenantID: tenantID, Hash: oauthdomain.HashRefreshToken(token),
 		FamilyID: uuid.NewV4().String(), ClientID: refusalClientID, UserID: refusalUserFor(tenantID),
 		Scopes:   []string{"openid", "offline_access"},
 		IssuedAt: now, ExpiresAt: now.Add(time.Hour), AbsoluteExpiresAt: absoluteExpiresAt,
@@ -373,16 +373,16 @@ func TestTokenConcurrentCodeExchangeIssuesExactlyOneToken(t *testing.T) {
 func TestTokenForClientWithoutRefreshGrantIssuesNoRefreshToken(t *testing.T) {
 	const clientID = "no-refresh-app"
 	fixture := newRefusalServer(t)
-	secretHash := domain.HashClientSecret(refusalClientSecret)
-	fixture.clients.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(refusalClientSecret)
+	fixture.clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: clientID, ClientSecretHash: &secretHash,
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{refusalRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretPost,
 		Scope:                   "openid offline_access",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 	seedAuthorizationCodeFor(t, fixture, tenancydomain.DefaultTenantID, "AC1", clientID, []string{"openid", "offline_access"})
@@ -404,9 +404,9 @@ func TestTokenForClientWithoutRefreshGrantIssuesNoRefreshToken(t *testing.T) {
 	}
 	for _, event := range *fixture.events {
 		switch event := event.(type) {
-		case *domain.RefreshTokenIssued:
+		case *oauthdomain.RefreshTokenIssued:
 			t.Fatalf("refresh_token のグラントのないクライアントへ RefreshTokenIssued が発行された: %#v", event)
-		case *domain.AccessTokenIssued:
+		case *oauthdomain.AccessTokenIssued:
 			if strings.Join(event.Scopes, " ") != "openid" {
 				t.Fatalf("アクセストークンのスコープ=%v、期待は openid", event.Scopes)
 			}
@@ -464,7 +464,7 @@ func TestTokenRefreshBeyondAbsoluteLifetimeIssuesNothing(t *testing.T) {
 	assertOAuthError(t, response, "invalid_grant")
 	assertNoTokenIssued(t, response.Body.Bytes())
 
-	stored, err := fixture.refreshes.FindByHash(context.Background(), domain.HashRefreshToken("RT1"))
+	stored, err := fixture.refreshes.FindByHash(context.Background(), oauthdomain.HashRefreshToken("RT1"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,14 +547,14 @@ func seedApprovedDeviceCode(t *testing.T, fixture *refusalFixture, tenantID, dev
 func TestTokenCrossTenantClientIsRejectedAndLeftUsable(t *testing.T) {
 	fixture := newRefusalServer(t)
 	// acme にだけ存在するクライアント。default 側から見れば未知でなければならない。
-	secretHash := domain.HashClientSecret(refusalClientSecret)
-	fixture.clients.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(refusalClientSecret)
+	fixture.clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: refusalOtherTenant, ClientID: refusalOtherOnlyClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{refusalRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
-		Scope:                   "openid", FapiProfile: domain.FapiNone, CreatedAt: time.Now().UTC(),
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretPost,
+		Scope:                   "openid", FapiProfile: oauthdomain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
@@ -730,16 +730,16 @@ const refusalAccountClientID = "account-app"
 // invalid_scope を返してしまい、テストが防護の有無を区別できなくなる。
 func seedAccountScopedClient(t *testing.T, fixture *refusalFixture) {
 	t.Helper()
-	secretHash := domain.HashClientSecret(refusalClientSecret)
-	fixture.clients.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(refusalClientSecret)
+	fixture.clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: refusalAccountClientID,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs:            []string{refusalRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretPost,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretPost,
 		Scope:                   "openid account:read",
-		FapiProfile:             domain.FapiNone, CreatedAt: time.Now().UTC(),
+		FapiProfile:             oauthdomain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 }
 
@@ -906,15 +906,15 @@ func seedPrivateKeyJWTClient(t *testing.T, fixture *refusalFixture) *rsa.Private
 		"n": base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
 		"e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.PublicKey.E)).Bytes()),
 	}
-	fixture.clients.Seed(&domain.OAuth2Client{
+	fixture.clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: refusalAssertionClientID,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{refusalRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
 		JWKS:                    map[string]any{"keys": []any{jwk}},
 		Scope:                   "openid profile",
-		FapiProfile:             domain.FapiNone, CreatedAt: time.Now().UTC(),
+		FapiProfile:             oauthdomain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 	return key
 }

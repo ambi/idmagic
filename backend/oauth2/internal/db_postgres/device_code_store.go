@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -19,8 +19,8 @@ import (
 // Save / Update は同一 upsert。read では state を payload に overlay する。
 type DeviceCodeStore struct{ Pool sharedpg.DB }
 
-func deviceFromPayload(payload []byte, state string) (*domain.DeviceAuthorization, error) {
-	var rec domain.DeviceAuthorization
+func deviceFromPayload(payload []byte, state string) (*oauthdomain.DeviceAuthorization, error) {
+	var rec oauthdomain.DeviceAuthorization
 	if err := json.Unmarshal(payload, &rec); err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func deviceFromPayload(payload []byte, state string) (*domain.DeviceAuthorizatio
 	return &rec, nil
 }
 
-func (s *DeviceCodeStore) upsert(ctx context.Context, rec *domain.DeviceAuthorization) error {
+func (s *DeviceCodeStore) upsert(ctx context.Context, rec *oauthdomain.DeviceAuthorization) error {
 	rec.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(rec)
 	if err != nil {
@@ -45,15 +45,15 @@ func (s *DeviceCodeStore) upsert(ctx context.Context, rec *domain.DeviceAuthoriz
 	})
 }
 
-func (s *DeviceCodeStore) Save(ctx context.Context, rec *domain.DeviceAuthorization) error {
+func (s *DeviceCodeStore) Save(ctx context.Context, rec *oauthdomain.DeviceAuthorization) error {
 	return s.upsert(ctx, rec)
 }
 
-func (s *DeviceCodeStore) Update(ctx context.Context, rec *domain.DeviceAuthorization) error {
+func (s *DeviceCodeStore) Update(ctx context.Context, rec *oauthdomain.DeviceAuthorization) error {
 	return s.upsert(ctx, rec)
 }
 
-func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string) (*domain.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string) (*oauthdomain.DeviceAuthorization, error) {
 	row, err := New(s.Pool).FindDeviceCodeByHash(ctx, FindDeviceCodeByHashParams{
 		DeviceCodeHash: hash,
 		TenantID:       tenantports.TenantID(ctx),
@@ -67,7 +67,7 @@ func (s *DeviceCodeStore) FindByDeviceCodeHash(ctx context.Context, hash string)
 	return deviceFromPayload(row.Payload, row.State)
 }
 
-func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, userCode string) (*domain.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, userCode string) (*oauthdomain.DeviceAuthorization, error) {
 	row, err := New(s.Pool).FindDeviceCodeByUserCode(ctx, FindDeviceCodeByUserCodeParams{
 		UserCode: userCode,
 		TenantID: tenantports.TenantID(ctx),
@@ -81,7 +81,7 @@ func (s *DeviceCodeStore) FindByUserCode(ctx context.Context, userCode string) (
 	return deviceFromPayload(row.Payload, row.State)
 }
 
-func (s *DeviceCodeStore) Exchange(ctx context.Context, deviceCodeHash string) (*domain.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) Exchange(ctx context.Context, deviceCodeHash string) (*oauthdomain.DeviceAuthorization, error) {
 	row, err := New(s.Pool).ExchangeDeviceCode(ctx, ExchangeDeviceCodeParams{
 		DeviceCodeHash: deviceCodeHash,
 		TenantID:       tenantports.TenantID(ctx),

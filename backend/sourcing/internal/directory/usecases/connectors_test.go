@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 // racingRepository は、Update の前に stale 回だけほかの更新が割り込んだように振る舞う。
@@ -24,11 +24,11 @@ type racingRepository struct {
 	updates int
 }
 
-func (r *racingRepository) Update(ctx context.Context, c domain.Connector) error {
+func (r *racingRepository) Update(ctx context.Context, c directorydomain.Connector) error {
 	r.updates++
 	if r.stale > 0 {
 		r.stale--
-		return ports.ErrStaleConnector
+		return directoryinternalports.ErrStaleConnector
 	}
 	return r.ConnectorRepository.Update(ctx, c)
 }
@@ -102,7 +102,7 @@ func TestDisableRereadsAfterAConcurrentUpdate(t *testing.T) {
 	service, repo, grant := newRacingService(t)
 	repo.stale = maxStaleRetries - 1
 	disabled, err := service.Disable(context.Background(), "tenant", grant.Connector.ID)
-	if err != nil || disabled.Status != domain.StatusDisabled {
+	if err != nil || disabled.Status != directorydomain.StatusDisabled {
 		t.Fatalf("Disable = %+v, %v", disabled, err)
 	}
 	if repo.updates != maxStaleRetries {
@@ -111,7 +111,7 @@ func TestDisableRereadsAfterAConcurrentUpdate(t *testing.T) {
 
 	service, repo, grant = newRacingService(t)
 	repo.stale = maxStaleRetries
-	if _, err := service.Disable(context.Background(), "tenant", grant.Connector.ID); !errors.Is(err, ports.ErrStaleConnector) {
+	if _, err := service.Disable(context.Background(), "tenant", grant.Connector.ID); !errors.Is(err, directoryinternalports.ErrStaleConnector) {
 		t.Fatalf("Disable with a repository that is never current = %v", err)
 	}
 }

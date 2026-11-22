@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 func TestBuildProtectedResourceMetadata_registeredActive(t *testing.T) {
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read", "mcp.write"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"mcp.read", "mcp.write"}, State: oauthdomain.McpResourceServerActive,
 	}
 	repo := newFakeMcpResourceServerRepo(rs)
 	meta, err := BuildProtectedResourceMetadata(context.Background(), repo, "tenant-1", "https://mcp.example.com/tools", "https://idp.example.com")
@@ -39,10 +39,10 @@ func TestBuildProtectedResourceMetadata_unregistered_rejectedAsInvalidTarget(t *
 }
 
 func TestBuildProtectedResourceMetadata_disabled_rejectedAsInvalidTarget(t *testing.T) {
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerDisabled,
+		Scopes: []string{"mcp.read"}, State: oauthdomain.McpResourceServerDisabled,
 	}
 	repo := newFakeMcpResourceServerRepo(rs)
 	_, err := BuildProtectedResourceMetadata(context.Background(), repo, "tenant-1", "https://mcp.example.com/tools", "https://idp.example.com")

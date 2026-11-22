@@ -5,24 +5,24 @@ import (
 	"net/http"
 	"time"
 
-	domain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
 
-func (d Deps) accessReviewDeps() usecases.AccessReviewDeps {
-	return usecases.AccessReviewDeps{Plans: d.AccessReviewPlans, Reviews: d.AccessReviews, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AgentRepo: d.AgentRepo, ApplicationRepo: d.ApplicationRepo, AssignmentRepo: d.AssignmentRepo, Emit: d.Emit}
+func (d Deps) accessReviewDeps() igusecases.AccessReviewDeps {
+	return igusecases.AccessReviewDeps{Plans: d.AccessReviewPlans, Reviews: d.AccessReviews, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, AgentRepo: d.AgentRepo, ApplicationRepo: d.ApplicationRepo, AssignmentRepo: d.AssignmentRepo, Emit: d.Emit}
 }
 
 func writeAccessReviewError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, domain.ErrAccessReviewInvalid):
+	case errors.Is(err, igdomain.ErrAccessReviewInvalid):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The access review input or reference is invalid.")
-	case errors.Is(err, domain.ErrAccessReviewConflict):
+	case errors.Is(err, igdomain.ErrAccessReviewConflict):
 		return support.WriteProblem(c, http.StatusConflict, "access_review_conflict", "The access review has expired, a decision is final, or the plan revision changed.")
-	case errors.Is(err, domain.ErrAccessReviewDenied):
+	case errors.Is(err, igdomain.ErrAccessReviewDenied):
 		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "This review item is assigned to another user.")
 	default:
 		return err
@@ -48,11 +48,11 @@ func (d Deps) handleCreateAccessReviewPlan(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var input domain.AccessReviewPlanInput
+	var input igdomain.AccessReviewPlanInput
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A valid JSON body is required.")
 	}
-	p, err := usecases.CreateAccessReviewPlan(c.Request().Context(), d.accessReviewDeps(), tenantports.TenantID(c.Request().Context()), actor.ID, input, time.Now().UTC())
+	p, err := igusecases.CreateAccessReviewPlan(c.Request().Context(), d.accessReviewDeps(), tenantports.TenantID(c.Request().Context()), actor.ID, input, time.Now().UTC())
 	if err != nil {
 		return writeAccessReviewError(c, err)
 	}
@@ -68,13 +68,13 @@ func (d Deps) handleUpdateAccessReviewPlan(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	var input struct {
-		domain.AccessReviewPlanInput
+		igdomain.AccessReviewPlanInput
 		ExpectedRevision int64 `json:"expected_revision"`
 	}
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A valid JSON body is required.")
 	}
-	p, err := usecases.UpdateAccessReviewPlan(c.Request().Context(), d.accessReviewDeps(), tenantports.TenantID(c.Request().Context()), actor.ID, c.Param("plan_id"), input.ExpectedRevision, input.AccessReviewPlanInput, time.Now().UTC())
+	p, err := igusecases.UpdateAccessReviewPlan(c.Request().Context(), d.accessReviewDeps(), tenantports.TenantID(c.Request().Context()), actor.ID, c.Param("plan_id"), input.ExpectedRevision, input.AccessReviewPlanInput, time.Now().UTC())
 	if err != nil {
 		return writeAccessReviewError(c, err)
 	}
@@ -92,7 +92,7 @@ func (d Deps) handleListAccessReviews(c *echo.Context) error {
 		return err
 	}
 	if p == nil {
-		return writeAccessReviewError(c, domain.ErrAccessReviewInvalid)
+		return writeAccessReviewError(c, igdomain.ErrAccessReviewInvalid)
 	}
 	reviews, err := d.AccessReviews.ListByPlan(ctx, tenant, p.ID)
 	if err != nil {
@@ -127,7 +127,7 @@ func (d Deps) handleDecideAccessReview(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A valid JSON body is required.")
 	}
-	r, err := usecases.DecideAccessReview(c.Request().Context(), d.accessReviewDeps(), tenantports.TenantID(c.Request().Context()), c.Param("review_id"), c.Param("item_id"), actor.Subject(), input.Decision, time.Now().UTC())
+	r, err := igusecases.DecideAccessReview(c.Request().Context(), d.accessReviewDeps(), tenantports.TenantID(c.Request().Context()), c.Param("review_id"), c.Param("item_id"), actor.Subject(), input.Decision, time.Now().UTC())
 	if err != nil {
 		return writeAccessReviewError(c, err)
 	}

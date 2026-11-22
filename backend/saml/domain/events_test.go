@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/saml/domain"
+	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -14,7 +14,7 @@ import (
 //
 //spec:covers REQ-SAML-006: SamlSignInIssued の payload は、TypeSpec の SamlSignInIssued と同じ userId でサインインした利用者を指す。
 func TestSamlSignInIssuedNamesTheUserAsInTheContract(t *testing.T) {
-	data, err := spec.MarshalDomainEvent(&domain.SamlSignInIssued{
+	data, err := spec.MarshalDomainEvent(&samldomain.SamlSignInIssued{
 		At: time.Date(2026, 10, 24, 0, 0, 0, 0, time.UTC), TenantID: "tenant", EntityID: "https://sp.example", UserID: "user-1",
 	})
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -33,7 +33,7 @@ var ErrFieldMigratorNotRegistered = errors.New("datakeys: no field migrator regi
 // ReencryptDeps are the dependencies for ReencryptTenantField and
 // ReencryptionHandler (wi-97 T006).
 type ReencryptDeps struct {
-	Repository ports.DataKeyRepository
+	Repository datakeysports.DataKeyRepository
 	Migrators  *MigratorRegistry
 	// Jobs enqueues the continuation Job when a run hits
 	// ReencryptMaxBatchesPerRun with rows still pending. nil skips
@@ -73,7 +73,7 @@ func ReencryptTenantField(ctx context.Context, deps ReencryptDeps, tenantID, mig
 	}
 	excludedVersions := make([]int32, 0)
 	for _, key := range keys {
-		if key.Status == domain.DataKeyStatusDisabled || key.Status == domain.DataKeyStatusDestroyed {
+		if key.Status == datakeysdomain.DataKeyStatusDisabled || key.Status == datakeysdomain.DataKeyStatusDestroyed {
 			excludedVersions = append(excludedVersions, int32(key.Version)) //nolint:gosec // G115: 保存した DEK のバージョンは int32 の範囲にある。
 		}
 	}

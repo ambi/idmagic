@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 )
 
@@ -26,26 +26,26 @@ func seedDefaultTenantProvisioning(t *testing.T, s *stack.Stack) {
 	ctx := context.Background()
 	tenantID := s.TenantID(t, "default")
 	now := time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
-	if err := s.Provisioning.ConnectionRepo.Register(ctx, &domain.ProvisioningConnection{
+	if err := s.Provisioning.ConnectionRepo.Register(ctx, &provisioningdomain.ProvisioningConnection{
 		ApplicationID: isolatedApplicationID, TenantID: tenantID,
-		Status: domain.ConnectionActive, BaseURL: isolatedBaseURL,
-		Credential: domain.ProvisioningConnectionCredentialMetadata{
-			CredentialID: "credential-1", AuthMethod: domain.AuthBearerToken, CreatedAt: now,
+		Status: provisioningdomain.ConnectionActive, BaseURL: isolatedBaseURL,
+		Credential: provisioningdomain.ProvisioningConnectionCredentialMetadata{
+			CredentialID: "credential-1", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now,
 		},
-		Scope: domain.ScopeAssignedOnly,
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate,
+		Scope: provisioningdomain.ScopeAssignedOnly,
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate,
 		},
 		RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10,
-		Health:    domain.HealthOK,
+		Health:    provisioningdomain.HealthOK,
 		CreatedAt: now, UpdatedAt: now,
 	}, "secret"); err != nil {
 		t.Fatalf("seed connection: %v", err)
 	}
-	if _, err := s.Provisioning.TaskRepo.Save(ctx, &domain.ProvisioningTask{
+	if _, err := s.Provisioning.TaskRepo.Save(ctx, &provisioningdomain.ProvisioningTask{
 		ID: isolatedTaskID, TenantID: tenantID, ConnectionID: isolatedApplicationID,
-		SourceType: domain.SourceTypeUser, SourceID: stack.UserID, SourceVersion: 1,
-		Operation: domain.OperationCreate, Status: domain.TaskPending,
+		SourceType: provisioningdomain.SourceTypeUser, SourceID: stack.UserID, SourceVersion: 1,
+		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending,
 		CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatalf("seed task: %v", err)

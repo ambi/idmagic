@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 func TestScimRepositoryUserRefs(t *testing.T) {
 	ctx := context.Background()
 	repo := NewScimRepository()
 
-	ref := &ports.ScimUserRef{TenantID: "acme", ScimID: "s1", UserID: "u1"}
+	ref := &scimports.ScimUserRef{TenantID: "acme", ScimID: "s1", UserID: "u1"}
 	if err := repo.SaveUserRef(ctx, ref); err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestScimRepositoryGroupRefs(t *testing.T) {
 	ctx := context.Background()
 	repo := NewScimRepository()
 
-	ref := &ports.ScimGroupRef{TenantID: "acme", ScimID: "s1", GroupID: "g1"}
+	ref := &scimports.ScimGroupRef{TenantID: "acme", ScimID: "s1", GroupID: "g1"}
 	if err := repo.SaveGroupRef(ctx, ref); err != nil {
 		t.Fatal(err)
 	}

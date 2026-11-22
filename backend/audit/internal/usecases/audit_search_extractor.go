@@ -16,7 +16,7 @@ package usecases
 import (
 	"strconv"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 // failureEventTypes / successAuthEventTypes は outcome 属性の分類 (認証系のみ)。
@@ -58,7 +58,7 @@ var agentActorEventTypes = map[string]bool{
 // ExtractSearchAttributes は監査イベントレコードから sidecar 検索属性 (attr_name -> 値の並び) を
 // 返す。値が空の属性は載せない。抽出属性が無ければ nil を返す。多値になるのは委譲チェーンの
 // 参加者 (delegation.actor) だけで、他の軸は値を 1 つしか持たない。
-func ExtractSearchAttributes(rec *ports.AuditEventRecord) map[string][]string {
+func ExtractSearchAttributes(rec *auditports.AuditEventRecord) map[string][]string {
 	if rec == nil {
 		return nil
 	}
@@ -126,9 +126,9 @@ func ExtractSearchAttributes(rec *ports.AuditEventRecord) map[string][]string {
 func actorType(agentActor bool, actorID string) string {
 	switch {
 	case agentActor:
-		return ports.ActorTypeAgent
+		return auditports.ActorTypeAgent
 	case actorID != "":
-		return ports.ActorTypeUser
+		return auditports.ActorTypeUser
 	default:
 		return ""
 	}

@@ -24,7 +24,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 
 	"github.com/labstack/echo/v5"
@@ -181,7 +181,7 @@ func TestNotificationTemplateUpdateAndReset(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("events=%d, want 1 NotificationTemplateUpdated", len(*events))
 	}
-	if _, ok := (*events)[0].(*domain.NotificationTemplateUpdated); !ok {
+	if _, ok := (*events)[0].(*tenancydomain.NotificationTemplateUpdated); !ok {
 		t.Fatalf("event type=%T", (*events)[0])
 	}
 	detail := assertNotificationDetail(t, rec, true)
@@ -215,7 +215,7 @@ func TestNotificationTemplateUpdateAndReset(t *testing.T) {
 	if len(*events) != 2 {
 		t.Fatalf("events=%d, want a NotificationTemplateReset too", len(*events))
 	}
-	if _, ok := (*events)[1].(*domain.NotificationTemplateReset); !ok {
+	if _, ok := (*events)[1].(*tenancydomain.NotificationTemplateReset); !ok {
 		t.Fatalf("event type=%T", (*events)[1])
 	}
 }

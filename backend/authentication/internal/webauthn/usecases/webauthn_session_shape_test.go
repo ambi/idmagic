@@ -12,8 +12,8 @@ import (
 	"time"
 
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
@@ -21,11 +21,11 @@ import (
 type recordingSessionStore struct {
 	*webauthnmemory.WebAuthnSessionStore
 	key     string
-	session ports.WebAuthnSession
+	session webauthnports.WebAuthnSession
 }
 
 func (s *recordingSessionStore) Save(
-	ctx context.Context, key string, session ports.WebAuthnSession, expiresAt time.Time,
+	ctx context.Context, key string, session webauthnports.WebAuthnSession, expiresAt time.Time,
 ) error {
 	s.key, s.session = key, session
 	return s.WebAuthnSessionStore.Save(ctx, key, session, expiresAt)
@@ -76,7 +76,7 @@ func TestWebAuthnRegistrationFinishesFromASessionWrittenByAnEarlierVersion(t *te
 	deps.SessionStore = store
 
 	challenge := startRegistration(ctx, t, deps)
-	earlier := ports.WebAuthnSession{Payload: json.RawMessage(fmt.Sprintf(
+	earlier := webauthnports.WebAuthnSession{Payload: json.RawMessage(fmt.Sprintf(
 		`{"challenge":%q,"rpId":"localhost","user_id":"dXNlci1hbGljZQ==","expires":"0001-01-01T00:00:00Z",`+
 			`"userVerification":"preferred","credParams":[{"type":"public-key","alg":-7}]}`,
 		challenge,
@@ -86,7 +86,7 @@ func TestWebAuthnRegistrationFinishesFromASessionWrittenByAnEarlierVersion(t *te
 	}
 
 	body := newSoftwareAuthenticator(t).register(t, challenge, testRPID, testOrigin)
-	if err := usecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, time.Now()); err != nil {
+	if err := webauthnusecases.FinishWebAuthnRegistration(ctx, deps, "user-alice", body, nil, time.Now()); err != nil {
 		t.Fatalf("finish from an earlier session: %v", err)
 	}
 	stored, err := deps.CredentialRepo.ListBySub(ctx, "user-alice")

@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -43,8 +43,8 @@ func seedResetToken(
 
 func resetCommit(
 	digest actiontoken.Digest, user *userdomain.User, hash string,
-) authnports.PasswordResetCommit {
-	return authnports.PasswordResetCommit{
+) passwordports.PasswordResetCommit {
+	return passwordports.PasswordResetCommit{
 		Digest: digest, Now: pgfixtures.TestClock().Add(time.Minute),
 		UserID: user.ID, PasswordEncoded: hash,
 		Apply: func(latest *userdomain.User) (bool, error) {

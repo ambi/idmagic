@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/internal/usecases"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/internal/usecases"
 	sharedmetrics "github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
 )
 
@@ -15,7 +15,7 @@ type Metrics struct {
 	*sharedmetrics.Metrics
 }
 
-var _ usecases.JobsMetrics = (*Metrics)(nil)
+var _ jobsusecases.JobsMetrics = (*Metrics)(nil)
 
 func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 	m, err := sharedmetrics.NewMetrics(serviceName, serviceVersion)
@@ -25,22 +25,22 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 	return &Metrics{Metrics: m}, nil
 }
 
-func (m *Metrics) RecordJobClaimLatency(lane domain.ExecutionLane, latency time.Duration) {
+func (m *Metrics) RecordJobClaimLatency(lane jobsdomain.ExecutionLane, latency time.Duration) {
 	m.Metrics.RecordJobClaimLatency(string(lane), latency)
 }
 
-func (m *Metrics) RecordJobDuration(lane domain.ExecutionLane, outcome string, duration time.Duration) {
+func (m *Metrics) RecordJobDuration(lane jobsdomain.ExecutionLane, outcome string, duration time.Duration) {
 	m.Metrics.RecordJobDuration(string(lane), outcome, duration)
 }
 
-func (m *Metrics) RecordJobOutcome(lane domain.ExecutionLane, outcome string) {
+func (m *Metrics) RecordJobOutcome(lane jobsdomain.ExecutionLane, outcome string) {
 	m.Metrics.RecordJobOutcome(string(lane), outcome)
 }
 
-func (m *Metrics) RecordJobRetry(lane domain.ExecutionLane) {
+func (m *Metrics) RecordJobRetry(lane jobsdomain.ExecutionLane) {
 	m.Metrics.RecordJobRetry(string(lane))
 }
 
-func (m *Metrics) RecordJobQueueDepth(ctx context.Context, lane domain.ExecutionLane, status string, count int64) {
+func (m *Metrics) RecordJobQueueDepth(ctx context.Context, lane jobsdomain.ExecutionLane, status string, count int64) {
 	m.Metrics.RecordJobQueueDepth(ctx, string(lane), status, count)
 }

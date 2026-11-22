@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -29,7 +29,7 @@ var (
 // PasswordPolicyOverride にゼロ値を渡すと override を解除する (global default 継承)。
 type UpdateInput struct {
 	DisplayName            *string
-	PasswordPolicyOverride *domain.PasswordPolicyOverride
+	PasswordPolicyOverride *tenancydomain.PasswordPolicyOverride
 	// MaxDelegationDepth は Token Exchange の act チェーン深さ上限の上書き。
 	// nil は現状維持、0 は上書きの解除 (システム既定を継承)、正の値は上書き。
 	// システム既定を超える値は ErrPolicyOverrideWeaker で拒否する。
@@ -64,7 +64,7 @@ const (
 )
 
 func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now time.Time) error {
-	tenant, err := repo.FindByID(ctx, domain.DefaultTenantID)
+	tenant, err := repo.FindByID(ctx, tenancydomain.DefaultTenantID)
 	if err != nil {
 		return err
 	}
@@ -72,15 +72,15 @@ func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now t
 		return nil
 	}
 	now = normalizeNow(now)
-	return repo.Save(ctx, &domain.Tenant{
-		ID: domain.DefaultTenantID, Realm: domain.DefaultRealm, DisplayName: "Default",
-		Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+	return repo.Save(ctx, &tenancydomain.Tenant{
+		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default",
+		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	})
 }
 
 // Create は admin が指定した realm (URL slug) で新規テナントを作成する。不変 UUID キー
 // (id) はサーバが採番する。realm の重複は ErrTenantConflict。
-func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displayName string, now time.Time) (*domain.Tenant, error) {
+func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displayName string, now time.Time) (*tenancydomain.Tenant, error) {
 	displayName = strings.TrimSpace(displayName)
 	if displayName == "" {
 		return nil, ErrDisplayNameEmpty
@@ -89,14 +89,14 @@ func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displ
 	if err != nil {
 		return nil, err
 	}
-	tenant := &domain.Tenant{
-		ID: id, Realm: strings.TrimSpace(realm), DisplayName: displayName, Status: domain.TenantStatusActive,
-		EndpointStyle: domain.TenantEndpointStylePath,
+	tenant := &tenancydomain.Tenant{
+		ID: id, Realm: strings.TrimSpace(realm), DisplayName: displayName, Status: tenancydomain.TenantStatusActive,
+		EndpointStyle: tenancydomain.TenantEndpointStylePath,
 		CreatedAt:     normalizeNow(now), UpdatedAt: normalizeNow(now),
 	}
 	// 新規 realm には DNS ラベル規則と予約語を適用する。Tenant.Validate は
 	// 既存 realm を落とさないよう緩いままなので、作成経路で別に検査する。
-	if err := domain.ValidateNewRealm(tenant.Realm); err != nil {
+	if err := tenancydomain.ValidateNewRealm(tenant.Realm); err != nil {
 		return nil, ErrInvalidTenantID
 	}
 	if err := tenant.Validate(); err != nil {
@@ -122,7 +122,7 @@ func Update(
 	input UpdateInput,
 	floor PolicyFloor,
 	now time.Time,
-) (*domain.Tenant, error) {
+) (*tenancydomain.Tenant, error) {
 	tenant, err := repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func Update(
 		case depth == 0:
 			// 上書きの解除。システム既定へ戻す。
 			updated.MaxDelegationDepth = nil
-		case depth < 1 || depth > domain.DefaultMaxDelegationDepth:
+		case depth < 1 || depth > tenancydomain.DefaultMaxDelegationDepth:
 			// 上書きは厳しい方向にのみ働く。システム既定を超える値は認可の境界を
 			// 緩めるので拒否する。1 未満は「すべての交換を拒否」という、
 			// 設定として表現するつもりのない状態になるので同じく拒否する。
@@ -174,7 +174,7 @@ func Update(
 			// 機能無効へ戻す。MaxDelegationDepth の 0 と違い「上書きの解除」ではなく、
 			// この設定にとって最も厳しい状態そのものである。
 			updated.TrustedDeviceMaxAgeSeconds = nil
-		case maxAge < 0 || maxAge > domain.TrustedDeviceMaxAgeCeilingSeconds:
+		case maxAge < 0 || maxAge > tenancydomain.TrustedDeviceMaxAgeCeilingSeconds:
 			return nil, ErrPolicyOverrideWeaker
 		default:
 			updated.TrustedDeviceMaxAgeSeconds = &maxAge
@@ -199,8 +199,8 @@ func Update(
 	return &updated, nil
 }
 
-func normalizeOverride(o domain.PasswordPolicyOverride) *domain.PasswordPolicyOverride {
-	result := domain.PasswordPolicyOverride{}
+func normalizeOverride(o tenancydomain.PasswordPolicyOverride) *tenancydomain.PasswordPolicyOverride {
+	result := tenancydomain.PasswordPolicyOverride{}
 	anyOverride := false
 	if o.MinLength != nil && *o.MinLength > 0 {
 		v := *o.MinLength
@@ -228,7 +228,7 @@ func normalizeOverride(o domain.PasswordPolicyOverride) *domain.PasswordPolicyOv
 	return &result
 }
 
-func enforcePolicyFloor(o domain.PasswordPolicyOverride, floor PolicyFloor) error {
+func enforcePolicyFloor(o tenancydomain.PasswordPolicyOverride, floor PolicyFloor) error {
 	if o.MinLength != nil && floor.MinLength > 0 && *o.MinLength < floor.MinLength {
 		return ErrPolicyOverrideWeaker
 	}
@@ -245,8 +245,8 @@ func enforcePolicyFloor(o domain.PasswordPolicyOverride, floor PolicyFloor) erro
 	return nil
 }
 
-func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id string, disabled bool, now time.Time) (*domain.Tenant, error) {
-	if id == domain.DefaultTenantID && disabled {
+func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id string, disabled bool, now time.Time) (*tenancydomain.Tenant, error) {
+	if id == tenancydomain.DefaultTenantID && disabled {
 		return nil, ErrDefaultTenant
 	}
 	tenant, err := repo.FindByID(ctx, id)
@@ -261,12 +261,12 @@ func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id stri
 	updated.UpdatedAt = t
 	if disabled {
 		// disabled_at は無効化が始まった時刻なので、すでに無効なテナントでは動かさない。
-		if tenant.Status != domain.TenantStatusDisabled {
+		if tenant.Status != tenancydomain.TenantStatusDisabled {
 			updated.DisabledAt = &t
 		}
-		updated.Status = domain.TenantStatusDisabled
+		updated.Status = tenancydomain.TenantStatusDisabled
 	} else {
-		updated.Status = domain.TenantStatusActive
+		updated.Status = tenancydomain.TenantStatusActive
 		updated.DisabledAt = nil
 	}
 	if err := repo.Save(ctx, &updated); err != nil {
@@ -282,11 +282,11 @@ func SetEndpointStyle(
 	ctx context.Context,
 	repo tenantports.TenantRepository,
 	id string,
-	style domain.TenantEndpointStyle,
+	style tenancydomain.TenantEndpointStyle,
 	baseDomain string,
 	now time.Time,
-) (*domain.Tenant, error) {
-	if err := domain.ValidateEndpointStyleSelectable(style, baseDomain); err != nil {
+) (*tenancydomain.Tenant, error) {
+	if err := tenancydomain.ValidateEndpointStyleSelectable(style, baseDomain); err != nil {
 		return nil, err
 	}
 	tenant, err := repo.FindByID(ctx, id)

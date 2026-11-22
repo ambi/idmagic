@@ -8,12 +8,12 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
-	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingusecases "github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
 type disableStore struct {
-	ports.KeyStore
+	signingports.KeyStore
 	key     *signingdomain.SigningKey
 	changed bool
 	err     error
@@ -41,7 +41,7 @@ func TestDisableSigningKeyEmitsOnlyCommittedChanges(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var events []spec.DomainEvent
-			got, err := usecases.DisableSigningKey(context.Background(), usecases.DisableSigningKeyDeps{KeyStore: tc.store, Emit: func(event spec.DomainEvent) { events = append(events, event) }}, "old")
+			got, err := signingusecases.DisableSigningKey(context.Background(), signingusecases.DisableSigningKeyDeps{KeyStore: tc.store, Emit: func(event spec.DomainEvent) { events = append(events, event) }}, "old")
 			if !errors.Is(err, tc.store.err) {
 				t.Fatalf("error = %v, want %v", err, tc.store.err)
 			}

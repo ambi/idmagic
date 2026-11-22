@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 )
 
 type testContributor struct {
-	plan    domain.Plan
+	plan    seedingdomain.Plan
 	applied bool
 	fail    bool
 }
@@ -27,7 +27,7 @@ type partialFailureContributor struct {
 
 type fakeSecretResolver map[string]string
 
-func (r fakeSecretResolver) Resolve(reference domain.SecretReference) (string, error) {
+func (r fakeSecretResolver) Resolve(reference seedingdomain.SecretReference) (string, error) {
 	value := r[reference.Locator]
 	if value == "" {
 		return "", fmt.Errorf("unavailable")
@@ -42,16 +42,16 @@ type serialContributor struct {
 	maxRun  int
 }
 
-func (c *serialContributor) Plan(context.Context, domain.Request) (domain.Plan, error) {
+func (c *serialContributor) Plan(context.Context, seedingdomain.Request) (seedingdomain.Plan, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.applied {
-		return domain.Plan{Operations: []domain.Operation{{LogicalKey: "test", Kind: domain.OperationNoop}}}, nil
+		return seedingdomain.Plan{Operations: []seedingdomain.Operation{{LogicalKey: "test", Kind: seedingdomain.OperationNoop}}}, nil
 	}
-	return domain.Plan{Operations: []domain.Operation{{LogicalKey: "test", Kind: domain.OperationCreate}}}, nil
+	return seedingdomain.Plan{Operations: []seedingdomain.Operation{{LogicalKey: "test", Kind: seedingdomain.OperationCreate}}}, nil
 }
 
-func (c *serialContributor) Apply(context.Context, domain.Request) error {
+func (c *serialContributor) Apply(context.Context, seedingdomain.Request) error {
 	c.mu.Lock()
 	c.running++
 	if c.running > c.maxRun {
@@ -66,14 +66,14 @@ func (c *serialContributor) Apply(context.Context, domain.Request) error {
 	return nil
 }
 
-func (c *testContributor) Plan(context.Context, domain.Request) (domain.Plan, error) {
+func (c *testContributor) Plan(context.Context, seedingdomain.Request) (seedingdomain.Plan, error) {
 	if c.applied {
-		return domain.Plan{Operations: []domain.Operation{{LogicalKey: "test", Kind: domain.OperationNoop}}}, nil
+		return seedingdomain.Plan{Operations: []seedingdomain.Operation{{LogicalKey: "test", Kind: seedingdomain.OperationNoop}}}, nil
 	}
 	return c.plan, nil
 }
 
-func (c *testContributor) Apply(context.Context, domain.Request) error {
+func (c *testContributor) Apply(context.Context, seedingdomain.Request) error {
 	if c.fail {
 		c.fail = false
 		return fmt.Errorf("injected partial failure")
@@ -82,19 +82,19 @@ func (c *testContributor) Apply(context.Context, domain.Request) error {
 	return nil
 }
 
-func (c *partialFailureContributor) Plan(context.Context, domain.Request) (domain.Plan, error) {
-	operations := make([]domain.Operation, 0, 2)
+func (c *partialFailureContributor) Plan(context.Context, seedingdomain.Request) (seedingdomain.Plan, error) {
+	operations := make([]seedingdomain.Operation, 0, 2)
 	for _, logicalKey := range []string{"completed", "remaining"} {
-		kind := domain.OperationCreate
+		kind := seedingdomain.OperationCreate
 		if c.applied[logicalKey] {
-			kind = domain.OperationNoop
+			kind = seedingdomain.OperationNoop
 		}
-		operations = append(operations, domain.Operation{LogicalKey: logicalKey, Kind: kind})
+		operations = append(operations, seedingdomain.Operation{LogicalKey: logicalKey, Kind: kind})
 	}
-	return domain.Plan{Operations: operations}, nil
+	return seedingdomain.Plan{Operations: operations}, nil
 }
 
-func (c *partialFailureContributor) Apply(context.Context, domain.Request) error {
+func (c *partialFailureContributor) Apply(context.Context, seedingdomain.Request) error {
 	for _, logicalKey := range []string{"completed", "remaining"} {
 		if c.applied[logicalKey] {
 			continue
@@ -114,33 +114,33 @@ func (c *partialFailureContributor) Apply(context.Context, domain.Request) error
 //spec:covers EX-SEEDING-010-01: 一部の論理キーを適用した後に失敗しても、再試行ではそのキーを noop とし、
 func TestRunCanBeRetriedAfterApplyFailure(t *testing.T) {
 	contributor := &partialFailureContributor{applied: map[string]bool{}, failOnce: true}
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileBootstrap, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileBootstrap, Mode: seedingdomain.ModeApply}
 	failedPlan, err := Run(context.Background(), request, contributor)
 	if err == nil {
 		t.Fatal("first Run() error = nil, want injected failure")
 	}
-	if failedPlan.Count(domain.OperationCreate) != 2 || !contributor.applied["completed"] || contributor.applied["remaining"] {
+	if failedPlan.Count(seedingdomain.OperationCreate) != 2 || !contributor.applied["completed"] || contributor.applied["remaining"] {
 		t.Fatalf("failed Run() plan = %+v, applied = %#v; want only completed applied", failedPlan, contributor.applied)
 	}
 	converged, err := Run(context.Background(), request, contributor)
 	if err != nil {
 		t.Fatalf("retry Run() error = %v", err)
 	}
-	if converged.Count(domain.OperationNoop) != 2 || !reflect.DeepEqual(contributor.applyLog, []string{"completed", "remaining"}) {
+	if converged.Count(seedingdomain.OperationNoop) != 2 || !reflect.DeepEqual(contributor.applyLog, []string{"completed", "remaining"}) {
 		t.Fatalf("retry plan = %+v, apply log = %v; want two no-ops and one apply per logical key", converged, contributor.applyLog)
 	}
 }
 
 func TestPlanValidatesBeforeProducingPlan(t *testing.T) {
-	_, err := Plan(domain.Request{Environment: domain.EnvironmentProduction, Profile: domain.ProfileTest, Mode: domain.ModeApply})
+	_, err := Plan(seedingdomain.Request{Environment: seedingdomain.EnvironmentProduction, Profile: seedingdomain.ProfileTest, Mode: seedingdomain.ModeApply})
 	if err == nil {
 		t.Fatal("Plan() error = nil, want production policy rejection")
 	}
 }
 
 func TestRunDryRunDoesNotApply(t *testing.T) {
-	contributor := &testContributor{plan: domain.Plan{Operations: []domain.Operation{{LogicalKey: "test", Kind: domain.OperationCreate}}}}
-	_, err := Run(context.Background(), domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileBootstrap, Mode: domain.ModeDryRun}, contributor)
+	contributor := &testContributor{plan: seedingdomain.Plan{Operations: []seedingdomain.Operation{{LogicalKey: "test", Kind: seedingdomain.OperationCreate}}}}
+	_, err := Run(context.Background(), seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileBootstrap, Mode: seedingdomain.ModeDryRun}, contributor)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -150,19 +150,19 @@ func TestRunDryRunDoesNotApply(t *testing.T) {
 }
 
 func TestRunAppliesThenConverges(t *testing.T) {
-	contributor := &testContributor{plan: domain.Plan{Operations: []domain.Operation{{LogicalKey: "test", Kind: domain.OperationCreate}}}}
-	plan, err := Run(context.Background(), domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileBootstrap, Mode: domain.ModeApply}, contributor)
+	contributor := &testContributor{plan: seedingdomain.Plan{Operations: []seedingdomain.Operation{{LogicalKey: "test", Kind: seedingdomain.OperationCreate}}}}
+	plan, err := Run(context.Background(), seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileBootstrap, Mode: seedingdomain.ModeApply}, contributor)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if !contributor.applied || plan.Count(domain.OperationNoop) != 1 {
+	if !contributor.applied || plan.Count(seedingdomain.OperationNoop) != 1 {
 		t.Fatalf("Run() = %+v, applied=%v", plan, contributor.applied)
 	}
 }
 
 func TestRunSerializesConcurrentApplyForSameRequest(t *testing.T) {
 	contributor := &serialContributor{}
-	request := domain.Request{Environment: domain.EnvironmentTest, Profile: domain.ProfileTest, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentTest, Profile: seedingdomain.ProfileTest, Mode: seedingdomain.ModeApply}
 	errs := make(chan error, 2)
 	for range 2 {
 		go func() { _, err := Run(context.Background(), request, contributor); errs <- err }()
@@ -178,19 +178,19 @@ func TestRunSerializesConcurrentApplyForSameRequest(t *testing.T) {
 }
 
 func TestMaterializeManifestValidatesBeforeResolving(t *testing.T) {
-	manifest := domain.Manifest{
-		SchemaVersion: domain.CurrentManifestSchemaVersion,
-		Profile:       domain.ProfileDevelopment,
-		Resources: []domain.Resource{{
-			Kind:       domain.ResourceKindDevelopmentDemo,
+	manifest := seedingdomain.Manifest{
+		SchemaVersion: seedingdomain.CurrentManifestSchemaVersion,
+		Profile:       seedingdomain.ProfileDevelopment,
+		Resources: []seedingdomain.Resource{{
+			Kind:       seedingdomain.ResourceKindDevelopmentDemo,
 			LogicalKey: "development-demo",
-			Demo:       &domain.DevelopmentDemoSeed{ClientID: "demo", Users: []domain.DemoUserSeed{{ID: "user"}}},
-			Secrets: map[string]domain.SecretReference{
-				"user_password": {Provider: domain.SecretProviderEnv, Locator: "DEMO_USER_PASSWORD", Version: "v1"},
+			Demo:       &seedingdomain.DevelopmentDemoSeed{ClientID: "demo", Users: []seedingdomain.DemoUserSeed{{ID: "user"}}},
+			Secrets: map[string]seedingdomain.SecretReference{
+				"user_password": {Provider: seedingdomain.SecretProviderEnv, Locator: "DEMO_USER_PASSWORD", Version: "v1"},
 			},
 		}},
 	}
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeDryRun}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeDryRun}
 	resolved, err := MaterializeManifest(request, manifest, fakeSecretResolver{"DEMO_USER_PASSWORD": "do-not-print"})
 	if err != nil {
 		t.Fatalf("MaterializeManifest() error = %v", err)
@@ -199,7 +199,7 @@ func TestMaterializeManifestValidatesBeforeResolving(t *testing.T) {
 		t.Fatalf("resolved secret = %q", got)
 	}
 
-	request.Profile = domain.ProfileBootstrap
+	request.Profile = seedingdomain.ProfileBootstrap
 	if _, err := MaterializeManifest(request, manifest, fakeSecretResolver{"DEMO_USER_PASSWORD": "do-not-print"}); err == nil {
 		t.Fatal("profile mismatch succeeded, want error")
 	}

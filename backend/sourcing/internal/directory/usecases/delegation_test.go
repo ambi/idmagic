@@ -14,13 +14,13 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
-func delegationFixture(t *testing.T) (context.Context, *Delegation, domain.Connector, map[string]any) {
+func delegationFixture(t *testing.T) (context.Context, *Delegation, directorydomain.Connector, map[string]any) {
 	t.Helper()
 	ctx := testing_tenant.Default(t.Context())
 	tenantID := tenantports.TenantID(ctx)
@@ -56,7 +56,7 @@ func delegationFixture(t *testing.T) (context.Context, *Delegation, domain.Conne
 //spec:covers REQ-SOURCING-027 REQ-AUTHENTICATION-044: 能力とローカル資格情報の検査を通った設定だけが有効になり、停止時にもローカル認証を許さない。
 func TestDelegationConfigurationRejectsLocalCredentialsAndRetainsItsAuthority(t *testing.T) {
 	ctx, d, c, jwk := delegationFixture(t)
-	if _, err := d.Configure(ctx, c.ID, true); !errors.Is(err, ports.ErrDelegationUnavailable) {
+	if _, err := d.Configure(ctx, c.ID, true); !errors.Is(err, directoryinternalports.ErrDelegationUnavailable) {
 		t.Fatalf("enable without capability: %v", err)
 	}
 	if _, err := d.RegisterEncryption(ctx, c, ecJWK); !errors.Is(err, ErrInvalidKey) {
@@ -68,7 +68,7 @@ func TestDelegationConfigurationRejectsLocalCredentialsAndRetainsItsAuthority(t 
 	if _, err := d.Users.Update(ctx, "directory-user", func(u *userdomain.User) (bool, error) { u.PasswordHash = "local-hash"; return true, nil }); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.Configure(ctx, c.ID, true); !errors.Is(err, ports.ErrDelegationUnavailable) {
+	if _, err := d.Configure(ctx, c.ID, true); !errors.Is(err, directoryinternalports.ErrDelegationUnavailable) {
 		t.Fatalf("enable with local hash: %v", err)
 	}
 	if _, err := d.Users.Update(ctx, "directory-user", func(u *userdomain.User) (bool, error) { u.PasswordHash = ""; return true, nil }); err != nil {
@@ -88,7 +88,7 @@ func TestDelegationConfigurationRejectsLocalCredentialsAndRetainsItsAuthority(t 
 		t.Fatal(err)
 	}
 	got, err := d.Verify(ctx, "directory-user", "password")
-	if err != nil || !got.Delegated || got.Result != domain.PasswordConnectorUnavailable {
+	if err != nil || !got.Delegated || got.Result != directorydomain.PasswordConnectorUnavailable {
 		t.Fatalf("disabled authority=%+v %v", got, err)
 	}
 	if local, err := d.AllowsLocalPassword(ctx, "directory-user"); err != nil || local {
@@ -117,12 +117,12 @@ func TestDelegationRejectsAResultFromAnEarlierConfiguration(t *testing.T) {
 	if _, err := d.Configure(ctx, c.ID, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := d.Complete(ctx, c, challenge.ID, domain.PasswordAccepted); !errors.Is(err, ports.ErrDelegationUnavailable) {
+	if err := d.Complete(ctx, c, challenge.ID, directorydomain.PasswordAccepted); !errors.Is(err, directoryinternalports.ErrDelegationUnavailable) {
 		t.Fatalf("old generation accepted: %v", err)
 	}
 	cancel()
 	result := <-done
-	if !result.Delegated || result.Result != domain.PasswordConnectorUnavailable {
+	if !result.Delegated || result.Result != directorydomain.PasswordConnectorUnavailable {
 		t.Fatalf("old result=%+v", result)
 	}
 	if item, err := d.Challenges.Find(ctx, c.TenantID, challenge.ID); err != nil || item != nil {

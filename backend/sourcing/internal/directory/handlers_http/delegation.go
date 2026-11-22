@@ -6,14 +6,14 @@ import (
 	"strconv"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
 	"github.com/labstack/echo/v5"
 )
 
 func writeDelegationError(c *echo.Context, err error) error {
-	if errors.Is(err, ports.ErrDelegationUnavailable) || errors.Is(err, ports.ErrRunBusy) || errors.Is(err, ports.ErrStaleConnector) {
+	if errors.Is(err, directoryinternalports.ErrDelegationUnavailable) || errors.Is(err, directoryinternalports.ErrRunBusy) || errors.Is(err, directoryinternalports.ErrStaleConnector) {
 		return support.WriteProblem(c, http.StatusConflict, "delegation_unavailable", "directory delegation is unavailable")
 	}
 	return writeAdminError(c, err)
@@ -31,7 +31,7 @@ func (h handler) registerEncryption(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid encryption capability")
 	}
 	kid, err := h.deps.Delegation.RegisterEncryption(c.Request().Context(), connector, request.JWK)
-	if errors.Is(err, usecases.ErrInvalidKey) {
+	if errors.Is(err, directoryusecases.ErrInvalidKey) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "a separate public P-256 key is required")
 	}
 	if err != nil {
@@ -62,7 +62,7 @@ func (h handler) completePasswordChallenge(c *echo.Context) error {
 		return err
 	}
 	var request struct {
-		Result domain.PasswordResult `json:"result"`
+		Result directorydomain.PasswordResult `json:"result"`
 	}
 	if err := support.DecodeJSON(c.Request(), &request); err != nil || !request.Result.Valid() {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid password result")
@@ -109,17 +109,17 @@ func (h handler) testDelegation(c *echo.Context) error {
 		return err
 	}
 	if corr == nil || corr.ConnectorID != c.Param("connector_id") {
-		return writeAdminError(c, usecases.ErrNotFound)
+		return writeAdminError(c, directoryusecases.ErrNotFound)
 	}
 	user, err := h.deps.Users.FindBySub(ctx, request.UserID)
 	if err != nil {
 		return err
 	}
 	if user == nil {
-		return writeAdminError(c, usecases.ErrNotFound)
+		return writeAdminError(c, directoryusecases.ErrNotFound)
 	}
 	if h.deps.DiagnosticGate == nil {
-		return writeDelegationError(c, ports.ErrDelegationUnavailable)
+		return writeDelegationError(c, directoryinternalports.ErrDelegationUnavailable)
 	}
 	retry, err := h.deps.DiagnosticGate.Check(ctx, user.PreferredUsername, c.RealIP())
 	if err != nil {
@@ -133,8 +133,8 @@ func (h handler) testDelegation(c *echo.Context) error {
 	if err != nil {
 		return writeDelegationError(c, err)
 	}
-	if result != domain.PasswordConnectorUnavailable && result != domain.PasswordDirectoryUnavailable {
-		if err := h.deps.DiagnosticGate.Record(ctx, user.PreferredUsername, c.RealIP(), result == domain.PasswordAccepted); err != nil {
+	if result != directorydomain.PasswordConnectorUnavailable && result != directorydomain.PasswordDirectoryUnavailable {
+		if err := h.deps.DiagnosticGate.Record(ctx, user.PreferredUsername, c.RealIP(), result == directorydomain.PasswordAccepted); err != nil {
 			return err
 		}
 	}

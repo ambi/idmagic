@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 )
 
 // DesiredStateAssignments は、ほかのモジュールが User への直接割り当てを
@@ -21,9 +21,9 @@ type DesiredStateAssignments struct {
 
 // AssignApplicationDesiredState は userID への直接割り当てを visibility どおりにする。
 // テナントは ctx ではなく引数で受け取り、そのテナントの外の Application と User を拒否する。
-func (a DesiredStateAssignments) AssignApplicationDesiredState(ctx context.Context, tenantID, applicationID, userID string, visibility domain.AssignmentVisibility, now time.Time) (bool, error) {
+func (a DesiredStateAssignments) AssignApplicationDesiredState(ctx context.Context, tenantID, applicationID, userID string, visibility appdomain.AssignmentVisibility, now time.Time) (bool, error) {
 	if visibility == "" {
-		visibility = domain.AssignmentVisible
+		visibility = appdomain.AssignmentVisible
 	}
 	if !visibility.Valid() {
 		return false, ErrInvalidVisibility
@@ -38,7 +38,7 @@ func (a DesiredStateAssignments) AssignApplicationDesiredState(ctx context.Conte
 	if a.Deps.SubjectDirectory == nil {
 		return false, ErrSubjectNotFound
 	}
-	userExists, err := a.Deps.SubjectDirectory.SubjectExists(ctx, tenantID, domain.AssignmentSubjectUser, userID)
+	userExists, err := a.Deps.SubjectDirectory.SubjectExists(ctx, tenantID, appdomain.AssignmentSubjectUser, userID)
 	if err != nil {
 		return false, err
 	}
@@ -53,9 +53,9 @@ func (a DesiredStateAssignments) AssignApplicationDesiredState(ctx context.Conte
 		return false, nil
 	}
 	at := adminNow(now)
-	desired := &domain.ApplicationAssignment{
+	desired := &appdomain.ApplicationAssignment{
 		TenantID: tenantID, ApplicationID: applicationID,
-		SubjectType: domain.AssignmentSubjectUser, SubjectID: userID,
+		SubjectType: appdomain.AssignmentSubjectUser, SubjectID: userID,
 		Visibility: visibility, CreatedAt: at, UpdatedAt: at,
 	}
 	if exists {
@@ -64,13 +64,13 @@ func (a DesiredStateAssignments) AssignApplicationDesiredState(ctx context.Conte
 	if err := a.Deps.AssignmentRepo.Save(ctx, desired); err != nil {
 		return false, err
 	}
-	emit(a.Deps.Emit, &domain.ApplicationAssigned{
+	emit(a.Deps.Emit, &appdomain.ApplicationAssigned{
 		At: at, TenantID: tenantID, ActorUserID: a.ActorUserID, ApplicationID: applicationID,
-		SubjectType: string(domain.AssignmentSubjectUser), SubjectID: userID,
+		SubjectType: string(appdomain.AssignmentSubjectUser), SubjectID: userID,
 	})
 	// Provisioning が送る属性は visibility に依らないため、通知は割り当てが新しく生じたときだけ行う。
 	if !exists {
-		notifyProvisioning(ctx, a.Deps, tenantID, applicationID, userID, ports.ProvisioningAssignmentAdded, at)
+		notifyProvisioning(ctx, a.Deps, tenantID, applicationID, userID, appports.ProvisioningAssignmentAdded, at)
 	}
 	return true, nil
 }
@@ -85,27 +85,27 @@ func (a DesiredStateAssignments) UnassignApplicationDesiredState(ctx context.Con
 	if !exists {
 		return false, nil
 	}
-	if err := a.Deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, domain.AssignmentSubjectUser, userID); err != nil {
+	if err := a.Deps.AssignmentRepo.Delete(ctx, tenantID, applicationID, appdomain.AssignmentSubjectUser, userID); err != nil {
 		return false, err
 	}
 	at := adminNow(now)
-	emit(a.Deps.Emit, &domain.ApplicationUnassigned{
+	emit(a.Deps.Emit, &appdomain.ApplicationUnassigned{
 		At: at, TenantID: tenantID, ActorUserID: a.ActorUserID, ApplicationID: applicationID,
-		SubjectType: string(domain.AssignmentSubjectUser), SubjectID: userID,
+		SubjectType: string(appdomain.AssignmentSubjectUser), SubjectID: userID,
 	})
-	notifyProvisioning(ctx, a.Deps, tenantID, applicationID, userID, ports.ProvisioningAssignmentRemoved, at)
+	notifyProvisioning(ctx, a.Deps, tenantID, applicationID, userID, appports.ProvisioningAssignmentRemoved, at)
 	return true, nil
 }
 
-func (a DesiredStateAssignments) findDirectAssignment(ctx context.Context, tenantID, applicationID, userID string) (domain.ApplicationAssignment, bool, error) {
-	assignments, err := a.Deps.AssignmentRepo.ListBySubjects(ctx, tenantID, []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: userID}})
+func (a DesiredStateAssignments) findDirectAssignment(ctx context.Context, tenantID, applicationID, userID string) (appdomain.ApplicationAssignment, bool, error) {
+	assignments, err := a.Deps.AssignmentRepo.ListBySubjects(ctx, tenantID, []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: userID}})
 	if err != nil {
-		return domain.ApplicationAssignment{}, false, err
+		return appdomain.ApplicationAssignment{}, false, err
 	}
 	for _, assignment := range assignments {
 		if assignment.ApplicationID == applicationID {
 			return *assignment, true, nil
 		}
 	}
-	return domain.ApplicationAssignment{}, false, nil
+	return appdomain.ApplicationAssignment{}, false, nil
 }

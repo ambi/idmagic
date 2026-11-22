@@ -5,16 +5,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type RevokeDeps struct {
-	RefreshStore        ports.RefreshTokenStore
-	Introspector        ports.TokenIntrospector
-	AccessTokenDenylist ports.AccessTokenDenylist
+	RefreshStore        oauthports.RefreshTokenStore
+	Introspector        oauthports.TokenIntrospector
+	AccessTokenDenylist oauthports.AccessTokenDenylist
 	Emit                func(spec.DomainEvent)
 	ManagedTokenRevoker ManagedTokenRevoker
 }
@@ -27,7 +27,7 @@ func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, n
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	hash := domain.HashRefreshToken(token)
+	hash := oauthdomain.HashRefreshToken(token)
 	rec, err := deps.RefreshStore.FindByHash(ctx, hash)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func RevokeToken(ctx context.Context, deps RevokeDeps, clientID, token string, n
 		return err
 	}
 	for _, tokenID := range revokedIDs {
-		emit(deps.Emit, &domain.TokenRevoked{At: now, TenantID: rec.TenantID, TokenType: "refresh_token", TokenID: tokenID, Reason: "client_initiated"})
+		emit(deps.Emit, &oauthdomain.TokenRevoked{At: now, TenantID: rec.TenantID, TokenType: "refresh_token", TokenID: tokenID, Reason: "client_initiated"})
 	}
 	return nil
 }
@@ -62,7 +62,7 @@ func RevokeTokensBySid(ctx context.Context, deps RevokeDeps, sid string, now tim
 // SessionTokenRevoker は、ログインセッションの失効に合わせて、その sid に結び付いたトークンを
 // 失効させる。Authentication が要求するポートを、型を import せずに満たす。RefreshStore を
 // 結ばない組み立てでは何もしない。
-type SessionTokenRevoker struct{ RefreshStore ports.RefreshTokenStore }
+type SessionTokenRevoker struct{ RefreshStore oauthports.RefreshTokenStore }
 
 func (r SessionTokenRevoker) RevokeTokensBySid(ctx context.Context, sid string) error {
 	if r.RefreshStore == nil {
@@ -92,7 +92,7 @@ func revokeAccessToken(
 	if err := deps.AccessTokenDenylist.Add(ctx, result.JTI, time.Unix(result.Exp, 0)); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.TokenRevoked{
+	emit(deps.Emit, &oauthdomain.TokenRevoked{
 		At: now, TenantID: tenantports.TenantID(ctx), TokenType: "access_token", TokenID: result.JTI, Reason: "client_initiated",
 	})
 	return nil

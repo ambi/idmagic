@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -22,7 +22,7 @@ import (
 // (NewRunner panics otherwise, a startup-time programmer error).
 type RunnerConfig struct {
 	WorkerID      string
-	Lane          domain.ExecutionLane
+	Lane          jobsdomain.ExecutionLane
 	PollInterval  time.Duration
 	Concurrency   int
 	LeaseDuration time.Duration
@@ -41,17 +41,17 @@ func (c RunnerConfig) withDefaults() RunnerConfig {
 		c.LeaseDuration = 5 * time.Minute
 	}
 	if c.BackoffBase <= 0 {
-		c.BackoffBase = domain.DefaultBackoffBase
+		c.BackoffBase = jobsdomain.DefaultBackoffBase
 	}
 	if c.BackoffCap <= 0 {
-		c.BackoffCap = domain.DefaultBackoffCap
+		c.BackoffCap = jobsdomain.DefaultBackoffCap
 	}
 	return c
 }
 
 // RunnerDeps are the dependencies for Runner.
 type RunnerDeps struct {
-	Repo     ports.JobRepository
+	Repo     jobsports.JobRepository
 	Handlers *HandlerRegistry
 	Emit     func(spec.DomainEvent)
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
@@ -138,7 +138,7 @@ func (rn *Runner) poll(ctx context.Context) {
 		return
 	}
 	for _, job := range claimed {
-		emit(rn.deps.Emit, &domain.JobStarted{
+		emit(rn.deps.Emit, &jobsdomain.JobStarted{
 			At: now, JobID: job.ID, TenantID: job.TenantID,
 			WorkerID: rn.cfg.WorkerID, Attempt: job.Attempts,
 		})
@@ -150,7 +150,7 @@ func (rn *Runner) poll(ctx context.Context) {
 		// Deliberately context.Background() inside execute, not ctx:
 		// in-flight work must not be aborted the moment drain begins. See
 		// Run's doc comment for how the process eventually gives up.
-		go func(job *domain.Job) { //nolint:gosec,contextcheck // G118: detached on purpose so drain doesn't abort in-flight jobs
+		go func(job *jobsdomain.Job) { //nolint:gosec,contextcheck // G118: detached on purpose so drain doesn't abort in-flight jobs
 			defer rn.wg.Done()
 			defer func() { <-rn.sem }()
 			rn.execute(context.Background(), job)
@@ -158,7 +158,7 @@ func (rn *Runner) poll(ctx context.Context) {
 	}
 }
 
-func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
+func (rn *Runner) execute(ctx context.Context, job *jobsdomain.Job) {
 	// ハンドラーの実行コンテキストは Job のテナントに固定する。worker はすべての
 	// テナントの Job を実行するので、Job ごとに固定しなければハンドラーはどのテナントの範囲で
 	// 動くかを決められず、テナントを読んだ時点で tenantports.TenantID が panic する。
@@ -177,7 +177,7 @@ func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 	startedAt := rn.deps.Now()
 	result, err := handler(execCtx, job)
 	elapsed := rn.deps.Now().Sub(startedAt)
-	if errors.Is(context.Cause(execCtx), ports.ErrJobLeaseLost) {
+	if errors.Is(context.Cause(execCtx), jobsports.ErrJobLeaseLost) {
 		// Job はもうこの worker のものではない。取り消しなら終端に、リースの失効なら
 		// 別の worker の手にあるので、完了も失敗も報告しない。
 		return
@@ -193,7 +193,7 @@ func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 
 // heartbeatLoop はリースを延長し続ける。リースを失ったと分かったら（取り消し、
 // またはリースの失効）、abandon でハンドラーの実行コンテキストを取り消して中断させる。
-func (rn *Runner) heartbeatLoop(ctx context.Context, job *domain.Job, abandon context.CancelCauseFunc) {
+func (rn *Runner) heartbeatLoop(ctx context.Context, job *jobsdomain.Job, abandon context.CancelCauseFunc) {
 	interval := rn.cfg.LeaseDuration / 3
 	if interval <= 0 {
 		interval = time.Second
@@ -207,7 +207,7 @@ func (rn *Runner) heartbeatLoop(ctx context.Context, job *domain.Job, abandon co
 		case <-ticker.C:
 			if _, err := rn.deps.Repo.Heartbeat(ctx, job.ID, rn.cfg.WorkerID, rn.cfg.LeaseDuration, rn.deps.Now()); err != nil {
 				logging.Warn(ctx, "jobs: heartbeat failed, lease likely lost", "job_id", job.ID, "error", err)
-				if errors.Is(err, ports.ErrJobLeaseLost) {
+				if errors.Is(err, jobsports.ErrJobLeaseLost) {
 					abandon(err)
 				}
 				return
@@ -216,17 +216,17 @@ func (rn *Runner) heartbeatLoop(ctx context.Context, job *domain.Job, abandon co
 	}
 }
 
-func (rn *Runner) complete(ctx context.Context, job *domain.Job, result json.RawMessage) {
+func (rn *Runner) complete(ctx context.Context, job *jobsdomain.Job, result json.RawMessage) {
 	now := rn.deps.Now()
 	updated, err := rn.deps.Repo.Complete(ctx, job.ID, rn.cfg.WorkerID, result, now)
 	if err != nil {
-		if !errors.Is(err, ports.ErrJobLeaseLost) {
+		if !errors.Is(err, jobsports.ErrJobLeaseLost) {
 			logging.Warn(ctx, "jobs: complete failed", "job_id", job.ID, "error", err)
 		}
 		return
 	}
 	decrementActiveJobsQuota(ctx, rn.deps.QuotaRepo, updated.TenantID)
-	emit(rn.deps.Emit, &domain.JobSucceeded{At: now, JobID: updated.ID, TenantID: updated.TenantID})
+	emit(rn.deps.Emit, &jobsdomain.JobSucceeded{At: now, JobID: updated.ID, TenantID: updated.TenantID})
 	rn.jobsMetrics().RecordJobOutcome(rn.cfg.Lane, "succeeded")
 	rn.deps.Handlers.notifySettlement(ctx, updated)
 }
@@ -235,20 +235,20 @@ func (rn *Runner) complete(ctx context.Context, job *domain.Job, result json.Raw
 // Job's Attempts as of the claim that is failing, computes backoff via
 // domain.NextRetryRunAt when retrying, and emits JobFailed (always) plus
 // JobRetried (only when a retry was scheduled).
-func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
+func (rn *Runner) fail(ctx context.Context, job *jobsdomain.Job, handlerErr error) {
 	now := rn.deps.Now()
 	terminal := job.Attempts >= job.MaxAttempts
-	outcome := ports.FailOutcome{Error: handlerErr.Error()}
+	outcome := jobsports.FailOutcome{Error: handlerErr.Error()}
 	if terminal {
-		outcome.NextStatus = domain.StatusFailed
+		outcome.NextStatus = jobsdomain.StatusFailed
 	} else {
-		outcome.NextStatus = domain.StatusQueued
-		outcome.RunAt = domain.NextRetryRunAt(now, job.Attempts, rn.cfg.BackoffBase, rn.cfg.BackoffCap)
+		outcome.NextStatus = jobsdomain.StatusQueued
+		outcome.RunAt = jobsdomain.NextRetryRunAt(now, job.Attempts, rn.cfg.BackoffBase, rn.cfg.BackoffCap)
 	}
 
 	updated, err := rn.deps.Repo.Fail(ctx, job.ID, rn.cfg.WorkerID, outcome, now)
 	if err != nil {
-		if !errors.Is(err, ports.ErrJobLeaseLost) {
+		if !errors.Is(err, jobsports.ErrJobLeaseLost) {
 			logging.Warn(ctx, "jobs: fail failed", "job_id", job.ID, "error", err)
 		}
 		return
@@ -266,12 +266,12 @@ func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
 			"kind", string(updated.Kind), "lane", string(rn.cfg.Lane),
 			"attempts", updated.Attempts, "max_attempts", updated.MaxAttempts)
 	}
-	emit(rn.deps.Emit, &domain.JobFailed{
+	emit(rn.deps.Emit, &jobsdomain.JobFailed{
 		At: now, JobID: updated.ID, TenantID: updated.TenantID,
 		Attempt: job.Attempts, Terminal: terminal, Error: handlerErr.Error(),
 	})
 	if !terminal {
-		emit(rn.deps.Emit, &domain.JobRetried{
+		emit(rn.deps.Emit, &jobsdomain.JobRetried{
 			At: now, JobID: updated.ID, TenantID: updated.TenantID,
 			Attempt: job.Attempts, NextRunAt: outcome.RunAt,
 		})

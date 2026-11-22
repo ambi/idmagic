@@ -13,9 +13,9 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -26,16 +26,16 @@ type Deps struct {
 	support.Deps
 	*support.Authenticator
 
-	ConnectionRepo  ports.ProvisioningConnectionRepository
-	TaskRepo        ports.ProvisioningTaskRepository
+	ConnectionRepo  provisioningports.ProvisioningConnectionRepository
+	TaskRepo        provisioningports.ProvisioningTaskRepository
 	AssignmentRepo  appports.AssignmentRepository
 	UserRepo        userports.UserRepository
 	GroupRepo       groupports.GroupRepository
-	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
+	NewTargetClient func(conn *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error)
 }
 
-func (d Deps) adminDeps() usecases.AdminDeps {
-	return usecases.AdminDeps{
+func (d Deps) adminDeps() provisioningusecases.AdminDeps {
+	return provisioningusecases.AdminDeps{
 		ConnectionRepo: d.ConnectionRepo, TaskRepo: d.TaskRepo,
 		AssignmentRepo: d.AssignmentRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
 		NewTargetClient: d.NewTargetClient, Emit: d.Emit,
@@ -61,7 +61,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 }
 
 func (d Deps) writeError(c *echo.Context, err error) error {
-	var invalid *usecases.InvalidInputError
+	var invalid *provisioningusecases.InvalidInputError
 	switch {
 	case isNotFound(err):
 		return support.WriteProblem(c, http.StatusNotFound, "provisioning_not_found", err.Error())
@@ -69,8 +69,8 @@ func (d Deps) writeError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusConflict, "provisioning_conflict", err.Error())
 	case errors.As(err, &invalid):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", invalid.Error())
-	case errors.Is(err, domain.ErrConnectionNotQuarantined):
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", domain.ErrConnectionNotQuarantined.Error())
+	case errors.Is(err, provisioningdomain.ErrConnectionNotQuarantined):
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", provisioningdomain.ErrConnectionNotQuarantined.Error())
 	default:
 		return err
 	}

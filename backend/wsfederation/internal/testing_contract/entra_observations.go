@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // ObservationFixture は、観測記録の保存先の共有契約に渡す保存先と二つのテナントである。
 type ObservationFixture struct {
-	Repository ports.EntraFederationObservationRepository
+	Repository wsfedports.EntraFederationObservationRepository
 	TenantA    string
 	TenantB    string
 	Now        time.Time
@@ -24,16 +24,16 @@ func RunEntraObservations(t *testing.T, newFixture func(t *testing.T) Observatio
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	record := func(tenantID, domainName string, retrievedAt time.Time, matched bool) domain.EntraFederationObservationRecord {
-		return domain.EntraFederationObservationRecord{
+	record := func(tenantID, domainName string, retrievedAt time.Time, matched bool) wsfeddomain.EntraFederationObservationRecord {
+		return wsfeddomain.EntraFederationObservationRecord{
 			TenantID: tenantID, Domain: domainName,
-			Observation: domain.EntraFederationObservation{
-				Format: domain.EntraObservationFormat, EntraTenantID: "11111111-2222-3333-4444-555555555555",
+			Observation: wsfeddomain.EntraFederationObservation{
+				Format: wsfeddomain.EntraObservationFormat, EntraTenantID: "11111111-2222-3333-4444-555555555555",
 				Domain: domainName, AuthenticationType: "Federated", RetrievedAt: retrievedAt,
-				FederationConfigurations: []domain.EntraObservedFederationConfiguration{{IssuerURI: "urn:example:" + domainName}},
+				FederationConfigurations: []wsfeddomain.EntraObservedFederationConfiguration{{IssuerURI: "urn:example:" + domainName}},
 			},
 			ExpectedFingerprint: "fingerprint", SigningCertificateThumbprint: "current", NextSigningCertificateThumbprint: "next",
-			Matched: matched, Differences: []domain.EntraSettingDifference{{Field: "issuer_uri", Expected: "a", Observed: "b"}},
+			Matched: matched, Differences: []wsfeddomain.EntraSettingDifference{{Field: "issuer_uri", Expected: "a", Observed: "b"}},
 			CheckedAt: f.Now,
 		}
 	}
@@ -52,7 +52,7 @@ func RunEntraObservations(t *testing.T, newFixture func(t *testing.T) Observatio
 		t.Fatalf("Find = (%+v, %v), want round trip", got, err)
 	}
 	older := record(f.TenantA, "contoso.com", f.Now.Add(-time.Hour), true)
-	if err := f.Repository.Save(ctx, older); !errors.Is(err, ports.ErrEntraObservationOutdated) {
+	if err := f.Repository.Save(ctx, older); !errors.Is(err, wsfedports.ErrEntraObservationOutdated) {
 		t.Fatalf("Save older = %v, want ErrEntraObservationOutdated", err)
 	}
 	if got, err := f.Repository.Find(ctx, f.TenantA, "contoso.com"); err != nil || got == nil || got.Matched {

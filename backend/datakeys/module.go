@@ -2,8 +2,8 @@
 package datakeys
 
 import (
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
-	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 )
 
@@ -12,8 +12,8 @@ import (
 // reversible secrets, plus what the system_admin health endpoint
 // (ListTenantDataKeyHealth, wi-97 T007) needs.
 type Module struct {
-	Repository ports.DataKeyRepository
-	Cache      *usecases.DataKeyCache
+	Repository datakeysports.DataKeyRepository
+	Cache      *datakeysusecases.DataKeyCache
 	// Crypto is the same EnvelopeCrypto instance Cache wraps; the health
 	// endpoint uses it directly for Healthy()/Provider() (wi-97 T007), which
 	// have no reason to go through the per-tenant DEK cache.
@@ -24,5 +24,5 @@ type Module struct {
 	// PendingCount. Bootstrap constructs one instance shared across
 	// RunWorker's handler registration and the lifecycle usecases.Deps
 	// passed wherever Rotate/Destroy are called.
-	Migrators *usecases.MigratorRegistry
+	Migrators *datakeysusecases.MigratorRegistry
 }

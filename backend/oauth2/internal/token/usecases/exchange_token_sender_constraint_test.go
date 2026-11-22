@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
@@ -21,8 +21,8 @@ import (
 //spec:covers REQ-OAUTH2-056: 別の鍵の証明による交換は invalid_grant になり、署名せず、AccessTokenIssued と TokenExchanged を発行せず、TokenExchangeRejected だけを発行する。
 func TestExchangeTokenRejectsAnotherKeyWithoutIssuing(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
-		"subj": {Active: true, Sub: "user-1", Scope: "read", SenderConstraint: &domain.SenderConstraint{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
+		"subj": {Active: true, Sub: "user-1", Scope: "read", SenderConstraint: &oauthdomain.SenderConstraint{
 			Type: spec.SenderConstraintDPoP, JKT: "k1",
 		}},
 	})
@@ -42,7 +42,7 @@ func TestExchangeTokenRejectsAnotherKeyWithoutIssuing(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("events=%#v, want only TokenExchangeRejected", events)
 	}
-	if rejected, ok := events[0].(*domain.TokenExchangeRejected); !ok || rejected.Reason != "invalid_grant" {
+	if rejected, ok := events[0].(*oauthdomain.TokenExchangeRejected); !ok || rejected.Reason != "invalid_grant" {
 		t.Fatalf("event=%#v, want TokenExchangeRejected with invalid_grant", events[0])
 	}
 }
@@ -53,8 +53,8 @@ func TestExchangeTokenRejectsAnotherKeyWithoutIssuing(t *testing.T) {
 //spec:covers REQ-OAUTH2-056: mTLS に束縛した subject_token は、同じ証明書の交換で同じ cnf を引き継ぎ、Bearer の提示形式を返す。
 func TestExchangeTokenInheritsMTLSConstraint(t *testing.T) {
 	issuer := &recordingIssuer{}
-	subject := &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "c1"}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	subject := &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "c1"}
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read", SenderConstraint: subject},
 	})
 
@@ -77,7 +77,7 @@ func TestExchangeTokenInheritsMTLSConstraint(t *testing.T) {
 func TestExchangeTokenBindsWorkloadSubjectToTheProof(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, nil)
-	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&domain.OAuth2Client{
+	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&oauthdomain.OAuth2Client{
 		ClientID: "agent-bound-client", ClientType: spec.ClientConfidential,
 		GrantTypes: []spec.GrantType{spec.GrantClientCredentials}, Scope: "read", CreatedAt: time.Now().UTC(),
 	})
@@ -92,7 +92,7 @@ func TestExchangeTokenBindsWorkloadSubjectToTheProof(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExchangeToken: %v", err)
 	}
-	want := &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "k2"}
+	want := &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: "k2"}
 	if !reflect.DeepEqual(issuer.lastInput.SenderConstraint, want) || res.TokenType != "DPoP" {
 		t.Fatalf("SenderConstraint=%+v token_type=%q, want %+v DPoP", issuer.lastInput.SenderConstraint, res.TokenType, want)
 	}

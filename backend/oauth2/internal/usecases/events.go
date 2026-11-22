@@ -1,7 +1,7 @@
 package usecases
 
 import (
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -18,7 +18,7 @@ func Emit(f func(spec.DomainEvent), e spec.DomainEvent) {
 	emit(f, e)
 }
 
-func senderConstraintTag(sc *domain.SenderConstraint) string {
+func senderConstraintTag(sc *oauthdomain.SenderConstraint) string {
 	if sc == nil {
 		return "none"
 	}
@@ -26,6 +26,6 @@ func senderConstraintTag(sc *domain.SenderConstraint) string {
 }
 
 // SenderConstraintTag is the feature-package bridge for audit attributes.
-func SenderConstraintTag(sc *domain.SenderConstraint) string {
+func SenderConstraintTag(sc *oauthdomain.SenderConstraint) string {
 	return senderConstraintTag(sc)
 }

@@ -11,8 +11,8 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -28,22 +28,22 @@ const (
 )
 
 // ApplicationAccessCheck は、利用者が RP のクライアントの Application へ到達できるかを答える。
-type ApplicationAccessCheck func(ctx context.Context, clientID string, assertion *ports.IDTokenAssertion) (bool, error)
+type ApplicationAccessCheck func(ctx context.Context, clientID string, assertion *oauthports.IDTokenAssertion) (bool, error)
 
 type IssueIDJAGDeps struct {
 	// Guard は発行を Agent のガードレールで評価する (REQ-OAUTH2-073)。
-	Guard      ports.IssuanceGuard
-	ClientRepo ports.OAuth2ClientRepository
+	Guard      oauthports.IssuanceGuard
+	ClientRepo oauthports.OAuth2ClientRepository
 	UserRepo   userports.UserRepository
-	Policies   ports.CrossAppAccessPolicyRepository
-	Verifier   ports.IDTokenAssertionVerifier
-	Signer     ports.IDJAGSigner
+	Policies   oauthports.CrossAppAccessPolicyRepository
+	Verifier   oauthports.IDTokenAssertionVerifier
+	Signer     oauthports.IDJAGSigner
 	// ApplicationAccess は nil なら拒否する。
 	ApplicationAccess ApplicationAccessCheck
 	// UserEpochs は利用者の失効を引く (REQ-SHAREDSIGNALS-012)。
 	UserEpochs ssports.UserRevocationEpochRepository
 	AgentRepo  agentports.AgentRepository
-	Consents   ports.ConsentRepository
+	Consents   oauthports.ConsentRepository
 	Emit       func(spec.DomainEvent)
 }
 
@@ -64,7 +64,7 @@ type IssueIDJAGInput struct {
 func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, now time.Time) (*ExchangeTokenResult, error) {
 	tenantID := tenantports.TenantID(ctx)
 	reject := func(code, description string) error {
-		emit(deps.Emit, &domain.IdJagRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Stage: idJagStageIssue, Reason: code})
+		emit(deps.Emit, &oauthdomain.IdJagRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Stage: idJagStageIssue, Reason: code})
 		return NewOAuthError(code, description)
 	}
 
@@ -97,7 +97,7 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 		return nil, err
 	}
 	known := false
-	var policy *domain.CrossAppAccessIssuePolicy
+	var policy *oauthdomain.CrossAppAccessIssuePolicy
 	for _, candidate := range policies {
 		if candidate.Audience != audience {
 			continue
@@ -123,7 +123,7 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 			return nil, reject("invalid_target", "The resource is not governed by the audience.")
 		}
 	}
-	scopes := domain.CrossAppAccessGrantedScopes(strings.Fields(in.Scope), policy.Scopes)
+	scopes := oauthdomain.CrossAppAccessGrantedScopes(strings.Fields(in.Scope), policy.Scopes)
 	if len(scopes) == 0 {
 		return nil, reject("access_denied", "No requested scope is permitted.")
 	}
@@ -166,14 +166,14 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 
 	details := filterAuthorizationDetailsByType(in.AuthorizationDetails, policy.AuthorizationDetailTypes)
 	if deps.Guard != nil {
-		if err := deps.Guard.Precheck(ctx, ports.AccessTokenInput{Sub: assertion.Subject, Scopes: scopes, Audiences: resources, AuthorizationDetails: details}); err != nil {
+		if err := deps.Guard.Precheck(ctx, oauthports.AccessTokenInput{Sub: assertion.Subject, Scopes: scopes, Audiences: resources, AuthorizationDetails: details}); err != nil {
 			if oe, ok := errors.AsType[*OAuthError](err); ok {
 				return nil, reject(oe.Code, oe.Description)
 			}
 			return nil, err
 		}
 	}
-	input := ports.IDJAGInput{
+	input := oauthports.IDJAGInput{
 		Subject: assertion.Subject, Audience: policy.Audience, ClientID: policy.TargetClientID,
 		Resources: resources, Scopes: scopes, AuthorizationDetails: details,
 		AuthTime: assertion.AuthTime, AMR: assertion.AMR, ACR: assertion.ACR,
@@ -189,7 +189,7 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 	if deps.Guard != nil {
 		deps.Guard.Confirm(jti)
 	}
-	emit(deps.Emit, &domain.IdJagIssued{
+	emit(deps.Emit, &oauthdomain.IdJagIssued{
 		At: now, TenantID: tenantID, ClientID: in.ClientID, UserID: assertion.Subject,
 		Audience: policy.Audience, Resources: resources, Scopes: scopes, JTI: jti,
 	})
@@ -200,12 +200,12 @@ func IssueIDJAG(ctx context.Context, deps IssueIDJAGDeps, in IssueIDJAGInput, no
 }
 
 // idJagBinding は REQ-OAUTH2-068 の表である。両方の証明があれば DPoP を選ぶ。
-func idJagBinding(jkt, x5t string) *domain.SenderConstraint {
+func idJagBinding(jkt, x5t string) *oauthdomain.SenderConstraint {
 	switch {
 	case jkt != "":
-		return &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt}
+		return &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt}
 	case x5t != "":
-		return &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: x5t}
+		return &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: x5t}
 	}
 	return nil
 }
@@ -221,9 +221,9 @@ func filterAuthorizationDetailsByType(details []spec.AuthorizationDetail, allowe
 }
 
 type idJagAgentDeps struct {
-	ClientRepo ports.OAuth2ClientRepository
+	ClientRepo oauthports.OAuth2ClientRepository
 	AgentRepo  agentports.AgentRepository
-	Consents   ports.ConsentRepository
+	Consents   oauthports.ConsentRepository
 	Emit       func(spec.DomainEvent)
 }
 

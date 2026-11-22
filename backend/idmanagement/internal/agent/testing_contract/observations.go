@@ -6,18 +6,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idmanagement/agent/domain"
-	"github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 )
 
 // ObservationFixture は観測の保存先と、その確認先になる Agent の保存先である。OtherTenantID は
 // テナント境界を確かめる二つ目のテナントで、NewID は保存先の ID の形式に合う値を作る。
 type ObservationFixture struct {
-	Repository    ports.AgentObservationRepository
-	Agents        ports.AgentRepository
+	Repository    agentports.AgentObservationRepository
+	Agents        agentports.AgentRepository
 	TenantID      string
 	OtherTenantID string
-	Agent         *domain.Agent
+	Agent         *agentdomain.Agent
 	MissingAgent  string
 	NewID         func() string
 }
@@ -27,23 +27,23 @@ type ObservationFixture struct {
 func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) ObservationFixture) {
 	t.Helper()
 	base := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-	observation := func(f ObservationFixture, subject, name string, at time.Time) *domain.AgentObservation {
-		return &domain.AgentObservation{
+	observation := func(f ObservationFixture, subject, name string, at time.Time) *agentdomain.AgentObservation {
+		return &agentdomain.AgentObservation{
 			ID: f.NewID(), TenantID: f.TenantID, Issuer: "https://discovery.example", Subject: subject,
 			DisplayName: &name, Resources: []string{name}, ObservedAt: at, SourceTokenID: "token-" + name, CreatedAt: base,
 		}
 	}
-	importOne := func(t *testing.T, f ObservationFixture, item *domain.AgentObservation) ports.ObservationImportCounts {
+	importOne := func(t *testing.T, f ObservationFixture, item *agentdomain.AgentObservation) agentports.ObservationImportCounts {
 		t.Helper()
-		counts, err := f.Repository.Import(context.Background(), f.TenantID, []*domain.AgentObservation{item}, 100)
+		counts, err := f.Repository.Import(context.Background(), f.TenantID, []*agentdomain.AgentObservation{item}, 100)
 		if err != nil {
 			t.Fatalf("Import: %v", err)
 		}
 		return counts
 	}
-	only := func(t *testing.T, f ObservationFixture, subject string) *domain.AgentObservation {
+	only := func(t *testing.T, f ObservationFixture, subject string) *agentdomain.AgentObservation {
 		t.Helper()
-		rows, err := f.Repository.ListPage(context.Background(), f.TenantID, ports.ObservationFilter{}, "", "", 100)
+		rows, err := f.Repository.ListPage(context.Background(), f.TenantID, agentports.ObservationFilter{}, "", "", 100)
 		if err != nil {
 			t.Fatalf("ListPage: %v", err)
 		}
@@ -82,7 +82,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 
 	t.Run("同じバッチの同じ主体は最も新しい項目を残す", func(t *testing.T) {
 		f := newFixture(t)
-		counts, err := f.Repository.Import(ctx, f.TenantID, []*domain.AgentObservation{
+		counts, err := f.Repository.Import(ctx, f.TenantID, []*agentdomain.AgentObservation{
 			observation(f, "batch", "newest", base.Add(time.Minute)),
 			observation(f, "batch", "oldest", base),
 		}, 100)
@@ -100,21 +100,21 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 	t.Run("上限を超えるバッチは一件も保存しない", func(t *testing.T) {
 		f := newFixture(t)
 		importOne(t, f, observation(f, "limit-0", "kept", base))
-		before, err := f.Repository.Count(ctx, f.TenantID, ports.ObservationFilter{})
+		before, err := f.Repository.Count(ctx, f.TenantID, agentports.ObservationFilter{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		limit := int(before) + 1
-		_, err = f.Repository.Import(ctx, f.TenantID, []*domain.AgentObservation{
+		_, err = f.Repository.Import(ctx, f.TenantID, []*agentdomain.AgentObservation{
 			observation(f, "limit-1", "a", base), observation(f, "limit-2", "b", base),
 		}, limit)
-		if !errors.Is(err, ports.ErrObservationLimitExceeded) {
+		if !errors.Is(err, agentports.ErrObservationLimitExceeded) {
 			t.Fatalf("err=%v", err)
 		}
-		if after, _ := f.Repository.Count(ctx, f.TenantID, ports.ObservationFilter{}); after != before {
+		if after, _ := f.Repository.Count(ctx, f.TenantID, agentports.ObservationFilter{}); after != before {
 			t.Fatalf("拒否が保存を残した: %d → %d", before, after)
 		}
-		if _, err := f.Repository.Import(ctx, f.TenantID, []*domain.AgentObservation{observation(f, "limit-1", "a", base)}, limit); err != nil {
+		if _, err := f.Repository.Import(ctx, f.TenantID, []*agentdomain.AgentObservation{observation(f, "limit-1", "a", base)}, limit); err != nil {
 			t.Fatalf("上限ちょうどの保存: %v", err)
 		}
 	})
@@ -142,7 +142,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 		if err != nil || previous == nil || previous.ConfirmedAgentID == nil {
 			t.Fatalf("Reopen=(%+v,%v)", previous, err)
 		}
-		if got := only(t, f, "decide"); got.Decision() != domain.ObservationPending || got.DecidedAt != nil {
+		if got := only(t, f, "decide"); got.Decision() != agentdomain.ObservationPending || got.DecidedAt != nil {
 			t.Fatalf("再開の後=%+v", got)
 		}
 	})
@@ -151,7 +151,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 		f := newFixture(t)
 		importOne(t, f, observation(f, "tenant", "first", base))
 		id := only(t, f, "tenant").ID
-		if _, err := f.Repository.Confirm(ctx, f.TenantID, id, f.MissingAgent, "actor", base); !errors.Is(err, ports.ErrObservationAgentMissing) {
+		if _, err := f.Repository.Confirm(ctx, f.TenantID, id, f.MissingAgent, "actor", base); !errors.Is(err, agentports.ErrObservationAgentMissing) {
 			t.Fatalf("err=%v", err)
 		}
 		if got, err := f.Repository.FindByID(ctx, f.OtherTenantID, id); err != nil || got != nil {
@@ -178,7 +178,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 		if err := f.Agents.Delete(ctx, f.TenantID, f.Agent.ID); err != nil {
 			t.Fatal(err)
 		}
-		if got := only(t, f, "deleted"); got.ConfirmedAgentID != nil || got.Decision() != domain.ObservationPending {
+		if got := only(t, f, "deleted"); got.ConfirmedAgentID != nil || got.Decision() != agentdomain.ObservationPending {
 			t.Fatalf("削除の後=%+v", got)
 		}
 	})
@@ -202,7 +202,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 		if deleted < 2 {
 			t.Fatalf("deleted=%d", deleted)
 		}
-		rows, err := f.Repository.ListPage(ctx, f.TenantID, ports.ObservationFilter{}, "", "", 100)
+		rows, err := f.Repository.ListPage(ctx, f.TenantID, agentports.ObservationFilter{}, "", "", 100)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -228,7 +228,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 		if _, err := f.Repository.Exclude(ctx, f.TenantID, excluded.ID, "actor", base); err != nil {
 			t.Fatal(err)
 		}
-		pending := ports.ObservationFilter{Decision: domain.ObservationPending}
+		pending := agentports.ObservationFilter{Decision: agentdomain.ObservationPending}
 		first, err := f.Repository.ListPage(ctx, f.TenantID, pending, "", "", 1)
 		if err != nil || len(first) != 1 || first[0].Subject != "page-a" {
 			t.Fatalf("first=(%v,%v)", first, err)
@@ -241,7 +241,7 @@ func RunAgentObservationContract(t *testing.T, newFixture func(t *testing.T) Obs
 		if err != nil || len(before) != 1 || before[0].Subject != "page-a" {
 			t.Fatalf("before=(%v,%v)", before, err)
 		}
-		if count, err := f.Repository.Count(ctx, f.TenantID, ports.ObservationFilter{Decision: domain.ObservationExcluded}); err != nil || count != 1 {
+		if count, err := f.Repository.Count(ctx, f.TenantID, agentports.ObservationFilter{Decision: agentdomain.ObservationExcluded}); err != nil || count != 1 {
 			t.Fatalf("count=(%d,%v)", count, err)
 		}
 	})

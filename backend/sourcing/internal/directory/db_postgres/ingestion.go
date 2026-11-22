@@ -10,16 +10,16 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 // CorrelationRepository は Connector ごとの User の対応を PostgreSQL に保存する。
 type CorrelationRepository struct{ Pool sharedpg.DB }
 
 var (
-	_ ports.CorrelationRepository      = (*CorrelationRepository)(nil)
-	_ directoryports.CorrelationWriter = (*CorrelationRepository)(nil)
+	_ directoryinternalports.CorrelationRepository = (*CorrelationRepository)(nil)
+	_ directoryports.CorrelationWriter             = (*CorrelationRepository)(nil)
 )
 
 func (r *CorrelationRepository) SaveUserCorrelation(ctx context.Context, c directoryports.UserCorrelation) error {
@@ -119,9 +119,9 @@ func correlationToPort(row *DirectoryUserCorrelation) directoryports.UserCorrela
 // IngestionRunRepository は取り込みの実行とバッチを PostgreSQL に保存する。
 type IngestionRunRepository struct{ Pool sharedpg.DB }
 
-var _ ports.IngestionRunRepository = (*IngestionRunRepository)(nil)
+var _ directoryinternalports.IngestionRunRepository = (*IngestionRunRepository)(nil)
 
-func (r *IngestionRunRepository) Start(ctx context.Context, run domain.IngestionRun) error {
+func (r *IngestionRunRepository) Start(ctx context.Context, run directorydomain.IngestionRun) error {
 	return pgx.BeginFunc(ctx, r.Pool, func(tx pgx.Tx) error {
 		q := New(tx)
 		applying, err := q.HasApplyingDirectoryIngestionRun(ctx, HasApplyingDirectoryIngestionRunParams{TenantID: run.TenantID, ConnectorID: run.ConnectorID})
@@ -129,7 +129,7 @@ func (r *IngestionRunRepository) Start(ctx context.Context, run domain.Ingestion
 			return err
 		}
 		if applying {
-			return ports.ErrRunBusy
+			return directoryinternalports.ErrRunBusy
 		}
 		if err := q.SupersedeRunningDirectoryIngestionRuns(ctx, SupersedeRunningDirectoryIngestionRunsParams{
 			TenantID: run.TenantID, ConnectorID: run.ConnectorID,
@@ -143,7 +143,7 @@ func (r *IngestionRunRepository) Start(ctx context.Context, run domain.Ingestion
 	})
 }
 
-func (r *IngestionRunRepository) Find(ctx context.Context, tenantID, connectorID, runID string) (*domain.IngestionRun, error) {
+func (r *IngestionRunRepository) Find(ctx context.Context, tenantID, connectorID, runID string) (*directorydomain.IngestionRun, error) {
 	if !sharedpg.IsUUIDText(runID) {
 		return nil, nil
 	}
@@ -158,14 +158,14 @@ func (r *IngestionRunRepository) Find(ctx context.Context, tenantID, connectorID
 	return &run, err
 }
 
-func (r *IngestionRunRepository) List(ctx context.Context, tenantID, connectorID string, limit int) ([]domain.IngestionRun, error) {
+func (r *IngestionRunRepository) List(ctx context.Context, tenantID, connectorID string, limit int) ([]directorydomain.IngestionRun, error) {
 	rows, err := New(r.Pool).ListDirectoryIngestionRuns(ctx, ListDirectoryIngestionRunsParams{
 		TenantID: tenantID, ConnectorID: connectorID, Limit: int32(limit), //nolint:gosec // 上限は呼び出し側の小さな定数。
 	})
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domain.IngestionRun, len(rows))
+	result := make([]directorydomain.IngestionRun, len(rows))
 	for n, row := range rows {
 		if result[n], err = runToDomain(row); err != nil {
 			return nil, err
@@ -174,7 +174,7 @@ func (r *IngestionRunRepository) List(ctx context.Context, tenantID, connectorID
 	return result, nil
 }
 
-func (r *IngestionRunRepository) FindBatch(ctx context.Context, tenantID, runID, batchID string) (*domain.IngestionBatch, error) {
+func (r *IngestionRunRepository) FindBatch(ctx context.Context, tenantID, runID, batchID string) (*directorydomain.IngestionBatch, error) {
 	row, err := New(r.Pool).FindDirectoryIngestionBatch(ctx, FindDirectoryIngestionBatchParams{TenantID: tenantID, RunID: runID, BatchID: batchID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -191,10 +191,10 @@ func (r *IngestionRunRepository) FindBatch(ctx context.Context, tenantID, runID,
 
 // RecordBatch は、バッチの挿入と実行の件数の加算を同じトランザクションで確定する。
 // 同じ ID のバッチが先に挿入されていれば、件数を足さずに先のバッチを返す。
-func (r *IngestionRunRepository) RecordBatch(ctx context.Context, batch domain.IngestionBatch) (domain.IngestionBatch, error) {
+func (r *IngestionRunRepository) RecordBatch(ctx context.Context, batch directorydomain.IngestionBatch) (directorydomain.IngestionBatch, error) {
 	results, err := json.Marshal(batch.Results)
 	if err != nil {
-		return domain.IngestionBatch{}, err
+		return directorydomain.IngestionBatch{}, err
 	}
 	err = pgx.BeginFunc(ctx, r.Pool, func(tx pgx.Tx) error {
 		q := New(tx)
@@ -205,7 +205,7 @@ func (r *IngestionRunRepository) RecordBatch(ctx context.Context, batch domain.I
 		if err != nil || inserted == 0 {
 			return err
 		}
-		counts := domain.RunCounts{}.Add(batch.Results)
+		counts := directorydomain.RunCounts{}.Add(batch.Results)
 		return q.AddDirectoryIngestionRunCounts(ctx, AddDirectoryIngestionRunCountsParams{
 			Items: int32(counts.Items), Created: int32(counts.Created), Updated: int32(counts.Updated), //nolint:gosec // 1 バッチは 100 件まで。
 			Unchanged: int32(counts.Unchanged), Deleted: int32(counts.Deleted), Failed: int32(counts.Failed), //nolint:gosec // 同上。
@@ -213,24 +213,24 @@ func (r *IngestionRunRepository) RecordBatch(ctx context.Context, batch domain.I
 		})
 	})
 	if err != nil {
-		return domain.IngestionBatch{}, err
+		return directorydomain.IngestionBatch{}, err
 	}
 	recorded, err := r.FindBatch(ctx, batch.TenantID, batch.RunID, batch.BatchID)
 	if err != nil {
-		return domain.IngestionBatch{}, err
+		return directorydomain.IngestionBatch{}, err
 	}
 	if recorded == nil {
-		return domain.IngestionBatch{}, errors.New("directory ingestion: the recorded batch disappeared")
+		return directorydomain.IngestionBatch{}, errors.New("directory ingestion: the recorded batch disappeared")
 	}
 	return *recorded, nil
 }
 
-func (r *IngestionRunRepository) ListBatches(ctx context.Context, tenantID, runID string) ([]domain.IngestionBatch, error) {
+func (r *IngestionRunRepository) ListBatches(ctx context.Context, tenantID, runID string) ([]directorydomain.IngestionBatch, error) {
 	rows, err := New(r.Pool).ListDirectoryIngestionBatches(ctx, ListDirectoryIngestionBatchesParams{TenantID: tenantID, RunID: runID})
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domain.IngestionBatch, len(rows))
+	result := make([]directorydomain.IngestionBatch, len(rows))
 	for n, row := range rows {
 		if result[n], err = batchToDomain(row); err != nil {
 			return nil, err
@@ -246,19 +246,19 @@ func (r *IngestionRunRepository) Complete(ctx context.Context, tenantID, runID s
 	return changed > 0, err
 }
 
-func runToDomain(row *DirectoryIngestionRun) (domain.IngestionRun, error) {
-	run := domain.IngestionRun{
+func runToDomain(row *DirectoryIngestionRun) (directorydomain.IngestionRun, error) {
+	run := directorydomain.IngestionRun{
 		TenantID: row.TenantID, ID: row.ID, ConnectorID: row.ConnectorID,
-		Mode: domain.IngestionMode(row.Mode), Status: domain.IngestionRunStatus(row.Status),
+		Mode: directorydomain.IngestionMode(row.Mode), Status: directorydomain.IngestionRunStatus(row.Status),
 		StartedAt: row.StartedAt.UTC(), CompletedAt: pointer(row.CompletedAt),
-		Counts: domain.RunCounts{
+		Counts: directorydomain.RunCounts{
 			Batches: int(row.Batches), Items: int(row.Items), Created: int(row.Created), Updated: int(row.Updated),
 			Unchanged: int(row.Unchanged), Deleted: int(row.Deleted), Failed: int(row.Failed), Disabled: int(row.Disabled),
 		},
 	}
 	if row.Protection != nil {
 		if err := json.Unmarshal(row.Protection, &run.Protection); err != nil {
-			return domain.IngestionRun{}, err
+			return directorydomain.IngestionRun{}, err
 		}
 	}
 	return run, nil
@@ -275,12 +275,12 @@ func (r *IngestionRunRepository) WithConnectorLock(ctx context.Context, tenantID
 		return err
 	}
 	if !locked {
-		return ports.ErrRunBusy
+		return directoryinternalports.ErrRunBusy
 	}
 	return apply()
 }
 
-func (r *IngestionRunRepository) SaveProgress(ctx context.Context, run domain.IngestionRun) error {
+func (r *IngestionRunRepository) SaveProgress(ctx context.Context, run directorydomain.IngestionRun) error {
 	var protection []byte
 	if run.Protection != nil {
 		var err error
@@ -294,12 +294,12 @@ func (r *IngestionRunRepository) SaveProgress(ctx context.Context, run domain.In
 	})
 }
 
-func batchToDomain(row *DirectoryIngestionBatch) (domain.IngestionBatch, error) {
-	batch := domain.IngestionBatch{
+func batchToDomain(row *DirectoryIngestionBatch) (directorydomain.IngestionBatch, error) {
+	batch := directorydomain.IngestionBatch{
 		TenantID: row.TenantID, RunID: row.RunID, BatchID: row.BatchID, Digest: row.Digest, RecordedAt: row.RecordedAt.UTC(),
 	}
 	if err := json.Unmarshal(row.Results, &batch.Results); err != nil {
-		return domain.IngestionBatch{}, err
+		return directorydomain.IngestionBatch{}, err
 	}
 	return batch, nil
 }

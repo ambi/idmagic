@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/usecases"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
 )
@@ -30,7 +30,7 @@ func (d Deps) handleListTenantDataKeyHealth(c *echo.Context) error {
 	if d.Repository == nil || d.Crypto == nil || d.TenantRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tenants": []TenantDataKeyHealthResponse{}})
 	}
-	health, err := usecases.ListTenantDataKeyHealth(c.Request().Context(), usecases.ListTenantDataKeyHealthDeps{
+	health, err := datakeysusecases.ListTenantDataKeyHealth(c.Request().Context(), datakeysusecases.ListTenantDataKeyHealthDeps{
 		TenantRepo: d.TenantRepo,
 		Repository: d.Repository,
 		Crypto:     d.Crypto,

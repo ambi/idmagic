@@ -13,15 +13,15 @@ import (
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 )
 
 // AccessGate はフェデレーション開始時のアプリ割当ゲートに必要な依存を保持する。
 type AccessGate struct {
-	ApplicationRepo             ports.ApplicationRepository
-	ApplicationAssignmentRepo   ports.AssignmentRepository
-	GroupMemberships            ports.GroupMemberships
+	ApplicationRepo             appports.ApplicationRepository
+	ApplicationAssignmentRepo   appports.AssignmentRepository
+	GroupMemberships            appports.GroupMemberships
 	ApplicationSignInPolicyRepo policyports.SignInPolicyRepository
 	DefaultSignInPolicyRepo     policyports.DefaultSignInPolicyRepository
 }
@@ -33,40 +33,40 @@ type AccessGate struct {
 func (g *AccessGate) EvaluateApplicationAccess(
 	ctx context.Context,
 	tenantID string,
-	bindingType domain.ApplicationProtocolType,
+	bindingType appdomain.ApplicationProtocolType,
 	bindingKey, sub string,
 	authn policydomain.SignInAuthentication,
 	clientIP string,
-) (domain.ApplicationAccessDecision, error) {
+) (appdomain.ApplicationAccessDecision, error) {
 	if g.ApplicationRepo == nil {
-		return domain.ApplicationAccessDecision{Allowed: true}, nil
+		return appdomain.ApplicationAccessDecision{Allowed: true}, nil
 	}
 	app, err := g.ApplicationRepo.FindByProtocol(ctx, tenantID, bindingType, bindingKey)
 	if err != nil {
-		return domain.ApplicationAccessDecision{}, err
+		return appdomain.ApplicationAccessDecision{}, err
 	}
 	if app == nil {
-		return domain.ApplicationAccessDecision{Allowed: true}, nil
+		return appdomain.ApplicationAccessDecision{Allowed: true}, nil
 	}
-	if app.Status != domain.ApplicationActive {
-		return domain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: "application is disabled"}, nil
+	if app.Status != appdomain.ApplicationActive {
+		return appdomain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: "application is disabled"}, nil
 	}
 	if g.ApplicationAssignmentRepo == nil {
-		return domain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: "application assignments are unavailable"}, nil
+		return appdomain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: "application assignments are unavailable"}, nil
 	}
-	subjects := []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: sub}}
+	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: sub}}
 	if g.GroupMemberships != nil {
 		groupIDs, err := g.GroupMemberships.GroupIDsOfUser(ctx, tenantID, sub)
 		if err != nil {
-			return domain.ApplicationAccessDecision{}, err
+			return appdomain.ApplicationAccessDecision{}, err
 		}
 		for _, groupID := range groupIDs {
-			subjects = append(subjects, ports.SubjectRef{Type: domain.AssignmentSubjectGroup, ID: groupID})
+			subjects = append(subjects, appports.SubjectRef{Type: appdomain.AssignmentSubjectGroup, ID: groupID})
 		}
 	}
 	assignments, err := g.ApplicationAssignmentRepo.ListBySubjects(ctx, tenantID, subjects)
 	if err != nil {
-		return domain.ApplicationAccessDecision{}, err
+		return appdomain.ApplicationAccessDecision{}, err
 	}
 	assigned := false
 	for _, a := range assignments {
@@ -76,34 +76,34 @@ func (g *AccessGate) EvaluateApplicationAccess(
 		}
 	}
 	if !assigned {
-		return domain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: "subject not assigned to application"}, nil
+		return appdomain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: "subject not assigned to application"}, nil
 	}
 	if g.ApplicationSignInPolicyRepo == nil {
-		return domain.ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
+		return appdomain.ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
 	}
 	policy, err := g.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ID)
 	if err != nil {
-		return domain.ApplicationAccessDecision{}, err
+		return appdomain.ApplicationAccessDecision{}, err
 	}
 	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル)。
 	var defaultPolicy *policydomain.TenantDefaultSignInPolicy
 	if g.DefaultSignInPolicyRepo != nil {
 		defaultPolicy, err = g.DefaultSignInPolicyRepo.Get(ctx, tenantID)
 		if err != nil {
-			return domain.ApplicationAccessDecision{}, err
+			return appdomain.ApplicationAccessDecision{}, err
 		}
 	}
 	effective := policydomain.EffectivePolicyForEvaluation(defaultPolicy, policy)
 	evaluation := policydomain.EvaluateSignInPolicy(effective, authn, clientIP, time.Now().UTC())
 	switch evaluation.Decision {
 	case policydomain.PolicyAllow:
-		return domain.ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
+		return appdomain.ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
 	case policydomain.PolicyStepUpRequired:
-		return domain.ApplicationAccessDecision{
+		return appdomain.ApplicationAccessDecision{
 			ApplicationID: app.ID, StepUpRequired: true, Reason: evaluation.Reason,
 			TrustedDeviceAllowed: effective != nil && policydomain.TrustedDeviceAllowedByRules(effective.Rules),
 		}, nil
 	default:
-		return domain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: evaluation.Reason}, nil
+		return appdomain.ApplicationAccessDecision{ApplicationID: app.ID, Reason: evaluation.Reason}, nil
 	}
 }

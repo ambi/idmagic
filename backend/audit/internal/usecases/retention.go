@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
 // RetentionPolicy は監査の記録の保持日数である（REQ-AUDIT-013）。DaysByType にない種類は
@@ -54,13 +54,13 @@ func DefaultRetentionPolicy() RetentionPolicy {
 }
 
 // Cutoff は now を基準に、種類ごとの削除の境界を返す。境界より前に発生した記録が消える。
-func (p RetentionPolicy) Cutoff(now time.Time) ports.RetentionCutoff {
+func (p RetentionPolicy) Cutoff(now time.Time) auditports.RetentionCutoff {
 	before := func(days int) time.Time { return now.Add(-time.Duration(days) * 24 * time.Hour) }
 	byType := make(map[string]time.Time, len(p.DaysByType))
 	for t, days := range p.DaysByType {
 		byType[t] = before(days)
 	}
-	return ports.RetentionCutoff{
+	return auditports.RetentionCutoff{
 		Default: before(p.DefaultDays),
 		ByType:  byType,
 	}
@@ -68,7 +68,7 @@ func (p RetentionPolicy) Cutoff(now time.Time) ports.RetentionCutoff {
 
 // EventPurger は掃引が保存先に要求する削除である。
 type EventPurger interface {
-	DeleteOlderThan(ctx context.Context, cutoff ports.RetentionCutoff) (int64, error)
+	DeleteOlderThan(ctx context.Context, cutoff auditports.RetentionCutoff) (int64, error)
 }
 
 // PurgeExpiredEvents は保持期間を過ぎた監査の記録を消し、削除した件数を返す。

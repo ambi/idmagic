@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	"github.com/jackc/pgx/v5"
 )
@@ -50,11 +50,11 @@ func TestAuditEventCountAndPagePlansAtHighCardinality(t *testing.T) {
 	}
 
 	repo := &AuditEventRepository{Pool: db}
-	total, err := repo.Count(ctx, ports.AuditEventQuery{TenantID: targetTenant})
+	total, err := repo.Count(ctx, auditports.AuditEventQuery{TenantID: targetTenant})
 	if err != nil || total != eventsPerTenant {
 		t.Fatalf("exact tenant count: got %d, err %v", total, err)
 	}
-	filtered, err := repo.Count(ctx, ports.AuditEventQuery{TenantID: targetTenant, Type: "DistinctiveAuditEvent"})
+	filtered, err := repo.Count(ctx, auditports.AuditEventQuery{TenantID: targetTenant, Type: "DistinctiveAuditEvent"})
 	if err != nil || filtered != eventsPerTenant/100 {
 		t.Fatalf("exact filtered count: got %d, err %v", filtered, err)
 	}

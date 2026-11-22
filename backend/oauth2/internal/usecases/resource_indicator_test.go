@@ -6,48 +6,48 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 type fakeMcpResourceServerRepo struct {
-	byResource map[string]*domain.McpResourceServer
+	byResource map[string]*oauthdomain.McpResourceServer
 }
 
-func newFakeMcpResourceServerRepo(servers ...*domain.McpResourceServer) *fakeMcpResourceServerRepo {
-	r := &fakeMcpResourceServerRepo{byResource: map[string]*domain.McpResourceServer{}}
+func newFakeMcpResourceServerRepo(servers ...*oauthdomain.McpResourceServer) *fakeMcpResourceServerRepo {
+	r := &fakeMcpResourceServerRepo{byResource: map[string]*oauthdomain.McpResourceServer{}}
 	for _, s := range servers {
 		r.byResource[s.TenantID+"|"+s.Resource] = s
 	}
 	return r
 }
 
-func (r *fakeMcpResourceServerRepo) ListAll(context.Context, string) ([]*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) ListAll(context.Context, string) ([]*oauthdomain.McpResourceServer, error) {
 	return nil, nil
 }
 
-func (r *fakeMcpResourceServerRepo) FindByID(context.Context, string, string) (*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) FindByID(context.Context, string, string) (*oauthdomain.McpResourceServer, error) {
 	return nil, nil //nolint:nilnil // unused by ResolveResourceIndicator tests
 }
 
-func (r *fakeMcpResourceServerRepo) FindByResource(_ context.Context, tenantID, resource string) (*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) FindByResource(_ context.Context, tenantID, resource string) (*oauthdomain.McpResourceServer, error) {
 	return r.byResource[tenantID+"|"+resource], nil
 }
 
-func (r *fakeMcpResourceServerRepo) FindByClientID(context.Context, string, string) (*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) FindByClientID(context.Context, string, string) (*oauthdomain.McpResourceServer, error) {
 	return nil, nil //nolint:nilnil // 束縛のない登録を表す。
 }
 
-func (r *fakeMcpResourceServerRepo) Save(context.Context, *domain.McpResourceServer) error {
+func (r *fakeMcpResourceServerRepo) Save(context.Context, *oauthdomain.McpResourceServer) error {
 	return nil
 }
 
 func (r *fakeMcpResourceServerRepo) Delete(context.Context, string, string) error { return nil }
-func (r *fakeMcpResourceServerRepo) SaveIfUnchanged(context.Context, *domain.McpResourceServer, time.Time) (bool, error) {
+func (r *fakeMcpResourceServerRepo) SaveIfUnchanged(context.Context, *oauthdomain.McpResourceServer, time.Time) (bool, error) {
 	return false, nil
 }
 
-var _ ports.McpResourceServerRepository = (*fakeMcpResourceServerRepo)(nil)
+var _ oauthports.McpResourceServerRepository = (*fakeMcpResourceServerRepo)(nil)
 
 func TestResolveResourceIndicator_noResourceRequested_returnsNilNil(t *testing.T) {
 	repo := newFakeMcpResourceServerRepo()
@@ -75,10 +75,10 @@ func TestResolveResourceIndicator_unregisteredResource_rejectedAsInvalidTarget(t
 }
 
 func TestResolveResourceIndicator_disabledResource_rejectedAsInvalidTarget(t *testing.T) {
-	repo := newFakeMcpResourceServerRepo(&domain.McpResourceServer{
+	repo := newFakeMcpResourceServerRepo(&oauthdomain.McpResourceServer{
 		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerDisabled,
+		Scopes: []string{"mcp.read"}, State: oauthdomain.McpResourceServerDisabled,
 	})
 	_, err := ResolveResourceIndicator(context.Background(), repo, "tenant-1",
 		[]string{"https://mcp.example.com/tools"}, nil)
@@ -86,10 +86,10 @@ func TestResolveResourceIndicator_disabledResource_rejectedAsInvalidTarget(t *te
 }
 
 func TestResolveResourceIndicator_registeredActive_returnsResourceServer(t *testing.T) {
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read", "mcp.write"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"mcp.read", "mcp.write"}, State: oauthdomain.McpResourceServerActive,
 	}
 	repo := newFakeMcpResourceServerRepo(rs)
 	got, err := ResolveResourceIndicator(context.Background(), repo, "tenant-1",
@@ -103,10 +103,10 @@ func TestResolveResourceIndicator_registeredActive_returnsResourceServer(t *test
 }
 
 func TestResolveResourceIndicator_scopeExceedsResourceAllowlist_rejectedAsInvalidScope(t *testing.T) {
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"mcp.read"}, State: oauthdomain.McpResourceServerActive,
 	}
 	repo := newFakeMcpResourceServerRepo(rs)
 	_, err := ResolveResourceIndicator(context.Background(), repo, "tenant-1",
@@ -115,10 +115,10 @@ func TestResolveResourceIndicator_scopeExceedsResourceAllowlist_rejectedAsInvali
 }
 
 func TestResolveResourceIndicator_crossTenantResource_rejectedAsInvalidTarget(t *testing.T) {
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: "tenant-other", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"mcp.read"}, State: oauthdomain.McpResourceServerActive,
 	}
 	repo := newFakeMcpResourceServerRepo(rs)
 	_, err := ResolveResourceIndicator(context.Background(), repo, "tenant-1",

@@ -6,17 +6,17 @@ package usecases
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type EndSessionDeps struct {
-	ClientRepo   ports.OAuth2ClientRepository
-	HintVerifier ports.IDTokenHintVerifier
+	ClientRepo   oauthports.OAuth2ClientRepository
+	HintVerifier oauthports.IDTokenHintVerifier
 	// SessionOwner は id_token_hint の sid が指す LoginSession の主体を返す。
 	// ローカル失効を行わない呼び出し元では nil でよい。
-	SessionOwner ports.LoginSessionOwnerLookup
+	SessionOwner oauthports.LoginSessionOwnerLookup
 }
 
 type EndSessionInput struct {
@@ -36,7 +36,7 @@ type EndSessionTarget struct {
 	// Client / RedirectURI are only populated when PostLogoutRedirectURI was
 	// requested. A nil Client means the caller should skip straight to the
 	// unauthenticated "signed out" status page (legacy behavior preserved).
-	Client      *domain.OAuth2Client
+	Client      *oauthdomain.OAuth2Client
 	RedirectURI string
 }
 
@@ -89,7 +89,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 		return nil, NewOAuthError("invalid_request", "The post_logout_redirect_uri is not registered.")
 	}
 	// post_logout_redirect_uri も認可の redirect_uri と同じ完全一致規則で照合する。
-	if !domain.RedirectURIAllowed(client.RedirectURIs, in.PostLogoutRedirectURI) {
+	if !oauthdomain.RedirectURIAllowed(client.RedirectURIs, in.PostLogoutRedirectURI) {
 		return nil, NewOAuthError("invalid_request", "The post_logout_redirect_uri is not registered.")
 	}
 	target.Client = client
@@ -99,7 +99,7 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 
 // checkSessionSubject は sid が指す LoginSession の主体が hint の sub と同じであることを
 // 確かめる。セッションが無いときは失効させる対象が無いので拒否しない。
-func checkSessionSubject(ctx context.Context, owners ports.LoginSessionOwnerLookup, sid, subject string) error {
+func checkSessionSubject(ctx context.Context, owners oauthports.LoginSessionOwnerLookup, sid, subject string) error {
 	if owners == nil {
 		return nil
 	}

@@ -7,7 +7,7 @@ import (
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -17,7 +17,7 @@ var discoveryCache sync.Map // tenantID -> map[string]any
 
 func (d Deps) handleDiscovery(c *echo.Context) error {
 	if d.Contract == nil {
-		return writeOAuthError(c, usecases.NewOAuthError("server_error", "runtime contract not loaded"))
+		return writeOAuthError(c, oauthusecases.NewOAuthError("server_error", "runtime contract not loaded"))
 	}
 	tenantID := support.RequestTenantID(c)
 	doc, err := d.Contract.BuildDiscoveryDocument(support.RequestIssuer(c, d.Issuer))

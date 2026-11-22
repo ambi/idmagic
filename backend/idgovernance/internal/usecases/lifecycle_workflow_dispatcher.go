@@ -17,7 +17,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -58,7 +58,7 @@ type LifecycleWorkflowExecutorDeps struct {
 	UserRequiredActions igports.UserRequiredActions
 	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
 	// action's TemplateKey is a label rendered into the body, not the body itself.
-	Notifier sharednotification.Notifier
+	Notifier notificationports.Notifier
 	Emit     func(spec.DomainEvent) error
 }
 
@@ -235,7 +235,7 @@ type LifecycleActionEvalDeps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	Notifier        sharednotification.Notifier
+	Notifier        notificationports.Notifier
 }
 
 // EvaluateLifecycleAction resolves one action's current-state dependencies
@@ -353,10 +353,10 @@ func executeLifecycleAction(ctx context.Context, deps LifecycleWorkflowExecutorD
 		disabled := action.Kind == igdomain.WorkflowActionDisableUser
 		return changed(deps.UserLifecycle.SetUserDisabled(ctx, run.TenantID, user.ID, disabled, time.Now().UTC()))
 	case igdomain.WorkflowActionSendEmail:
-		if deps.Notifier.Notify(ctx, sharednotification.Notification{
+		if deps.Notifier.Notify(ctx, notificationports.Notification{
 			TenantID:        run.TenantID,
 			To:              *user.Email,
-			Key:             sharednotification.TemplateKeyLifecycleWorkflowNotification,
+			Key:             notificationports.TemplateKeyLifecycleWorkflowNotification,
 			RecipientLocale: user.LocaleAttribute(),
 			Vars: map[string]string{
 				"user_display_name": user.DisplayName(),

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -20,10 +20,10 @@ import (
 
 func newProtectedResourceMetadataHandler() *echo.Echo {
 	servers := oauth2memory.NewMcpResourceServerRepository()
-	servers.Seed(&domain.McpResourceServer{
+	servers.Seed(&oauthdomain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "rs-1",
 		Resource: "https://mcp.example.com/tools/github", Name: "GitHub MCP Tools",
-		Scopes: []string{"mcp.read", "mcp.write"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"mcp.read", "mcp.write"}, State: oauthdomain.McpResourceServerActive,
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{

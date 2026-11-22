@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -49,7 +49,7 @@ type HostedMcpRuntime struct {
 
 func NewHostedMcpRuntime(client *http.Client) *HostedMcpRuntime {
 	if client == nil {
-		client = safehttp.NewClient(safehttp.Config{DialTimeout: 5 * time.Second, TLSTimeout: 5 * time.Second, RequestTimeout: hostedMcpTimeout, ValidateURL: domain.ValidateMcpUpstreamURL})
+		client = safehttp.NewClient(safehttp.Config{DialTimeout: 5 * time.Second, TLSTimeout: 5 * time.Second, RequestTimeout: hostedMcpTimeout, ValidateURL: oauthdomain.ValidateMcpUpstreamURL})
 	}
 	cloned := *client
 	cloned.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
@@ -79,7 +79,7 @@ func (r *HostedMcpRuntime) acquire(tenant string) (func(), int) {
 	}, 0
 }
 
-func (d Deps) hostedMcpServer(c *echo.Context) (*domain.McpResourceServer, error) {
+func (d Deps) hostedMcpServer(c *echo.Context) (*oauthdomain.McpResourceServer, error) {
 	if d.McpResourceServerRepo == nil {
 		return nil, tokenusecases.ErrResourceAccessNotConfigured
 	}
@@ -210,7 +210,7 @@ func (d Deps) handleHostedMcp(c *echo.Context) error {
 		return hostedMcpError(c, 503, message.ID, "authorization is unavailable", nil)
 	}
 	if !decision.Permitted || (decision.ApprovedOperation != nil && decision.ApprovedOperation.Replayed) {
-		if slices.Contains(decision.Reasons, domain.ReasonTokenRejected) || slices.Contains(decision.Reasons, domain.ReasonSenderProofInvalid) {
+		if slices.Contains(decision.Reasons, oauthdomain.ReasonTokenRejected) || slices.Contains(decision.Reasons, oauthdomain.ReasonSenderProofInvalid) {
 			return d.hostedMcpChallenge(c, server, message.ID)
 		}
 		var data any
@@ -253,7 +253,7 @@ func hostedMcpToken(headers http.Header) (string, bool) {
 	return token, found && token != "" && !strings.ContainsAny(token, ", \t\r\n") && (strings.EqualFold(scheme, "Bearer") || strings.EqualFold(scheme, "DPoP"))
 }
 
-func (d Deps) hostedMcpChallenge(c *echo.Context, server *domain.McpResourceServer, id json.RawMessage) error {
+func (d Deps) hostedMcpChallenge(c *echo.Context, server *oauthdomain.McpResourceServer, id json.RawMessage) error {
 	resource, _ := url.Parse(server.Resource)
 	metadata := resource.Scheme + "://" + resource.Host + "/.well-known/oauth-protected-resource" + resource.Path
 	c.Response().Header().Set("WWW-Authenticate", fmt.Sprintf("Bearer resource_metadata=%q", metadata))
@@ -268,7 +268,7 @@ func hostedMcpError(c *echo.Context, status int, id json.RawMessage, message str
 	return support.NoStoreJSON(c, status, map[string]any{"jsonrpc": "2.0", "id": id, "error": rpcError})
 }
 
-func (d Deps) openHostedMcpExchange(ctx context.Context, server *domain.McpResourceServer, token, grant string, headers http.Header, body []byte) (*http.Response, error) {
+func (d Deps) openHostedMcpExchange(ctx context.Context, server *oauthdomain.McpResourceServer, token, grant string, headers http.Header, body []byte) (*http.Response, error) {
 	client, err := d.ClientRepo.FindByID(ctx, server.TenantID, server.ClientID)
 	if err != nil || client == nil {
 		return nil, oauthports.ErrMcpForwardUnavailable

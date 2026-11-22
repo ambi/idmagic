@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 )
 
 // ParseFilter は許可属性への単純な eq 比較を評価できる。
 // scenario: "SCIM clientはUsersとGroups collectionを検索できる" (interfaces.ListScimUsers)
 func TestParseFilterSimpleEq(t *testing.T) {
-	expr, err := domain.ParseFilter(`userName eq "bjensen@example.com"`, domain.UserFilterAttributes)
+	expr, err := scimdomain.ParseFilter(`userName eq "bjensen@example.com"`, scimdomain.UserFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestParseFilterSimpleEq(t *testing.T) {
 
 // 文字列比較は RFC 7643 の既定 (caseExact=false) に従い大文字小文字を無視する。
 func TestParseFilterCaseInsensitiveComparison(t *testing.T) {
-	expr, err := domain.ParseFilter(`userName eq "BJensen@Example.com"`, domain.UserFilterAttributes)
+	expr, err := scimdomain.ParseFilter(`userName eq "BJensen@Example.com"`, scimdomain.UserFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestParseFilterStringOperators(t *testing.T) {
 		{`displayName sw "Zzz"`, map[string]any{"displayname": "Engineering"}, false},
 	}
 	for _, tc := range cases {
-		expr, err := domain.ParseFilter(tc.filter, domain.GroupFilterAttributes)
+		expr, err := scimdomain.ParseFilter(tc.filter, scimdomain.GroupFilterAttributes)
 		if err != nil {
 			t.Fatalf("filter %q: unexpected error: %v", tc.filter, err)
 		}
@@ -60,9 +60,9 @@ func TestParseFilterStringOperators(t *testing.T) {
 
 // 複合 filter (and / or / not / grouping)。
 func TestParseFilterCompoundExpressions(t *testing.T) {
-	expr, err := domain.ParseFilter(
+	expr, err := scimdomain.ParseFilter(
 		`(userName sw "b" and active eq true) or not (userName eq "carlos")`,
-		domain.UserFilterAttributes,
+		scimdomain.UserFilterAttributes,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -80,7 +80,7 @@ func TestParseFilterCompoundExpressions(t *testing.T) {
 
 // pr (presence) 演算子。
 func TestParseFilterPresence(t *testing.T) {
-	expr, err := domain.ParseFilter(`emails.value pr`, domain.UserFilterAttributes)
+	expr, err := scimdomain.ParseFilter(`emails.value pr`, scimdomain.UserFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestParseFilterPresence(t *testing.T) {
 
 // boolean 属性の eq/ne。
 func TestParseFilterBooleanAttribute(t *testing.T) {
-	expr, err := domain.ParseFilter(`active eq false`, domain.UserFilterAttributes)
+	expr, err := scimdomain.ParseFilter(`active eq false`, scimdomain.UserFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestParseFilterBooleanAttribute(t *testing.T) {
 // (interfaces.ListScimUsers、wi-242)。
 func TestParseFilterNotEqual(t *testing.T) {
 	t.Run("string attribute", func(t *testing.T) {
-		expr, err := domain.ParseFilter(`userName ne "bjensen@example.com"`, domain.UserFilterAttributes)
+		expr, err := scimdomain.ParseFilter(`userName ne "bjensen@example.com"`, scimdomain.UserFilterAttributes)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -125,7 +125,7 @@ func TestParseFilterNotEqual(t *testing.T) {
 		}
 	})
 	t.Run("boolean attribute", func(t *testing.T) {
-		expr, err := domain.ParseFilter(`active ne true`, domain.UserFilterAttributes)
+		expr, err := scimdomain.ParseFilter(`active ne true`, scimdomain.UserFilterAttributes)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -140,7 +140,7 @@ func TestParseFilterNotEqual(t *testing.T) {
 
 // 文字列 escape (\" と \\) を正しく decode する。
 func TestParseFilterStringEscaping(t *testing.T) {
-	expr, err := domain.ParseFilter(`displayName eq "say \"hi\" \\ done"`, domain.GroupFilterAttributes)
+	expr, err := scimdomain.ParseFilter(`displayName eq "say \"hi\" \\ done"`, scimdomain.GroupFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,23 +154,23 @@ func TestParseFilterRejectsUnsupported(t *testing.T) {
 	cases := []struct {
 		name   string
 		filter string
-		allow  domain.AttributeAllowlist
+		allow  scimdomain.AttributeAllowlist
 	}{
-		{"unknown attribute", `nickName eq "x"`, domain.UserFilterAttributes},
-		{"unsupported operator for attribute", `active co "x"`, domain.UserFilterAttributes},
-		{"malformed syntax", `userName eq`, domain.UserFilterAttributes},
-		{"unbalanced parens", `(userName eq "x"`, domain.UserFilterAttributes},
-		{"not without parens", `not userName eq "x"`, domain.UserFilterAttributes},
-		{"bare identifier value", `userName eq bjensen`, domain.UserFilterAttributes},
-		{"empty filter", ``, domain.UserFilterAttributes},
+		{"unknown attribute", `nickName eq "x"`, scimdomain.UserFilterAttributes},
+		{"unsupported operator for attribute", `active co "x"`, scimdomain.UserFilterAttributes},
+		{"malformed syntax", `userName eq`, scimdomain.UserFilterAttributes},
+		{"unbalanced parens", `(userName eq "x"`, scimdomain.UserFilterAttributes},
+		{"not without parens", `not userName eq "x"`, scimdomain.UserFilterAttributes},
+		{"bare identifier value", `userName eq bjensen`, scimdomain.UserFilterAttributes},
+		{"empty filter", ``, scimdomain.UserFilterAttributes},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := domain.ParseFilter(tc.filter, tc.allow)
+			_, err := scimdomain.ParseFilter(tc.filter, tc.allow)
 			if err == nil {
 				t.Fatalf("expected error for filter %q", tc.filter)
 			}
-			var filterErr *domain.FilterError
+			var filterErr *scimdomain.FilterError
 			if !isFilterError(err, &filterErr) {
 				t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
 			}
@@ -181,22 +181,22 @@ func TestParseFilterRejectsUnsupported(t *testing.T) {
 // 資源上限: 過大な入力長・ネスト深さは invalidFilter として拒否する (Risk Notes)。
 func TestParseFilterResourceLimits(t *testing.T) {
 	t.Run("length", func(t *testing.T) {
-		huge := `userName eq "` + strings.Repeat("a", domain.MaxFilterLength) + `"`
-		_, err := domain.ParseFilter(huge, domain.UserFilterAttributes)
+		huge := `userName eq "` + strings.Repeat("a", scimdomain.MaxFilterLength) + `"`
+		_, err := scimdomain.ParseFilter(huge, scimdomain.UserFilterAttributes)
 		if err == nil {
 			t.Fatal("expected error for over-length filter")
 		}
 	})
 	t.Run("depth", func(t *testing.T) {
 		var sb strings.Builder
-		for range domain.MaxFilterDepth + 5 {
+		for range scimdomain.MaxFilterDepth + 5 {
 			sb.WriteString("not (")
 		}
 		sb.WriteString(`userName eq "x"`)
-		for range domain.MaxFilterDepth + 5 {
+		for range scimdomain.MaxFilterDepth + 5 {
 			sb.WriteString(")")
 		}
-		_, err := domain.ParseFilter(sb.String(), domain.UserFilterAttributes)
+		_, err := scimdomain.ParseFilter(sb.String(), scimdomain.UserFilterAttributes)
 		if err == nil {
 			t.Fatal("expected error for over-depth filter")
 		}
@@ -223,7 +223,7 @@ func TestParseFilterDateTimeComparison(t *testing.T) {
 		{`meta.lastModified ne "2020-06-15T09:00:00+09:00"`, false},
 	}
 	for _, tc := range cases {
-		expr, err := domain.ParseFilter(tc.filter, domain.UserFilterAttributes)
+		expr, err := scimdomain.ParseFilter(tc.filter, scimdomain.UserFilterAttributes)
 		if err != nil {
 			t.Fatalf("filter %q: unexpected error: %v", tc.filter, err)
 		}
@@ -238,23 +238,23 @@ func TestParseFilterDateTimeComparison(t *testing.T) {
 // TestParseFilterDateTimeComparison で固定済み。
 func TestParseFilterOrderingOperatorsRejectedForNonDateTimeAttributes(t *testing.T) {
 	orderingOps := []string{"gt", "ge", "lt", "le"}
-	allowlists := map[string]domain.AttributeAllowlist{
-		"user":  domain.UserFilterAttributes,
-		"group": domain.GroupFilterAttributes,
+	allowlists := map[string]scimdomain.AttributeAllowlist{
+		"user":  scimdomain.UserFilterAttributes,
+		"group": scimdomain.GroupFilterAttributes,
 	}
 	for allowName, allow := range allowlists {
 		for attr, spec := range allow {
-			if spec.Kind == domain.AttrDateTime {
+			if spec.Kind == scimdomain.AttrDateTime {
 				continue
 			}
 			for _, op := range orderingOps {
 				filter := fmt.Sprintf(`%s %s "x"`, attr, op)
 				t.Run(fmt.Sprintf("%s/%s/%s", allowName, attr, op), func(t *testing.T) {
-					_, err := domain.ParseFilter(filter, allow)
+					_, err := scimdomain.ParseFilter(filter, allow)
 					if err == nil {
 						t.Fatalf("expected error for filter %q", filter)
 					}
-					var filterErr *domain.FilterError
+					var filterErr *scimdomain.FilterError
 					if !isFilterError(err, &filterErr) {
 						t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
 					}
@@ -266,11 +266,11 @@ func TestParseFilterOrderingOperatorsRejectedForNonDateTimeAttributes(t *testing
 
 // 不正な dateTime literal は invalidFilter (*domain.FilterError) にする。
 func TestParseFilterInvalidDateTimeLiteral(t *testing.T) {
-	_, err := domain.ParseFilter(`meta.lastModified gt "not-a-date"`, domain.UserFilterAttributes)
+	_, err := scimdomain.ParseFilter(`meta.lastModified gt "not-a-date"`, scimdomain.UserFilterAttributes)
 	if err == nil {
 		t.Fatal("expected error for invalid dateTime literal")
 	}
-	var filterErr *domain.FilterError
+	var filterErr *scimdomain.FilterError
 	if !isFilterError(err, &filterErr) {
 		t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
 	}
@@ -282,11 +282,11 @@ func TestParseFilterSchemaURNPrefix(t *testing.T) {
 	prefixed := `urn:ietf:params:scim:schemas:core:2.0:User:userName eq "alice"`
 	bare := `userName eq "alice"`
 
-	exprPrefixed, err := domain.ParseFilter(prefixed, domain.UserFilterAttributes)
+	exprPrefixed, err := scimdomain.ParseFilter(prefixed, scimdomain.UserFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error for prefixed attribute: %v", err)
 	}
-	exprBare, err := domain.ParseFilter(bare, domain.UserFilterAttributes)
+	exprBare, err := scimdomain.ParseFilter(bare, scimdomain.UserFilterAttributes)
 	if err != nil {
 		t.Fatalf("unexpected error for bare attribute: %v", err)
 	}
@@ -306,9 +306,9 @@ func TestParseFilterSchemaURNPrefix(t *testing.T) {
 
 // Group にも同じ prefix 解決が適用される。
 func TestParseFilterSchemaURNPrefixGroup(t *testing.T) {
-	expr, err := domain.ParseFilter(
+	expr, err := scimdomain.ParseFilter(
 		`urn:ietf:params:scim:schemas:core:2.0:Group:displayName eq "Engineering"`,
-		domain.GroupFilterAttributes,
+		scimdomain.GroupFilterAttributes,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -320,20 +320,20 @@ func TestParseFilterSchemaURNPrefixGroup(t *testing.T) {
 
 // 未知の URN prefix は invalidFilter にする。
 func TestParseFilterUnknownURNPrefixRejected(t *testing.T) {
-	_, err := domain.ParseFilter(
+	_, err := scimdomain.ParseFilter(
 		`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber eq "1"`,
-		domain.UserFilterAttributes,
+		scimdomain.UserFilterAttributes,
 	)
 	if err == nil {
 		t.Fatal("expected error for unknown schema URN prefix")
 	}
-	var filterErr *domain.FilterError
+	var filterErr *scimdomain.FilterError
 	if !isFilterError(err, &filterErr) {
 		t.Fatalf("expected *domain.FilterError, got %T: %v", err, err)
 	}
 }
 
-func isFilterError(err error, target **domain.FilterError) bool {
+func isFilterError(err error, target **scimdomain.FilterError) bool {
 	ok := errors.As(err, target)
 	return ok
 }

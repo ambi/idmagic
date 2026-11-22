@@ -6,7 +6,7 @@ import (
 	"time"
 
 	oauth2pg "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
-	"github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,28 +18,28 @@ func (s *ClientSessionStore) DeleteForClient(ctx context.Context, _, clientID st
 	return oauth2pg.New(s.Pool).DeleteClientSessionsForClient(ctx, clientID)
 }
 
-func (s *ClientSessionStore) Upsert(ctx context.Context, session *domain.ClientSession) error {
+func (s *ClientSessionStore) Upsert(ctx context.Context, session *logoutdomain.ClientSession) error {
 	return oauth2pg.New(s.Pool).UpsertClientSession(ctx, oauth2pg.UpsertClientSessionParams{
 		TenantID: session.TenantID, Sid: session.Sid, ClientID: session.ClientID,
 		FirstIssuedAt: session.FirstIssuedAt, LastIssuedAt: session.LastIssuedAt,
 	})
 }
 
-func (s *ClientSessionStore) ListBySid(ctx context.Context, tenantID, sid string) ([]*domain.ClientSession, error) {
+func (s *ClientSessionStore) ListBySid(ctx context.Context, tenantID, sid string) ([]*logoutdomain.ClientSession, error) {
 	rows, err := oauth2pg.New(s.Pool).ListClientSessionsBySid(ctx, oauth2pg.ListClientSessionsBySidParams{TenantID: tenantID, Sid: sid})
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*domain.ClientSession, 0, len(rows))
+	result := make([]*logoutdomain.ClientSession, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, &domain.ClientSession{TenantID: row.TenantID, Sid: row.Sid, ClientID: row.ClientID, FirstIssuedAt: row.FirstIssuedAt, LastIssuedAt: row.LastIssuedAt})
+		result = append(result, &logoutdomain.ClientSession{TenantID: row.TenantID, Sid: row.Sid, ClientID: row.ClientID, FirstIssuedAt: row.FirstIssuedAt, LastIssuedAt: row.LastIssuedAt})
 	}
 	return result, nil
 }
 
 type NotificationStore struct{ Pool sharedpg.DB }
 
-func (s *NotificationStore) Save(ctx context.Context, notification *domain.LogoutNotification) error {
+func (s *NotificationStore) Save(ctx context.Context, notification *logoutdomain.LogoutNotification) error {
 	jobID, err := nullableUUID(notification.JobID)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (s *NotificationStore) Save(ctx context.Context, notification *domain.Logou
 	})
 }
 
-func (s *NotificationStore) FindByID(ctx context.Context, tenantID, id string) (*domain.LogoutNotification, error) {
+func (s *NotificationStore) FindByID(ctx context.Context, tenantID, id string) (*logoutdomain.LogoutNotification, error) {
 	row, err := oauth2pg.New(s.Pool).FindLogoutNotificationByID(ctx, oauth2pg.FindLogoutNotificationByIDParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -61,10 +61,10 @@ func (s *NotificationStore) FindByID(ctx context.Context, tenantID, id string) (
 	if err != nil {
 		return nil, err
 	}
-	return &domain.LogoutNotification{
+	return &logoutdomain.LogoutNotification{
 		ID: row.ID, TenantID: row.TenantID, Sid: row.Sid, ClientID: row.ClientID,
 		LogoutTokenJTI: row.LogoutTokenJti, TargetURI: row.TargetUri,
-		State: domain.LogoutNotificationState(row.State), Attempts: row.Attempts,
+		State: logoutdomain.LogoutNotificationState(row.State), Attempts: row.Attempts,
 		LastError: textPointer(row.LastError), JobID: uuidPointer(row.JobID),
 		CreatedAt: row.CreatedAt, DeliveredAt: timePointer(row.DeliveredAt),
 	}, nil

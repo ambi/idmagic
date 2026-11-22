@@ -23,7 +23,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
+	signingusecases "github.com/ambi/idmagic/backend/signingkeys/internal/usecases"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	"github.com/labstack/echo/v5"
@@ -124,7 +124,7 @@ func (d Deps) handleRotateTenantKey(c *echo.Context) error {
 	now := time.Now().UTC()
 	var next *signingdomain.SigningKey
 	if req.Action == "rotate" {
-		next, err = usecases.RotateSigningKey(ctx, usecases.RotateSigningKeyDeps{KeyStore: d.KeyStore, Emit: d.Emit}, now)
+		next, err = signingusecases.RotateSigningKey(ctx, signingusecases.RotateSigningKeyDeps{KeyStore: d.KeyStore, Emit: d.Emit}, now)
 	} else if staged, ok := d.KeyStore.(signingports.FederationKeyStore); ok {
 		var result signingdomain.RotationResult
 		if req.Action == "prepare" {
@@ -177,7 +177,7 @@ func (d Deps) handleDisableTenantKey(c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
-	key, err := usecases.DisableSigningKey(ctx, usecases.DisableSigningKeyDeps{KeyStore: d.KeyStore, Emit: d.Emit}, c.Param("kid"))
+	key, err := signingusecases.DisableSigningKey(ctx, signingusecases.DisableSigningKeyDeps{KeyStore: d.KeyStore, Emit: d.Emit}, c.Param("kid"))
 	if err != nil {
 		if errors.Is(err, signingdomain.ErrActiveSigningKeyCannotBeDisabled) {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The active signing key cannot be disabled. Rotate it first.")
@@ -197,7 +197,7 @@ func (d Deps) handleListTenantKeyHealth(c *echo.Context) error {
 	if d.KeyStore == nil || d.TenantRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"tenants": []TenantKeyHealthResponse{}})
 	}
-	health, err := usecases.ListTenantKeyHealth(c.Request().Context(), usecases.TenantKeyHealthDeps{
+	health, err := signingusecases.ListTenantKeyHealth(c.Request().Context(), signingusecases.TenantKeyHealthDeps{
 		TenantRepo: d.TenantRepo,
 		KeyStore:   d.KeyStore,
 	})

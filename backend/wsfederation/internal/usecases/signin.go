@@ -20,7 +20,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -80,12 +80,12 @@ type SignInOutcome struct {
 	Status  int    // Rejected の HTTP status (400 / 500)。
 
 	// SignInIssued のときの発行データ。
-	Validated feddomain.ValidatedSignIn
+	Validated wsfeddomain.ValidatedSignIn
 	// Issuer は Assertion の発行者。空ならテナントの発行者を使う。
 	Issuer      string
 	ClaimResult claimdomain.ClaimIssuanceResult
-	AuthnMethod feddomain.AuthnMethodClass
-	TokenType   feddomain.WsFedTokenType
+	AuthnMethod wsfeddomain.AuthnMethodClass
+	TokenType   wsfeddomain.WsFedTokenType
 	Authn       *authdomain.AuthenticationContext
 	Now         time.Time
 }
@@ -93,7 +93,7 @@ type SignInOutcome struct {
 // SignInInput は adapter が組み立てて渡す passive sign-in 判断入力。
 type SignInInput struct {
 	TenantID string
-	Request  feddomain.WsFedSignInRequest
+	Request  wsfeddomain.WsFedSignInRequest
 	Authn    *authdomain.AuthenticationContext // adapter が header から解決済み。
 	ClientIP string
 }
@@ -105,7 +105,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	req := in.Request
 
 	if req.Wtrealm == "" {
-		s.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Reason: "wtrealm is required"})
+		s.emit(&wsfeddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Reason: "wtrealm is required"})
 		return SignInOutcome{Kind: SignInRejected, Message: "wtrealm is required", Status: 400}, nil
 	}
 
@@ -114,13 +114,13 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{}, err
 	}
 	if rp == nil {
-		s.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: "unknown relying party"})
+		s.emit(&wsfeddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: "unknown relying party"})
 		return SignInOutcome{Kind: SignInRejected, Message: "unknown relying party", Status: 400}, nil
 	}
 
-	validated, err := feddomain.ValidateSignIn(req, *rp)
+	validated, err := wsfeddomain.ValidateSignIn(req, *rp)
 	if err != nil {
-		s.emit(&feddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: err.Error()})
+		s.emit(&wsfeddomain.WsFedSignInRejected{At: time.Now().UTC(), TenantID: tenantID, Wtrealm: req.Wtrealm, Reason: err.Error()})
 		//nolint:nilerr // 検証エラーは 400 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: err.Error(), Status: 400}, nil
 	}
@@ -137,8 +137,8 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 	if user == nil || !user.IsActive() {
 		return SignInOutcome{Kind: SignInNeedLogin}, nil
 	}
-	if feddomain.RequiresKerberos(req.Wauth) {
-		if _, err := feddomain.ResolveAuthnMethod(req.Wauth, feddomain.PerformedAuthn{
+	if wsfeddomain.RequiresKerberos(req.Wauth) {
+		if _, err := wsfeddomain.ResolveAuthnMethod(req.Wauth, wsfeddomain.PerformedAuthn{
 			AMR: authn.AMR, SecondFactor: authn.SecondFactorAuthenticated(),
 		}, *rp); err != nil {
 			//nolint:nilerr // 未実施の方式は HTTP 側で Negotiate を試す outcome へ写す。
@@ -155,24 +155,24 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{}, err
 	}
 	if reason != "" {
-		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
+		s.emit(&wsfeddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reason})
 		return SignInOutcome{Kind: SignInForbidden, Message: "The user does not meet the application's sign-in policy requirements."}, nil
 	}
 
 	// wfresh: 認証が古すぎれば再認証のためログインへ誘導する。
-	if feddomain.RequiresFreshAuth(req.Wfresh, time.Unix(authn.AuthTime, 0), now) {
+	if wsfeddomain.RequiresFreshAuth(req.Wfresh, time.Unix(authn.AuthTime, 0), now) {
 		return SignInOutcome{Kind: SignInNeedLogin}, nil
 	}
 	// wauth: 要求された認証方式を尊重する。満たせない方式は拒否し、
 	// Entra が求めた MFA には第二要素の照合を求める。
-	authnMethod, err := feddomain.ResolveAuthnMethod(req.Wauth, feddomain.PerformedAuthn{
+	authnMethod, err := wsfeddomain.ResolveAuthnMethod(req.Wauth, wsfeddomain.PerformedAuthn{
 		AMR: authn.AMR, SecondFactor: authn.SecondFactorAuthenticated(),
 	}, *rp)
-	if errors.Is(err, feddomain.ErrSecondFactorRequired) {
+	if errors.Is(err, wsfeddomain.ErrSecondFactorRequired) {
 		return SignInOutcome{Kind: SignInNeedSecondFactor, Validated: validated, Authn: authn, Now: now}, nil
 	}
 	if err != nil {
-		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: err.Error()})
+		s.emit(&wsfeddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: err.Error()})
 		//nolint:nilerr // wauth 不適合は 400 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: err.Error(), Status: 400}, nil
 	}
@@ -182,7 +182,7 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{}, err
 	}
 	if reject != "" {
-		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reject})
+		s.emit(&wsfeddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: reject})
 		return SignInOutcome{Kind: SignInRejected, Message: reject, Status: 500}, nil
 	}
 
@@ -209,7 +209,7 @@ type rpIssuance struct {
 // 発行できないときは拒否の理由を返す。
 func issueForRelyingParty(
 	ctx context.Context, tenantID string, attrSchemaRepo claimports.TenantAttributeSchemaRepo,
-	rp feddomain.WsFedRelyingParty, user userdomain.User,
+	rp wsfeddomain.WsFedRelyingParty, user userdomain.User,
 ) (rpIssuance, string, error) {
 	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
 	if err != nil {
@@ -217,12 +217,12 @@ func issueForRelyingParty(
 	}
 	// 構成の後に属性スキーマが変わっても、重なりうるか利用者が書き換えられる値では発行しない。
 	if rp.EntraProfile != nil {
-		if err := feddomain.CheckEntraSourceAnchorAttribute(defs, rp.EntraProfile); err != nil {
+		if err := wsfeddomain.CheckEntraSourceAnchorAttribute(defs, rp.EntraProfile); err != nil {
 			//nolint:nilerr // 守られていない sourceAnchor は拒否の理由として返す。
 			return rpIssuance{}, "entra source anchor not protected", nil
 		}
 	}
-	attrs, err := feddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(user), rp.EntraProfile)
+	attrs, err := wsfeddomain.ApplyEntraProfile(claimdomain.ResolveUserAttributes(user), rp.EntraProfile)
 	if err != nil {
 		//nolint:nilerr // ImmutableID を導けないことは拒否の理由として返し、呼び出し側には error を返さない。
 		return rpIssuance{}, "entra profile failed", nil
@@ -234,7 +234,7 @@ func issueForRelyingParty(
 			return rpIssuance{}, "entra domain not federated", nil
 		}
 	}
-	result, err := claimdomain.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, feddomain.EntraAttributeDefs(defs, rp.EntraProfile))
+	result, err := claimdomain.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, wsfeddomain.EntraAttributeDefs(defs, rp.EntraProfile))
 	if err != nil {
 		//nolint:nilerr // claim 発行失敗 (fail-closed floor 違反を含む) は拒否の理由として返す。
 		return rpIssuance{}, "claim issuance failed", nil

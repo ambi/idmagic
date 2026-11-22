@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvalmemory "github.com/ambi/idmagic/backend/oauth2/internal/approval/db_memory"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -29,31 +29,31 @@ const (
 )
 
 type evalTokens struct {
-	result *ports.IntrospectionResult
+	result *oauthports.IntrospectionResult
 	err    error
 }
 
-func (e evalTokens) IntrospectAccessToken(context.Context, string) (*ports.IntrospectionResult, error) {
+func (e evalTokens) IntrospectAccessToken(context.Context, string) (*oauthports.IntrospectionResult, error) {
 	return e.result, e.err
 }
 
 type evalRelations struct {
-	decision policyports.RelationDecision
+	decision accessports.RelationDecision
 	err      error
-	got      []policyports.RelationCheck
+	got      []accessports.RelationCheck
 }
 
-func (r *evalRelations) CheckRelation(_ context.Context, check policyports.RelationCheck) (policyports.RelationDecision, error) {
+func (r *evalRelations) CheckRelation(_ context.Context, check accessports.RelationCheck) (accessports.RelationDecision, error) {
 	r.got = append(r.got, check)
 	return r.decision, r.err
 }
 
-func evalServer(t *testing.T, rules ...domain.ResourceAccessRule) ports.McpResourceServerRepository {
+func evalServer(t *testing.T, rules ...oauthdomain.ResourceAccessRule) oauthports.McpResourceServerRepository {
 	t.Helper()
 	repo := db_memory.NewMcpResourceServerRepository()
-	if err := repo.Save(context.Background(), &domain.McpResourceServer{
+	if err := repo.Save(context.Background(), &oauthdomain.McpResourceServer{
 		TenantID: evalTenant, ID: "rs-1", Resource: evalResource, Name: "rs", Scopes: []string{"docs:read"},
-		ClientID: evalClient, AccessRules: rules, State: domain.McpResourceServerActive,
+		ClientID: evalClient, AccessRules: rules, State: oauthdomain.McpResourceServerActive,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -67,56 +67,56 @@ func evalRequest() ResourceAccessRequest {
 	}
 }
 
-func evalAgentToken() *ports.IntrospectionResult {
-	return &ports.IntrospectionResult{
+func evalAgentToken() *oauthports.IntrospectionResult {
+	return &oauthports.IntrospectionResult{
 		Active: true, JTI: "jti", Sub: "agent-client", ClientID: "agent-client", Scope: "docs:read",
-		Aud: []string{evalResource}, PrincipalType: domain.PrincipalTypeAgent, AgentID: "A1",
+		Aud: []string{evalResource}, PrincipalType: oauthdomain.PrincipalTypeAgent, AgentID: "A1",
 	}
 }
 
-var evalRule = domain.ResourceAccessRule{ResourceType: "document", Relation: "viewer", Scopes: []string{"docs:read"}}
+var evalRule = oauthdomain.ResourceAccessRule{ResourceType: "document", Relation: "viewer", Scopes: []string{"docs:read"}}
 
 //spec:covers REQ-OAUTH2-062: 不許可の理由と、関係の判定へ進まないこと
 func TestEvaluateResourceAccessDenials(t *testing.T) {
 	detailRule := evalRule
 	detailRule.AuthorizationDetailType = "document_access"
-	withToken := func(mutate func(*ports.IntrospectionResult)) *ports.IntrospectionResult {
+	withToken := func(mutate func(*oauthports.IntrospectionResult)) *oauthports.IntrospectionResult {
 		token := evalAgentToken()
 		mutate(token)
 		return token
 	}
 	cases := []struct {
 		name   string
-		rule   domain.ResourceAccessRule
-		token  *ports.IntrospectionResult
+		rule   oauthdomain.ResourceAccessRule
+		token  *oauthports.IntrospectionResult
 		mutate func(*ResourceAccessRequest)
 		reason string
 	}{
-		{name: "無効なトークン", rule: evalRule, token: &ports.IntrospectionResult{Active: false}, reason: domain.ReasonTokenRejected},
-		{name: "別の資源宛て", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) { r.Aud = []string{"https://other.example/"} }), reason: domain.ReasonTokenRejected},
-		{name: "未登録の関係", rule: evalRule, token: evalAgentToken(), mutate: func(r *ResourceAccessRequest) { r.Relation = "owner" }, reason: domain.ReasonOperationNotRegistered},
-		{name: "未登録の型", rule: evalRule, token: evalAgentToken(), mutate: func(r *ResourceAccessRequest) { r.ResourceType = "folder" }, reason: domain.ReasonOperationNotRegistered},
-		{name: "詳細がない", rule: detailRule, token: evalAgentToken(), reason: domain.ReasonAuthorizationDetailMismatch},
-		{name: "詳細の action が違う", rule: detailRule, token: withToken(func(r *ports.IntrospectionResult) {
+		{name: "無効なトークン", rule: evalRule, token: &oauthports.IntrospectionResult{Active: false}, reason: oauthdomain.ReasonTokenRejected},
+		{name: "別の資源宛て", rule: evalRule, token: withToken(func(r *oauthports.IntrospectionResult) { r.Aud = []string{"https://other.example/"} }), reason: oauthdomain.ReasonTokenRejected},
+		{name: "未登録の関係", rule: evalRule, token: evalAgentToken(), mutate: func(r *ResourceAccessRequest) { r.Relation = "owner" }, reason: oauthdomain.ReasonOperationNotRegistered},
+		{name: "未登録の型", rule: evalRule, token: evalAgentToken(), mutate: func(r *ResourceAccessRequest) { r.ResourceType = "folder" }, reason: oauthdomain.ReasonOperationNotRegistered},
+		{name: "詳細がない", rule: detailRule, token: evalAgentToken(), reason: oauthdomain.ReasonAuthorizationDetailMismatch},
+		{name: "詳細の action が違う", rule: detailRule, token: withToken(func(r *oauthports.IntrospectionResult) {
 			r.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "document_access", Locations: []string{evalResource}, Actions: []string{"editor"}}}
-		}), reason: domain.ReasonAuthorizationDetailMismatch},
-		{name: "詳細の identifier が違う", rule: detailRule, token: withToken(func(r *ports.IntrospectionResult) {
+		}), reason: oauthdomain.ReasonAuthorizationDetailMismatch},
+		{name: "詳細の identifier が違う", rule: detailRule, token: withToken(func(r *oauthports.IntrospectionResult) {
 			r.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "document_access", Locations: []string{evalResource}, Actions: []string{"viewer"}, Identifier: "d2"}}
-		}), reason: domain.ReasonAuthorizationDetailMismatch},
-		{name: "Agent へ解決できない act", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) {
+		}), reason: oauthdomain.ReasonAuthorizationDetailMismatch},
+		{name: "Agent へ解決できない act", rule: evalRule, token: withToken(func(r *oauthports.IntrospectionResult) {
 			r.PrincipalType, r.AgentID, r.Sub = "", "", "alice"
 			r.Act = map[string]any{"sub": "some-client"}
-		}), reason: domain.ReasonPrincipalUnresolved},
-		{name: "mTLS の拇印がない", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) {
-			r.SenderConstraint = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "thumb"}
-		}), reason: domain.ReasonSenderProofInvalid},
-		{name: "mTLS の拇印が違う", rule: evalRule, token: withToken(func(r *ports.IntrospectionResult) {
-			r.SenderConstraint = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "thumb"}
-		}), mutate: func(r *ResourceAccessRequest) { r.CertificateThumbprint = "other" }, reason: domain.ReasonSenderProofInvalid},
+		}), reason: oauthdomain.ReasonPrincipalUnresolved},
+		{name: "mTLS の拇印がない", rule: evalRule, token: withToken(func(r *oauthports.IntrospectionResult) {
+			r.SenderConstraint = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "thumb"}
+		}), reason: oauthdomain.ReasonSenderProofInvalid},
+		{name: "mTLS の拇印が違う", rule: evalRule, token: withToken(func(r *oauthports.IntrospectionResult) {
+			r.SenderConstraint = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: "thumb"}
+		}), mutate: func(r *ResourceAccessRequest) { r.CertificateThumbprint = "other" }, reason: oauthdomain.ReasonSenderProofInvalid},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			relations := &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+			relations := &evalRelations{decision: accessports.RelationDecision{Permitted: true}}
 			in := evalRequest()
 			if tc.mutate != nil {
 				tc.mutate(&in)
@@ -147,7 +147,7 @@ func TestEvaluateResourceAccessDerivesPrincipalsFromToken(t *testing.T) {
 	token.AgentChain = []string{"A1", "A2"}
 	token.Act = map[string]any{"sub": "agent-client"}
 	token.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "t"}}
-	relations := &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+	relations := &evalRelations{decision: accessports.RelationDecision{Permitted: true}}
 	var events []spec.DomainEvent
 
 	decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
@@ -157,18 +157,18 @@ func TestEvaluateResourceAccessDerivesPrincipalsFromToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !decision.Permitted || decision.DelegationMode != domain.DelegationModeOnBehalfOf || len(decision.AuthorizationDetails) != 1 {
+	if !decision.Permitted || decision.DelegationMode != oauthdomain.DelegationModeOnBehalfOf || len(decision.AuthorizationDetails) != 1 {
 		t.Fatalf("decision=%+v", decision)
 	}
 	got := relations.got[0]
-	want := []policyports.PrincipalRef{{Type: "agent", ID: "A1"}, {Type: "agent", ID: "A2"}}
-	if got.Subject != (policyports.PrincipalRef{Type: "user", ID: "alice"}) || !slices.Equal(got.Actors, want) {
+	want := []accessports.PrincipalRef{{Type: "agent", ID: "A1"}, {Type: "agent", ID: "A2"}}
+	if got.Subject != (accessports.PrincipalRef{Type: "user", ID: "alice"}) || !slices.Equal(got.Actors, want) {
 		t.Fatalf("subject=%+v actors=%+v", got.Subject, got.Actors)
 	}
 	if got.TenantID != evalTenant || !slices.Equal(got.RequiredScopes, []string{"docs:read"}) || !slices.Equal(got.GrantedScopes, []string{"docs:read"}) {
 		t.Fatalf("check=%+v", got)
 	}
-	event, ok := events[0].(*domain.ResourceAccessEvaluated)
+	event, ok := events[0].(*oauthdomain.ResourceAccessEvaluated)
 	if !ok || !event.Permitted || event.ResourceServerID != "rs-1" || event.TokenID != "jti" {
 		t.Fatalf("event=%+v", events)
 	}
@@ -214,7 +214,7 @@ func TestHTUWithinResource(t *testing.T) {
 	}
 }
 
-func approvedRule() domain.ResourceAccessRule {
+func approvedRule() oauthdomain.ResourceAccessRule {
 	rule := evalRule
 	rule.AuthorizationDetailType = "payment"
 	rule.RequiresApprovedOperation = true
@@ -228,7 +228,7 @@ func approvedDetail() spec.AuthorizationDetail {
 	}
 }
 
-func approvedToken() *ports.IntrospectionResult {
+func approvedToken() *oauthports.IntrospectionResult {
 	token := evalAgentToken()
 	token.ApprovalRequestID = "approval-1"
 	token.AuthorizationDetails = []spec.AuthorizationDetail{approvedDetail()}
@@ -263,32 +263,32 @@ func approvedRequest(key, parameters string) ResourceAccessRequest {
 //spec:covers REQ-OAUTH2-065: 不許可の要求が使用権を記録しないこと
 func TestApprovedOperationDenialsDoNotClaim(t *testing.T) {
 	now := time.Now().UTC()
-	allow := policyports.RelationDecision{Permitted: true}
+	allow := accessports.RelationDecision{Permitted: true}
 	cases := []struct {
 		name     string
-		token    *ports.IntrospectionResult
-		relation policyports.RelationDecision
+		token    *oauthports.IntrospectionResult
+		relation accessports.RelationDecision
 		in       ResourceAccessRequest
 		reason   string
 	}{
-		{name: "引数の不一致", token: approvedToken(), relation: allow, in: approvedRequest("k", `{"amount":1}`), reason: domain.ReasonApprovedOperationMismatch},
-		{name: "比較できない引数", token: approvedToken(), relation: allow, in: approvedRequest("k", `[]`), reason: domain.ReasonApprovedOperationMismatch},
-		{name: "関係の不許可", token: approvedToken(), relation: policyports.RelationDecision{Reasons: []string{"denied"}}, in: approvedRequest("k", `{"amount":100}`), reason: "denied"},
-		{name: "承認の識別子がない", token: func() *ports.IntrospectionResult {
+		{name: "引数の不一致", token: approvedToken(), relation: allow, in: approvedRequest("k", `{"amount":1}`), reason: oauthdomain.ReasonApprovedOperationMismatch},
+		{name: "比較できない引数", token: approvedToken(), relation: allow, in: approvedRequest("k", `[]`), reason: oauthdomain.ReasonApprovedOperationMismatch},
+		{name: "関係の不許可", token: approvedToken(), relation: accessports.RelationDecision{Reasons: []string{"denied"}}, in: approvedRequest("k", `{"amount":100}`), reason: "denied"},
+		{name: "承認の識別子がない", token: func() *oauthports.IntrospectionResult {
 			token := approvedToken()
 			token.ApprovalRequestID = ""
 			return token
-		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalRequired},
-		{name: "別のクライアントのトークン", token: func() *ports.IntrospectionResult {
+		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: oauthdomain.ReasonApprovalRequired},
+		{name: "別のクライアントのトークン", token: func() *oauthports.IntrospectionResult {
 			token := approvedToken()
 			token.ClientID = "other"
 			return token
-		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalExpired},
-		{name: "別の主体のトークン", token: func() *ports.IntrospectionResult {
+		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: oauthdomain.ReasonApprovalExpired},
+		{name: "別の主体のトークン", token: func() *oauthports.IntrospectionResult {
 			token := approvedToken()
 			token.Sub = "other"
 			return token
-		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalExpired},
+		}(), relation: allow, in: approvedRequest("k", `{"amount":100}`), reason: oauthdomain.ReasonApprovalExpired},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -321,7 +321,7 @@ func TestApprovedOperationConcurrentKeysHaveOneWinner(t *testing.T) {
 	store := approvedStore(t, now)
 	deps := ResourceAccessDeps{
 		Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
-		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Approvals: store,
+		Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}}, Approvals: store,
 	}
 	// evalRelations は呼び出しを記録するので、並行の主題は比較交換に絞って一つのストアへ向ける。
 	var wg sync.WaitGroup
@@ -330,7 +330,7 @@ func TestApprovedOperationConcurrentKeysHaveOneWinner(t *testing.T) {
 	for _, key := range []string{"k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8"} {
 		wg.Go(func() {
 			local := deps
-			local.Relations = &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+			local.Relations = &evalRelations{decision: accessports.RelationDecision{Permitted: true}}
 			decision, err := EvaluateResourceAccess(ctx, local, approvedRequest(key, `{"amount":100}`), now)
 			if err != nil {
 				t.Error(err)
@@ -360,7 +360,7 @@ func TestApprovedOperationEventCarriesNoSecretValues(t *testing.T) {
 	in := approvedRequest("secret-operation-key", `{"amount":100}`)
 	decision, err := EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
 		Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
-		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Approvals: approvedStore(t, now),
+		Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}}, Approvals: approvedStore(t, now),
 		Emit: func(event spec.DomainEvent) { events = append(events, event) },
 	}, in, now)
 	if err != nil || !decision.Permitted || len(events) != 1 {
@@ -394,7 +394,7 @@ func TestApprovedOperationFailsClosed(t *testing.T) {
 	ctx := evalTenantContext()
 	base := ResourceAccessDeps{
 		Servers: evalServer(t, approvedRule()), Tokens: evalTokens{result: approvedToken()},
-		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
+		Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}},
 	}
 	unwired := base
 	if decision, err := EvaluateResourceAccess(ctx, unwired, approvedRequest("k", `{"amount":100}`), now); !errors.Is(err, ErrResourceAccessNotConfigured) || decision.Permitted {
@@ -413,10 +413,10 @@ func TestApprovedOperationFailsClosed(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-062: 利用者の主体と代行の Agent、Agent の主体の記録の形
 func TestEvaluationAuditNamesThePrincipals(t *testing.T) {
-	agent := func(id string) policyports.PrincipalRef {
-		return policyports.PrincipalRef{Type: domain.PrincipalTypeAgent, ID: id}
+	agent := func(id string) accessports.PrincipalRef {
+		return accessports.PrincipalRef{Type: oauthdomain.PrincipalTypeAgent, ID: id}
 	}
-	delegated := newEvaluationAudit("j", policyports.PrincipalRef{Type: "user", ID: "alice"}, []policyports.PrincipalRef{agent("A1"), agent("A2")})
+	delegated := newEvaluationAudit("j", accessports.PrincipalRef{Type: "user", ID: "alice"}, []accessports.PrincipalRef{agent("A1"), agent("A2")})
 	if delegated.userID != "alice" || delegated.agentID != "A1" || len(delegated.actorChain) != 2 {
 		t.Fatalf("delegated = %+v", delegated)
 	}
@@ -428,18 +428,18 @@ func TestEvaluationAuditNamesThePrincipals(t *testing.T) {
 
 //spec:covers REQ-OAUTH2-062: 条件は関係の判定の後に評価し、監査に版と結果と申告のダイジェストを残して平文を残さないこと
 func TestEvaluateResourceAccessCondition(t *testing.T) {
-	condition := &domain.ResourceAccessCondition{DenyWhen: `attributes.tool == "delete"`}
+	condition := &oauthdomain.ResourceAccessCondition{DenyWhen: `attributes.tool == "delete"`}
 	rule := evalRule
 	rule.Condition = condition
 	const secretValue = "delete"
-	run := func(t *testing.T, relations *evalRelations, token *ports.IntrospectionResult, attributes string) (ResourceAccessDecision, *domain.ResourceAccessEvaluated) {
+	run := func(t *testing.T, relations *evalRelations, token *oauthports.IntrospectionResult, attributes string) (ResourceAccessDecision, *oauthdomain.ResourceAccessEvaluated) {
 		t.Helper()
-		var event *domain.ResourceAccessEvaluated
+		var event *oauthdomain.ResourceAccessEvaluated
 		in := evalRequest()
 		in.Attributes = attributes
 		decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
 			Servers: evalServer(t, rule), Tokens: evalTokens{result: token}, Relations: relations,
-			Emit: func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+			Emit: func(recorded spec.DomainEvent) { event, _ = recorded.(*oauthdomain.ResourceAccessEvaluated) },
 		}, in, time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
@@ -447,11 +447,11 @@ func TestEvaluateResourceAccessCondition(t *testing.T) {
 		return decision, event
 	}
 	permit := func() *evalRelations {
-		return &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+		return &evalRelations{decision: accessports.RelationDecision{Permitted: true}}
 	}
 
 	decision, event := run(t, permit(), evalAgentToken(), `{"tool":"`+secretValue+`"}`)
-	if decision.Permitted || !slices.Equal(decision.Reasons, []string{domain.ReasonConditionDenied}) {
+	if decision.Permitted || !slices.Equal(decision.Reasons, []string{oauthdomain.ReasonConditionDenied}) {
 		t.Fatalf("拒否: %+v", decision)
 	}
 	if event.ConditionVersion != condition.Version() || event.ConditionOutcome != "deny" || len(event.DeclaredAttributesDigest) != 64 {
@@ -466,7 +466,7 @@ func TestEvaluateResourceAccessCondition(t *testing.T) {
 	}
 
 	decision, event = run(t, permit(), evalAgentToken(), `{`)
-	if decision.Permitted || !slices.Equal(decision.Reasons, []string{domain.ReasonConditionIndeterminate}) || event.ConditionOutcome != "indeterminate" || len(event.DeclaredAttributesDigest) != 64 {
+	if decision.Permitted || !slices.Equal(decision.Reasons, []string{oauthdomain.ReasonConditionIndeterminate}) || event.ConditionOutcome != "indeterminate" || len(event.DeclaredAttributesDigest) != 64 {
 		t.Fatalf("読めない申告: %+v %+v", decision, event)
 	}
 
@@ -476,10 +476,10 @@ func TestEvaluateResourceAccessCondition(t *testing.T) {
 	}
 
 	// 無効なトークンと関係の不許可では条件を評価しないので、申告で条件を探らせない。
-	if decision, event = run(t, permit(), &ports.IntrospectionResult{Active: false}, `{"tool":"delete"}`); !slices.Equal(decision.Reasons, []string{domain.ReasonTokenRejected}) || event.ConditionOutcome != "" {
+	if decision, event = run(t, permit(), &oauthports.IntrospectionResult{Active: false}, `{"tool":"delete"}`); !slices.Equal(decision.Reasons, []string{oauthdomain.ReasonTokenRejected}) || event.ConditionOutcome != "" {
 		t.Fatalf("無効なトークン: %+v %+v", decision, event)
 	}
-	denied := &evalRelations{decision: policyports.RelationDecision{Reasons: []string{"no_relation"}}}
+	denied := &evalRelations{decision: accessports.RelationDecision{Reasons: []string{"no_relation"}}}
 	if decision, event = run(t, denied, evalAgentToken(), `{"tool":"delete"}`); !slices.Equal(decision.Reasons, []string{"no_relation"}) || event.ConditionVersion != "" || event.DeclaredAttributesDigest != "" {
 		t.Fatalf("関係の不許可: %+v %+v", decision, event)
 	}
@@ -506,18 +506,18 @@ func TestEvaluateResourceAccessConditionAuditFollowsChanges(t *testing.T) {
 		t.Run(step.name, func(t *testing.T) {
 			server.AccessRules[0].Condition = nil
 			if step.expression != "" {
-				server.AccessRules[0].Condition = &domain.ResourceAccessCondition{DenyWhen: step.expression}
+				server.AccessRules[0].Condition = &oauthdomain.ResourceAccessCondition{DenyWhen: step.expression}
 			}
 			if err := servers.Save(context.Background(), server); err != nil {
 				t.Fatal(err)
 			}
-			var event *domain.ResourceAccessEvaluated
+			var event *oauthdomain.ResourceAccessEvaluated
 			in := evalRequest()
 			in.Attributes = step.attributes
 			decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
 				Servers: servers, Tokens: evalTokens{result: evalAgentToken()},
-				Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
-				Emit:      func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+				Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}},
+				Emit:      func(recorded spec.DomainEvent) { event, _ = recorded.(*oauthdomain.ResourceAccessEvaluated) },
 			}, in, time.Unix(0, 0).UTC())
 			if err != nil || event == nil || decision.Permitted != step.permitted || event.ConditionOutcome != step.outcome {
 				t.Fatalf("評価: decision=%+v event=%+v err=%v", decision, event, err)
@@ -547,20 +547,22 @@ func TestEvaluateResourceAccessConditionAuditFollowsChanges(t *testing.T) {
 func TestEvaluateResourceAccessIgnoresAttributesWithoutCondition(t *testing.T) {
 	in := evalRequest()
 	in.Attributes = `{`
-	var event *domain.ResourceAccessEvaluated
+	var event *oauthdomain.ResourceAccessEvaluated
 	decision, err := EvaluateResourceAccess(context.Background(), ResourceAccessDeps{
 		Servers: evalServer(t, evalRule), Tokens: evalTokens{result: evalAgentToken()},
-		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}},
-		Emit:      func(recorded spec.DomainEvent) { event, _ = recorded.(*domain.ResourceAccessEvaluated) },
+		Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}},
+		Emit:      func(recorded spec.DomainEvent) { event, _ = recorded.(*oauthdomain.ResourceAccessEvaluated) },
 	}, in, time.Now().UTC())
 	if err != nil || !decision.Permitted || event.ConditionVersion != "" || event.DeclaredAttributesDigest != "" {
 		t.Fatalf("err=%v decision=%+v event=%+v", err, decision, event)
 	}
 }
 
-type failingGrantStore struct{ ports.TokenExchangeGrantStore }
+type failingGrantStore struct {
+	oauthports.TokenExchangeGrantStore
+}
 
-func (failingGrantStore) Save(context.Context, string, domain.TokenExchangeGrant) error {
+func (failingGrantStore) Save(context.Context, string, oauthdomain.TokenExchangeGrant) error {
 	return errors.New("unavailable")
 }
 
@@ -569,12 +571,12 @@ func TestEvaluateIssuesATokenExchangeGrant(t *testing.T) {
 	rule := evalRule
 	rule.TokenExchangeResources = []string{"https://down.example/mcp"}
 	now := time.Now().UTC()
-	evaluate := func(store ports.TokenExchangeGrantStore, resource string) (ResourceAccessDecision, error) {
+	evaluate := func(store oauthports.TokenExchangeGrantStore, resource string) (ResourceAccessDecision, error) {
 		in := evalRequest()
 		in.TokenExchangeResource = resource
 		return EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
 			Servers: evalServer(t, rule), Tokens: evalTokens{result: evalAgentToken()},
-			Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Grants: store,
+			Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}}, Grants: store,
 		}, in, now)
 	}
 	store := db_memory.NewTokenExchangeGrantStore()
@@ -582,9 +584,9 @@ func TestEvaluateIssuesATokenExchangeGrant(t *testing.T) {
 	if err != nil || !decision.Permitted || decision.TokenExchangeGrant == "" {
 		t.Fatalf("decision=%+v err=%v", decision, err)
 	}
-	claimed, err := store.Claim(evalTenantContext(), domain.HashTokenExchangeGrant(decision.TokenExchangeGrant), domain.TokenExchangeGrant{
+	claimed, err := store.Claim(evalTenantContext(), oauthdomain.HashTokenExchangeGrant(decision.TokenExchangeGrant), oauthdomain.TokenExchangeGrant{
 		ClientID: evalClient, SubjectTokenID: "jti", Resource: "https://down.example/mcp",
-	}, now.Add(domain.TokenExchangeGrantTTL-time.Second))
+	}, now.Add(oauthdomain.TokenExchangeGrantTTL-time.Second))
 	if err != nil || !claimed {
 		t.Fatalf("claimed=%v err=%v", claimed, err)
 	}
@@ -593,7 +595,7 @@ func TestEvaluateIssuesATokenExchangeGrant(t *testing.T) {
 		t.Fatalf("without a destination: decision=%+v err=%v", decision, err)
 	}
 	decision, err = evaluate(store, "https://other.example/mcp")
-	if err != nil || decision.Permitted || decision.TokenExchangeGrant != "" || decision.Reasons[0] != domain.ReasonTokenExchangeNotPermitted {
+	if err != nil || decision.Permitted || decision.TokenExchangeGrant != "" || decision.Reasons[0] != oauthdomain.ReasonTokenExchangeNotPermitted {
 		t.Fatalf("undeclared: decision=%+v err=%v", decision, err)
 	}
 	if _, err := evaluate(nil, "https://down.example/mcp"); !errors.Is(err, ErrResourceAccessNotConfigured) {
@@ -615,10 +617,10 @@ func TestApprovedOperationGetsNoTokenExchangeGrant(t *testing.T) {
 	rule.TokenExchangeResources = []string{"https://down.example/mcp"}
 	decision, err := EvaluateResourceAccess(ctx, ResourceAccessDeps{
 		Servers: evalServer(t, rule), Tokens: evalTokens{result: approvedToken()},
-		Relations: &evalRelations{decision: policyports.RelationDecision{Permitted: true}}, Approvals: store,
+		Relations: &evalRelations{decision: accessports.RelationDecision{Permitted: true}}, Approvals: store,
 		Grants: db_memory.NewTokenExchangeGrantStore(),
 	}, in, now)
-	if err != nil || decision.Permitted || decision.Reasons[0] != domain.ReasonTokenExchangeNotPermitted {
+	if err != nil || decision.Permitted || decision.Reasons[0] != oauthdomain.ReasonTokenExchangeNotPermitted {
 		t.Fatalf("decision=%+v err=%v", decision, err)
 	}
 	record, err := store.FindByID(ctx, approvedToken().ApprovalRequestID)
@@ -631,7 +633,7 @@ func TestApprovedOperationGetsNoTokenExchangeGrant(t *testing.T) {
 func TestEvaluateResolvesAnAgentBehindAGateway(t *testing.T) {
 	token := evalAgentToken()
 	token.Act = map[string]any{"sub": evalClient}
-	relations := &evalRelations{decision: policyports.RelationDecision{Permitted: true}}
+	relations := &evalRelations{decision: accessports.RelationDecision{Permitted: true}}
 	evaluate := func() ResourceAccessDecision {
 		decision, err := EvaluateResourceAccess(evalTenantContext(), ResourceAccessDeps{
 			Servers: evalServer(t, evalRule), Tokens: evalTokens{result: token}, Relations: relations,
@@ -645,7 +647,7 @@ func TestEvaluateResolvesAnAgentBehindAGateway(t *testing.T) {
 		t.Fatalf("gateway: %+v", decision)
 	}
 	token.Act = map[string]any{"sub": "unregistered"}
-	if decision := evaluate(); decision.Permitted || decision.Reasons[0] != domain.ReasonPrincipalUnresolved {
+	if decision := evaluate(); decision.Permitted || decision.Reasons[0] != oauthdomain.ReasonPrincipalUnresolved {
 		t.Fatalf("unregistered: %+v", decision)
 	}
 	token.Act = map[string]any{"sub": evalClient, "act": map[string]any{"sub": "other"}}
@@ -660,7 +662,7 @@ func TestEvaluateResolvesAnAgentBehindAGateway(t *testing.T) {
 //spec:covers REQ-OAUTH2-065: 承認の不足、期限切れ、引数の不一致にだけ明細を返し、使用済みとほかの不許可には返さないこと
 func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
 	now := time.Now().UTC()
-	allow := policyports.RelationDecision{Permitted: true}
+	allow := accessports.RelationDecision{Permitted: true}
 	plainToken := evalAgentToken
 	paymentFor := func(fields map[string]any) spec.AuthorizationDetail {
 		return spec.AuthorizationDetail{
@@ -681,7 +683,7 @@ func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
 	}
 	conditionRule := evalRule
 	conditionRule.AuthorizationDetailType = "docs"
-	conditionRule.Condition = &domain.ResourceAccessCondition{RequireApprovalWhen: `attributes.amount >= 100`, ApprovalDetailType: "payment"}
+	conditionRule.Condition = &oauthdomain.ResourceAccessCondition{RequireApprovalWhen: `attributes.amount >= 100`, ApprovalDetailType: "payment"}
 	docsToken := evalAgentToken()
 	docsToken.AuthorizationDetails = []spec.AuthorizationDetail{{Type: "docs", Locations: []string{evalResource}, Actions: []string{"viewer"}}}
 	conditionRequest := approvedRequest("k", `{"amount":100}`)
@@ -689,9 +691,9 @@ func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		rule     domain.ResourceAccessRule
-		token    *ports.IntrospectionResult
-		relation policyports.RelationDecision
+		rule     oauthdomain.ResourceAccessRule
+		token    *oauthports.IntrospectionResult
+		relation accessports.RelationDecision
 		store    func(*testing.T) *approvalmemory.ApprovalRequestStore
 		in       ResourceAccessRequest
 		reason   string
@@ -699,27 +701,27 @@ func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
 	}{
 		{
 			name: "明細のない通常のトークン", rule: approvedRule(), token: plainToken(), relation: allow,
-			in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalRequired,
+			in: approvedRequest("k", `{"amount":100}`), reason: oauthdomain.ReasonApprovalRequired,
 			want: []spec.AuthorizationDetail{paymentFor(map[string]any{"amount": float64(100)})},
 		},
 		{
 			name: "引数のない操作", rule: approvedRule(), token: plainToken(), relation: allow,
-			in: approvedRequest("k", ""), reason: domain.ReasonApprovalRequired,
+			in: approvedRequest("k", ""), reason: oauthdomain.ReasonApprovalRequired,
 			want: []spec.AuthorizationDetail{paymentFor(nil)},
 		},
 		{
 			name: "承認と異なる引数", rule: approvedRule(), token: approvedToken(), relation: allow,
-			in: approvedRequest("k", `{"amount":1}`), reason: domain.ReasonApprovedOperationMismatch,
+			in: approvedRequest("k", `{"amount":1}`), reason: oauthdomain.ReasonApprovedOperationMismatch,
 			want: []spec.AuthorizationDetail{paymentFor(map[string]any{"amount": float64(1)})},
 		},
 		{
 			name: "期限切れの承認", rule: approvedRule(), token: approvedToken(), relation: allow, store: expiredStore,
-			in: approvedRequest("k", `{"amount":100}`), reason: domain.ReasonApprovalExpired,
+			in: approvedRequest("k", `{"amount":100}`), reason: oauthdomain.ReasonApprovalExpired,
 			want: []spec.AuthorizationDetail{paymentFor(map[string]any{"amount": float64(100)})},
 		},
 		{
 			name: "条件が承認を求めた操作は規則の明細も求める", rule: conditionRule, token: docsToken, relation: allow,
-			in: conditionRequest, reason: domain.ReasonApprovalRequired,
+			in: conditionRequest, reason: oauthdomain.ReasonApprovalRequired,
 			want: []spec.AuthorizationDetail{
 				{Type: "docs", Locations: []string{"https://mcp.example/"}, Actions: []string{"viewer"}, Identifier: "d1"},
 				paymentFor(map[string]any{"amount": float64(100)}),
@@ -727,12 +729,12 @@ func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
 		},
 		{
 			name: "関係の不許可", rule: approvedRule(), token: plainToken(),
-			relation: policyports.RelationDecision{Reasons: []string{"no_relation"}},
+			relation: accessports.RelationDecision{Reasons: []string{"no_relation"}},
 			in:       approvedRequest("k", `{"amount":100}`), reason: "no_relation",
 		},
 		{
 			name: "オブジェクトでない引数", rule: approvedRule(), token: approvedToken(), relation: allow,
-			in: approvedRequest("k", `[]`), reason: domain.ReasonApprovedOperationMismatch,
+			in: approvedRequest("k", `[]`), reason: oauthdomain.ReasonApprovedOperationMismatch,
 		},
 	}
 	for _, tc := range cases {
@@ -772,7 +774,7 @@ func TestEvaluateResourceAccess_REQ_OAUTH2_065_Remediation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !slices.Equal(decision.Reasons, []string{domain.ReasonApprovalAlreadyUsed}) || decision.Remediation != nil {
+		if !slices.Equal(decision.Reasons, []string{oauthdomain.ReasonApprovalAlreadyUsed}) || decision.Remediation != nil {
 			t.Fatalf("decision=%+v", decision)
 		}
 	})

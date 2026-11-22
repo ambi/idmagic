@@ -10,7 +10,7 @@ import (
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/internal/approval/usecases"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -19,7 +19,7 @@ import (
 
 func (d Deps) handleBackchannelAuthenticate(c *echo.Context) error {
 	if err := c.Request().ParseForm(); err != nil {
-		return writeOAuthError(c, sharedusecases.NewOAuthError("invalid_request", "form parse failed"))
+		return writeOAuthError(c, oauthusecases.NewOAuthError("invalid_request", "form parse failed"))
 	}
 	authed, err := d.authenticateTokenClient(c)
 	if err != nil {
@@ -33,7 +33,7 @@ func (d Deps) handleBackchannelAuthenticate(c *echo.Context) error {
 	}
 	requestedExpiryValue, requestedExpiryPresent, err := optionalInt(c.Request().PostFormValue("requested_expiry"))
 	if err != nil {
-		return writeOAuthError(c, sharedusecases.NewOAuthError("invalid_request", "requested_expiry must be an integer"))
+		return writeOAuthError(c, oauthusecases.NewOAuthError("invalid_request", "requested_expiry must be an integer"))
 	}
 	var requestedExpiry *int
 	if requestedExpiryPresent {
@@ -158,7 +158,7 @@ func (d Deps) handleDecideMyApprovalRequest(c *echo.Context) error {
 }
 
 func writeAccountApprovalError(c *echo.Context, err error) error {
-	var oauthErr *sharedusecases.OAuthError
+	var oauthErr *oauthusecases.OAuthError
 	if !errors.As(err, &oauthErr) {
 		return err
 	}

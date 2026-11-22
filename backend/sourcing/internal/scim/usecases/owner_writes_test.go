@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sourcing"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -30,7 +30,7 @@ func (n *ownerNotifications) NotifyGroupMutation(_ context.Context, _, _ string,
 	return nil
 }
 
-func scimOwnerWrites() (*usecases.Usecases, *[]string, *ownerNotifications, tenantports.QuotaRepository) {
+func scimOwnerWrites() (*scimusecases.Usecases, *[]string, *ownerNotifications, tenantports.QuotaRepository) {
 	identity := idmanagement.NewMemoryModule()
 	refs := scimmemory.NewScimRepository()
 	notifications := &ownerNotifications{}
@@ -39,7 +39,7 @@ func scimOwnerWrites() (*usecases.Usecases, *[]string, *ownerNotifications, tena
 	var events []string
 	emit := func(event spec.DomainEvent) { events = append(events, event.EventType()) }
 	writes := sourcingdeps.NewWrites(identity, idmanagement.LifecycleDeps{QuotaRepo: quota}, sourcing.Module{ScimRepo: refs}, emit)
-	u := usecases.NewUsecases(refs, identity.UserRepo, identity.GroupRepo, scimUserLifecycle(identity.UserRepo), emit, writes)
+	u := scimusecases.NewUsecases(refs, identity.UserRepo, identity.GroupRepo, scimUserLifecycle(identity.UserRepo), emit, writes)
 	return u, &events, notifications, quota
 }
 

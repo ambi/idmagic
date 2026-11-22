@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 )
 
 var (
@@ -16,25 +16,25 @@ var (
 )
 
 type ConnectionRepository interface {
-	Save(context.Context, *domain.IdentityProviderConnection) error
-	Find(context.Context, string, string) (*domain.IdentityProviderConnection, error)
-	List(context.Context, string) ([]*domain.IdentityProviderConnection, error)
+	Save(context.Context, *federationdomain.IdentityProviderConnection) error
+	Find(context.Context, string, string) (*federationdomain.IdentityProviderConnection, error)
+	List(context.Context, string) ([]*federationdomain.IdentityProviderConnection, error)
 	Delete(context.Context, string, string) error
 }
 
 type IdentityRepository interface {
-	Create(context.Context, *domain.FederatedIdentity) error
-	FindBySubject(context.Context, string, string, string) (*domain.FederatedIdentity, error)
-	FindByUserProvider(context.Context, string, string, string) (*domain.FederatedIdentity, error)
-	ListByUser(context.Context, string, string) ([]*domain.FederatedIdentity, error)
+	Create(context.Context, *federationdomain.FederatedIdentity) error
+	FindBySubject(context.Context, string, string, string) (*federationdomain.FederatedIdentity, error)
+	FindByUserProvider(context.Context, string, string, string) (*federationdomain.FederatedIdentity, error)
+	ListByUser(context.Context, string, string) ([]*federationdomain.FederatedIdentity, error)
 	// ExistsForProvider は、テナントの接続に連携した外部アイデンティティが 1 つでも残っているかを返す。
 	ExistsForProvider(ctx context.Context, tenantID, providerID string) (bool, error)
 	Delete(context.Context, string, string, string) error
 }
 
 type AttemptStore interface {
-	Save(context.Context, *domain.FederatedLoginAttempt) error
-	Consume(context.Context, string, string, time.Time) (*domain.FederatedLoginAttempt, error)
+	Save(context.Context, *federationdomain.FederatedLoginAttempt) error
+	Consume(context.Context, string, string, time.Time) (*federationdomain.FederatedLoginAttempt, error)
 }
 
 type ReplayStore interface {

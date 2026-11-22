@@ -12,12 +12,12 @@ import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 )
 
-func newAdminBindingDeps(t *testing.T) usecases.AdminAgentWorkloadBindingDeps {
+func newAdminBindingDeps(t *testing.T) workloadusecases.AdminAgentWorkloadBindingDeps {
 	t.Helper()
-	return usecases.AdminAgentWorkloadBindingDeps{
+	return workloadusecases.AdminAgentWorkloadBindingDeps{
 		TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),
 		BindingRepo:     workloadmemory.NewAgentWorkloadBindingRepository(),
 		AgentRepo:       idmanagement.NewMemoryModule().AgentRepo,
@@ -45,13 +45,13 @@ func TestCreateAgentWorkloadBinding(t *testing.T) {
 	deps := newAdminBindingDeps(t)
 	ctx := withTenant("tenant-a")
 	now := time.Now().UTC()
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps.AdminWorkloadIdentityDeps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps.AdminWorkloadIdentityDeps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
 	agentID := seedActiveAgent(ctx, t, deps.AgentRepo, "tenant-a")
 
-	binding, err := usecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
+	binding, err := workloadusecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, workloadusecases.CreateAgentWorkloadBindingInput{
 		SubjectPattern: "spiffe://example.org/ns/prod/sa/*", AgentID: agentID,
 	}, now)
 	if err != nil {
@@ -62,10 +62,10 @@ func TestCreateAgentWorkloadBinding(t *testing.T) {
 	}
 
 	t.Run("rejects duplicate subject_pattern in the same bundle", func(t *testing.T) {
-		_, err := usecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
+		_, err := workloadusecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, workloadusecases.CreateAgentWorkloadBindingInput{
 			SubjectPattern: "spiffe://example.org/ns/prod/sa/*", AgentID: agentID,
 		}, now)
-		if !errors.Is(err, usecases.ErrBindingSubjectPatternExists) {
+		if !errors.Is(err, workloadusecases.ErrBindingSubjectPatternExists) {
 			t.Fatalf("err = %v, want ErrBindingSubjectPatternExists", err)
 		}
 	})
@@ -83,10 +83,10 @@ func TestCreateAgentWorkloadBinding(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = usecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
+		_, err = workloadusecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, workloadusecases.CreateAgentWorkloadBindingInput{
 			SubjectPattern: "spiffe://example.org/ns/prod/sa/other-*", AgentID: otherAgentID,
 		}, now)
-		if !errors.Is(err, usecases.ErrBindingAgentNotFound) {
+		if !errors.Is(err, workloadusecases.ErrBindingAgentNotFound) {
 			t.Fatalf("err = %v, want ErrBindingAgentNotFound", err)
 		}
 		after, err := deps.BindingRepo.ListByTrustBundle(ctx, "tenant-a", bundle.ID)
@@ -99,10 +99,10 @@ func TestCreateAgentWorkloadBinding(t *testing.T) {
 	})
 
 	t.Run("rejects unknown trust bundle", func(t *testing.T) {
-		_, err := usecases.CreateAgentWorkloadBinding(ctx, deps, "missing-bundle", usecases.CreateAgentWorkloadBindingInput{
+		_, err := workloadusecases.CreateAgentWorkloadBinding(ctx, deps, "missing-bundle", workloadusecases.CreateAgentWorkloadBindingInput{
 			SubjectPattern: "spiffe://example.org/ns/prod/sa/x", AgentID: agentID,
 		}, now)
-		if !errors.Is(err, usecases.ErrTrustBundleNotFound) {
+		if !errors.Is(err, workloadusecases.ErrTrustBundleNotFound) {
 			t.Fatalf("err = %v, want ErrTrustBundleNotFound", err)
 		}
 	})
@@ -112,19 +112,19 @@ func TestAgentWorkloadBindingDisableEnableDeleteLifecycle(t *testing.T) {
 	deps := newAdminBindingDeps(t)
 	ctx := withTenant("tenant-a")
 	now := time.Now().UTC()
-	bundle, err := usecases.RegisterWorkloadTrustBundle(ctx, deps.AdminWorkloadIdentityDeps, validRegisterInput(), now)
+	bundle, err := workloadusecases.RegisterWorkloadTrustBundle(ctx, deps.AdminWorkloadIdentityDeps, validRegisterInput(), now)
 	if err != nil {
 		t.Fatalf("RegisterWorkloadTrustBundle: %v", err)
 	}
 	agentID := seedActiveAgent(ctx, t, deps.AgentRepo, "tenant-a")
-	binding, err := usecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, usecases.CreateAgentWorkloadBindingInput{
+	binding, err := workloadusecases.CreateAgentWorkloadBinding(ctx, deps, bundle.ID, workloadusecases.CreateAgentWorkloadBindingInput{
 		SubjectPattern: "spiffe://example.org/ns/prod/sa/*", AgentID: agentID,
 	}, now)
 	if err != nil {
 		t.Fatalf("CreateAgentWorkloadBinding: %v", err)
 	}
 
-	disabled, err := usecases.DisableAgentWorkloadBinding(ctx, deps, binding.ID, now)
+	disabled, err := workloadusecases.DisableAgentWorkloadBinding(ctx, deps, binding.ID, now)
 	if err != nil {
 		t.Fatalf("DisableAgentWorkloadBinding: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestAgentWorkloadBindingDisableEnableDeleteLifecycle(t *testing.T) {
 		t.Fatal("expected binding to be disabled")
 	}
 
-	enabled, err := usecases.EnableAgentWorkloadBinding(ctx, deps, binding.ID, now)
+	enabled, err := workloadusecases.EnableAgentWorkloadBinding(ctx, deps, binding.ID, now)
 	if err != nil {
 		t.Fatalf("EnableAgentWorkloadBinding: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestAgentWorkloadBindingDisableEnableDeleteLifecycle(t *testing.T) {
 		t.Fatal("expected binding to be enabled again")
 	}
 
-	if err := usecases.DeleteAgentWorkloadBinding(ctx, deps, binding.ID, now); err != nil {
+	if err := workloadusecases.DeleteAgentWorkloadBinding(ctx, deps, binding.ID, now); err != nil {
 		t.Fatalf("DeleteAgentWorkloadBinding: %v", err)
 	}
 	gone, err := deps.BindingRepo.FindByID(ctx, "tenant-a", binding.ID)

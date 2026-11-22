@@ -9,7 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -19,14 +19,14 @@ import (
 
 type AuthorizationCodeStore struct {
 	mu    sync.Mutex
-	codes map[string]*domain.AuthorizationCodeRecord
+	codes map[string]*oauthdomain.AuthorizationCodeRecord
 }
 
 func NewAuthorizationCodeStore() *AuthorizationCodeStore {
-	return &AuthorizationCodeStore{codes: map[string]*domain.AuthorizationCodeRecord{}}
+	return &AuthorizationCodeStore{codes: map[string]*oauthdomain.AuthorizationCodeRecord{}}
 }
 
-func (s *AuthorizationCodeStore) Save(_ context.Context, code *domain.AuthorizationCodeRecord) error {
+func (s *AuthorizationCodeStore) Save(_ context.Context, code *oauthdomain.AuthorizationCodeRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&code.TenantID, kernel.DefaultTenantID)
@@ -34,13 +34,13 @@ func (s *AuthorizationCodeStore) Save(_ context.Context, code *domain.Authorizat
 	return nil
 }
 
-func (s *AuthorizationCodeStore) Find(_ context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Find(_ context.Context, code string) (*oauthdomain.AuthorizationCodeRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return cloneAuthorizationCode(s.codes[code]), nil
 }
 
-func (s *AuthorizationCodeStore) Redeem(_ context.Context, code string, now time.Time) (*domain.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Redeem(_ context.Context, code string, now time.Time) (*oauthdomain.AuthorizationCodeRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.codes[code]
@@ -60,7 +60,7 @@ func (s *AuthorizationCodeStore) Redeem(_ context.Context, code string, now time
 	return cloneAuthorizationCode(rec), nil
 }
 
-func (s *AuthorizationCodeStore) MarkExpired(_ context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) MarkExpired(_ context.Context, code string) (*oauthdomain.AuthorizationCodeRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.codes[code]
@@ -87,7 +87,7 @@ func (s *AuthorizationCodeStore) LinkFamily(_ context.Context, code, familyID st
 	return nil
 }
 
-func cloneAuthorizationCode(in *domain.AuthorizationCodeRecord) *domain.AuthorizationCodeRecord {
+func cloneAuthorizationCode(in *oauthdomain.AuthorizationCodeRecord) *oauthdomain.AuthorizationCodeRecord {
 	if in == nil {
 		return nil
 	}

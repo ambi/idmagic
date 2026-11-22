@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -26,15 +26,15 @@ func assertOAuthError(t *testing.T, err error, code string) {
 }
 
 type fakeTokenIssuer struct {
-	lastAccessTokenInput ports.AccessTokenInput
+	lastAccessTokenInput oauthports.AccessTokenInput
 }
 
-func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in ports.AccessTokenInput) (string, string, error) {
+func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	f.lastAccessTokenInput = in
 	return "access-token", "jti-1", nil
 }
 
-func (*fakeTokenIssuer) SignIDToken(context.Context, ports.IDTokenInput) (string, error) {
+func (*fakeTokenIssuer) SignIDToken(context.Context, oauthports.IDTokenInput) (string, error) {
 	return "id-token", nil
 }
 func (*fakeTokenIssuer) AccessTokenTTLSeconds() int { return 600 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
@@ -79,10 +79,10 @@ func (d Deps) requireEnrollmentSession(c *echo.Context) (*authdomain.Authenticat
 		return nil, err
 	}
 	if authn == nil || !authn.AuthenticationPending || authn.PendingPurpose != authdomain.LoginPendingEnrollment || authn.EnrollmentDeadline == nil {
-		return nil, authusecases.ErrMfaEnrollmentNotAllowed
+		return nil, mfausecases.ErrMfaEnrollmentNotAllowed
 	}
 	if time.Now().UTC().After(*authn.EnrollmentDeadline) {
-		return nil, authusecases.ErrMfaEnrollmentExpired
+		return nil, mfausecases.ErrMfaEnrollmentExpired
 	}
 	return authn, nil
 }
@@ -95,7 +95,7 @@ func (d Deps) handleStartMfaEnrollmentAPI(c *echo.Context) error {
 	if err != nil {
 		return writeBrowserEnrollmentError(c, err)
 	}
-	start, err := authusecases.StartTOTPEnrollment(c.Request().Context(), authusecases.AccountMfaDeps{
+	start, err := mfausecases.StartTOTPEnrollment(c.Request().Context(), mfausecases.AccountMfaDeps{
 		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo, Emit: d.Emit, Issuer: d.Issuer,
 	}, authn.UserID)
 	if err != nil {
@@ -122,10 +122,10 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 	}
 	now := time.Now().UTC()
 	// 登録の迂回で到達する経路でも、アカウントの登録と同じく記憶済みの端末を失効させる。
-	if err := authusecases.ConfirmTOTPEnrollment(c.Request().Context(), authusecases.AccountMfaDeps{
+	if err := mfausecases.ConfirmTOTPEnrollment(c.Request().Context(), mfausecases.AccountMfaDeps{
 		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo, TrustedDevices: d.TrustedDeviceRevoker(),
 		Emit: d.Emit, Issuer: d.Issuer,
-	}, authusecases.ConfirmTOTPEnrollmentInput{Sub: authn.UserID, Secret: input.Secret, Code: input.Code, Now: now}); err != nil {
+	}, mfausecases.ConfirmTOTPEnrollmentInput{Sub: authn.UserID, Secret: input.Secret, Code: input.Code, Now: now}); err != nil {
 		return writeBrowserEnrollmentError(c, err)
 	}
 	if d.Emit != nil {
@@ -138,17 +138,17 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 
 func writeBrowserEnrollmentError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, authusecases.ErrMfaEnrollmentExpired):
+	case errors.Is(err, mfausecases.ErrMfaEnrollmentExpired):
 		return support.WriteProblem(c, http.StatusForbidden, "mfa_enrollment_expired", "The MFA enrollment period has expired. Contact an administrator.")
-	case errors.Is(err, authusecases.ErrMfaAlreadyEnrolled):
+	case errors.Is(err, mfausecases.ErrMfaAlreadyEnrolled):
 		// 「既に登録済み」は要求元セッションへの認可判断ではなく現在の状態との衝突なので、
 		// 「登録が許可されていない」とは別の code で返す。管理 API と account API が
 		// 同じ条件に使っている 409 mfa_already_enrolled に揃える。利用者から見て前者は
 		// 何もしなくてよい状況、後者は管理者に問い合わせる状況で、案内が違う。
 		return support.WriteProblem(c, http.StatusConflict, "mfa_already_enrolled", "An authenticator app is already enrolled.")
-	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed):
+	case errors.Is(err, mfausecases.ErrMfaEnrollmentNotAllowed):
 		return support.WriteProblem(c, http.StatusForbidden, "mfa_enrollment_not_allowed", "MFA enrollment cannot be started.")
-	case errors.Is(err, authusecases.ErrInvalidTOTPCode), errors.Is(err, authusecases.ErrInvalidTOTPSecret):
+	case errors.Is(err, mfausecases.ErrInvalidTOTPCode), errors.Is(err, mfausecases.ErrInvalidTOTPSecret):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_totp", "Check the authentication code.")
 	default:
 		return err

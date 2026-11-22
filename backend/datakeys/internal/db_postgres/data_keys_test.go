@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy"
@@ -20,7 +20,7 @@ import (
 func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
 
 func TestImplementsDataKeyRepositoryPort(t *testing.T) {
-	var _ ports.DataKeyRepository = (*DataKeyRepository)(nil)
+	var _ datakeysports.DataKeyRepository = (*DataKeyRepository)(nil)
 }
 
 func seedTenant(t *testing.T, db *DataKeyRepository) *tenancydomain.Tenant {
@@ -64,11 +64,11 @@ func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Bootstrap failed: %v", err)
 	}
-	if v1.Version != 1 || v1.Status != domain.DataKeyStatusActive {
+	if v1.Version != 1 || v1.Status != datakeysdomain.DataKeyStatusActive {
 		t.Fatalf("expected active v1, got version=%d status=%s", v1.Version, v1.Status)
 	}
 
-	if _, err := repo.Bootstrap(ctx, tenant.ID, []byte("wrapped-again"), "master-1", now); !errors.Is(err, domain.ErrDataKeyAlreadyBootstrapped) {
+	if _, err := repo.Bootstrap(ctx, tenant.ID, []byte("wrapped-again"), "master-1", now); !errors.Is(err, datakeysdomain.ErrDataKeyAlreadyBootstrapped) {
 		t.Fatalf("expected ErrDataKeyAlreadyBootstrapped, got %v", err)
 	}
 
@@ -76,10 +76,10 @@ func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Rotate failed: %v", err)
 	}
-	if next.Version != 2 || next.Status != domain.DataKeyStatusActive {
+	if next.Version != 2 || next.Status != datakeysdomain.DataKeyStatusActive {
 		t.Fatalf("expected active v2, got version=%d status=%s", next.Version, next.Status)
 	}
-	if previous.Version != 1 || previous.Status != domain.DataKeyStatusRetiring {
+	if previous.Version != 1 || previous.Status != datakeysdomain.DataKeyStatusRetiring {
 		t.Fatalf("expected retiring v1, got version=%d status=%s", previous.Version, previous.Status)
 	}
 
@@ -88,7 +88,7 @@ func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {
 		t.Fatalf("FindActive failed: %v %+v", err, active)
 	}
 
-	if _, err := repo.Disable(ctx, tenant.ID, 2, now.Add(2*time.Hour)); !errors.Is(err, domain.ErrDataKeyIsActive) {
+	if _, err := repo.Disable(ctx, tenant.ID, 2, now.Add(2*time.Hour)); !errors.Is(err, datakeysdomain.ErrDataKeyIsActive) {
 		t.Fatalf("expected ErrDataKeyIsActive disabling active version, got %v", err)
 	}
 
@@ -96,7 +96,7 @@ func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Disable v1 failed: %v", err)
 	}
-	if disabled.Status != domain.DataKeyStatusDisabled {
+	if disabled.Status != datakeysdomain.DataKeyStatusDisabled {
 		t.Fatalf("expected disabled status, got %s", disabled.Status)
 	}
 
@@ -104,7 +104,7 @@ func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Destroy v1 failed: %v", err)
 	}
-	if destroyed.Status != domain.DataKeyStatusDestroyed || destroyed.WrappedDEK != nil {
+	if destroyed.Status != datakeysdomain.DataKeyStatusDestroyed || destroyed.WrappedDEK != nil {
 		t.Fatalf("expected destroyed status with erased wrapped_dek, got status=%s wrapped_dek=%v", destroyed.Status, destroyed.WrappedDEK)
 	}
 
@@ -122,7 +122,7 @@ func TestFindActiveReturnsErrNoActiveDataKeyForUnknownTenant(t *testing.T) {
 	}
 	tenant := seedTenant(t, repo)
 
-	if _, err := repo.FindActive(context.Background(), tenant.ID); !errors.Is(err, domain.ErrNoActiveDataKey) {
+	if _, err := repo.FindActive(context.Background(), tenant.ID); !errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		t.Fatalf("expected ErrNoActiveDataKey, got %v", err)
 	}
 }
@@ -150,20 +150,20 @@ func TestOutOfRangeVersionsDoNotAliasExistingKeys(t *testing.T) {
 	for _, version64 := range []int64{0, -1, math.MaxInt32, math.MaxInt32 + 1, 1<<32 + 1, -(1 << 32) + 1} {
 		t.Run(strconv.FormatInt(version64, 10), func(t *testing.T) {
 			version := int(version64)
-			if key, err := repo.FindByVersion(ctx, tenant.ID, version); key != nil || !errors.Is(err, domain.ErrDataKeyNotFound) {
+			if key, err := repo.FindByVersion(ctx, tenant.ID, version); key != nil || !errors.Is(err, datakeysdomain.ErrDataKeyNotFound) {
 				t.Errorf("FindByVersion(%d) = (%v, %v), want nil, ErrDataKeyNotFound", version, key, err)
 			}
-			if key, err := repo.Disable(ctx, tenant.ID, version, now); key != nil || !errors.Is(err, domain.ErrDataKeyNotFound) {
+			if key, err := repo.Disable(ctx, tenant.ID, version, now); key != nil || !errors.Is(err, datakeysdomain.ErrDataKeyNotFound) {
 				t.Errorf("Disable(%d) = (%v, %v), want nil, ErrDataKeyNotFound", version, key, err)
 			}
-			if key, err := repo.Destroy(ctx, tenant.ID, version, now); key != nil || !errors.Is(err, domain.ErrDataKeyNotFound) {
+			if key, err := repo.Destroy(ctx, tenant.ID, version, now); key != nil || !errors.Is(err, datakeysdomain.ErrDataKeyNotFound) {
 				t.Errorf("Destroy(%d) = (%v, %v), want nil, ErrDataKeyNotFound", version, key, err)
 			}
 			key, err := repo.FindByVersion(ctx, tenant.ID, 1)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if key.Status != domain.DataKeyStatusRetiring || string(key.WrappedDEK) != "wrapped-1" {
+			if key.Status != datakeysdomain.DataKeyStatusRetiring || string(key.WrappedDEK) != "wrapped-1" {
 				t.Fatalf("v1 status=%s wrapped_dek=%q, want retiring and original material", key.Status, key.WrappedDEK)
 			}
 		})

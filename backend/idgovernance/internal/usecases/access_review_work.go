@@ -5,21 +5,21 @@ import (
 	"errors"
 	"time"
 
-	d "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
-	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // 保存のロックを外して作用を行う。プロセスが停止しても、占有の期限後に再実行できる。
 const accessReviewWorkLease = 2 * time.Minute
 
-func claimReviewWork(ctx context.Context, deps AccessReviewDeps, review *d.AccessReview, key string, now time.Time, eligible func(*d.AccessReview, time.Time) bool) (string, error) {
+func claimReviewWork(ctx context.Context, deps AccessReviewDeps, review *igdomain.AccessReview, key string, now time.Time, eligible func(*igdomain.AccessReview, time.Time) bool) (string, error) {
 	token, err := spec.NewUUIDv4()
 	if err != nil {
 		return "", err
 	}
 	claimed := false
-	_, err = deps.Reviews.UpdateReview(ctx, review.TenantID, review.ID, func(current *d.AccessReview) error {
+	_, err = deps.Reviews.UpdateReview(ctx, review.TenantID, review.ID, func(current *igdomain.AccessReview) error {
 		at := reviewNow(deps, now)
 		if !eligible(current, at) {
 			return nil
@@ -28,9 +28,9 @@ func claimReviewWork(ctx context.Context, deps AccessReviewDeps, review *d.Acces
 			return nil
 		}
 		if current.WorkLeases == nil {
-			current.WorkLeases = map[string]d.AccessReviewWorkLease{}
+			current.WorkLeases = map[string]igdomain.AccessReviewWorkLease{}
 		}
-		current.WorkLeases[key] = d.AccessReviewWorkLease{Token: token, Until: at.Add(accessReviewWorkLease)}
+		current.WorkLeases[key] = igdomain.AccessReviewWorkLease{Token: token, Until: at.Add(accessReviewWorkLease)}
 		claimed = true
 		return nil
 	})
@@ -40,9 +40,9 @@ func claimReviewWork(ctx context.Context, deps AccessReviewDeps, review *d.Acces
 	return token, nil
 }
 
-func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.AccessReview, now time.Time) error {
+func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *igdomain.AccessReview, now time.Time) error {
 	now = reviewNow(deps, now)
-	current, err := deps.Reviews.UpdateReview(ctx, review.TenantID, review.ID, func(r *d.AccessReview) error { r.Close(now); return nil })
+	current, err := deps.Reviews.UpdateReview(ctx, review.TenantID, review.ID, func(r *igdomain.AccessReview) error { r.Close(now); return nil })
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.A
 			continue
 		}
 		if item.Decision == "retain" {
-			_, err := deps.Reviews.UpdateReview(ctx, current.TenantID, current.ID, func(r *d.AccessReview) error {
+			_, err := deps.Reviews.UpdateReview(ctx, current.TenantID, current.ID, func(r *igdomain.AccessReview) error {
 				for i := range r.Items {
 					if r.Items[i].ID == item.ID {
 						r.Items[i].Outcome = "retained"
@@ -72,7 +72,7 @@ func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.A
 			continue
 		}
 		key := "apply:" + item.ID
-		token, err := claimReviewWork(ctx, deps, current, key, now, func(r *d.AccessReview, _ time.Time) bool {
+		token, err := claimReviewWork(ctx, deps, current, key, now, func(r *igdomain.AccessReview, _ time.Time) bool {
 			for _, candidate := range r.Items {
 				if candidate.ID == item.ID {
 					return r.Status == "applying" && candidate.Outcome == ""
@@ -91,7 +91,7 @@ func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.A
 		workCtx, cancel := context.WithTimeout(ctx, accessReviewWorkLease/2)
 		applyErr := revokeReviewItem(workCtx, deps, current, &item, reviewNow(deps, now))
 		cancel()
-		_, err = deps.Reviews.UpdateReview(ctx, current.TenantID, current.ID, func(r *d.AccessReview) error {
+		_, err = deps.Reviews.UpdateReview(ctx, current.TenantID, current.ID, func(r *igdomain.AccessReview) error {
 			if r.WorkLeases[key].Token != token {
 				return nil
 			}
@@ -112,7 +112,7 @@ func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.A
 		}
 	}
 	completed := false
-	_, err = deps.Reviews.UpdateReview(ctx, current.TenantID, current.ID, func(r *d.AccessReview) error {
+	_, err = deps.Reviews.UpdateReview(ctx, current.TenantID, current.ID, func(r *igdomain.AccessReview) error {
 		if r.Status != "applying" {
 			return nil
 		}
@@ -133,7 +133,7 @@ func advanceAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.A
 	return errors.Join(failures...)
 }
 
-func notifyAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.AccessReview, now time.Time) error {
+func notifyAccessReview(ctx context.Context, deps AccessReviewDeps, review *igdomain.AccessReview, now time.Time) error {
 	seen := map[string]bool{}
 	var failures []error
 	for _, item := range review.Items {
@@ -146,7 +146,7 @@ func notifyAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.Ac
 			phase = "reminder"
 		}
 		key := "notify:" + phase + ":" + item.ReviewerID
-		token, err := claimReviewWork(ctx, deps, review, key, now, func(r *d.AccessReview, at time.Time) bool {
+		token, err := claimReviewWork(ctx, deps, review, key, now, func(r *igdomain.AccessReview, at time.Time) bool {
 			if r.Status != "open" || !at.Before(r.DueAt) || r.Notified[key] {
 				return false
 			}
@@ -167,7 +167,7 @@ func notifyAccessReview(ctx context.Context, deps AccessReviewDeps, review *d.Ac
 		workCtx, cancel := context.WithTimeout(ctx, accessReviewWorkLease/2)
 		ok := sendAccessReviewNotification(workCtx, deps, review, item.ReviewerID)
 		cancel()
-		_, err = deps.Reviews.UpdateReview(ctx, review.TenantID, review.ID, func(r *d.AccessReview) error {
+		_, err = deps.Reviews.UpdateReview(ctx, review.TenantID, review.ID, func(r *igdomain.AccessReview) error {
 			if r.WorkLeases[key].Token != token {
 				return nil
 			}
@@ -205,10 +205,10 @@ func reviewNow(deps AccessReviewDeps, tick time.Time) time.Time {
 	return tick
 }
 
-func sendAccessReviewNotification(ctx context.Context, deps AccessReviewDeps, review *d.AccessReview, reviewer string) bool {
+func sendAccessReviewNotification(ctx context.Context, deps AccessReviewDeps, review *igdomain.AccessReview, reviewer string) bool {
 	u, err := reviewUser(ctx, deps, review.TenantID, reviewer)
 	if err != nil || u == nil || u.Email == nil || deps.Notifier == nil {
 		return false
 	}
-	return deps.Notifier.Notify(ctx, notification.Notification{TenantID: review.TenantID, To: *u.Email, Key: notification.TemplateKeyAccessReviewRequest, RecipientLocale: u.LocaleAttribute(), Vars: map[string]string{"user_display_name": u.DisplayName(), "review_name": review.Name, "due_at": review.DueAt.UTC().Format(time.RFC3339), "default_decision": review.DefaultDecision}})
+	return deps.Notifier.Notify(ctx, notificationports.Notification{TenantID: review.TenantID, To: *u.Email, Key: notificationports.TemplateKeyAccessReviewRequest, RecipientLocale: u.LocaleAttribute(), Vars: map[string]string{"user_display_name": u.DisplayName(), "review_name": review.Name, "due_at": review.DueAt.UTC().Format(time.RFC3339), "default_decision": review.DefaultDecision}})
 }

@@ -5,11 +5,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
@@ -32,11 +32,11 @@ func (d Deps) requireTenantAdmin(c *echo.Context) (*support.Principal, error) {
 }
 
 type AdminSettingsResponse struct {
-	TenantID               string                         `json:"tenant_id"`
-	Realm                  string                         `json:"realm"`
-	DisplayName            string                         `json:"display_name"`
-	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
-	PasswordPolicyDefaults passwordPolicyDefaults         `json:"password_policy_defaults"`
+	TenantID               string                                `json:"tenant_id"`
+	Realm                  string                                `json:"realm"`
+	DisplayName            string                                `json:"display_name"`
+	PasswordPolicyOverride *tenancydomain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	PasswordPolicyDefaults passwordPolicyDefaults                `json:"password_policy_defaults"`
 	// MaxDelegationDepth はテナント上書き (未設定なら省略)、MaxDelegationDepthDefault は
 	// 上書きが無いときに適用される値であり、同時に上書きが超えられない上限でもある。
 	// 管理 UI が具体数字を示し、超過を送る前に弾けるよう両方返す。
@@ -50,10 +50,10 @@ type AdminSettingsResponse struct {
 	// DefaultLocale は通知の locale 解決の第 2 段。空文字列はシステム既定を使う意味。
 	// SupportedLocales はカタログが同梱翻訳を持つ locale で、UI の選択肢になる
 	// (wi-288, 決定 7)。
-	DefaultLocale    string              `json:"default_locale,omitempty"`
-	SupportedLocales []string            `json:"supported_locales"`
-	Quota            *domain.TenantQuota `json:"quota,omitempty"`
-	Usage            *domain.TenantUsage `json:"usage,omitempty"`
+	DefaultLocale    string                     `json:"default_locale,omitempty"`
+	SupportedLocales []string                   `json:"supported_locales"`
+	Quota            *tenancydomain.TenantQuota `json:"quota,omitempty"`
+	Usage            *tenancydomain.TenantUsage `json:"usage,omitempty"`
 }
 
 type passwordPolicyDefaults struct {
@@ -65,8 +65,8 @@ type passwordPolicyDefaults struct {
 }
 
 type adminSettingsUpdateRequest struct {
-	DisplayName            *string                        `json:"display_name,omitempty"`
-	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	DisplayName            *string                               `json:"display_name,omitempty"`
+	PasswordPolicyOverride *tenancydomain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	// MaxDelegationDepth は省略で現状維持、0 で上書き解除。
 	MaxDelegationDepth *int `json:"max_delegation_depth,omitempty"`
 	// TrustedDeviceMaxAgeSeconds は省略で現状維持、0 で機能無効へ戻す。
@@ -114,9 +114,9 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	now := time.Now().UTC()
-	tenant, err := tenantusecases.Update(
+	tenant, err := tenancyusecases.Update(
 		c.Request().Context(), d.TenantRepo, actor.TenantID,
-		tenantusecases.UpdateInput{
+		tenancyusecases.UpdateInput{
 			DisplayName:                input.DisplayName,
 			PasswordPolicyOverride:     input.PasswordPolicyOverride,
 			MaxDelegationDepth:         input.MaxDelegationDepth,
@@ -130,7 +130,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 		return d.writeTenantError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantUpdated{
+		d.Emit(&tenancydomain.TenantUpdated{
 			At: now, ActorUserID: actor.ID, TenantID: tenant.ID,
 			ChangedFields: adminSettingsChangedFields(input),
 		})
@@ -138,7 +138,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, d.toAdminSettingsResponse(tenant))
 }
 
-func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
+func (d Deps) toAdminSettingsResponse(t *tenancydomain.Tenant) AdminSettingsResponse {
 	floor := d.tenantPolicyFloor()
 	response := AdminSettingsResponse{
 		TenantID:               t.ID,
@@ -149,12 +149,12 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			MinLength:    floor.MinLength,
 			MaxLength:    floor.MaxLength,
 			HistoryDepth: floor.HistoryDepth,
-			MaxAgeDays:   domain.PasswordPolicyMaxAgeDays,
+			MaxAgeDays:   tenancydomain.PasswordPolicyMaxAgeDays,
 		},
 		MaxDelegationDepth:                t.MaxDelegationDepth,
-		MaxDelegationDepthDefault:         domain.DefaultMaxDelegationDepth,
+		MaxDelegationDepthDefault:         tenancydomain.DefaultMaxDelegationDepth,
 		TrustedDeviceMaxAgeSeconds:        t.TrustedDeviceMaxAgeSeconds,
-		TrustedDeviceMaxAgeSecondsCeiling: domain.TrustedDeviceMaxAgeCeilingSeconds,
+		TrustedDeviceMaxAgeSecondsCeiling: tenancydomain.TrustedDeviceMaxAgeCeilingSeconds,
 		SupportedLocales:                  template.SupportedLocales(),
 		Quota:                             t.Quota,
 		Usage:                             t.Usage,

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
@@ -19,26 +19,26 @@ func TestEnsureDefaultAndRejectDefaultDisable(t *testing.T) {
 	if err := EnsureDefault(context.Background(), repo, now); err != nil {
 		t.Fatal(err)
 	}
-	tenant, err := repo.FindByID(context.Background(), domain.DefaultTenantID)
+	tenant, err := repo.FindByID(context.Background(), tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tenant == nil || tenant.Status != domain.TenantStatusActive {
+	if tenant == nil || tenant.Status != tenancydomain.TenantStatusActive {
 		t.Fatalf("default tenant = %#v", tenant)
 	}
 	//spec:covers REQ-TENANCY-003: default テナントの無効化は拒否される。
 	if _, err := SetDisabled(
-		context.Background(), repo, domain.DefaultTenantID, true, now,
+		context.Background(), repo, tenancydomain.DefaultTenantID, true, now,
 	); !errors.Is(err, ErrDefaultTenant) {
 		t.Fatalf("disable default error = %v", err)
 	}
 	// 拒否は「エラーを返したこと」ではなく「無効化されなかったこと」で確かめる。
 	// エラーだけを見るテストは、先に無効化してから拒否を返す実装も通してしまう。
-	refused, err := repo.FindByID(context.Background(), domain.DefaultTenantID)
+	refused, err := repo.FindByID(context.Background(), tenancydomain.DefaultTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if refused.Status != domain.TenantStatusActive {
+	if refused.Status != tenancydomain.TenantStatusActive {
 		t.Fatalf("the refused disable left the default tenant %q", refused.Status)
 	}
 }
@@ -49,21 +49,21 @@ func TestTenantLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tenant.Status != domain.TenantStatusActive {
+	if tenant.Status != tenancydomain.TenantStatusActive {
 		t.Fatalf("status = %s", tenant.Status)
 	}
 	tenant, err = SetDisabled(context.Background(), repo, tenant.ID, true, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tenant.Status != domain.TenantStatusDisabled || tenant.DisabledAt == nil {
+	if tenant.Status != tenancydomain.TenantStatusDisabled || tenant.DisabledAt == nil {
 		t.Fatalf("disabled tenant = %#v", tenant)
 	}
 	tenant, err = SetDisabled(context.Background(), repo, tenant.ID, false, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tenant.Status != domain.TenantStatusActive || tenant.DisabledAt != nil {
+	if tenant.Status != tenancydomain.TenantStatusActive || tenant.DisabledAt != nil {
 		t.Fatalf("enabled tenant = %#v", tenant)
 	}
 
@@ -85,21 +85,21 @@ func TestSetEndpointStyle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := SetEndpointStyle(ctx, repo, tenant.ID, domain.TenantEndpointStyleSubdomain, "", time.Now().UTC()); !errors.Is(err, domain.ErrSubdomainStyleNoBase) {
+	if _, err := SetEndpointStyle(ctx, repo, tenant.ID, tenancydomain.TenantEndpointStyleSubdomain, "", time.Now().UTC()); !errors.Is(err, tenancydomain.ErrSubdomainStyleNoBase) {
 		t.Fatalf("unset base domain error = %v", err)
 	}
 	unchanged, err := repo.FindByID(ctx, tenant.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if unchanged.EndpointStyle != domain.TenantEndpointStylePath {
+	if unchanged.EndpointStyle != tenancydomain.TenantEndpointStylePath {
 		t.Fatalf("a rejected switch changed endpoint style to %q", unchanged.EndpointStyle)
 	}
-	updated, err := SetEndpointStyle(ctx, repo, tenant.ID, domain.TenantEndpointStyleSubdomain, "idp.example", time.Now().UTC())
+	updated, err := SetEndpointStyle(ctx, repo, tenant.ID, tenancydomain.TenantEndpointStyleSubdomain, "idp.example", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.EndpointStyle != domain.TenantEndpointStyleSubdomain {
+	if updated.EndpointStyle != tenancydomain.TenantEndpointStyleSubdomain {
 		t.Fatalf("endpoint style = %q", updated.EndpointStyle)
 	}
 }
@@ -117,7 +117,7 @@ func TestUpdateAppliesDisplayNameAndPolicyOverride(t *testing.T) {
 	historyDepth := 10
 	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
 		DisplayName: &newName,
-		PasswordPolicyOverride: &domain.PasswordPolicyOverride{
+		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{
 			MinLength: &minLen, HistoryDepth: &historyDepth,
 		},
 	}, floor, time.Now().UTC())
@@ -142,15 +142,15 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 	cases := []struct {
 		name     string
-		override domain.PasswordPolicyOverride
+		override tenancydomain.PasswordPolicyOverride
 	}{
-		{"shorter min_length", domain.PasswordPolicyOverride{MinLength: new(8)}},
-		{"longer max_length", domain.PasswordPolicyOverride{MaxLength: new(256)}},
-		{"shorter history_depth", domain.PasswordPolicyOverride{HistoryDepth: new(2)}},
+		{"shorter min_length", tenancydomain.PasswordPolicyOverride{MinLength: new(8)}},
+		{"longer max_length", tenancydomain.PasswordPolicyOverride{MaxLength: new(256)}},
+		{"shorter history_depth", tenancydomain.PasswordPolicyOverride{HistoryDepth: new(2)}},
 		//spec:covers REQ-TENANCY-019: an expiry that is too short or too long is rejected by
 		// the system bounds.
-		{"max_age_days below the system floor", domain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysFloor - 1)}},
-		{"max_age_days above the system ceiling", domain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysCeiling + 1)}},
+		{"max_age_days below the system floor", tenancydomain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysFloor - 1)}},
+		{"max_age_days above the system ceiling", tenancydomain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysCeiling + 1)}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestUpdateRecordsPasswordPolicyUpdatedAt(t *testing.T) {
 	policyAt := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 	maxAge := 90
 	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
-		PasswordPolicyOverride: &domain.PasswordPolicyOverride{MaxAgeDays: &maxAge},
+		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MaxAgeDays: &maxAge},
 	}, floor, policyAt)
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +221,7 @@ func TestUpdatePreservesUnsetFields(t *testing.T) {
 	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
 	minLen := 16
 	if _, err := Update(context.Background(), repo, created.ID, UpdateInput{
-		PasswordPolicyOverride: &domain.PasswordPolicyOverride{MinLength: &minLen},
+		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MinLength: &minLen},
 	}, floor, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -253,13 +253,13 @@ func TestUpdateClearsOverrideWhenAllFieldsZero(t *testing.T) {
 	// まず override を設定。
 	minLen := 20
 	if _, err := Update(context.Background(), repo, created.ID, UpdateInput{
-		PasswordPolicyOverride: &domain.PasswordPolicyOverride{MinLength: &minLen},
+		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{MinLength: &minLen},
 	}, floor, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	// 空 override で送ると global default 継承に戻る。
 	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
-		PasswordPolicyOverride: &domain.PasswordPolicyOverride{},
+		PasswordPolicyOverride: &tenancydomain.PasswordPolicyOverride{},
 	}, floor, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -277,9 +277,9 @@ func TestUpdateDefaultLocale(t *testing.T) {
 	newRepo := func(t *testing.T) *memory.TenantRepository {
 		t.Helper()
 		repo := memory.NewTenantRepository()
-		if err := repo.Save(ctx, &domain.Tenant{
+		if err := repo.Save(ctx, &tenancydomain.Tenant{
 			ID: "tenant-a", Realm: "acme", DisplayName: "Acme Inc.",
-			Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+			Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatal(err)
 		}

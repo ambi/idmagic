@@ -12,7 +12,7 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/seeding"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -29,7 +29,7 @@ func TestSeedRejectsMissingRequiredDependencies(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			deps := newSeedRefusalDeps(t)
 			remove(deps)
-			_, err := Seed(t.Context(), deps, domain.Request{Environment: domain.EnvironmentTest, Profile: domain.ProfileBootstrap, Mode: domain.ModeApply}, "")
+			_, err := Seed(t.Context(), deps, seedingdomain.Request{Environment: seedingdomain.EnvironmentTest, Profile: seedingdomain.ProfileBootstrap, Mode: seedingdomain.ModeApply}, "")
 			if err == nil {
 				t.Fatal("seed accepted a missing required dependency")
 			}
@@ -44,7 +44,7 @@ func TestSeedRejectsMissingRequiredDependencies(t *testing.T) {
 func TestSeedRunsWritesInsideConfiguredLock(t *testing.T) {
 	deps := newSeedRefusalDeps(t)
 	called := false
-	deps.SeedRequestLock = func(ctx context.Context, request domain.Request, apply func(context.Context) error) error {
+	deps.SeedRequestLock = func(ctx context.Context, request seedingdomain.Request, apply func(context.Context) error) error {
 		called = true
 		before, err := deps.OAuth2.ClientRepo.FindAll(ctx, tenancydomain.DefaultTenantID)
 		if err != nil {
@@ -65,7 +65,7 @@ func TestSeedRunsWritesInsideConfiguredLock(t *testing.T) {
 		}
 		return nil
 	}
-	if _, err := Seed(t.Context(), deps, domain.Request{Environment: domain.EnvironmentTest, Profile: domain.ProfileBootstrap, Mode: domain.ModeApply}, ""); err != nil {
+	if _, err := Seed(t.Context(), deps, seedingdomain.Request{Environment: seedingdomain.EnvironmentTest, Profile: seedingdomain.ProfileBootstrap, Mode: seedingdomain.ModeApply}, ""); err != nil {
 		t.Fatal(err)
 	}
 	if !called {
@@ -90,7 +90,7 @@ func TestSeedUsesTenantInitialPasswordPolicy(t *testing.T) {
 	if err := deps.Tenancy.TenantRepo.Save(t.Context(), tenant); err != nil {
 		t.Fatal(err)
 	}
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply}
 	if _, err := Seed(t.Context(), deps, request, ""); err == nil {
 		t.Fatal("seed bypassed tenant password policy")
 	}
@@ -190,18 +190,18 @@ func TestSeedPlansChangedDemoRecords(t *testing.T) {
 	for name, edit := range cases {
 		t.Run(name, func(t *testing.T) {
 			deps := newSeedRefusalDeps(t)
-			request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+			request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply}
 			if _, err := Seed(t.Context(), deps, request, ""); err != nil {
 				t.Fatal(err)
 			}
 			edit(t, deps)
 			before := seedDemoSnapshot(t, deps)
-			request.Mode = domain.ModeDryRun
+			request.Mode = seedingdomain.ModeDryRun
 			plan, _ := Seed(t.Context(), deps, request, "")
-			if plan.Count(domain.OperationConflict) != 1 {
+			if plan.Count(seedingdomain.OperationConflict) != 1 {
 				t.Fatalf("manual change plan = %+v", plan)
 			}
-			request.Mode = domain.ModeApply
+			request.Mode = seedingdomain.ModeApply
 			if _, err := Seed(t.Context(), deps, request, ""); err == nil {
 				t.Fatal("apply accepted a manual change")
 			}
@@ -262,7 +262,7 @@ func TestPerformanceSeedRespectsQuotaAndResumesWithoutDuplicateEvents(t *testing
 	if err := deps.Tenancy.QuotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Users: &limit}); err != nil {
 		t.Fatal(err)
 	}
-	request := domain.Request{Environment: domain.EnvironmentTest, Profile: domain.ProfilePerformance, Mode: domain.ModeApply, Count: 3, GeneratorSeed: "quota-test"}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentTest, Profile: seedingdomain.ProfilePerformance, Mode: seedingdomain.ModeApply, Count: 3, GeneratorSeed: "quota-test"}
 	for range 2 {
 		_, err := Seed(ctx, deps, request, "")
 		if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); !ok {
@@ -301,7 +301,7 @@ func TestSeedTOTPUsesEnrollmentEffectsAndDetectsDrift(t *testing.T) {
 	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
 	t.Setenv("SEED_TOTP_SECRET", "JBSWY3DPEHPK3PXP")
-	path, err := seeding.LocateDefaultPath(domain.ProfileDevelopment)
+	path, err := seeding.LocateDefaultPath(seedingdomain.ProfileDevelopment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestSeedTOTPUsesEnrollmentEffectsAndDetectsDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply, ManifestPath: manifest}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply, ManifestPath: manifest}
 	for range 2 {
 		if _, err := Seed(ctx, deps, request, ""); err != nil {
 			t.Fatal(err)
@@ -338,9 +338,9 @@ func TestSeedTOTPUsesEnrollmentEffectsAndDetectsDrift(t *testing.T) {
 	if err := deps.Authentication.MfaFactorRepo.Save(ctx, factor); err != nil {
 		t.Fatal(err)
 	}
-	request.Mode = domain.ModeDryRun
+	request.Mode = seedingdomain.ModeDryRun
 	plan, _ := Seed(ctx, deps, request, "")
-	if plan.Count(domain.OperationConflict) != 1 {
+	if plan.Count(seedingdomain.OperationConflict) != 1 {
 		t.Fatalf("TOTP drift plan = %+v", plan)
 	}
 }
@@ -364,13 +364,13 @@ func TestSeedPostgresOwnerCommandsConverge(t *testing.T) {
 	if deps.SeedRequestLock == nil {
 		t.Fatal("PostgreSQL seed lock is not wired")
 	}
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply}
 	for range 2 {
 		plan, err := Seed(t.Context(), deps, request, "")
 		if err != nil {
 			t.Fatalf("seed plan = %+v: %v", plan, err)
 		}
-		if plan.Count(domain.OperationNoop) != len(plan.Operations) {
+		if plan.Count(seedingdomain.OperationNoop) != len(plan.Operations) {
 			t.Fatalf("not converged: %+v", plan)
 		}
 	}

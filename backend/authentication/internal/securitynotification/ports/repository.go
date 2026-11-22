@@ -5,14 +5,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
 )
 
 // PreferenceRepository は本人による受信設定の保存先。行が無いことと「すべて有効」は
 // 同じ意味なので、Find は見つからない場合に nil を返し、それはエラーではない。
 type PreferenceRepository interface {
-	Find(ctx context.Context, userID string) (*domain.Preferences, error)
-	Save(ctx context.Context, preferences domain.Preferences) error
+	Find(ctx context.Context, userID string) (*securitynotificationdomain.Preferences, error)
+	Save(ctx context.Context, preferences securitynotificationdomain.Preferences) error
 }
 
 // KnownDevice は過去にサインインしたことのあるブラウザー 1 件。生の User-Agent も IP も

@@ -27,9 +27,9 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/internal/device/usecases"
+	deviceusecases "github.com/ambi/idmagic/backend/oauth2/internal/device/usecases"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 
@@ -43,14 +43,14 @@ import (
 func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memory.McpResourceServerRepository) (*echo.Echo, string) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "device-client-2",
 		ClientType:              spec.ClientPublic,
 		GrantTypes:              []spec.GrantType{spec.GrantDeviceCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
 		Scope:                   "openid",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 	userRepo := idmanagement.NewMemoryModule().UserRepo
@@ -85,13 +85,13 @@ func newApprovedDeviceCodeServer(t *testing.T, mcpResourceServerRepo *oauth2memo
 	httpadapter.Register(e, deps)
 
 	// device_authorization + 承認 (usecase を直接呼び出し、HTTP フォームは token 交換だけに絞る)。
-	authOut, err := usecases.RequestDeviceAuthorization(testing_tenant.Default(t.Context()), usecases.DeviceAuthorizationDeps{
+	authOut, err := deviceusecases.RequestDeviceAuthorization(testing_tenant.Default(t.Context()), deviceusecases.DeviceAuthorizationDeps{
 		ClientRepo: clientRepo, DeviceCodeStore: deviceStore, BaseVerification: "http://test/device",
-	}, usecases.DeviceAuthorizationInput{ClientID: "device-client-2", Scope: "openid"}, time.Now().UTC())
+	}, deviceusecases.DeviceAuthorizationInput{ClientID: "device-client-2", Scope: "openid"}, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("RequestDeviceAuthorization: %v", err)
 	}
-	if _, err := usecases.ApproveUserCode(testing_tenant.Default(t.Context()), usecases.VerifyUserCodeDeps{DeviceCodeStore: deviceStore}, application.NewMemoryModule().Gate(nil, nil, nil), usecases.ApproveUserCodeInput{UserCode: authOut.UserCode, Authn: &authdomain.AuthenticationContext{UserID: "user-1"}}, time.Now().UTC()); err != nil {
+	if _, err := deviceusecases.ApproveUserCode(testing_tenant.Default(t.Context()), deviceusecases.VerifyUserCodeDeps{DeviceCodeStore: deviceStore}, application.NewMemoryModule().Gate(nil, nil, nil), deviceusecases.ApproveUserCodeInput{UserCode: authOut.UserCode, Authn: &authdomain.AuthenticationContext{UserID: "user-1"}}, time.Now().UTC()); err != nil {
 		t.Fatalf("ApproveUserCode: %v", err)
 	}
 	return e, authOut.DeviceCode
@@ -122,9 +122,9 @@ func TestTokenDeviceCode_unregisteredResource_rejectedAsInvalidTarget(t *testing
 
 func TestTokenDeviceCode_registeredResource_boundAudience(t *testing.T) {
 	repo := oauth2memory.NewMcpResourceServerRepository()
-	repo.Seed(&domain.McpResourceServer{
+	repo.Seed(&oauthdomain.McpResourceServer{
 		ID: "rs-1", Resource: "https://mcp.example.com/tools",
-		Name: "Tools", Scopes: []string{"openid"}, State: domain.McpResourceServerActive,
+		Name: "Tools", Scopes: []string{"openid"}, State: oauthdomain.McpResourceServerActive,
 	})
 	e, deviceCode := newApprovedDeviceCodeServer(t, repo)
 	form := url.Values{

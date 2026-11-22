@@ -10,17 +10,17 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ReconcileDeps は ReconcileConnections の依存である。
 type ReconcileDeps struct {
-	ConnectionRepo ports.ProvisioningConnectionRepository
-	TaskRepo       ports.ProvisioningTaskRepository
-	LinkRepo       ports.RemoteResourceLinkRepository
+	ConnectionRepo provisioningports.ProvisioningConnectionRepository
+	TaskRepo       provisioningports.ProvisioningTaskRepository
+	LinkRepo       provisioningports.RemoteResourceLinkRepository
 	// AssignmentRepo は assigned_only の接続のスコープを決める。nil なら、どの User も割り当てられていないとみなす。
 	AssignmentRepo appports.AssignmentRepository
 	UserRepo       userports.UserRepository
@@ -59,17 +59,17 @@ func ReconcileConnections(ctx context.Context, deps ReconcileDeps, limit int, no
 	return created, errors.Join(errs...)
 }
 
-func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn domain.ProvisioningConnection, limit int, now time.Time) (int, error) {
+func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn provisioningdomain.ProvisioningConnection, limit int, now time.Time) (int, error) {
 	in, err := readReconcileInput(ctx, deps, conn)
 	if err != nil {
 		return 0, err
 	}
 	in.Limit = limit
-	plan := domain.PlanReconciliation(in)
+	plan := provisioningdomain.PlanReconciliation(in)
 	if plan.QuarantineReason != "" {
 		// インクリメンタル同期の開始時に読んだ接続ではなく最新の接続を隔離し、その間の管理操作を上書きしない。
 		current, err := deps.ConnectionRepo.Find(ctx, conn.TenantID, conn.ApplicationID)
-		if err != nil || current == nil || current.Health == domain.HealthQuarantined {
+		if err != nil || current == nil || current.Health == provisioningdomain.HealthQuarantined {
 			return 0, err
 		}
 		return 0, quarantineConnection(ctx, deps.ConnectionRepo, deps.Emit, deps.Notifier, current, plan.QuarantineReason, now)
@@ -88,36 +88,36 @@ func reconcileConnection(ctx context.Context, deps ReconcileDeps, conn domain.Pr
 }
 
 // readReconcileInput は、接続のスコープ内の User と、リンクだけが残る User を読む。
-func readReconcileInput(ctx context.Context, deps ReconcileDeps, conn domain.ProvisioningConnection) (domain.ReconcileInput, error) {
+func readReconcileInput(ctx context.Context, deps ReconcileDeps, conn provisioningdomain.ProvisioningConnection) (provisioningdomain.ReconcileInput, error) {
 	tenantID := conn.TenantID
-	links, err := deps.LinkRepo.ListByConnection(ctx, tenantID, conn.ApplicationID, domain.SourceTypeUser)
+	links, err := deps.LinkRepo.ListByConnection(ctx, tenantID, conn.ApplicationID, provisioningdomain.SourceTypeUser)
 	if err != nil {
-		return domain.ReconcileInput{}, err
+		return provisioningdomain.ReconcileInput{}, err
 	}
-	tasks, err := deps.TaskRepo.ListUnsettledByConnection(ctx, tenantID, conn.ApplicationID, domain.SourceTypeUser)
+	tasks, err := deps.TaskRepo.ListUnsettledByConnection(ctx, tenantID, conn.ApplicationID, provisioningdomain.SourceTypeUser)
 	if err != nil {
-		return domain.ReconcileInput{}, err
+		return provisioningdomain.ReconcileInput{}, err
 	}
 	assigned, err := assignedUserIDs(ctx, deps, conn)
 	if err != nil {
-		return domain.ReconcileInput{}, err
+		return provisioningdomain.ReconcileInput{}, err
 	}
 	users, err := deps.UserRepo.FindAll(ctx, tenantID)
 	if err != nil {
-		return domain.ReconcileInput{}, err
+		return provisioningdomain.ReconcileInput{}, err
 	}
 
-	in := domain.ReconcileInput{
+	in := provisioningdomain.ReconcileInput{
 		Connection: conn,
-		Links:      make(map[string]domain.RemoteResourceLink, len(links)),
-		Tasks:      map[string][]domain.ReconcileTask{},
+		Links:      make(map[string]provisioningdomain.RemoteResourceLink, len(links)),
+		Tasks:      map[string][]provisioningdomain.ReconcileTask{},
 	}
 	seen := make(map[string]bool, len(users))
 	for _, user := range users {
 		seen[user.ID] = true
-		in.Users = append(in.Users, domain.ReconcileUser{
+		in.Users = append(in.Users, provisioningdomain.ReconcileUser{
 			ID: user.ID, Active: user.IsActive(), Version: user.UpdatedAt.UnixNano(),
-			InScope: conn.Scope == domain.ScopeAllUsers || assigned[user.ID],
+			InScope: conn.Scope == provisioningdomain.ScopeAllUsers || assigned[user.ID],
 		})
 	}
 	for _, link := range links {
@@ -127,23 +127,23 @@ func readReconcileInput(ctx context.Context, deps ReconcileDeps, conn domain.Pro
 		}
 		user, err := deps.UserRepo.FindBySubIncludingDeleted(ctx, link.SourceID)
 		if err != nil {
-			return domain.ReconcileInput{}, err
+			return provisioningdomain.ReconcileInput{}, err
 		}
 		if user != nil && user.TenantID != tenantID {
 			// FindBySubIncludingDeleted はテナントを取らない。別テナントの User を消す判断はしない。
 			continue
 		}
-		in.Users = append(in.Users, domain.ReconcileUser{ID: link.SourceID, Deleted: true, Version: deletedVersion(user)})
+		in.Users = append(in.Users, provisioningdomain.ReconcileUser{ID: link.SourceID, Deleted: true, Version: deletedVersion(user)})
 	}
 	for _, task := range tasks {
-		in.Tasks[task.SourceID] = append(in.Tasks[task.SourceID], domain.ReconcileTask{Status: task.Status, SourceVersion: task.SourceVersion})
+		in.Tasks[task.SourceID] = append(in.Tasks[task.SourceID], provisioningdomain.ReconcileTask{Status: task.Status, SourceVersion: task.SourceVersion})
 	}
 	return in, nil
 }
 
-func assignedUserIDs(ctx context.Context, deps ReconcileDeps, conn domain.ProvisioningConnection) (map[string]bool, error) {
+func assignedUserIDs(ctx context.Context, deps ReconcileDeps, conn provisioningdomain.ProvisioningConnection) (map[string]bool, error) {
 	assigned := map[string]bool{}
-	if conn.Scope == domain.ScopeAllUsers || deps.AssignmentRepo == nil {
+	if conn.Scope == provisioningdomain.ScopeAllUsers || deps.AssignmentRepo == nil {
 		return assigned, nil
 	}
 	assignments, err := deps.AssignmentRepo.ListByApplication(ctx, conn.TenantID, conn.ApplicationID)
@@ -167,18 +167,18 @@ func deletedVersion(user *userdomain.User) int64 {
 }
 
 // saveReconcileAction はインクリメンタル同期の結果 1 件を保存し、新しく作ったかを返す。
-func saveReconcileAction(ctx context.Context, deps ReconcileDeps, conn domain.ProvisioningConnection, action domain.ReconcileAction, now time.Time) (bool, error) {
+func saveReconcileAction(ctx context.Context, deps ReconcileDeps, conn provisioningdomain.ProvisioningConnection, action provisioningdomain.ReconcileAction, now time.Time) (bool, error) {
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		return false, err
 	}
 	version := now.UnixNano()
 	if action.Schedule {
-		reservation := domain.NewScheduledDeprovision(id, conn.TenantID, conn.ApplicationID, action.UserID, version, now, conn.DeprovisionPolicy.GracePeriodDays)
+		reservation := provisioningdomain.NewScheduledDeprovision(id, conn.TenantID, conn.ApplicationID, action.UserID, version, now, conn.DeprovisionPolicy.GracePeriodDays)
 		return deps.TaskRepo.ScheduleDeprovision(ctx, reservation)
 	}
-	return deps.TaskRepo.Save(ctx, &domain.ProvisioningTask{
-		ID: id, TenantID: conn.TenantID, ConnectionID: conn.ApplicationID, SourceType: domain.SourceTypeUser, SourceID: action.UserID,
-		SourceVersion: version, Operation: action.Operation, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+	return deps.TaskRepo.Save(ctx, &provisioningdomain.ProvisioningTask{
+		ID: id, TenantID: conn.TenantID, ConnectionID: conn.ApplicationID, SourceType: provisioningdomain.SourceTypeUser, SourceID: action.UserID,
+		SourceVersion: version, Operation: action.Operation, Status: provisioningdomain.TaskPending, CreatedAt: now, UpdatedAt: now,
 	})
 }

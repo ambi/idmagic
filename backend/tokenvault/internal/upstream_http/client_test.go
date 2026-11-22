@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 //spec:covers REQ-TOKENVAULT-010: 内部のアドレスへ接続しないこと、リダイレクトを追わないこと
@@ -18,8 +18,8 @@ func TestUpstreamClientRefusesInternalAddressesAndRedirects(t *testing.T) {
 	internal := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached++ }))
 	defer internal.Close()
 
-	_, err := New().Send(context.Background(), ports.OutboundRequest{Method: "GET", URL: internal.URL, AccessToken: "secret"})
-	if !errors.Is(err, ports.ErrUpstreamUnreachable) {
+	_, err := New().Send(context.Background(), tokenvaultports.OutboundRequest{Method: "GET", URL: internal.URL, AccessToken: "secret"})
+	if !errors.Is(err, tokenvaultports.ErrUpstreamUnreachable) {
 		t.Fatalf("err = %v", err)
 	}
 	if reached != 0 {
@@ -35,7 +35,7 @@ func TestUpstreamClientRefusesInternalAddressesAndRedirects(t *testing.T) {
 	}))
 	defer target.Close()
 	client := &Client{HTTP: withoutRedirects(target.Client())}
-	response, err := client.Send(context.Background(), ports.OutboundRequest{Method: "GET", URL: target.URL + "/start", AccessToken: "secret"})
+	response, err := client.Send(context.Background(), tokenvaultports.OutboundRequest{Method: "GET", URL: target.URL + "/start", AccessToken: "secret"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,12 +46,12 @@ func TestUpstreamClientRefusesInternalAddressesAndRedirects(t *testing.T) {
 
 //spec:covers REQ-TOKENVAULT-011: 上限を超える応答本文を返さないこと
 func TestSendRefusesOversizedResponse(t *testing.T) {
-	large := strings.Repeat("x", domain.MaxResponseBodyBytes+1)
+	large := strings.Repeat("x", tokenvaultdomain.MaxResponseBodyBytes+1)
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(large)) }))
 	defer target.Close()
 	client := &Client{HTTP: withoutRedirects(target.Client())}
-	_, err := client.Send(context.Background(), ports.OutboundRequest{Method: "GET", URL: target.URL, AccessToken: "secret"})
-	if !errors.Is(err, ports.ErrUpstreamResponseTooLarge) {
+	_, err := client.Send(context.Background(), tokenvaultports.OutboundRequest{Method: "GET", URL: target.URL, AccessToken: "secret"})
+	if !errors.Is(err, tokenvaultports.ErrUpstreamResponseTooLarge) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -62,7 +62,7 @@ func TestSendAttachesStoredToken(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { authorization = r.Header.Get("Authorization") }))
 	defer target.Close()
 	client := &Client{HTTP: withoutRedirects(target.Client())}
-	_, err := client.Send(context.Background(), ports.OutboundRequest{
+	_, err := client.Send(context.Background(), tokenvaultports.OutboundRequest{
 		Method: "GET", URL: target.URL, AccessToken: "stored", Headers: map[string]string{"Authorization": "Bearer caller"},
 	})
 	if err != nil {
@@ -101,14 +101,14 @@ func TestRefreshParsesTokenEndpointOutcomes(t *testing.T) {
 			}))
 			defer target.Close()
 			client := &Client{HTTP: withoutRedirects(target.Client())}
-			response, err := client.Refresh(context.Background(), ports.OAuthClient{TokenEndpoint: target.URL, ClientID: "c", ClientSecret: "s"}, "old")
+			response, err := client.Refresh(context.Background(), tokenvaultports.OAuthClient{TokenEndpoint: target.URL, ClientID: "c", ClientSecret: "s"}, "old")
 			if !tc.wantErr {
 				if err != nil || response.AccessToken != "a" || response.RefreshToken != "r" || response.ExpiresIn == nil {
 					t.Fatalf("response %+v, err %v", response, err)
 				}
 				return
 			}
-			refused, ok := errors.AsType[*ports.TokenEndpointError](err)
+			refused, ok := errors.AsType[*tokenvaultports.TokenEndpointError](err)
 			if !ok || refused.OAuthError != tc.wantOAuthError {
 				t.Fatalf("err = %v", err)
 			}
@@ -127,8 +127,8 @@ func TestPostAuthSendsCredentialsInForm(t *testing.T) {
 	}))
 	defer target.Close()
 	client := &Client{HTTP: withoutRedirects(target.Client())}
-	if _, err := client.Refresh(context.Background(), ports.OAuthClient{
-		TokenEndpoint: target.URL, ClientID: "c", ClientSecret: "s", AuthMethod: domain.AuthMethodClientSecretPost,
+	if _, err := client.Refresh(context.Background(), tokenvaultports.OAuthClient{
+		TokenEndpoint: target.URL, ClientID: "c", ClientSecret: "s", AuthMethod: tokenvaultdomain.AuthMethodClientSecretPost,
 	}, "old"); err != nil {
 		t.Fatal(err)
 	}

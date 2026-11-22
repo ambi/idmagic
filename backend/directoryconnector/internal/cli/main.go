@@ -14,9 +14,9 @@ import (
 
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/api_http"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ldap_goldap"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/state_file"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/usecases"
+	directoryconnectorusecases "github.com/ambi/idmagic/backend/directoryconnector/internal/usecases"
 )
 
 const usage = `usage:
@@ -70,7 +70,7 @@ func check(ctx context.Context, config Config, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
 	}
-	result, err := usecases.Check(ctx, directory, config.Dialect, config.Scope, config.Mapping)
+	result, err := directoryconnectorusecases.Check(ctx, directory, config.Dialect, config.Scope, config.Mapping)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "check: %v\n", err)
 		return 1
@@ -89,9 +89,9 @@ func enroll(ctx context.Context, config Config, httpClient *http.Client, stdin i
 		_, _ = io.WriteString(stderr, "enroll: no enrollment token on stdin\n")
 		return 2
 	}
-	enrollment, err := usecases.Enroll(ctx, api_http.NewEnrollmentClient(config.RealmURL, httpClient), state_file.New(config.StateDir), token)
+	enrollment, err := directoryconnectorusecases.Enroll(ctx, api_http.NewEnrollmentClient(config.RealmURL, httpClient), state_file.New(config.StateDir), token)
 	if err != nil {
-		if api, ok := errors.AsType[*ports.APIError](err); ok {
+		if api, ok := errors.AsType[*directoryconnectorports.APIError](err); ok {
 			_, _ = fmt.Fprintf(stderr, "enroll: refused with status %d %s\n", api.Status, api.Type)
 		} else {
 			_, _ = fmt.Fprintf(stderr, "enroll: %v\n", err)
@@ -115,7 +115,7 @@ func run(ctx context.Context, config Config, httpClient *http.Client, once bool,
 		log.Error("cannot start", "error", err.Error())
 		return 2
 	}
-	syncer := usecases.Syncer{
+	syncer := directoryconnectorusecases.Syncer{
 		Directory: directory, API: api_http.NewClient(config.RealmURL, httpClient, key, enrollment, time.Now), Cursors: store,
 		Dialect: config.Dialect, Scope: config.Scope, Mapping: config.Mapping, FullInterval: config.FullInterval,
 		Now: time.Now, Sleep: sleep, Log: log,
@@ -126,7 +126,7 @@ func run(ctx context.Context, config Config, httpClient *http.Client, once bool,
 			log.Error("cannot load encryption key")
 			return 1
 		}
-		receiver := usecases.PasswordReceiver{API: api_http.NewClient(config.RealmURL, httpClient, key, enrollment, time.Now), Directory: directory, Key: encryptionKey, ConnectorID: enrollment.ConnectorID, Scope: config.Scope, Now: time.Now, Sleep: sleep}
+		receiver := directoryconnectorusecases.PasswordReceiver{API: api_http.NewClient(config.RealmURL, httpClient, key, enrollment, time.Now), Directory: directory, Key: encryptionKey, ConnectorID: enrollment.ConnectorID, Scope: config.Scope, Now: time.Now, Sleep: sleep}
 		receiveCtx, cancel := context.WithCancel(ctx)
 		done := make(chan struct{})
 		go func() { defer close(done); receiver.Run(receiveCtx) }()

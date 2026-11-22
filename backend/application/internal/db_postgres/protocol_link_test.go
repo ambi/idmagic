@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/saml"
@@ -33,44 +33,44 @@ func testProtocolLinkers() ProtocolLinkers {
 	}
 }
 
-func seedProtocolSetting(t *testing.T, db sharedpg.DB, tenantID string, kind domain.ApplicationProtocolType) (*domain.ApplicationProtocol, func() string) {
+func seedProtocolSetting(t *testing.T, db sharedpg.DB, tenantID string, kind appdomain.ApplicationProtocolType) (*appdomain.ApplicationProtocol, func() string) {
 	t.Helper()
 	ctx := context.Background()
 	now := pgfixtures.TestClock()
 	key := pgfixtures.UniqueID("protocol")
 	switch kind {
-	case domain.ApplicationProtocolOIDC:
+	case appdomain.ApplicationProtocolOIDC:
 		repo := oauth2.NewPostgresModule(db).ClientRepo
 		client := pgfixtures.SeedClient(t, repo, tenantID)
-		return &domain.ApplicationProtocol{Type: kind, ClientID: client.ClientID}, func() string {
+		return &appdomain.ApplicationProtocol{Type: kind, ClientID: client.ClientID}, func() string {
 			stored, err := repo.FindByID(ctx, tenantID, client.ClientID)
 			if err != nil || stored == nil {
 				t.Fatalf("client after linking: %+v, %v", stored, err)
 			}
 			return stored.ApplicationID
 		}
-	case domain.ApplicationProtocolSAML:
+	case appdomain.ApplicationProtocolSAML:
 		repo := saml.NewPostgresModule(db).SPRepo
 		if err := repo.Save(ctx, &samldomain.SamlServiceProvider{
 			TenantID: tenantID, EntityID: key, ACSURLs: []string{"https://sp.example/acs"}, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatal(err)
 		}
-		return &domain.ApplicationProtocol{Type: kind, EntityID: key}, func() string {
+		return &appdomain.ApplicationProtocol{Type: kind, EntityID: key}, func() string {
 			stored, err := repo.FindByEntityID(ctx, tenantID, key)
 			if err != nil || stored == nil {
 				t.Fatalf("SP after linking: %+v, %v", stored, err)
 			}
 			return stored.ApplicationID
 		}
-	case domain.ApplicationProtocolWsFed:
+	case appdomain.ApplicationProtocolWsFed:
 		repo := wsfederation.NewPostgresModule(db).RPRepo
 		if err := repo.Save(ctx, &wsfeddomain.WsFedRelyingParty{
 			TenantID: tenantID, Wtrealm: key, ReplyURLs: []string{"https://rp.example/reply"}, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			t.Fatal(err)
 		}
-		return &domain.ApplicationProtocol{Type: kind, Wtrealm: key}, func() string {
+		return &appdomain.ApplicationProtocol{Type: kind, Wtrealm: key}, func() string {
 			stored, err := repo.FindByWtrealm(ctx, tenantID, key)
 			if err != nil || stored == nil {
 				t.Fatalf("RP after linking: %+v, %v", stored, err)
@@ -85,8 +85,8 @@ func seedProtocolSetting(t *testing.T, db sharedpg.DB, tenantID string, kind dom
 
 //spec:covers REQ-APPLICATION-007: 三つのプロトコルの所有者が同一 Tx で結び付け、更新後の失敗では両側を巻き戻す。
 func TestProtocolOwnersJoinTheApplicationTransaction(t *testing.T) {
-	for _, kind := range []domain.ApplicationProtocolType{
-		domain.ApplicationProtocolOIDC, domain.ApplicationProtocolSAML, domain.ApplicationProtocolWsFed,
+	for _, kind := range []appdomain.ApplicationProtocolType{
+		appdomain.ApplicationProtocolOIDC, appdomain.ApplicationProtocolSAML, appdomain.ApplicationProtocolWsFed,
 	} {
 		for _, failAfterWrite := range []bool{false, true} {
 			name := string(kind) + "/commit"
@@ -98,9 +98,9 @@ func TestProtocolOwnersJoinTheApplicationTransaction(t *testing.T) {
 				tenant := pgfixtures.SeedTenant(t, db)
 				protocol, linkedApplication := seedProtocolSetting(t, db, tenant.ID, kind)
 				now := pgfixtures.TestClock()
-				app := &domain.Application{
+				app := &appdomain.Application{
 					ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, Name: pgfixtures.UniqueID("linked"),
-					Kind: domain.ApplicationFederated, Status: domain.ApplicationActive, Protocol: protocol,
+					Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive, Protocol: protocol,
 					CategoryIDs: []string{}, CreatedAt: now, UpdatedAt: now,
 				}
 				linkers := testProtocolLinkers()
@@ -136,18 +136,18 @@ func TestProtocolOwnersJoinTheApplicationTransaction(t *testing.T) {
 
 //spec:covers REQ-APPLICATION-007: プロトコル設定を結び付けられない作成は Application を残さない。
 func TestApplicationCreateRollsBackWhenTheProtocolCannotBeLinked(t *testing.T) {
-	for _, kind := range []domain.ApplicationProtocolType{
-		domain.ApplicationProtocolOIDC, domain.ApplicationProtocolSAML, domain.ApplicationProtocolWsFed,
+	for _, kind := range []appdomain.ApplicationProtocolType{
+		appdomain.ApplicationProtocolOIDC, appdomain.ApplicationProtocolSAML, appdomain.ApplicationProtocolWsFed,
 	} {
 		t.Run(string(kind), func(t *testing.T) {
 			db := pgtest.Require(t)
 			tenant := pgfixtures.SeedTenant(t, db)
 			now := pgfixtures.TestClock()
-			app := &domain.Application{
+			app := &appdomain.Application{
 				ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, Name: pgfixtures.UniqueID("missing-protocol"),
-				Kind: domain.ApplicationFederated, Status: domain.ApplicationActive,
+				Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 				CategoryIDs: []string{}, CreatedAt: now, UpdatedAt: now,
-				Protocol: &domain.ApplicationProtocol{Type: kind, ClientID: "missing", EntityID: "missing", Wtrealm: "missing"},
+				Protocol: &appdomain.ApplicationProtocol{Type: kind, ClientID: "missing", EntityID: "missing", Wtrealm: "missing"},
 			}
 			repo := NewApplicationRepository(db, testProtocolLinkers())
 			if err := repo.Create(context.Background(), app); err == nil {

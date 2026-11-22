@@ -10,8 +10,8 @@ import (
 	"time"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/verification_jose"
 )
 
@@ -36,7 +36,7 @@ func (f *fixture) exchangeAt(t *testing.T, at time.Time) (*workloaddomain.Worklo
 	t.Helper()
 	f.rejects = nil
 	token := signSVID(t, f.key, f.kid, testIssuer, at, at.Add(10*time.Minute))
-	return usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
+	return workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{
 		ClientID: "agent_1-client", SubjectToken: token,
 	}, at)
 }
@@ -145,7 +145,7 @@ func TestVerifyWorkloadAttestation_StoresFetchedKeysOnChangeOrHourly(t *testing.
 
 // failingRecordRepo は鍵の保存だけを失敗させる。
 type failingRecordRepo struct {
-	ports.WorkloadTrustBundleRepository
+	workloadports.WorkloadTrustBundleRepository
 }
 
 func (failingRecordRepo) RecordJWKSFetched(context.Context, string, string, *string, workloaddomain.JWKSSnapshot) error {
@@ -171,9 +171,9 @@ func TestVerifyWorkloadAttestation_ForgetsStoredKeysWhenTheJWKSURIChanges(t *tes
 	if _, err := f.exchangeAt(t, f.now); err != nil {
 		t.Fatalf("取得できる間の交換: %v", err)
 	}
-	admin := usecases.AdminWorkloadIdentityDeps{TrustBundleRepo: f.deps.TrustBundleRepo, BindingRepo: f.deps.BindingRepo}
+	admin := workloadusecases.AdminWorkloadIdentityDeps{TrustBundleRepo: f.deps.TrustBundleRepo, BindingRepo: f.deps.BindingRepo}
 	uri := "https://issuer.example/replacement-jwks.json"
-	updated, err := usecases.UpdateWorkloadTrustBundle(withTenant(testTenant), admin, bundle.ID, usecases.UpdateWorkloadTrustBundleInput{JWKSURI: &uri}, f.now.Add(time.Minute))
+	updated, err := workloadusecases.UpdateWorkloadTrustBundle(withTenant(testTenant), admin, bundle.ID, workloadusecases.UpdateWorkloadTrustBundleInput{JWKSURI: &uri}, f.now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}

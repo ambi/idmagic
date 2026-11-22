@@ -292,6 +292,21 @@ describe('spec-impact: 特性化テストの書き換え', () => {
     expect(result.code).toBe(0)
   })
 
+  it('work item の別名追従を通し、同時に期待値を変えたら拒否する', async () => {
+    const repo = await repository()
+    const source = (alias: string, expected: string) =>
+      `package demo\nimport "testing"\nimport ${alias} "fmt"\nfunc TestCharacterizeFormat(t *testing.T) {\n\tif got := ${alias}.Sprint("bulk"); got != "${expected}" {\n\t\tt.Fatal(got)\n\t}\n}\n`
+    await repo.write(SERVICE_TEST, source('fmt', 'bulk'))
+    const base = await repo.commit('test(demo): characterize formatting')
+    await repo.write(ITEM, notAffected('in_progress', CONCRETE_REASON))
+    await repo.write(SERVICE_TEST, source('format', 'bulk'))
+    expect((await repo.check(base)).code).toBe(0)
+    await repo.write(SERVICE_TEST, source('format', 'fast'))
+    const result = await repo.check(base)
+    expect(result.code).toBe(1)
+    expect(result.output).toContain('changes or removes characterization tests')
+  })
+
   it('移動と同時に本文を変えた特性化テストを拒否する', async () => {
     const { repo, base } = await characterized()
     await repo.git('mv', SERVICE_TEST, 'backend/demo/moved_test.go')

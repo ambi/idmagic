@@ -9,7 +9,7 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -42,25 +42,25 @@ func reconcileSoftQuotas(ctx context.Context, deps *Dependencies, now time.Time)
 	return errors.Join(failures...)
 }
 
-func measureSoftUsage(ctx context.Context, deps *Dependencies, tenantID string) (domain.SoftQuotaUsage, error) {
+func measureSoftUsage(ctx context.Context, deps *Dependencies, tenantID string) (tenancydomain.SoftQuotaUsage, error) {
 	count, err := deps.Audit.AuditEventRepo.Count(ctx, auditports.AuditEventQuery{TenantID: tenantID})
 	if err != nil {
-		return domain.SoftQuotaUsage{}, err
+		return tenancydomain.SoftQuotaUsage{}, err
 	}
 	bytes, err := deps.IdManagement.CSVArtifactUsage(ctx, tenantID)
 	if err != nil {
-		return domain.SoftQuotaUsage{}, err
+		return tenancydomain.SoftQuotaUsage{}, err
 	}
 	auditBytes, err := deps.Audit.ExportUsage(ctx, tenantID)
 	if err != nil {
-		return domain.SoftQuotaUsage{}, err
+		return tenancydomain.SoftQuotaUsage{}, err
 	}
 	if auditBytes > math.MaxInt64-bytes {
-		return domain.SoftQuotaUsage{}, errors.New("soft quota: artifact usage overflow")
+		return tenancydomain.SoftQuotaUsage{}, errors.New("soft quota: artifact usage overflow")
 	}
 	bytes += auditBytes
 	if count > int64(math.MaxInt) || bytes > int64(math.MaxInt) {
-		return domain.SoftQuotaUsage{}, errors.New("soft quota: measured usage overflows int")
+		return tenancydomain.SoftQuotaUsage{}, errors.New("soft quota: measured usage overflows int")
 	}
-	return domain.SoftQuotaUsage{AuditEventsRetained: int(count), ExportArtifactsBytes: int(bytes)}, nil
+	return tenancydomain.SoftQuotaUsage{AuditEventsRetained: int(count), ExportArtifactsBytes: int(bytes)}, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/idmanagement/internal/agent/testing_contract"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -17,7 +17,7 @@ func TestPersistenceContract(t *testing.T) {
 	owner := seedUser(t, db, tenant.ID)
 	testing_contract.Run(t, func(*testing.T) testing_contract.Fixture {
 		now := testClock()
-		return testing_contract.Fixture{Repository: &AgentRepository{Pool: db}, TenantID: tenant.ID, Agent: &domain.Agent{ID: newUUID(t), TenantID: tenant.ID, Name: uniqueID("contract-agent"), Kind: idmdomain.AgentKindAutonomous, OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}}
+		return testing_contract.Fixture{Repository: &AgentRepository{Pool: db}, TenantID: tenant.ID, Agent: &agentdomain.Agent{ID: newUUID(t), TenantID: tenant.ID, Name: uniqueID("contract-agent"), Kind: idmdomain.AgentKindAutonomous, OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}}
 	})
 }
 
@@ -33,7 +33,7 @@ func TestAgentObservationContract(t *testing.T) {
 		owner := seedUser(t, db, tenant.ID)
 		now := testClock()
 		agents := &AgentRepository{Pool: db}
-		agent := &domain.Agent{ID: newUUID(t), TenantID: tenant.ID, Name: uniqueID("contract-agent"), Kind: idmdomain.AgentKindAutonomous, OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}
+		agent := &agentdomain.Agent{ID: newUUID(t), TenantID: tenant.ID, Name: uniqueID("contract-agent"), Kind: idmdomain.AgentKindAutonomous, OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, CreatedAt: now, UpdatedAt: now}
 		if err := agents.Save(context.Background(), agent); err != nil {
 			t.Fatal(err)
 		}

@@ -9,7 +9,7 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
-	jobdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -96,7 +96,7 @@ func (w *dataKeyLifecycleWorld) rotatedAudits(t *testing.T, tenantID string) int
 
 func (w *dataKeyLifecycleWorld) reencryptionJobs(t *testing.T, tenantID string) int {
 	t.Helper()
-	jobs, err := w.deps.Jobs.Repo.ListByTenantAndKinds(context.Background(), tenantID, []jobdomain.JobKind{jobdomain.KindDataKeyReencryption}, 10)
+	jobs, err := w.deps.Jobs.Repo.ListByTenantAndKinds(context.Background(), tenantID, []jobsdomain.JobKind{jobsdomain.KindDataKeyReencryption}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

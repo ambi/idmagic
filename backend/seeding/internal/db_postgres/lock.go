@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // WithRequestLock は所有者のトランザクションとは別のセッションで要求を排他する。
-func WithRequestLock(ctx context.Context, pool *pgxpool.Pool, request domain.Request, apply func(context.Context) error) error {
+func WithRequestLock(ctx context.Context, pool *pgxpool.Pool, request seedingdomain.Request, apply func(context.Context) error) error {
 	// プールから借りると MaxConns=1 の構成で、所有者の保存が接続待ちになる。
 	// 専用接続は終了時に閉じ、ロックを持ったセッションをプールへ戻さない。
 	conn, err := pgx.ConnectConfig(ctx, pool.Config().ConnConfig.Copy())

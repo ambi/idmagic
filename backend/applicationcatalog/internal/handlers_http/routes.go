@@ -13,7 +13,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -39,7 +39,7 @@ type Deps struct {
 	ClientRepo           clientports.OAuth2ClientRepository
 	DeleteClientBindings func(context.Context, string, string) error
 	// RelyingParties と ServiceProviders は WS-Fed の RP と SAML の SP を管理する。nil はそのプロトコルが使えないことを表す。
-	RelyingParties   wsfederationports.RelyingPartyAdministration
+	RelyingParties   wsfedports.RelyingPartyAdministration
 	ServiceProviders samlports.ServiceProviderAdministration
 	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier appports.ProvisioningNotifier

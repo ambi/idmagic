@@ -1,6 +1,6 @@
 package bootstrap
 
-import "github.com/ambi/idmagic/backend/seeding/domain"
+import seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 
 // SeedConfig is the explicit seed request read from the environment: the API
 // process applies it once at startup, and idmagic-seed uses it as the
@@ -24,11 +24,11 @@ func LoadSeedConfig(l *ConfigLoader) SeedConfig {
 	var cfg SeedConfig
 
 	cfg.Profile = l.OptionalEnum("SEED_PROFILE",
-		string(domain.ProfileBootstrap), string(domain.ProfileDevelopment),
-		string(domain.ProfileTest), string(domain.ProfilePerformance))
+		string(seedingdomain.ProfileBootstrap), string(seedingdomain.ProfileDevelopment),
+		string(seedingdomain.ProfileTest), string(seedingdomain.ProfilePerformance))
 	cfg.Environment = l.OptionalEnum("SEED_ENVIRONMENT",
-		string(domain.EnvironmentDevelopment), string(domain.EnvironmentTest),
-		string(domain.EnvironmentStaging), string(domain.EnvironmentProduction))
+		string(seedingdomain.EnvironmentDevelopment), string(seedingdomain.EnvironmentTest),
+		string(seedingdomain.EnvironmentStaging), string(seedingdomain.EnvironmentProduction))
 	if cfg.Profile != "" {
 		l.Require("SEED_ENVIRONMENT", cfg.Environment != "", "is required when SEED_PROFILE is set")
 	}
@@ -47,11 +47,11 @@ func (c SeedConfig) Configured() bool { return c.Profile != "" }
 
 // Request converts the configuration into the apply-mode seed request the
 // API process runs at startup.
-func (c SeedConfig) Request() domain.Request {
-	return domain.Request{
-		Environment:            domain.Environment(c.Environment),
-		Profile:                domain.Profile(c.Profile),
-		Mode:                   domain.ModeApply,
+func (c SeedConfig) Request() seedingdomain.Request {
+	return seedingdomain.Request{
+		Environment:            seedingdomain.Environment(c.Environment),
+		Profile:                seedingdomain.Profile(c.Profile),
+		Mode:                   seedingdomain.ModeApply,
 		ManifestPath:           c.ManifestPath,
 		GeneratorSeed:          c.GeneratorSeed,
 		FirstPartyRedirectURIs: c.FirstPartyRedirectURIs,

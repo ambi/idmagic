@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 )
 
@@ -19,19 +19,19 @@ type Repositories struct {
 
 func NewRepositories() Repositories {
 	return Repositories{
-		Connections: &ConnectionRepository{items: map[string]*domain.IdentityProviderConnection{}},
-		Identities:  &IdentityRepository{bySubject: map[string]*domain.FederatedIdentity{}, byUser: map[string]string{}},
-		Attempts:    &AttemptStore{items: map[string]*domain.FederatedLoginAttempt{}},
+		Connections: &ConnectionRepository{items: map[string]*federationdomain.IdentityProviderConnection{}},
+		Identities:  &IdentityRepository{bySubject: map[string]*federationdomain.FederatedIdentity{}, byUser: map[string]string{}},
+		Attempts:    &AttemptStore{items: map[string]*federationdomain.FederatedLoginAttempt{}},
 		Replay:      &ReplayStore{items: map[string]time.Time{}},
 	}
 }
 
 type ConnectionRepository struct {
 	mu    sync.RWMutex
-	items map[string]*domain.IdentityProviderConnection
+	items map[string]*federationdomain.IdentityProviderConnection
 }
 
-func (r *ConnectionRepository) Save(_ context.Context, connection *domain.IdentityProviderConnection) error {
+func (r *ConnectionRepository) Save(_ context.Context, connection *federationdomain.IdentityProviderConnection) error {
 	if err := connection.Validate(); err != nil {
 		return err
 	}
@@ -41,16 +41,16 @@ func (r *ConnectionRepository) Save(_ context.Context, connection *domain.Identi
 	return nil
 }
 
-func (r *ConnectionRepository) Find(_ context.Context, tenantID, id string) (*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) Find(_ context.Context, tenantID, id string) (*federationdomain.IdentityProviderConnection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneConnection(r.items[connectionKey(tenantID, id)]), nil
 }
 
-func (r *ConnectionRepository) List(_ context.Context, tenantID string) ([]*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) List(_ context.Context, tenantID string) ([]*federationdomain.IdentityProviderConnection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.IdentityProviderConnection, 0)
+	out := make([]*federationdomain.IdentityProviderConnection, 0)
 	prefix := tenantID + "\x00"
 	for key, connection := range r.items {
 		if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
@@ -70,11 +70,11 @@ func (r *ConnectionRepository) Delete(_ context.Context, tenantID, id string) er
 
 type IdentityRepository struct {
 	mu        sync.RWMutex
-	bySubject map[string]*domain.FederatedIdentity
+	bySubject map[string]*federationdomain.FederatedIdentity
 	byUser    map[string]string
 }
 
-func (r *IdentityRepository) Create(_ context.Context, identity *domain.FederatedIdentity) error {
+func (r *IdentityRepository) Create(_ context.Context, identity *federationdomain.FederatedIdentity) error {
 	if err := identity.Validate(); err != nil {
 		return err
 	}
@@ -93,22 +93,22 @@ func (r *IdentityRepository) Create(_ context.Context, identity *domain.Federate
 	return nil
 }
 
-func (r *IdentityRepository) FindBySubject(_ context.Context, tenantID, providerID, subject string) (*domain.FederatedIdentity, error) {
+func (r *IdentityRepository) FindBySubject(_ context.Context, tenantID, providerID, subject string) (*federationdomain.FederatedIdentity, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneIdentity(r.bySubject[linkSubjectKey(tenantID, providerID, subject)]), nil
 }
 
-func (r *IdentityRepository) FindByUserProvider(_ context.Context, tenantID, providerID, userID string) (*domain.FederatedIdentity, error) {
+func (r *IdentityRepository) FindByUserProvider(_ context.Context, tenantID, providerID, userID string) (*federationdomain.FederatedIdentity, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return cloneIdentity(r.bySubject[r.byUser[linkUserKey(tenantID, providerID, userID)]]), nil
 }
 
-func (r *IdentityRepository) ListByUser(_ context.Context, tenantID, userID string) ([]*domain.FederatedIdentity, error) {
+func (r *IdentityRepository) ListByUser(_ context.Context, tenantID, userID string) ([]*federationdomain.FederatedIdentity, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.FederatedIdentity, 0)
+	out := make([]*federationdomain.FederatedIdentity, 0)
 	for _, identity := range r.bySubject {
 		if identity.TenantID == tenantID && identity.LocalUserID == userID {
 			out = append(out, cloneIdentity(identity))
@@ -142,10 +142,10 @@ func (r *IdentityRepository) Delete(_ context.Context, tenantID, providerID, use
 
 type AttemptStore struct {
 	mu    sync.Mutex
-	items map[string]*domain.FederatedLoginAttempt
+	items map[string]*federationdomain.FederatedLoginAttempt
 }
 
-func (s *AttemptStore) Save(_ context.Context, attempt *domain.FederatedLoginAttempt) error {
+func (s *AttemptStore) Save(_ context.Context, attempt *federationdomain.FederatedLoginAttempt) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cloned := *attempt
@@ -153,7 +153,7 @@ func (s *AttemptStore) Save(_ context.Context, attempt *domain.FederatedLoginAtt
 	return nil
 }
 
-func (s *AttemptStore) Consume(_ context.Context, tenantID, state string, now time.Time) (*domain.FederatedLoginAttempt, error) {
+func (s *AttemptStore) Consume(_ context.Context, tenantID, state string, now time.Time) (*federationdomain.FederatedLoginAttempt, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	attempt := s.items[attemptKey(tenantID, state)]
@@ -187,7 +187,7 @@ func (s *ReplayStore) Reserve(_ context.Context, tenantID, id string, expiresAt 
 	return true, nil
 }
 
-func cloneConnection(connection *domain.IdentityProviderConnection) *domain.IdentityProviderConnection {
+func cloneConnection(connection *federationdomain.IdentityProviderConnection) *federationdomain.IdentityProviderConnection {
 	if connection == nil {
 		return nil
 	}
@@ -197,7 +197,7 @@ func cloneConnection(connection *domain.IdentityProviderConnection) *domain.Iden
 	return &cloned
 }
 
-func cloneIdentity(identity *domain.FederatedIdentity) *domain.FederatedIdentity {
+func cloneIdentity(identity *federationdomain.FederatedIdentity) *federationdomain.FederatedIdentity {
 	if identity == nil {
 		return nil
 	}

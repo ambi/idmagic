@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // 3 つを 1 つの表で並べるのは、区別が分岐の順序に依存するためである。
@@ -13,70 +13,70 @@ import (
 func TestDeriveDelegationMode(t *testing.T) {
 	cases := []struct {
 		name string
-		in   domain.DelegationSubject
-		want domain.DelegationMode
+		in   oauthdomain.DelegationSubject
+		want oauthdomain.DelegationMode
 	}{
 		{
 			name: "autonomous: agent acting as its own principal",
-			in: domain.DelegationSubject{
-				Sub: "agent-client", ClientID: "agent-client", PrincipalType: domain.PrincipalTypeAgent,
+			in: oauthdomain.DelegationSubject{
+				Sub: "agent-client", ClientID: "agent-client", PrincipalType: oauthdomain.PrincipalTypeAgent,
 			},
-			want: domain.DelegationModeAutonomous,
+			want: oauthdomain.DelegationModeAutonomous,
 		},
 		{
 			name: "autonomous: client credentials without an agent binding",
-			in:   domain.DelegationSubject{Sub: "svc-client", ClientID: "svc-client"},
-			want: domain.DelegationModeAutonomous,
+			in:   oauthdomain.DelegationSubject{Sub: "svc-client", ClientID: "svc-client"},
+			want: oauthdomain.DelegationModeAutonomous,
 		},
 		{
 			name: "on_behalf_of: an agent acts for a user",
-			in: domain.DelegationSubject{
+			in: oauthdomain.DelegationSubject{
 				Sub: "user-alice", ClientID: "agent-client",
 				Act: map[string]any{"sub": "agent-client"},
 			},
-			want: domain.DelegationModeOnBehalfOf,
+			want: oauthdomain.DelegationModeOnBehalfOf,
 		},
 		{
 			name: "on_behalf_of: a multi-step delegation chain",
-			in: domain.DelegationSubject{
+			in: oauthdomain.DelegationSubject{
 				Sub: "user-alice", ClientID: "agent-b",
 				Act: map[string]any{"sub": "agent-b", "act": map[string]any{"sub": "agent-a"}},
 			},
-			want: domain.DelegationModeOnBehalfOf,
+			want: oauthdomain.DelegationModeOnBehalfOf,
 		},
 		{
 			name: "direct: a user's own token",
-			in:   domain.DelegationSubject{Sub: "user-alice", ClientID: "portal"},
-			want: domain.DelegationModeDirect,
+			in:   oauthdomain.DelegationSubject{Sub: "user-alice", ClientID: "portal"},
+			want: oauthdomain.DelegationModeDirect,
 		},
 		{
 			// workload identity の自己交換は sub と act.sub が同じクライアントになる。
 			// これを代行と数えると自律実行が利用者の代理として記録されてしまう。
 			name: "autonomous: an act chain that only points at the subject is not delegation",
-			in: domain.DelegationSubject{
-				Sub: "agent-client", ClientID: "agent-client", PrincipalType: domain.PrincipalTypeAgent,
+			in: oauthdomain.DelegationSubject{
+				Sub: "agent-client", ClientID: "agent-client", PrincipalType: oauthdomain.PrincipalTypeAgent,
 				Act: map[string]any{"sub": "agent-client"},
 			},
-			want: domain.DelegationModeAutonomous,
+			want: oauthdomain.DelegationModeAutonomous,
 		},
 		{
 			// 入れ子の内側だけが別主体でも代行である。外側だけを見て打ち切らない。
 			name: "on_behalf_of: only the inner actor differs from the subject",
-			in: domain.DelegationSubject{
+			in: oauthdomain.DelegationSubject{
 				Sub: "agent-b", ClientID: "agent-b",
 				Act: map[string]any{"sub": "agent-b", "act": map[string]any{"sub": "user-alice"}},
 			},
-			want: domain.DelegationModeOnBehalfOf,
+			want: oauthdomain.DelegationModeOnBehalfOf,
 		},
 		{
 			name: "autonomous: an unknown subject is never reported as a user's direct access",
-			in:   domain.DelegationSubject{ClientID: "portal"},
-			want: domain.DelegationModeAutonomous,
+			in:   oauthdomain.DelegationSubject{ClientID: "portal"},
+			want: oauthdomain.DelegationModeAutonomous,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := domain.DeriveDelegationMode(tc.in); got != tc.want {
+			if got := oauthdomain.DeriveDelegationMode(tc.in); got != tc.want {
 				t.Fatalf("DeriveDelegationMode() = %q, want %q", got, tc.want)
 			}
 		})
@@ -88,17 +88,17 @@ func TestDeriveDelegationMode(t *testing.T) {
 func TestDeriveDelegationModeTerminatesOnSelfReferentialAct(t *testing.T) {
 	act := map[string]any{"sub": "agent-a"}
 	act["act"] = act
-	done := make(chan domain.DelegationMode, 1)
+	done := make(chan oauthdomain.DelegationMode, 1)
 	go func() {
-		done <- domain.DeriveDelegationMode(domain.DelegationSubject{
+		done <- oauthdomain.DeriveDelegationMode(oauthdomain.DelegationSubject{
 			Sub: "agent-a", ClientID: "agent-a", Act: act,
 		})
 	}()
 	select {
 	case got := <-done:
 		// 上限に達したチェーンは深さの検査が拒否する側の入力なので、代行として扱う。
-		if got != domain.DelegationModeOnBehalfOf {
-			t.Fatalf("DeriveDelegationMode() = %q, want %q", got, domain.DelegationModeOnBehalfOf)
+		if got != oauthdomain.DelegationModeOnBehalfOf {
+			t.Fatalf("DeriveDelegationMode() = %q, want %q", got, oauthdomain.DelegationModeOnBehalfOf)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("DeriveDelegationMode did not terminate on a self-referential act chain")
@@ -142,7 +142,7 @@ func TestActorChainParticipants(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := domain.ActorChainParticipants(tc.act, tc.sub)
+			got := oauthdomain.ActorChainParticipants(tc.act, tc.sub)
 			if len(got) != len(tc.want) {
 				t.Fatalf("participants = %v, want %v", got, tc.want)
 			}

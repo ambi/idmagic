@@ -5,33 +5,33 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
 
 func isNotFound(err error) bool {
-	return errors.Is(err, usecases.ErrConnectionNotFound) || errors.Is(err, usecases.ErrTaskNotFound)
+	return errors.Is(err, provisioningusecases.ErrConnectionNotFound) || errors.Is(err, provisioningusecases.ErrTaskNotFound)
 }
 
 func isConflict(err error) bool {
-	return errors.Is(err, ports.ErrConnectionAlreadyExists) || errors.Is(err, usecases.ErrTaskNotRetryable) || errors.Is(err, usecases.ErrSubjectNotInScope) || errors.Is(err, usecases.ErrConnectionQuarantined)
+	return errors.Is(err, provisioningports.ErrConnectionAlreadyExists) || errors.Is(err, provisioningusecases.ErrTaskNotRetryable) || errors.Is(err, provisioningusecases.ErrSubjectNotInScope) || errors.Is(err, provisioningusecases.ErrConnectionQuarantined)
 }
 
 type credentialRequest struct {
-	AuthMethod         domain.ProvisioningAuthMethod `json:"auth_method"`
-	BearerToken        string                        `json:"bearer_token,omitempty"`
-	OAuth2TokenURL     string                        `json:"oauth2_token_url,omitempty"`
-	OAuth2ClientID     string                        `json:"oauth2_client_id,omitempty"`
-	OAuth2ClientSecret string                        `json:"oauth2_client_secret,omitempty"`
-	OAuth2Scope        string                        `json:"oauth2_scope,omitempty"`
+	AuthMethod         provisioningdomain.ProvisioningAuthMethod `json:"auth_method"`
+	BearerToken        string                                    `json:"bearer_token,omitempty"`
+	OAuth2TokenURL     string                                    `json:"oauth2_token_url,omitempty"`
+	OAuth2ClientID     string                                    `json:"oauth2_client_id,omitempty"`
+	OAuth2ClientSecret string                                    `json:"oauth2_client_secret,omitempty"`
+	OAuth2Scope        string                                    `json:"oauth2_scope,omitempty"`
 }
 
-func (r credentialRequest) toDomain() domain.ProvisioningCredentialInput {
-	return domain.ProvisioningCredentialInput{
+func (r credentialRequest) toDomain() provisioningdomain.ProvisioningCredentialInput {
+	return provisioningdomain.ProvisioningCredentialInput{
 		AuthMethod: r.AuthMethod, BearerToken: r.BearerToken,
 		OAuth2TokenURL: r.OAuth2TokenURL, OAuth2ClientID: r.OAuth2ClientID,
 		OAuth2ClientSecret: r.OAuth2ClientSecret, OAuth2Scope: r.OAuth2Scope,
@@ -54,7 +54,7 @@ func (d Deps) handleRegisterConnection(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	conn, err := usecases.RegisterConnection(c.Request().Context(), d.adminDeps(), usecases.RegisterConnectionInput{
+	conn, err := provisioningusecases.RegisterConnection(c.Request().Context(), d.adminDeps(), provisioningusecases.RegisterConnectionInput{
 		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("id"),
 		BaseURL: req.BaseURL, Credential: req.Credential.toDomain(), Now: time.Now().UTC(),
 	})
@@ -68,7 +68,7 @@ func (d Deps) handleGetConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	conn, err := usecases.GetConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"))
+	conn, err := provisioningusecases.GetConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -79,19 +79,19 @@ func (d Deps) handleGetConnection(c *echo.Context) error {
 }
 
 type updateConnectionRequest struct {
-	BaseURL                           *string                              `json:"base_url"`
-	Status                            *domain.ProvisioningConnectionStatus `json:"status"`
-	Credential                        *credentialRequest                   `json:"credential"`
-	FeatureFlags                      *domain.ProvisioningFeatureFlags     `json:"feature_flags"`
-	Scope                             *domain.ProvisioningScope            `json:"scope"`
-	GroupPush                         *domain.GroupPushConfig              `json:"group_push"`
-	AttributeMappings                 *[]domain.AttributeMappingRule       `json:"attribute_mappings"`
-	Matching                          *domain.MatchingRule                 `json:"matching"`
-	DeprovisionPolicy                 *domain.DeprovisionPolicy            `json:"deprovision_policy"`
-	RateLimitPerMinute                *int                                 `json:"rate_limit_per_minute"`
-	MaxAttempts                       *int                                 `json:"max_attempts"`
-	NotificationEmail                 *string                              `json:"notification_email"`
-	QuarantineAfterConsecutiveFailure *int                                 `json:"quarantine_after_consecutive_failures"`
+	BaseURL                           *string                                          `json:"base_url"`
+	Status                            *provisioningdomain.ProvisioningConnectionStatus `json:"status"`
+	Credential                        *credentialRequest                               `json:"credential"`
+	FeatureFlags                      *provisioningdomain.ProvisioningFeatureFlags     `json:"feature_flags"`
+	Scope                             *provisioningdomain.ProvisioningScope            `json:"scope"`
+	GroupPush                         *provisioningdomain.GroupPushConfig              `json:"group_push"`
+	AttributeMappings                 *[]provisioningdomain.AttributeMappingRule       `json:"attribute_mappings"`
+	Matching                          *provisioningdomain.MatchingRule                 `json:"matching"`
+	DeprovisionPolicy                 *provisioningdomain.DeprovisionPolicy            `json:"deprovision_policy"`
+	RateLimitPerMinute                *int                                             `json:"rate_limit_per_minute"`
+	MaxAttempts                       *int                                             `json:"max_attempts"`
+	NotificationEmail                 *string                                          `json:"notification_email"`
+	QuarantineAfterConsecutiveFailure *int                                             `json:"quarantine_after_consecutive_failures"`
 }
 
 func (d Deps) handleUpdateConnection(c *echo.Context) error {
@@ -105,7 +105,7 @@ func (d Deps) handleUpdateConnection(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	in := usecases.UpdateConnectionInput{
+	in := provisioningusecases.UpdateConnectionInput{
 		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("id"),
 		BaseURL: req.BaseURL, Status: req.Status, FeatureFlags: req.FeatureFlags, Scope: req.Scope,
 		GroupPush: req.GroupPush, AttributeMappings: req.AttributeMappings, Matching: req.Matching,
@@ -117,7 +117,7 @@ func (d Deps) handleUpdateConnection(c *echo.Context) error {
 		cred := req.Credential.toDomain()
 		in.Credential = &cred
 	}
-	conn, err := usecases.UpdateConnection(c.Request().Context(), d.adminDeps(), in)
+	conn, err := provisioningusecases.UpdateConnection(c.Request().Context(), d.adminDeps(), in)
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -131,7 +131,7 @@ func (d Deps) handleDeleteConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := usecases.DeleteConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC()); err != nil {
+	if err := provisioningusecases.DeleteConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC()); err != nil {
 		return d.writeError(c, err)
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -144,7 +144,7 @@ func (d Deps) handleTestConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	result, err := usecases.TestConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
+	result, err := provisioningusecases.TestConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -152,8 +152,8 @@ func (d Deps) handleTestConnection(c *echo.Context) error {
 }
 
 type onDemandRequest struct {
-	SubjectType domain.ProvisioningSourceType `json:"subject_type"`
-	SubjectID   string                        `json:"subject_id"`
+	SubjectType provisioningdomain.ProvisioningSourceType `json:"subject_type"`
+	SubjectID   string                                    `json:"subject_id"`
 }
 
 func (d Deps) handleProvisionOnDemand(c *echo.Context) error {
@@ -167,7 +167,7 @@ func (d Deps) handleProvisionOnDemand(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	task, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), req.SubjectType, req.SubjectID, time.Now().UTC())
+	task, err := provisioningusecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), req.SubjectType, req.SubjectID, time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -181,7 +181,7 @@ func (d Deps) handleStartFullResync(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	enqueued, err := usecases.StartFullResync(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
+	enqueued, err := provisioningusecases.StartFullResync(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -195,7 +195,7 @@ func (d Deps) handleResumeConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	conn, err := usecases.ResumeConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
+	conn, err := provisioningusecases.ResumeConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -223,17 +223,17 @@ func (d Deps) handleListProvisioningTasks(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var status *domain.ProvisioningTaskStatus
+	var status *provisioningdomain.ProvisioningTaskStatus
 	if raw := c.QueryParam("status"); raw != "" {
-		s := domain.ProvisioningTaskStatus(raw)
+		s := provisioningdomain.ProvisioningTaskStatus(raw)
 		if !s.Valid() {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "status is invalid")
 		}
 		status = &s
 	}
-	var sourceType *domain.ProvisioningSourceType
+	var sourceType *provisioningdomain.ProvisioningSourceType
 	if raw := c.QueryParam("source_type"); raw != "" {
-		s := domain.ProvisioningSourceType(raw)
+		s := provisioningdomain.ProvisioningSourceType(raw)
 		if !s.Valid() {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "source_type is invalid")
 		}
@@ -251,11 +251,11 @@ func (d Deps) handleListProvisioningTasks(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
 		}
 	}
-	var tasks []*domain.ProvisioningTask
+	var tasks []*provisioningdomain.ProvisioningTask
 	if page.Direction == support.PageBackward {
-		tasks, err = usecases.ListTasksBefore(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
+		tasks, err = provisioningusecases.ListTasksBefore(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
 	} else {
-		tasks, err = usecases.ListTasks(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
+		tasks, err = provisioningusecases.ListTasks(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
 	}
 	if err != nil {
 		return d.writeError(c, err)
@@ -277,7 +277,7 @@ func (d Deps) handleGetTask(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	task, err := usecases.GetTask(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("task_id"))
+	task, err := provisioningusecases.GetTask(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("task_id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -291,7 +291,7 @@ func (d Deps) handleRetryTask(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	task, err := usecases.RetryTask(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("task_id"))
+	task, err := provisioningusecases.RetryTask(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("task_id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -302,7 +302,7 @@ func (d Deps) handleListTenantConnections(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	connections, err := usecases.ListTenantConnections(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c))
+	connections, err := provisioningusecases.ListTenantConnections(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c))
 	if err != nil {
 		return d.writeError(c, err)
 	}

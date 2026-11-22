@@ -11,7 +11,7 @@ import (
 	"context"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
@@ -81,7 +81,7 @@ type Module struct {
 	TokenIssuer                oauthports.TokenIssuer
 	TokenIntrospector          oauthports.TokenIntrospector
 	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
-	Authorizer                 policyports.Authorizer
+	Authorizer                 accessports.Authorizer
 	EventSink                  oauthports.EventSink
 	// WorkloadVerifier verifies external workload attestation tokens for the
 	// token-exchange grant ([[wi-54-workload-identity-federation-spiffe]]).

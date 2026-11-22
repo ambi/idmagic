@@ -8,7 +8,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
-	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // ResourceDependencies は計画に使う所有者の照会とハッシュの照合を受け取る。
@@ -20,7 +20,7 @@ type ResourceDependencies struct {
 	MfaFactorRepo       totpports.MfaFactorRepository
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
 	AuthzDetailTypeRepo oauthports.AuthorizationDetailTypeRepository
-	RPRepo              wsfederationports.WsFedRelyingPartyRepository
+	RPRepo              wsfedports.WsFedRelyingPartyRepository
 	SPRepo              samlports.SamlServiceProviderRepository
 	Applications        appports.ApplicationRepository
 	AssignmentRepo      appports.AssignmentRepository

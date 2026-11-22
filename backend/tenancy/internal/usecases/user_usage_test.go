@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/shared/logging"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
@@ -20,7 +20,7 @@ func TestRecountUserUsageWarnsOnlyWhenTheUsageDrifted(t *testing.T) {
 	t.Cleanup(func() { logging.SetDefault(previousLogger) })
 	ctx := context.Background()
 	repo := memory.NewQuotaRepository()
-	if err := repo.CheckAndIncrement(ctx, "tenant-a", domain.ResourceUsers, 3); err != nil {
+	if err := repo.CheckAndIncrement(ctx, "tenant-a", tenancydomain.ResourceUsers, 3); err != nil {
 		t.Fatal(err)
 	}
 	count := func(n int) func(context.Context) (int, error) {
@@ -57,10 +57,10 @@ func TestRecountActiveSessionUsageWarnsOnDriftAndKeepsUsers(t *testing.T) {
 	t.Cleanup(func() { logging.SetDefault(previousLogger) })
 	ctx := context.Background()
 	repo := memory.NewQuotaRepository()
-	if err := repo.CheckAndIncrement(ctx, "tenant-a", domain.ResourceActiveSessions, 4); err != nil {
+	if err := repo.CheckAndIncrement(ctx, "tenant-a", tenancydomain.ResourceActiveSessions, 4); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.CheckAndIncrement(ctx, "tenant-a", domain.ResourceUsers, 3); err != nil {
+	if err := repo.CheckAndIncrement(ctx, "tenant-a", tenancydomain.ResourceUsers, 3); err != nil {
 		t.Fatal(err)
 	}
 

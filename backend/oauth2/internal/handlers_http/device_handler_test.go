@@ -22,7 +22,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -51,16 +51,16 @@ func newDeviceServer(t *testing.T, options ...func(*httpadapter.Deps)) deviceFix
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	// テスト用クライアントをシード
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID:                tenancydomain.DefaultTenantID,
 		ClientID:                "device-client",
 		ClientType:              spec.ClientPublic,
 		RedirectURIs:            []string{"https://device.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantDeviceCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone,
 		Scope:                   "openid profile",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               time.Now().UTC(),
 	})
 
@@ -219,7 +219,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		oauthContractJSON(t, rec, http.StatusOK)
 
 		// 承認されていることをインメモリで確認
-		stored, _ := fix.deviceStore.FindByUserCode(ctx, domain.NormalizeUserCode(fix.userCode))
+		stored, _ := fix.deviceStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(fix.userCode))
 		if stored.State != spec.DeviceFlowApproved {
 			t.Errorf("expected state DeviceFlowApproved, got %v", stored.State)
 		}

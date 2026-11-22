@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -186,7 +186,7 @@ func TestProvisioningManagementHTTPContracts(t *testing.T) {
 		t.Fatal(err)
 	}
 	lastError := "downstream_unavailable"
-	if err := tasks.UpdateStatus(context.Background(), tenancydomain.DefaultTenantID, id, domain.TaskDeadLetter, &lastError); err != nil {
+	if err := tasks.UpdateStatus(context.Background(), tenancydomain.DefaultTenantID, id, provisioningdomain.TaskDeadLetter, &lastError); err != nil {
 		t.Fatal(err)
 	}
 	retried := provisioningContractJSON(t, request("admin", http.MethodPost, taskPath+"/retry", nil), http.StatusOK)

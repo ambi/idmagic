@@ -8,8 +8,8 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/internal/db_postgres"
 	jobshttp "github.com/ambi/idmagic/backend/jobs/internal/handlers_http"
 	"github.com/ambi/idmagic/backend/jobs/internal/metrics_prometheus"
-	"github.com/ambi/idmagic/backend/jobs/internal/usecases"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/internal/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -18,10 +18,10 @@ import (
 
 // 組み立て地点が worker を構築するときに名指す型である。
 type (
-	HandlerRegistry = usecases.HandlerRegistry
-	Runner          = usecases.Runner
-	RunnerConfig    = usecases.RunnerConfig
-	RunnerDeps      = usecases.RunnerDeps
+	HandlerRegistry = jobsusecases.HandlerRegistry
+	Runner          = jobsusecases.Runner
+	RunnerConfig    = jobsusecases.RunnerConfig
+	RunnerDeps      = jobsusecases.RunnerDeps
 	Metrics         = metrics_prometheus.Metrics
 )
 
@@ -32,31 +32,31 @@ func NewPostgresModule(pool postgres.DB) Module {
 }
 
 // NewJobRepository はメモリのジョブ保存先を返す。
-func NewJobRepository() ports.JobRepository { return db_memory.NewJobRepository() }
+func NewJobRepository() jobsports.JobRepository { return db_memory.NewJobRepository() }
 
 // NewEnqueuer は、repo へジョブを作り、quotas で active_jobs を確認し、emit で JobEnqueued を発行する投入器を返す。
-func NewEnqueuer(repo ports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Enqueuer {
-	return usecases.NewEnqueuer(repo, quotas, emit)
+func NewEnqueuer(repo jobsports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) jobsports.Enqueuer {
+	return jobsusecases.NewEnqueuer(repo, quotas, emit)
 }
 
 // NewEnqueuerInTx は呼び出し側の Tx で、通常と同じ投入規則と active_jobs の確認を適用する。
 // quotas も同じ Tx に結ぶ。emit は確定までイベントを保持し、確定後に発行する関数を渡す。
 // 拒否の QuotaExceeded はロールバック後に発行し、失敗した投入の JobEnqueued は破棄する。
-func NewEnqueuerInTx(tx pgx.Tx, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Enqueuer {
+func NewEnqueuerInTx(tx pgx.Tx, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) jobsports.Enqueuer {
 	if tx == nil {
 		panic("jobs: NewEnqueuerInTx requires a transaction")
 	}
-	return usecases.NewEnqueuer(&db_postgres.JobRepository{Pool: tx}, quotas, emit)
+	return jobsusecases.NewEnqueuer(&db_postgres.JobRepository{Pool: tx}, quotas, emit)
 }
 
 // NewCanceler は、repo でジョブを取り消し、quotas の active_jobs を一つ減らし、emit で JobCanceled を発行する取り消しの操作を返す。
-func NewCanceler(repo ports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Canceler {
-	return usecases.NewCanceler(repo, quotas, emit)
+func NewCanceler(repo jobsports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) jobsports.Canceler {
+	return jobsusecases.NewCanceler(repo, quotas, emit)
 }
 
-func NewHandlerRegistry() *HandlerRegistry { return usecases.NewHandlerRegistry() }
+func NewHandlerRegistry() *HandlerRegistry { return jobsusecases.NewHandlerRegistry() }
 
-func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner { return usecases.NewRunner(cfg, deps) }
+func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner { return jobsusecases.NewRunner(cfg, deps) }
 
 // NewMetrics は Jobs の計測と、同じ provider による HTTP 計測と公開を作る。
 func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 type correlationKey struct{ tenantID, connectorID, externalID string }
@@ -21,8 +21,8 @@ type CorrelationRepository struct {
 }
 
 var (
-	_ ports.CorrelationRepository      = (*CorrelationRepository)(nil)
-	_ directoryports.CorrelationWriter = (*CorrelationRepository)(nil)
+	_ directoryinternalports.CorrelationRepository = (*CorrelationRepository)(nil)
+	_ directoryports.CorrelationWriter             = (*CorrelationRepository)(nil)
 )
 
 func NewCorrelationRepository() *CorrelationRepository {
@@ -107,27 +107,27 @@ type runKey struct{ tenantID, runID string }
 type IngestionRunRepository struct {
 	operationLocks map[key]*sync.Mutex
 	mu             sync.Mutex
-	runs           map[runKey]domain.IngestionRun
-	batches        map[runKey][]domain.IngestionBatch
+	runs           map[runKey]directorydomain.IngestionRun
+	batches        map[runKey][]directorydomain.IngestionBatch
 }
 
-var _ ports.IngestionRunRepository = (*IngestionRunRepository)(nil)
+var _ directoryinternalports.IngestionRunRepository = (*IngestionRunRepository)(nil)
 
 func NewIngestionRunRepository() *IngestionRunRepository {
-	return &IngestionRunRepository{runs: map[runKey]domain.IngestionRun{}, batches: map[runKey][]domain.IngestionBatch{}}
+	return &IngestionRunRepository{runs: map[runKey]directorydomain.IngestionRun{}, batches: map[runKey][]directorydomain.IngestionBatch{}}
 }
 
-func (r *IngestionRunRepository) Start(_ context.Context, run domain.IngestionRun) error {
+func (r *IngestionRunRepository) Start(_ context.Context, run directorydomain.IngestionRun) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, existing := range r.runs {
-		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && existing.Status == domain.RunApplying {
-			return ports.ErrRunBusy
+		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && existing.Status == directorydomain.RunApplying {
+			return directoryinternalports.ErrRunBusy
 		}
 	}
 	for k, existing := range r.runs {
-		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && (existing.Status == domain.RunRunning || existing.Status == domain.RunAwaitingApproval) {
-			existing.Status = domain.RunSuperseded
+		if existing.TenantID == run.TenantID && existing.ConnectorID == run.ConnectorID && (existing.Status == directorydomain.RunRunning || existing.Status == directorydomain.RunAwaitingApproval) {
+			existing.Status = directorydomain.RunSuperseded
 			r.runs[k] = existing
 		}
 	}
@@ -135,7 +135,7 @@ func (r *IngestionRunRepository) Start(_ context.Context, run domain.IngestionRu
 	return nil
 }
 
-func (r *IngestionRunRepository) Find(_ context.Context, tenantID, connectorID, runID string) (*domain.IngestionRun, error) {
+func (r *IngestionRunRepository) Find(_ context.Context, tenantID, connectorID, runID string) (*directorydomain.IngestionRun, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run, ok := r.runs[runKey{tenantID, runID}]
@@ -145,22 +145,22 @@ func (r *IngestionRunRepository) Find(_ context.Context, tenantID, connectorID, 
 	return new(cloneRun(run)), nil
 }
 
-func (r *IngestionRunRepository) List(_ context.Context, tenantID, connectorID string, limit int) ([]domain.IngestionRun, error) {
+func (r *IngestionRunRepository) List(_ context.Context, tenantID, connectorID string, limit int) ([]directorydomain.IngestionRun, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	result := []domain.IngestionRun{}
+	result := []directorydomain.IngestionRun{}
 	for _, run := range r.runs {
 		if run.TenantID == tenantID && run.ConnectorID == connectorID {
 			result = append(result, cloneRun(run))
 		}
 	}
-	slices.SortFunc(result, func(a, b domain.IngestionRun) int {
+	slices.SortFunc(result, func(a, b directorydomain.IngestionRun) int {
 		return cmp.Or(b.StartedAt.Compare(a.StartedAt), cmp.Compare(b.ID, a.ID))
 	})
 	return result[:min(limit, len(result))], nil
 }
 
-func (r *IngestionRunRepository) FindBatch(_ context.Context, tenantID, runID, batchID string) (*domain.IngestionBatch, error) {
+func (r *IngestionRunRepository) FindBatch(_ context.Context, tenantID, runID, batchID string) (*directorydomain.IngestionBatch, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, batch := range r.batches[runKey{tenantID, runID}] {
@@ -171,7 +171,7 @@ func (r *IngestionRunRepository) FindBatch(_ context.Context, tenantID, runID, b
 	return nil, nil
 }
 
-func (r *IngestionRunRepository) RecordBatch(_ context.Context, batch domain.IngestionBatch) (domain.IngestionBatch, error) {
+func (r *IngestionRunRepository) RecordBatch(_ context.Context, batch directorydomain.IngestionBatch) (directorydomain.IngestionBatch, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := runKey{batch.TenantID, batch.RunID}
@@ -189,11 +189,11 @@ func (r *IngestionRunRepository) RecordBatch(_ context.Context, batch domain.Ing
 	return cloneBatch(batch), nil
 }
 
-func (r *IngestionRunRepository) ListBatches(_ context.Context, tenantID, runID string) ([]domain.IngestionBatch, error) {
+func (r *IngestionRunRepository) ListBatches(_ context.Context, tenantID, runID string) ([]directorydomain.IngestionBatch, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	batches := r.batches[runKey{tenantID, runID}]
-	result := make([]domain.IngestionBatch, len(batches))
+	result := make([]directorydomain.IngestionBatch, len(batches))
 	for n, batch := range batches {
 		result[n] = cloneBatch(batch)
 	}
@@ -205,15 +205,15 @@ func (r *IngestionRunRepository) Complete(_ context.Context, tenantID, runID str
 	defer r.mu.Unlock()
 	k := runKey{tenantID, runID}
 	run, ok := r.runs[k]
-	if !ok || run.Status != domain.RunRunning {
+	if !ok || run.Status != directorydomain.RunRunning {
 		return false, nil
 	}
-	run.Status, run.CompletedAt, run.Counts.Disabled = domain.RunCompleted, &completedAt, disabled
+	run.Status, run.CompletedAt, run.Counts.Disabled = directorydomain.RunCompleted, &completedAt, disabled
 	r.runs[k] = run
 	return true, nil
 }
 
-func cloneBatch(batch domain.IngestionBatch) domain.IngestionBatch {
+func cloneBatch(batch directorydomain.IngestionBatch) directorydomain.IngestionBatch {
 	batch.Results = slices.Clone(batch.Results)
 	return batch
 }
@@ -231,13 +231,13 @@ func (r *IngestionRunRepository) WithConnectorLock(_ context.Context, tenantID, 
 	}
 	r.mu.Unlock()
 	if !lock.TryLock() {
-		return ports.ErrRunBusy
+		return directoryinternalports.ErrRunBusy
 	}
 	defer lock.Unlock()
 	return apply()
 }
 
-func (r *IngestionRunRepository) SaveProgress(_ context.Context, run domain.IngestionRun) error {
+func (r *IngestionRunRepository) SaveProgress(_ context.Context, run directorydomain.IngestionRun) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := runKey{run.TenantID, run.ID}
@@ -247,7 +247,7 @@ func (r *IngestionRunRepository) SaveProgress(_ context.Context, run domain.Inge
 	return nil
 }
 
-func cloneRun(run domain.IngestionRun) domain.IngestionRun {
+func cloneRun(run directorydomain.IngestionRun) directorydomain.IngestionRun {
 	if run.Protection != nil {
 		p := *run.Protection
 		p.Candidates = slices.Clone(p.Candidates)

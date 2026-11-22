@@ -13,7 +13,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
@@ -32,7 +32,7 @@ func TestPostgresStandaloneClientDeletionKeepsStateWhenAParticipantFails(t *test
 		QuotaInTx:          tenancy.QuotaRepositoryInTx,
 	})
 	client := pgfixtures.SeedClient(t, module.ClientRepo, tenant.ID)
-	for _, resource := range []string{tenantdomain.ResourceOAuth2Clients, tenantdomain.ResourceConsents} {
+	for _, resource := range []string{tenancydomain.ResourceOAuth2Clients, tenancydomain.ResourceConsents} {
 		if err := quota.CheckAndIncrement(ctx, tenant.ID, resource, 1); err != nil {
 			t.Fatal(err)
 		}

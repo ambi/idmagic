@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -24,7 +24,7 @@ func TestPARStore(t *testing.T) {
 	store := &oauth2postgres.PARStore{Pool: db}
 	now := pgtest.Now()
 
-	rec := &domain.PARRecord{
+	rec := &oauthdomain.PARRecord{
 		RequestURI: "urn:par:1", TenantID: tenant.ID, ClientID: "client-1",
 		Parameters: map[string]string{"scope": "openid"}, IssuedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
@@ -45,7 +45,7 @@ func TestPARStore(t *testing.T) {
 	if got, err := store.Find(ctx, "urn:par:1"); err != nil || got == nil || !got.Used {
 		t.Fatalf("find after consume=%+v err=%v (want used=true overlay)", got, err)
 	}
-	expired := &domain.PARRecord{RequestURI: "urn:par:exp", TenantID: tenant.ID, ClientID: "c", IssuedAt: now, ExpiresAt: now.Add(-time.Second)}
+	expired := &oauthdomain.PARRecord{RequestURI: "urn:par:exp", TenantID: tenant.ID, ClientID: "c", IssuedAt: now, ExpiresAt: now.Add(-time.Second)}
 	if err := store.Save(ctx, expired); err != nil {
 		t.Fatalf("save expired: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	store := &oauth2postgres.AuthorizationCodeStore{Pool: db}
 	now := pgtest.Now()
 
-	rec := &domain.AuthorizationCodeRecord{
+	rec := &oauthdomain.AuthorizationCodeRecord{
 		Code: "code-1", TenantID: tenant.ID, ClientID: "client-1", UserID: "user-1",
 		Scopes: []string{"openid"}, RedirectURI: "https://c/cb", State: spec.AuthCodeRecordIssued,
 		AuthTime: now.Unix(), IssuedAt: now, ExpiresAt: now.Add(time.Minute),
@@ -169,7 +169,7 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	if again, err := store.MarkExpired(ctx, "code-1"); err != nil || again != nil {
 		t.Fatalf("mark expired on redeemed code=%+v err=%v (want nil, not issued)", again, err)
 	}
-	issued := &domain.AuthorizationCodeRecord{
+	issued := &oauthdomain.AuthorizationCodeRecord{
 		Code: "code-2", TenantID: tenant.ID, ClientID: "client-1", UserID: "user-1",
 		Scopes: []string{"openid"}, RedirectURI: "https://c/cb", State: spec.AuthCodeRecordIssued,
 		AuthTime: now.Unix(), IssuedAt: now, ExpiresAt: now.Add(-time.Second),
@@ -198,7 +198,7 @@ func TestDeviceCodeStore(t *testing.T) {
 	store := &oauth2postgres.DeviceCodeStore{Pool: db}
 	now := pgtest.Now()
 
-	rec := &domain.DeviceAuthorization{
+	rec := &oauthdomain.DeviceAuthorization{
 		DeviceCodeHash: "hash-1", TenantID: tenant.ID, UserCode: "USER-CODE-1", ClientID: "client-1",
 		Scopes: []string{"openid"}, State: spec.DeviceFlowIssued, IntervalSeconds: 5,
 		IssuedAt: now, ExpiresAt: now.Add(time.Minute),

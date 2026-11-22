@@ -8,7 +8,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 	identitysource "github.com/ambi/idmagic/backend/provisioning/internal/source_idmanagement"
 )
 
@@ -29,7 +29,7 @@ func TestUserAttributeSource_ResolveAttributes_MapsCoreFields(t *testing.T) {
 	}
 
 	source := &identitysource.UserAttributeSource{UserRepo: userRepo}
-	attrs, exists, err := source.ResolveAttributes(ctx, "tenant-a", domain.SourceTypeUser, "user-1")
+	attrs, exists, err := source.ResolveAttributes(ctx, "tenant-a", provisioningdomain.SourceTypeUser, "user-1")
 	if err != nil {
 		t.Fatalf("ResolveAttributes() error = %v", err)
 	}
@@ -54,11 +54,11 @@ func TestUserAttributeSource_ResolveAttributes_NotFoundOrOtherTenant(t *testing.
 	_ = userRepo.Save(ctx, user)
 
 	source := &identitysource.UserAttributeSource{UserRepo: userRepo}
-	_, exists, err := source.ResolveAttributes(ctx, "tenant-a", domain.SourceTypeUser, "missing")
+	_, exists, err := source.ResolveAttributes(ctx, "tenant-a", provisioningdomain.SourceTypeUser, "missing")
 	if err != nil || exists {
 		t.Errorf("ResolveAttributes() for missing user = (exists=%v, err=%v), want (false, nil)", exists, err)
 	}
-	_, exists, err = source.ResolveAttributes(ctx, "tenant-b", domain.SourceTypeUser, "user-1")
+	_, exists, err = source.ResolveAttributes(ctx, "tenant-b", provisioningdomain.SourceTypeUser, "user-1")
 	if err != nil || exists {
 		t.Errorf("ResolveAttributes() across tenants = (exists=%v, err=%v), want (false, nil)", exists, err)
 	}
@@ -71,7 +71,7 @@ func TestUserAttributeSource_ResolveAttributes_DisabledUserIsInactive(t *testing
 	_ = userRepo.Save(ctx, user)
 
 	source := &identitysource.UserAttributeSource{UserRepo: userRepo}
-	attrs, exists, err := source.ResolveAttributes(ctx, "tenant-a", domain.SourceTypeUser, "user-1")
+	attrs, exists, err := source.ResolveAttributes(ctx, "tenant-a", provisioningdomain.SourceTypeUser, "user-1")
 	if err != nil || !exists {
 		t.Fatalf("ResolveAttributes() = (exists=%v, err=%v)", exists, err)
 	}
@@ -98,7 +98,7 @@ func TestUserAttributeSource_ResolveAttributes_DeletedUserStillResolvesAsInactiv
 	}
 
 	source := &identitysource.UserAttributeSource{UserRepo: userRepo}
-	attrs, exists, err := source.ResolveAttributes(ctx, "tenant-a", domain.SourceTypeUser, "user-1")
+	attrs, exists, err := source.ResolveAttributes(ctx, "tenant-a", provisioningdomain.SourceTypeUser, "user-1")
 	if err != nil {
 		t.Fatalf("ResolveAttributes() error = %v", err)
 	}

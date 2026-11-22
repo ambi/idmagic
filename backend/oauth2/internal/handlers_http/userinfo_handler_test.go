@@ -32,7 +32,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
@@ -61,7 +61,7 @@ func TestUserInfoAppliesClientClaimMappingPolicy(t *testing.T) {
 		CreatedAt: now, UpdatedAt: now,
 	})
 	clients := memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "claim-client",
 		ClaimPolicy: &claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "user_id"},
@@ -166,7 +166,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid profile",
 		ClientID:         "demo-client",
-		SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
+		SenderConstraint: &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
 	}}
 
 	e := echo.New()
@@ -241,7 +241,7 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_bob", Scope: "openid", ClientID: "tenant-client",
-		SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
+		SenderConstraint: &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
 	}}
 
 	// "acme" テナントを返す TenantRepository をその場で組む。
@@ -421,7 +421,7 @@ func TestUserInfoRejectsRevokedAccessTokenWithBearerChallenge(t *testing.T) {
 func TestUserInfoMTLSBoundRequiresMatchingThumbprint(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_alice", Scope: "openid", ClientID: "demo-client",
-		SenderConstraint: &domain.SenderConstraint{
+		SenderConstraint: &oauthdomain.SenderConstraint{
 			Type: spec.SenderConstraintMTLS, X5TS256: "expected-thumbprint-not-matching-any-real-cert",
 		},
 	}}
@@ -537,7 +537,7 @@ func TestUserInfoDPoPAcceptsES256Proof(t *testing.T) {
 	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
 		Active: true, Sub: "user_carol", Scope: "openid profile",
 		ClientID:         "demo-client",
-		SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
+		SenderConstraint: &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
 	}}
 
 	e := echo.New()

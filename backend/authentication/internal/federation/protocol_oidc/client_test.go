@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
 
@@ -40,7 +40,7 @@ func TestRefreshDiscoveryRejectsIssuerMixup(t *testing.T) {
 
 func TestAuthorizationURLUsesStateNonceAndPKCES256(t *testing.T) {
 	connection := testConnection()
-	attempt := domain.FederatedLoginAttempt{State: "state", Nonce: "nonce", PKCEVerifier: strings.Repeat("v", 43)}
+	attempt := federationdomain.FederatedLoginAttempt{State: "state", Nonce: "nonce", PKCEVerifier: strings.Repeat("v", 43)}
 	redirect, err := AuthorizationURL(connection, attempt, "https://broker.example/callback")
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestExchangeValidatesSignedIDTokenAndNormalizesClaims(t *testing.T) {
 	connection := testConnection()
 	claims, err := client.ExchangeAndValidate(
 		context.Background(), connection,
-		domain.FederatedLoginAttempt{Nonce: "nonce", PKCEVerifier: strings.Repeat("v", 43)},
+		federationdomain.FederatedLoginAttempt{Nonce: "nonce", PKCEVerifier: strings.Repeat("v", 43)},
 		"code", "https://broker.example/callback", now,
 	)
 	if err != nil {
@@ -158,18 +158,18 @@ type stubResolver struct {
 
 func (s stubResolver) Resolve(context.Context, string) (string, error) { return s.value, s.err }
 
-func testConnection() domain.IdentityProviderConnection {
-	return domain.IdentityProviderConnection{
+func testConnection() federationdomain.IdentityProviderConnection {
+	return federationdomain.IdentityProviderConnection{
 		ID: "oidc", TenantID: "tenant", DisplayName: "OIDC",
-		Protocol: domain.ProtocolOIDC, Status: domain.ConnectionActive,
+		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
 		Issuer: "https://idp.example", ClientID: "client",
 		AuthorizationEndpoint: "https://idp.example/auth",
 		TokenEndpoint:         "https://idp.example/token", JWKSURI: "https://idp.example/jwks",
-		ClaimMapping: domain.ClaimMapping{
+		ClaimMapping: federationdomain.ClaimMapping{
 			Subject: "sub", Username: "email", Email: "email",
 			EmailVerified: "email_verified", Name: "name",
 		},
-		LinkingPolicy: domain.LinkingNone,
+		LinkingPolicy: federationdomain.LinkingNone,
 	}
 }
 
@@ -223,7 +223,7 @@ func TestRefreshDiscoveryRequiresAnExactIssuerAndHTTPSAuthorities(t *testing.T) 
 			"jwks_uri":               "https://idp.example/jwks2",
 		}
 	}
-	refresh := func(t *testing.T, document map[string]any) (*domain.MetadataPreview, error) {
+	refresh := func(t *testing.T, document map[string]any) (*federationdomain.MetadataPreview, error) {
 		t.Helper()
 		client := Client{HTTPClient: fakeHTTPClient(map[string]any{
 			configured + "/.well-known/openid-configuration": document,

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -21,30 +21,30 @@ import (
 // no concurrent-transaction concern to model in-process.
 type JobRepository struct {
 	mu   sync.Mutex
-	byID map[string]*domain.Job
+	byID map[string]*jobsdomain.Job
 }
 
 func NewJobRepository() *JobRepository {
-	return &JobRepository{byID: map[string]*domain.Job{}}
+	return &JobRepository{byID: map[string]*jobsdomain.Job{}}
 }
 
-var _ ports.JobRepository = (*JobRepository)(nil)
+var _ jobsports.JobRepository = (*JobRepository)(nil)
 
 // copyJob returns a struct copy so callers cannot mutate repository state
 // through a returned pointer, and concurrent readers/writers of the same Job
 // (worker goroutines vs. the map) don't race on the same struct instance.
-func copyJob(j *domain.Job) *domain.Job {
+func copyJob(j *jobsdomain.Job) *jobsdomain.Job {
 	cp := *j
 	return &cp
 }
 
-func (r *JobRepository) Enqueue(_ context.Context, input ports.EnqueueInput) (*domain.Job, bool, error) {
+func (r *JobRepository) Enqueue(_ context.Context, input jobsports.EnqueueInput) (*jobsdomain.Job, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if input.DedupKey != nil {
 		for _, j := range r.byID {
-			if j.TenantID == input.TenantID && !domain.IsJobLifecycleTerminal(j.Status) &&
+			if j.TenantID == input.TenantID && !jobsdomain.IsJobLifecycleTerminal(j.Status) &&
 				j.DedupKey != nil && *j.DedupKey == *input.DedupKey {
 				return copyJob(j), false, nil
 			}
@@ -63,12 +63,12 @@ func (r *JobRepository) Enqueue(_ context.Context, input ports.EnqueueInput) (*d
 	if runAt.IsZero() {
 		runAt = now
 	}
-	job := &domain.Job{
+	job := &jobsdomain.Job{
 		ID:          id,
 		TenantID:    input.TenantID,
 		Kind:        input.Kind,
 		Lane:        input.Lane,
-		Status:      domain.StatusQueued,
+		Status:      jobsdomain.StatusQueued,
 		Params:      input.Params,
 		Attempts:    0,
 		MaxAttempts: input.MaxAttempts,
@@ -81,7 +81,7 @@ func (r *JobRepository) Enqueue(_ context.Context, input ports.EnqueueInput) (*d
 	return copyJob(job), true, nil
 }
 
-func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, lane domain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error) {
+func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, lane jobsdomain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*jobsdomain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -89,15 +89,15 @@ func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, lane doma
 		return nil, nil
 	}
 
-	var candidates []*domain.Job
+	var candidates []*jobsdomain.Job
 	for _, j := range r.byID {
 		if j.Lane != lane {
 			continue
 		}
 		switch {
-		case j.Status == domain.StatusQueued && !j.RunAt.After(now):
+		case j.Status == jobsdomain.StatusQueued && !j.RunAt.After(now):
 			candidates = append(candidates, j)
-		case j.Status == domain.StatusRunning && j.LeaseExpiresAt != nil && j.LeaseExpiresAt.Before(now):
+		case j.Status == jobsdomain.StatusRunning && j.LeaseExpiresAt != nil && j.LeaseExpiresAt.Before(now):
 			// Previous worker's lease expired before it completed the Job
 			// (crash, or a drain timeout that outlived the process); reclaim
 			// it for a new attempt. Status stays Running, so no
@@ -110,10 +110,10 @@ func (r *JobRepository) ClaimBatch(_ context.Context, workerID string, lane doma
 		candidates = candidates[:batchSize]
 	}
 
-	claimed := make([]*domain.Job, 0, len(candidates))
+	claimed := make([]*jobsdomain.Job, 0, len(candidates))
 	for _, j := range candidates {
-		if j.Status == domain.StatusQueued {
-			next, err := domain.TransitionJobLifecycle(j.Status, domain.EventClaim)
+		if j.Status == jobsdomain.StatusQueued {
+			next, err := jobsdomain.TransitionJobLifecycle(j.Status, jobsdomain.EventClaim)
 			if err != nil {
 				continue
 			}
@@ -136,10 +136,10 @@ func (r *JobRepository) Heartbeat(_ context.Context, jobID, workerID string, lea
 
 	j, ok := r.byID[jobID]
 	if !ok {
-		return time.Time{}, ports.ErrJobNotFound
+		return time.Time{}, jobsports.ErrJobNotFound
 	}
 	if !leaseHeld(j, workerID, now) {
-		return time.Time{}, ports.ErrJobLeaseLost
+		return time.Time{}, jobsports.ErrJobLeaseLost
 	}
 	expiry := now.Add(leaseDuration)
 	j.LeaseExpiresAt = &expiry
@@ -147,20 +147,20 @@ func (r *JobRepository) Heartbeat(_ context.Context, jobID, workerID string, lea
 	return expiry, nil
 }
 
-func (r *JobRepository) Complete(_ context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*domain.Job, error) {
+func (r *JobRepository) Complete(_ context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*jobsdomain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	j, ok := r.byID[jobID]
 	if !ok {
-		return nil, ports.ErrJobNotFound
+		return nil, jobsports.ErrJobNotFound
 	}
 	if !leaseHeld(j, workerID, now) {
-		return nil, ports.ErrJobLeaseLost
+		return nil, jobsports.ErrJobLeaseLost
 	}
-	next, err := domain.TransitionJobLifecycle(j.Status, domain.EventComplete)
+	next, err := jobsdomain.TransitionJobLifecycle(j.Status, jobsdomain.EventComplete)
 	if err != nil {
-		return nil, ports.ErrJobLeaseLost
+		return nil, jobsports.ErrJobLeaseLost
 	}
 	j.Status = next
 	j.Result = result
@@ -170,22 +170,22 @@ func (r *JobRepository) Complete(_ context.Context, jobID, workerID string, resu
 	return copyJob(j), nil
 }
 
-func (r *JobRepository) Fail(_ context.Context, jobID, workerID string, outcome ports.FailOutcome, now time.Time) (*domain.Job, error) {
+func (r *JobRepository) Fail(_ context.Context, jobID, workerID string, outcome jobsports.FailOutcome, now time.Time) (*jobsdomain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	j, ok := r.byID[jobID]
 	if !ok {
-		return nil, ports.ErrJobNotFound
+		return nil, jobsports.ErrJobNotFound
 	}
 	if !leaseHeld(j, workerID, now) {
-		return nil, ports.ErrJobLeaseLost
+		return nil, jobsports.ErrJobLeaseLost
 	}
-	event := domain.EventFail
-	if outcome.NextStatus == domain.StatusQueued {
-		event = domain.EventRetry
+	event := jobsdomain.EventFail
+	if outcome.NextStatus == jobsdomain.StatusQueued {
+		event = jobsdomain.EventRetry
 	}
-	next, err := domain.TransitionJobLifecycle(j.Status, event)
+	next, err := jobsdomain.TransitionJobLifecycle(j.Status, event)
 	if err != nil {
 		return nil, err
 	}
@@ -195,24 +195,24 @@ func (r *JobRepository) Fail(_ context.Context, jobID, workerID string, outcome 
 	j.LeaseOwner = nil
 	j.LeaseExpiresAt = nil
 	j.UpdatedAt = now
-	if next == domain.StatusQueued {
+	if next == jobsdomain.StatusQueued {
 		j.RunAt = outcome.RunAt
 	}
 	return copyJob(j), nil
 }
 
-func (r *JobRepository) Cancel(_ context.Context, jobID string, now time.Time) (*domain.Job, error) {
+func (r *JobRepository) Cancel(_ context.Context, jobID string, now time.Time) (*jobsdomain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	j, ok := r.byID[jobID]
 	if !ok {
-		return nil, ports.ErrJobNotFound
+		return nil, jobsports.ErrJobNotFound
 	}
-	if domain.IsJobLifecycleTerminal(j.Status) {
-		return nil, ports.ErrJobAlreadyTerminal
+	if jobsdomain.IsJobLifecycleTerminal(j.Status) {
+		return nil, jobsports.ErrJobAlreadyTerminal
 	}
-	next, err := domain.TransitionJobLifecycle(j.Status, domain.EventCancel)
+	next, err := jobsdomain.TransitionJobLifecycle(j.Status, jobsdomain.EventCancel)
 	if err != nil {
 		return nil, err
 	}
@@ -223,44 +223,44 @@ func (r *JobRepository) Cancel(_ context.Context, jobID string, now time.Time) (
 	return copyJob(j), nil
 }
 
-func (r *JobRepository) LaneDepths(_ context.Context) ([]ports.LaneDepth, error) {
+func (r *JobRepository) LaneDepths(_ context.Context) ([]jobsports.LaneDepth, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	byLane := map[domain.ExecutionLane]*ports.LaneDepth{}
+	byLane := map[jobsdomain.ExecutionLane]*jobsports.LaneDepth{}
 	for _, j := range r.byID {
 		switch j.Status {
-		case domain.StatusQueued, domain.StatusRunning:
+		case jobsdomain.StatusQueued, jobsdomain.StatusRunning:
 		default:
 			continue
 		}
 		d, ok := byLane[j.Lane]
 		if !ok {
-			d = &ports.LaneDepth{Lane: j.Lane}
+			d = &jobsports.LaneDepth{Lane: j.Lane}
 			byLane[j.Lane] = d
 		}
-		if j.Status == domain.StatusQueued {
+		if j.Status == jobsdomain.StatusQueued {
 			d.Queued++
 		} else {
 			d.Running++
 		}
 	}
-	depths := make([]ports.LaneDepth, 0, len(byLane))
+	depths := make([]jobsports.LaneDepth, 0, len(byLane))
 	for _, d := range byLane {
 		depths = append(depths, *d)
 	}
 	return depths, nil
 }
 
-func (r *JobRepository) ListByTenantAndKinds(_ context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error) {
+func (r *JobRepository) ListByTenantAndKinds(_ context.Context, tenantID string, kinds []jobsdomain.JobKind, limit int) ([]*jobsdomain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	kindSet := make(map[domain.JobKind]struct{}, len(kinds))
+	kindSet := make(map[jobsdomain.JobKind]struct{}, len(kinds))
 	for _, k := range kinds {
 		kindSet[k] = struct{}{}
 	}
-	var out []*domain.Job
+	var out []*jobsdomain.Job
 	for _, j := range r.byID {
 		if j.TenantID != tenantID {
 			continue
@@ -280,23 +280,23 @@ func (r *JobRepository) ListByTenantAndKinds(_ context.Context, tenantID string,
 // ListForAdmin implements the wi-157 console read. The PostgreSQL adapter does
 // the same narrowing in SQL; keeping the two in step matters because the memory
 // runtime is what the usecases tests exercise.
-func (r *JobRepository) ListForAdmin(_ context.Context, filter ports.AdminJobFilter) ([]*domain.Job, error) {
+func (r *JobRepository) ListForAdmin(_ context.Context, filter jobsports.AdminJobFilter) ([]*jobsdomain.Job, error) {
 	if filter.TenantID == "" && !filter.AllTenants {
-		return nil, ports.ErrAdminJobFilterUnscoped
+		return nil, jobsports.ErrAdminJobFilterUnscoped
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	statuses := make(map[domain.JobStatus]struct{}, len(filter.Statuses))
+	statuses := make(map[jobsdomain.JobStatus]struct{}, len(filter.Statuses))
 	for _, s := range filter.Statuses {
 		statuses[s] = struct{}{}
 	}
-	kinds := make(map[domain.JobKind]struct{}, len(filter.Kinds))
+	kinds := make(map[jobsdomain.JobKind]struct{}, len(filter.Kinds))
 	for _, k := range filter.Kinds {
 		kinds[k] = struct{}{}
 	}
 
-	var out []*domain.Job
+	var out []*jobsdomain.Job
 	for _, j := range r.byID {
 		if !filter.AllTenants && j.TenantID != filter.TenantID {
 			continue
@@ -335,7 +335,7 @@ func (r *JobRepository) ListForAdmin(_ context.Context, filter ports.AdminJobFil
 // id DESC) anchor. A zero anchor starts from the newest row. The id is part of
 // the comparison because two Jobs enqueued in the same instant would otherwise
 // let a page boundary drop or repeat one of them.
-func afterKeyset(j *domain.Job, beforeCreatedAt time.Time, beforeID string) bool {
+func afterKeyset(j *jobsdomain.Job, beforeCreatedAt time.Time, beforeID string) bool {
 	if beforeCreatedAt.IsZero() && beforeID == "" {
 		return true
 	}
@@ -345,19 +345,19 @@ func afterKeyset(j *domain.Job, beforeCreatedAt time.Time, beforeID string) bool
 	return j.CreatedAt.Equal(beforeCreatedAt) && j.ID < beforeID
 }
 
-func (r *JobRepository) Get(_ context.Context, jobID string) (*domain.Job, error) {
+func (r *JobRepository) Get(_ context.Context, jobID string) (*jobsdomain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	j, ok := r.byID[jobID]
 	if !ok {
-		return nil, ports.ErrJobNotFound
+		return nil, jobsports.ErrJobNotFound
 	}
 	return copyJob(j), nil
 }
 
-func leaseHeld(j *domain.Job, workerID string, now time.Time) bool {
-	return j.Status == domain.StatusRunning &&
+func leaseHeld(j *jobsdomain.Job, workerID string, now time.Time) bool {
+	return j.Status == jobsdomain.StatusRunning &&
 		j.LeaseOwner != nil && *j.LeaseOwner == workerID &&
 		j.LeaseExpiresAt != nil && !j.LeaseExpiresAt.Before(now)
 }

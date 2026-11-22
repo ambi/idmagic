@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	authnports "github.com/ambi/idmagic/backend/authentication/password/ports"
+	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -13,7 +13,7 @@ import (
 type PasswordHistoryRepository struct{ Pool DBTX }
 
 // PasswordHistoryWriterInTx は、User の保存と同じ Tx へ履歴を追加する操作を返す。
-func PasswordHistoryWriterInTx(tx pgx.Tx) authnports.PasswordHistoryWriter {
+func PasswordHistoryWriterInTx(tx pgx.Tx) passwordports.PasswordHistoryWriter {
 	if tx == nil {
 		panic("authentication: PasswordHistoryWriterInTx requires a transaction")
 	}
@@ -28,7 +28,7 @@ func (r *PasswordHistoryRepository) Recent(
 	ctx context.Context,
 	sub string,
 	depth int,
-) ([]authnports.PasswordHistoryEntry, error) {
+) ([]passwordports.PasswordHistoryEntry, error) {
 	if depth <= 0 {
 		return nil, nil
 	}
@@ -41,9 +41,9 @@ func (r *PasswordHistoryRepository) Recent(
 	if err != nil {
 		return nil, err
 	}
-	out := make([]authnports.PasswordHistoryEntry, 0, len(rows))
+	out := make([]passwordports.PasswordHistoryEntry, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, authnports.PasswordHistoryEntry{Encoded: row.Encoded, CreatedAt: row.CreatedAt})
+		out = append(out, passwordports.PasswordHistoryEntry{Encoded: row.Encoded, CreatedAt: row.CreatedAt})
 	}
 	return out, nil
 }

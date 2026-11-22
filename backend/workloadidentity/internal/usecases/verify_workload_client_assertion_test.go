@@ -12,7 +12,7 @@ import (
 	"time"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 )
 
 const clientAssertionAudience = "https://idmagic.example/realms/default"
@@ -46,7 +46,7 @@ func (f *fixture) signClientSVID(t *testing.T, mutate func(map[string]any)) stri
 
 func (f *fixture) authenticate(t *testing.T, clientID, assertion string) (*workloaddomain.WorkloadClientAuthentication, error) {
 	t.Helper()
-	return usecases.VerifyWorkloadClientAssertion(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadClientAssertionInput{
+	return workloadusecases.VerifyWorkloadClientAssertion(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadClientAssertionInput{
 		ClientID: clientID, Assertion: assertion, ExpectedAudience: clientAssertionAudience,
 	}, f.now)
 }

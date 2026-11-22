@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 type conflictingMcpRepo struct {
-	ports.McpResourceServerRepository
+	oauthports.McpResourceServerRepository
 	change func()
 }
 
-func (r *conflictingMcpRepo) SaveIfUnchanged(ctx context.Context, m *domain.McpResourceServer, expected time.Time) (bool, error) {
+func (r *conflictingMcpRepo) SaveIfUnchanged(ctx context.Context, m *oauthdomain.McpResourceServer, expected time.Time) (bool, error) {
 	if r.change != nil {
 		change := r.change
 		r.change = nil
@@ -35,7 +35,7 @@ func TestMcpCatalogConcurrentUpdateCannotRestoreRemovedOperation(t *testing.T) {
 	payload := validMcpResourceServerPayload()
 	payload["access_rules"] = []any{map[string]any{"resource_type": "idmagic_mcp_operation", "relation": "invoke", "scopes": []string{"mcp.read"}, "tool": map[string]any{"name": "read", "display_name": "閲覧"}}}
 	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, payload)
-	var server domain.McpResourceServer
+	var server oauthdomain.McpResourceServer
 	if err := json.Unmarshal(created.Body.Bytes(), &server); err != nil {
 		t.Fatal(err)
 	}

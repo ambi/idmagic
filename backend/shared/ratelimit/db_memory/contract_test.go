@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/shared/ratelimit/ports"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/ratelimit/testing_contract"
 )
 
 func TestPersistenceContract(t *testing.T) {
 	newFixture := func(*testing.T) testing_contract.Fixture {
-		return testing_contract.Fixture{Limiter: NewRateLimiter(ports.RateLimitConfigs{"contract": {MaxRequests: 2, WindowSeconds: 60}, "other-policy": {MaxRequests: 2, WindowSeconds: 60}}), Context: context.Background(), Now: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
+		return testing_contract.Fixture{Limiter: NewRateLimiter(rlports.RateLimitConfigs{"contract": {MaxRequests: 2, WindowSeconds: 60}, "other-policy": {MaxRequests: 2, WindowSeconds: 60}}), Context: context.Background(), Now: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)}
 	}
 	testing_contract.Run(t, newFixture)
 	testing_contract.RunAllowWithin(t, newFixture)

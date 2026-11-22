@@ -8,19 +8,19 @@ import (
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
 
 type brandingUpdateRequest struct {
-	ProductName  *string                  `json:"product_name,omitempty"`
-	PrimaryColor *string                  `json:"primary_color,omitempty"`
-	AccentColor  *string                  `json:"accent_color,omitempty"`
-	FooterLink1  *domain.TenantFooterLink `json:"footer_link_1,omitempty"`
-	FooterLink2  *domain.TenantFooterLink `json:"footer_link_2,omitempty"`
-	FooterText   *string                  `json:"footer_text,omitempty"`
+	ProductName  *string                         `json:"product_name,omitempty"`
+	PrimaryColor *string                         `json:"primary_color,omitempty"`
+	AccentColor  *string                         `json:"accent_color,omitempty"`
+	FooterLink1  *tenancydomain.TenantFooterLink `json:"footer_link_1,omitempty"`
+	FooterLink2  *tenancydomain.TenantFooterLink `json:"footer_link_2,omitempty"`
+	FooterText   *string                         `json:"footer_text,omitempty"`
 }
 
 func brandingChangedFields(input brandingUpdateRequest) []string {
@@ -48,16 +48,16 @@ func brandingChangedFields(input brandingUpdateRequest) []string {
 
 func (d Deps) writeBrandingError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, tenantusecases.ErrInvalidBranding):
+	case errors.Is(err, tenancyusecases.ErrInvalidBranding):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_branding",
 			"The branding settings are invalid: colors must use #rrggbb and links must use HTTPS.")
-	case errors.Is(err, tenantusecases.ErrInvalidBrandingAssetKind):
+	case errors.Is(err, tenancyusecases.ErrInvalidBrandingAssetKind):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "kind must be either logo or favicon.")
-	case errors.Is(err, tenantusecases.ErrBrandingAssetRequired):
+	case errors.Is(err, tenancyusecases.ErrBrandingAssetRequired):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify an image file.")
-	case errors.Is(err, tenantusecases.ErrBrandingAssetTooLarge):
+	case errors.Is(err, tenancyusecases.ErrBrandingAssetTooLarge):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The image must not exceed 256 KiB.")
-	case errors.Is(err, tenantusecases.ErrBrandingAssetFormat):
+	case errors.Is(err, tenancyusecases.ErrBrandingAssetFormat):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The image must be PNG, JPEG, WebP, or GIF.")
 	default:
 		return err
@@ -76,7 +76,7 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	branding, err := tenantusecases.UpdateBranding(c.Request().Context(), d.BrandingRepo, actor.TenantID, tenantusecases.BrandingUpdateInput{
+	branding, err := tenancyusecases.UpdateBranding(c.Request().Context(), d.BrandingRepo, actor.TenantID, tenancyusecases.BrandingUpdateInput{
 		ProductName:  input.ProductName,
 		PrimaryColor: input.PrimaryColor,
 		AccentColor:  input.AccentColor,
@@ -88,7 +88,7 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 		return d.writeBrandingError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantBrandingUpdated{
+		d.Emit(&tenancydomain.TenantBrandingUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID,
 			ChangedFields: brandingChangedFields(input),
 		})
@@ -104,7 +104,7 @@ func (d Deps) handleUploadBrandingAsset(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	kind := domain.TenantBrandingAssetKind(c.Param("kind"))
+	kind := tenancydomain.TenantBrandingAssetKind(c.Param("kind"))
 	if !kind.Valid() {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "kind must be either logo or favicon.")
 	}
@@ -116,7 +116,7 @@ func (d Deps) handleUploadBrandingAsset(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	data, err := io.ReadAll(io.LimitReader(src, tenantusecases.MaxTenantBrandingAssetBytes+1))
+	data, err := io.ReadAll(io.LimitReader(src, tenancyusecases.MaxTenantBrandingAssetBytes+1))
 	if closeErr := src.Close(); closeErr != nil && err == nil {
 		err = closeErr
 	}
@@ -128,14 +128,14 @@ func (d Deps) handleUploadBrandingAsset(c *echo.Context) error {
 		return err
 	}
 	assetURL := support.TenantRoute(c, "/tenant-branding-assets/"+string(kind)+"/"+objectKey)
-	branding, err := tenantusecases.UploadBrandingAsset(c.Request().Context(), d.BrandingRepo, d.BrandingAssetStore, actor.TenantID, tenantusecases.UploadBrandingAssetInput{
+	branding, err := tenancyusecases.UploadBrandingAsset(c.Request().Context(), d.BrandingRepo, d.BrandingAssetStore, actor.TenantID, tenancyusecases.UploadBrandingAssetInput{
 		Kind: kind, ObjectKey: objectKey, Data: data, URL: assetURL, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeBrandingError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantBrandingUpdated{
+		d.Emit(&tenancydomain.TenantBrandingUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, ChangedFields: []string{string(kind)},
 		})
 	}
@@ -150,18 +150,18 @@ func (d Deps) handleDeleteBrandingAsset(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	kind := domain.TenantBrandingAssetKind(c.Param("kind"))
+	kind := tenancydomain.TenantBrandingAssetKind(c.Param("kind"))
 	if !kind.Valid() {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "kind must be either logo or favicon.")
 	}
-	branding, err := tenantusecases.DeleteBrandingAsset(
+	branding, err := tenancyusecases.DeleteBrandingAsset(
 		c.Request().Context(), d.BrandingRepo, d.BrandingAssetStore, actor.TenantID, kind, time.Now().UTC(),
 	)
 	if err != nil {
 		return d.writeBrandingError(c, err)
 	}
 	if d.Emit != nil {
-		d.Emit(&domain.TenantBrandingUpdated{
+		d.Emit(&tenancydomain.TenantBrandingUpdated{
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, ChangedFields: []string{string(kind)},
 		})
 	}

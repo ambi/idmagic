@@ -16,7 +16,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -65,7 +65,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled, StatusChangedAt: &now},
 		CreatedAt: now, UpdatedAt: now,
 	})
-	if err := requestStore.Save(context.Background(), &domain.AuthorizationRequest{
+	if err := requestStore.Save(context.Background(), &oauthdomain.AuthorizationRequest{
 		ID: "transaction", State: spec.AuthFlowReceived, ExpiresAt: now.Add(time.Minute),
 	}); err != nil {
 		t.Fatal(err)

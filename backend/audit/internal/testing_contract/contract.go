@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type Fixture struct {
-	Repository ports.AuditEventRepository
+	Repository auditports.AuditEventRepository
 	TenantA    string
 	TenantB    string
 	Now        time.Time
@@ -32,10 +32,10 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	first := &ports.AuditEventRecord{ID: newID(t), TenantID: f.TenantA, Type: "user.created", OccurredAt: f.Now, Payload: map[string]any{"user": "alice"}}
-	second := &ports.AuditEventRecord{ID: newID(t), TenantID: f.TenantA, Type: "user.disabled", OccurredAt: f.Now.Add(time.Minute), Payload: map[string]any{"user": "alice"}}
-	other := &ports.AuditEventRecord{ID: newID(t), TenantID: f.TenantB, Type: "user.created", OccurredAt: f.Now.Add(2 * time.Minute)}
-	for _, event := range []*ports.AuditEventRecord{first, second, other} {
+	first := &auditports.AuditEventRecord{ID: newID(t), TenantID: f.TenantA, Type: "user.created", OccurredAt: f.Now, Payload: map[string]any{"user": "alice"}}
+	second := &auditports.AuditEventRecord{ID: newID(t), TenantID: f.TenantA, Type: "user.disabled", OccurredAt: f.Now.Add(time.Minute), Payload: map[string]any{"user": "alice"}}
+	other := &auditports.AuditEventRecord{ID: newID(t), TenantID: f.TenantB, Type: "user.created", OccurredAt: f.Now.Add(2 * time.Minute)}
+	for _, event := range []*auditports.AuditEventRecord{first, second, other} {
 		if err := f.Repository.Append(ctx, event); err != nil {
 			t.Fatalf("Append: %v", err)
 		}
@@ -44,18 +44,18 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err != nil || got == nil || got.Type != first.Type {
 		t.Fatalf("FindByID = (%+v, %v)", got, err)
 	}
-	list, err := f.Repository.List(ctx, ports.AuditEventQuery{TenantID: f.TenantA, Limit: 10})
+	list, err := f.Repository.List(ctx, auditports.AuditEventQuery{TenantID: f.TenantA, Limit: 10})
 	if err != nil || len(list) != 2 || list[0].ID != second.ID || list[1].ID != first.ID {
 		t.Fatalf("tenant list = (%+v, %v), want newest first and isolated", list, err)
 	}
-	count, err := f.Repository.Count(ctx, ports.AuditEventQuery{TenantID: f.TenantA})
+	count, err := f.Repository.Count(ctx, auditports.AuditEventQuery{TenantID: f.TenantA})
 	if err != nil || count != 2 {
 		t.Fatalf("tenant count = (%d, %v), want 2", count, err)
 	}
 	if err := f.Repository.Append(ctx, first); err != nil {
 		t.Fatalf("duplicate Append: %v", err)
 	}
-	count, err = f.Repository.Count(ctx, ports.AuditEventQuery{TenantID: f.TenantA})
+	count, err = f.Repository.Count(ctx, auditports.AuditEventQuery{TenantID: f.TenantA})
 	if err != nil || count != 2 {
 		t.Fatalf("duplicate append changed count = (%d, %v)", count, err)
 	}
@@ -64,7 +64,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 }
 
 type eventPurger interface {
-	DeleteOlderThan(ctx context.Context, cutoff ports.RetentionCutoff) (int64, error)
+	DeleteOlderThan(ctx context.Context, cutoff auditports.RetentionCutoff) (int64, error)
 }
 
 // runDeleteOlderThan は、保持期間の掃引の削除が、種類別の境界を持つ種類をデフォルトの境界で
@@ -94,14 +94,14 @@ func runDeleteOlderThan(ctx context.Context, t *testing.T, f Fixture) {
 	ids := make([]string, len(cases))
 	for i, c := range cases {
 		ids[i] = newID(t)
-		if err := f.Repository.Append(ctx, &ports.AuditEventRecord{
+		if err := f.Repository.Append(ctx, &auditports.AuditEventRecord{
 			ID: ids[i], TenantID: c.tenantID, Type: c.typ, OccurredAt: f.Now.Add(-c.age),
 			Payload: map[string]any{"tenantId": c.tenantID}, SearchAttributes: map[string][]string{"event.type": {c.typ}},
 		}); err != nil {
 			t.Fatalf("Append: %v", err)
 		}
 	}
-	if _, err := purger.DeleteOlderThan(ctx, ports.RetentionCutoff{
+	if _, err := purger.DeleteOlderThan(ctx, auditports.RetentionCutoff{
 		Default: f.Now.Add(-500 * day),
 		ByType:  map[string]time.Time{typed: f.Now.Add(-1000 * day)},
 	}); err != nil {
@@ -125,7 +125,7 @@ func runLatestByAgent(ctx context.Context, t *testing.T, f Fixture) {
 	agentA, agentB, agentC := newID(t), newID(t), newID(t)
 	record := func(tenantID, eventType, agentID string, offset time.Duration) {
 		t.Helper()
-		rec := &ports.AuditEventRecord{
+		rec := &auditports.AuditEventRecord{
 			ID: newID(t), TenantID: tenantID, Type: eventType, OccurredAt: f.Now.Add(offset),
 			Payload: map[string]any{"agentId": agentID}, SearchAttributes: map[string][]string{"agent.id": {agentID}},
 		}

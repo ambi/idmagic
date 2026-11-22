@@ -8,7 +8,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	authdomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -21,14 +21,14 @@ import (
 
 type SessionStore struct {
 	mu       sync.Mutex
-	sessions map[string]*authdomain.LoginSession
+	sessions map[string]*sessiondomain.LoginSession
 	// Clock は期限切れ判定に使う時計。nil なら time.Now。決定的な時刻でセッション失効を
 	// 制御したいテストが差し替える (本番は実時計のまま)。
 	Clock func() time.Time
 }
 
 func NewSessionStore() *SessionStore {
-	return &SessionStore{sessions: map[string]*authdomain.LoginSession{}}
+	return &SessionStore{sessions: map[string]*sessiondomain.LoginSession{}}
 }
 
 func (s *SessionStore) now() time.Time {
@@ -38,7 +38,7 @@ func (s *SessionStore) now() time.Time {
 	return time.Now()
 }
 
-func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) error {
+func (s *SessionStore) Save(_ context.Context, sess *sessiondomain.LoginSession) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&sess.TenantID, kernel.DefaultTenantID)
@@ -50,14 +50,14 @@ func (s *SessionStore) Save(_ context.Context, sess *authdomain.LoginSession) er
 // すべての lookup と更新を tenant_id で絞るので、この判定を持たない in-memory 版は
 // 同じ contract を名乗れない。判定の両側とも空のテナントは既定テナントへ寄せるため、
 // テナントを立てない呼び出し元から見た振る舞いは変わらない。
-func inTenant(ctx context.Context, sess *authdomain.LoginSession) bool {
+func inTenant(ctx context.Context, sess *sessiondomain.LoginSession) bool {
 	tenantID := sess.TenantID
 	sharedmem.DefaultScope(&tenantID, kernel.DefaultTenantID)
 	return tenantID == tenantports.TenantID(ctx)
 }
 
 // Find は有効な (未失効・未期限切れ) セッションだけを返す fail-closed な解決用 lookup。
-func (s *SessionStore) Find(ctx context.Context, id string) (*authdomain.LoginSession, error) {
+func (s *SessionStore) Find(ctx context.Context, id string) (*sessiondomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[id]
@@ -68,7 +68,7 @@ func (s *SessionStore) Find(ctx context.Context, id string) (*authdomain.LoginSe
 }
 
 // FindOwned は失効・期限切れを含めて対象の所有者確認に使う lookup。
-func (s *SessionStore) FindOwned(ctx context.Context, id, userID string) (*authdomain.LoginSession, error) {
+func (s *SessionStore) FindOwned(ctx context.Context, id, userID string) (*sessiondomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[id]
@@ -111,11 +111,11 @@ func (s *SessionStore) Touch(ctx context.Context, id string, now time.Time) erro
 	return nil
 }
 
-func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*authdomain.LoginSession, error) {
+func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
-	out := []*authdomain.LoginSession{}
+	out := []*sessiondomain.LoginSession{}
 	for _, sess := range s.sessions {
 		if inTenant(ctx, sess) && sess.UserID == sub && !sess.AuthenticationPending && sess.Active(now) {
 			out = append(out, sess)

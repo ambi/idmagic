@@ -7,7 +7,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -17,18 +17,18 @@ import (
 
 type DeviceCodeStore struct {
 	mu         sync.Mutex
-	byHash     map[string]*domain.DeviceAuthorization
-	byUserCode map[string]*domain.DeviceAuthorization
+	byHash     map[string]*oauthdomain.DeviceAuthorization
+	byUserCode map[string]*oauthdomain.DeviceAuthorization
 }
 
 func NewDeviceCodeStore() *DeviceCodeStore {
 	return &DeviceCodeStore{
-		byHash:     map[string]*domain.DeviceAuthorization{},
-		byUserCode: map[string]*domain.DeviceAuthorization{},
+		byHash:     map[string]*oauthdomain.DeviceAuthorization{},
+		byUserCode: map[string]*oauthdomain.DeviceAuthorization{},
 	}
 }
 
-func (s *DeviceCodeStore) Save(_ context.Context, rec *domain.DeviceAuthorization) error {
+func (s *DeviceCodeStore) Save(_ context.Context, rec *oauthdomain.DeviceAuthorization) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
@@ -38,19 +38,19 @@ func (s *DeviceCodeStore) Save(_ context.Context, rec *domain.DeviceAuthorizatio
 	return nil
 }
 
-func (s *DeviceCodeStore) FindByDeviceCodeHash(_ context.Context, hash string) (*domain.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) FindByDeviceCodeHash(_ context.Context, hash string) (*oauthdomain.DeviceAuthorization, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return cloneDeviceAuthorization(s.byHash[hash]), nil
 }
 
-func (s *DeviceCodeStore) FindByUserCode(_ context.Context, userCode string) (*domain.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) FindByUserCode(_ context.Context, userCode string) (*oauthdomain.DeviceAuthorization, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return cloneDeviceAuthorization(s.byUserCode[userCode]), nil
 }
 
-func (s *DeviceCodeStore) Update(_ context.Context, rec *domain.DeviceAuthorization) error {
+func (s *DeviceCodeStore) Update(_ context.Context, rec *oauthdomain.DeviceAuthorization) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sharedmem.DefaultScope(&rec.TenantID, kernel.DefaultTenantID)
@@ -60,7 +60,7 @@ func (s *DeviceCodeStore) Update(_ context.Context, rec *domain.DeviceAuthorizat
 	return nil
 }
 
-func (s *DeviceCodeStore) Exchange(_ context.Context, deviceCodeHash string) (*domain.DeviceAuthorization, error) {
+func (s *DeviceCodeStore) Exchange(_ context.Context, deviceCodeHash string) (*oauthdomain.DeviceAuthorization, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec := s.byHash[deviceCodeHash]
@@ -87,7 +87,7 @@ func (s *DeviceCodeStore) DeleteAllForSub(_ context.Context, sub string) error {
 	return nil
 }
 
-func cloneDeviceAuthorization(in *domain.DeviceAuthorization) *domain.DeviceAuthorization {
+func cloneDeviceAuthorization(in *oauthdomain.DeviceAuthorization) *oauthdomain.DeviceAuthorization {
 	if in == nil {
 		return nil
 	}

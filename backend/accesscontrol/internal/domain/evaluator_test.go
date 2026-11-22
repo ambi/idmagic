@@ -6,20 +6,20 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 )
 
 // stubReader は (resource, relation) から直接主体を引く最小の TupleReader。
 // failOn に一致する関係の読み出しでストア障害を模す。
 type stubReader struct {
-	tuples map[string][]domain.SubjectRef
+	tuples map[string][]accessdomain.SubjectRef
 	failOn string
 	calls  int
 }
 
 var errStoreUnavailable = errors.New("tuple store unavailable")
 
-func (r *stubReader) ListSubjects(_ context.Context, _ string, resource domain.ObjectRef, relation string) ([]domain.SubjectRef, error) {
+func (r *stubReader) ListSubjects(_ context.Context, _ string, resource accessdomain.ObjectRef, relation string) ([]accessdomain.SubjectRef, error) {
 	r.calls++
 	key := resource.String() + "#" + relation
 	if r.failOn != "" && r.failOn == key {
@@ -28,45 +28,45 @@ func (r *stubReader) ListSubjects(_ context.Context, _ string, resource domain.O
 	return r.tuples[key], nil
 }
 
-func newReader(tuples map[string][]domain.SubjectRef) *stubReader {
+func newReader(tuples map[string][]accessdomain.SubjectRef) *stubReader {
 	return &stubReader{tuples: tuples}
 }
 
 // documentModel は direct / computed_userset / tuple_to_userset をすべて含む
 // 参照モデル。folder#viewer を document#viewer が親経由で継承する。
-func documentModel() *domain.AuthorizationModel {
-	return &domain.AuthorizationModel{
+func documentModel() *accessdomain.AuthorizationModel {
+	return &accessdomain.AuthorizationModel{
 		ID: "model-1", TenantID: "tenant-a", Version: 1,
-		ResourceTypes: []domain.ResourceTypeDefinition{
+		ResourceTypes: []accessdomain.ResourceTypeDefinition{
 			{Name: "user", Relations: nil},
-			{Name: "group", Relations: []domain.RelationDefinition{
-				{Name: "member", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user", "group#member"}},
+			{Name: "group", Relations: []accessdomain.RelationDefinition{
+				{Name: "member", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user", "group#member"}},
 				}},
 			}},
-			{Name: "folder", Relations: []domain.RelationDefinition{
-				{Name: "viewer", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user", "group#member"}},
+			{Name: "folder", Relations: []accessdomain.RelationDefinition{
+				{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user", "group#member"}},
 				}},
 			}},
-			{Name: "document", Relations: []domain.RelationDefinition{
-				{Name: "parent", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"folder"}},
+			{Name: "document", Relations: []accessdomain.RelationDefinition{
+				{Name: "parent", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"folder"}},
 				}},
-				{Name: "editor", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
+				{Name: "editor", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user"}},
 				}},
-				{Name: "viewer", Rewrites: []domain.RelationRewrite{
-					{Kind: domain.RewriteDirect, DirectSubjectTypes: []string{"user", "user:*", "group#member"}},
-					{Kind: domain.RewriteComputedUserset, ComputedRelation: "editor"},
-					{Kind: domain.RewriteTupleToUserset, TuplesetRelation: "parent", ComputedRelation: "viewer"},
+				{Name: "viewer", Rewrites: []accessdomain.RelationRewrite{
+					{Kind: accessdomain.RewriteDirect, DirectSubjectTypes: []string{"user", "user:*", "group#member"}},
+					{Kind: accessdomain.RewriteComputedUserset, ComputedRelation: "editor"},
+					{Kind: accessdomain.RewriteTupleToUserset, TuplesetRelation: "parent", ComputedRelation: "viewer"},
 				}},
 			}},
 		},
 	}
 }
 
-func user(id string) domain.SubjectRef { return domain.SubjectRef{Type: "user", ID: id} }
+func user(id string) accessdomain.SubjectRef { return accessdomain.SubjectRef{Type: "user", ID: id} }
 
 // EX-AUTHORIZATION-003-02 と EX-AUTHORIZATION-003-03 は別々の経路を言うので、subject set
 // だけをたどる d5 と、親オブジェクトだけをたどる d6 を分けて置く。両方を兼ねる d3 しか
@@ -80,14 +80,14 @@ func user(id string) domain.SubjectRef { return domain.SubjectRef{Type: "user", 
 //spec:covers EX-AUTHORIZATION-003-04: どの経路でも関係に到達しない主体を許可しない。
 func TestCheckTraversesGroupAndParent(t *testing.T) {
 	model := documentModel()
-	reader := newReader(map[string][]domain.SubjectRef{
+	reader := newReader(map[string][]accessdomain.SubjectRef{
 		"document:d1#viewer":    {user("alice")},
 		"document:d2#editor":    {user("bob")},
 		"document:d3#parent":    {{Type: "folder", ID: "f1"}},
 		"folder:f1#viewer":      {{Type: "group", ID: "eng", Relation: "member"}},
 		"group:eng#member":      {{Type: "group", ID: "platform", Relation: "member"}},
 		"group:platform#member": {user("carol")},
-		"document:d4#viewer":    {{Type: "user", ID: domain.Wildcard}},
+		"document:d4#viewer":    {{Type: "user", ID: accessdomain.Wildcard}},
 		"document:d5#viewer":    {{Type: "group", ID: "eng", Relation: "member"}},
 		"document:d6#parent":    {{Type: "folder", ID: "f2"}},
 		"folder:f2#viewer":      {user("erin")},
@@ -95,37 +95,37 @@ func TestCheckTraversesGroupAndParent(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		resource domain.ObjectRef
-		subject  domain.SubjectRef
+		resource accessdomain.ObjectRef
+		subject  accessdomain.SubjectRef
 		want     bool
 		wantPath []string
 	}{
-		{"direct tuple", domain.ObjectRef{Type: "document", ID: "d1"}, user("alice"), true, []string{"document#viewer"}},
-		{"computed userset", domain.ObjectRef{Type: "document", ID: "d2"}, user("bob"), true, []string{"document#viewer", "document#editor"}},
+		{"direct tuple", accessdomain.ObjectRef{Type: "document", ID: "d1"}, user("alice"), true, []string{"document#viewer"}},
+		{"computed userset", accessdomain.ObjectRef{Type: "document", ID: "d2"}, user("bob"), true, []string{"document#viewer", "document#editor"}},
 		{
 			"nested group through parent folder",
-			domain.ObjectRef{Type: "document", ID: "d3"},
+			accessdomain.ObjectRef{Type: "document", ID: "d3"},
 			user("carol"), true,
 			[]string{"document#viewer", "folder#viewer", "group#member", "group#member"},
 		},
-		{"wildcard", domain.ObjectRef{Type: "document", ID: "d4"}, user("dave"), true, []string{"document#viewer"}},
+		{"wildcard", accessdomain.ObjectRef{Type: "document", ID: "d4"}, user("dave"), true, []string{"document#viewer"}},
 		{
 			"subject set membership alone",
-			domain.ObjectRef{Type: "document", ID: "d5"},
+			accessdomain.ObjectRef{Type: "document", ID: "d5"},
 			user("carol"), true,
 			[]string{"document#viewer", "group#member", "group#member"},
 		},
 		{
 			"parent object alone",
-			domain.ObjectRef{Type: "document", ID: "d6"},
+			accessdomain.ObjectRef{Type: "document", ID: "d6"},
 			user("erin"), true,
 			[]string{"document#viewer", "folder#viewer"},
 		},
-		{"unrelated subject", domain.ObjectRef{Type: "document", ID: "d1"}, user("mallory"), false, nil},
+		{"unrelated subject", accessdomain.ObjectRef{Type: "document", ID: "d1"}, user("mallory"), false, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			decision, err := model.Check(context.Background(), reader, "tenant-a", tc.resource, "viewer", tc.subject, domain.CheckOptions{})
+			decision, err := model.Check(context.Background(), reader, "tenant-a", tc.resource, "viewer", tc.subject, accessdomain.CheckOptions{})
 			if err != nil {
 				t.Fatalf("Check returned error: %v", err)
 			}
@@ -146,12 +146,12 @@ func TestCheckTraversesGroupAndParent(t *testing.T) {
 //spec:covers EX-AUTHORIZATION-003-01: 具体例の 2 つ目の Then。経路の各段がオブジェクト識別子も主体識別子も含まないことを、識別子が見分けやすい名前のタプルで観測する。
 func TestCheckPathOmitsIdentifiers(t *testing.T) {
 	model := documentModel()
-	reader := newReader(map[string][]domain.SubjectRef{
+	reader := newReader(map[string][]accessdomain.SubjectRef{
 		"document:secret-quarterly-plan#parent": {{Type: "folder", ID: "board-only"}},
 		"folder:board-only#viewer":              {user("alice")},
 	})
 	decision, err := model.Check(context.Background(), reader, "tenant-a",
-		domain.ObjectRef{Type: "document", ID: "secret-quarterly-plan"}, "viewer", user("alice"), domain.CheckOptions{})
+		accessdomain.ObjectRef{Type: "document", ID: "secret-quarterly-plan"}, "viewer", user("alice"), accessdomain.CheckOptions{})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
@@ -171,46 +171,46 @@ func TestCheckPathOmitsIdentifiers(t *testing.T) {
 func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 	// tuple_to_userset の循環はタプル側でしか作れないので、親をたがいに指すデータで作る。
 	model := documentModel()
-	reader := newReader(map[string][]domain.SubjectRef{
+	reader := newReader(map[string][]accessdomain.SubjectRef{
 		"document:a#parent": {{Type: "folder", ID: "f1"}},
 		"folder:f1#viewer":  {{Type: "group", ID: "loop", Relation: "member"}},
 		"group:loop#member": {{Type: "group", ID: "loop", Relation: "member"}},
 	})
 	decision, err := model.Check(context.Background(), reader, "tenant-a",
-		domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{})
+		accessdomain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), accessdomain.CheckOptions{})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
 	if decision.Permitted {
 		t.Fatal("a cyclic relation graph must not permit")
 	}
-	if !slices.Contains(decision.Reasons, domain.ReasonCycleDetected) {
-		t.Fatalf("Reasons = %v, want %s", decision.Reasons, domain.ReasonCycleDetected)
+	if !slices.Contains(decision.Reasons, accessdomain.ReasonCycleDetected) {
+		t.Fatalf("Reasons = %v, want %s", decision.Reasons, accessdomain.ReasonCycleDetected)
 	}
 
 	// 深いグループの連なりを上限より長く作る。
-	deep := map[string][]domain.SubjectRef{"document:a#viewer": {{Type: "group", ID: "g0", Relation: "member"}}}
+	deep := map[string][]accessdomain.SubjectRef{"document:a#viewer": {{Type: "group", ID: "g0", Relation: "member"}}}
 	for i := range 10 {
 		from := "group:g" + string(rune('0'+i)) + "#member"
-		deep[from] = []domain.SubjectRef{{Type: "group", ID: "g" + string(rune('1'+i)), Relation: "member"}}
+		deep[from] = []accessdomain.SubjectRef{{Type: "group", ID: "g" + string(rune('1'+i)), Relation: "member"}}
 	}
-	deep["group:g10#member"] = []domain.SubjectRef{user("alice")}
+	deep["group:g10#member"] = []accessdomain.SubjectRef{user("alice")}
 	decision, err = model.Check(context.Background(), newReader(deep), "tenant-a",
-		domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{MaxDepth: 3})
+		accessdomain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), accessdomain.CheckOptions{MaxDepth: 3})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
 	if decision.Permitted {
 		t.Fatal("exceeding the depth limit must not permit")
 	}
-	if !slices.Contains(decision.Reasons, domain.ReasonDepthExceeded) {
-		t.Fatalf("Reasons = %v, want %s", decision.Reasons, domain.ReasonDepthExceeded)
+	if !slices.Contains(decision.Reasons, accessdomain.ReasonDepthExceeded) {
+		t.Fatalf("Reasons = %v, want %s", decision.Reasons, accessdomain.ReasonDepthExceeded)
 	}
 
 	// 上限の境界そのもの。上限より十分に深い連なりだけを見ると、境界を 1 つずらした
 	// 実装も、段数の数え方を逆向きにした実装も、同じく拒否を返して通ってしまう。
 	// computed_userset と tuple_to_userset の双方で、許可する側と拒否する側を対にする。
-	for name, tuples := range map[string]map[string][]domain.SubjectRef{
+	for name, tuples := range map[string]map[string][]accessdomain.SubjectRef{
 		"through a computed userset": {"document:a#editor": {user("alice")}},
 		"through a parent object": {
 			"document:a#parent": {{Type: "folder", ID: "f1"}},
@@ -219,7 +219,7 @@ func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			within, err := model.Check(context.Background(), newReader(tuples), "tenant-a",
-				domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{MaxDepth: 2})
+				accessdomain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), accessdomain.CheckOptions{MaxDepth: 2})
 			if err != nil {
 				t.Fatalf("Check returned error: %v", err)
 			}
@@ -228,37 +228,37 @@ func TestCheckDeniesOnCycleAndDepth(t *testing.T) {
 			}
 
 			atBound, err := model.Check(context.Background(), newReader(tuples), "tenant-a",
-				domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{MaxDepth: 1})
+				accessdomain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), accessdomain.CheckOptions{MaxDepth: 1})
 			if err != nil {
 				t.Fatalf("Check returned error: %v", err)
 			}
 			if atBound.Permitted {
 				t.Fatal("a hop that reaches the bound must not permit")
 			}
-			if !slices.Contains(atBound.Reasons, domain.ReasonDepthExceeded) {
-				t.Fatalf("Reasons = %v, want %s", atBound.Reasons, domain.ReasonDepthExceeded)
+			if !slices.Contains(atBound.Reasons, accessdomain.ReasonDepthExceeded) {
+				t.Fatalf("Reasons = %v, want %s", atBound.Reasons, accessdomain.ReasonDepthExceeded)
 			}
 		})
 	}
 
 	// モデルが宣言していない関係。
 	decision, err = model.Check(context.Background(), newReader(nil), "tenant-a",
-		domain.ObjectRef{Type: "document", ID: "a"}, "shredder", user("alice"), domain.CheckOptions{})
+		accessdomain.ObjectRef{Type: "document", ID: "a"}, "shredder", user("alice"), accessdomain.CheckOptions{})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
-	if decision.Permitted || !slices.Contains(decision.Reasons, domain.ReasonUnknownRelation) {
-		t.Fatalf("unknown relation must deny with %s, got %+v", domain.ReasonUnknownRelation, decision)
+	if decision.Permitted || !slices.Contains(decision.Reasons, accessdomain.ReasonUnknownRelation) {
+		t.Fatalf("unknown relation must deny with %s, got %+v", accessdomain.ReasonUnknownRelation, decision)
 	}
 }
 
 //spec:covers REQ-AUTHORIZATION-005: ストア障害は許可へ退避せず error として上へ返す。
 func TestCheckPropagatesStoreFailure(t *testing.T) {
 	model := documentModel()
-	reader := newReader(map[string][]domain.SubjectRef{"document:a#viewer": {user("alice")}})
+	reader := newReader(map[string][]accessdomain.SubjectRef{"document:a#viewer": {user("alice")}})
 	reader.failOn = "document:a#viewer"
 	decision, err := model.Check(context.Background(), reader, "tenant-a",
-		domain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), domain.CheckOptions{})
+		accessdomain.ObjectRef{Type: "document", ID: "a"}, "viewer", user("alice"), accessdomain.CheckOptions{})
 	if !errors.Is(err, errStoreUnavailable) {
 		t.Fatalf("err = %v, want %v", err, errStoreUnavailable)
 	}
@@ -270,20 +270,20 @@ func TestCheckPropagatesStoreFailure(t *testing.T) {
 //spec:covers REQ-AUTHORIZATION-005: モデルが受け入れなくなった形の既存タプルは数えない。
 func TestCheckIgnoresSubjectFormsTheModelNoLongerAccepts(t *testing.T) {
 	model := documentModel()
-	reader := newReader(map[string][]domain.SubjectRef{
+	reader := newReader(map[string][]accessdomain.SubjectRef{
 		// editor は user しか受け付けないので、group の subject set は無視される。
 		"document:a#editor": {{Type: "group", ID: "eng", Relation: "member"}},
 		"group:eng#member":  {user("alice")},
 	})
 	decision, err := model.Check(context.Background(), reader, "tenant-a",
-		domain.ObjectRef{Type: "document", ID: "a"}, "editor", user("alice"), domain.CheckOptions{})
+		accessdomain.ObjectRef{Type: "document", ID: "a"}, "editor", user("alice"), accessdomain.CheckOptions{})
 	if err != nil {
 		t.Fatalf("Check returned error: %v", err)
 	}
 	if decision.Permitted {
 		t.Fatal("a subject form the model does not declare must not permit")
 	}
-	if !slices.Contains(decision.Reasons, domain.ReasonSubjectFormDenied) {
-		t.Fatalf("Reasons = %v, want %s", decision.Reasons, domain.ReasonSubjectFormDenied)
+	if !slices.Contains(decision.Reasons, accessdomain.ReasonSubjectFormDenied) {
+		t.Fatalf("Reasons = %v, want %s", decision.Reasons, accessdomain.ReasonSubjectFormDenied)
 	}
 }

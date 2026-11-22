@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -33,14 +33,14 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
@@ -49,7 +49,7 @@ import (
 // rulesOptions は既定の配線から差し替える口である。空のフィールドはメモリーの実装を使う。
 type rulesOptions struct {
 	quotas           tenantports.QuotaRepository
-	sender           sharednotification.EmailSender
+	sender           notificationports.EmailSender
 	signer           samltoken.SignerProvider
 	tenantBaseDomain string
 	// amr はセッションの認証の方式。空なら MFA で成立した認証にする。
@@ -61,7 +61,7 @@ type rulesServer struct {
 	tenants   *memory.TenantRepository
 	branding  *memory.TenantBrandingRepository
 	templates *memory.NotificationTemplateRepository
-	schemas   userschemaports.TenantUserAttributeSchemaRepository
+	schemas   userports.TenantUserAttributeSchemaRepository
 	groups    groupports.GroupRepository
 	events    *[]spec.DomainEvent
 }
@@ -83,7 +83,7 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 		groups:    idmanagement.NewMemoryModule().GroupRepo,
 		e:         echo.New(),
 	}
-	for _, tenant := range []*domain.Tenant{activeTenant(domain.DefaultTenantID, "Default"), activeTenant("acme", "Acme")} {
+	for _, tenant := range []*tenancydomain.Tenant{activeTenant(tenancydomain.DefaultTenantID, "Default"), activeTenant("acme", "Acme")} {
 		if err := s.tenants.Save(ctx, tenant); err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +102,7 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 	}
 	notifier := &template.Notifier{
 		Sender: sender,
-		Tenant: tenantusecases.TenantNotificationSource{
+		Tenant: tenancyusecases.TenantNotificationSource{
 			TenantRepo: s.tenants, BrandingRepo: s.branding, TemplateRepo: s.templates,
 		},
 	}
@@ -119,7 +119,7 @@ func newRulesServer(t *testing.T, actor *userdomain.User, options rulesOptions) 
 			UserID: actor.ID, AuthTime: time.Now().Unix(), AMR: amr,
 		}},
 		FederationSigner: options.signer,
-		Notification:     sharednotification.Module{EmailSender: sender, Notifier: notifier},
+		Notification:     notificationports.Module{EmailSender: sender, Notifier: notifier},
 		Tenancy: tenancy.Module{
 			TenantRepo:            s.tenants,
 			BrandingRepo:          s.branding,
@@ -219,7 +219,7 @@ func requireProblem(t *testing.T, recorder *httptest.ResponseRecorder, status in
 }
 
 func systemAdmin() *userdomain.User {
-	return settingsActor("sysadmin", domain.DefaultTenantID, []string{"system_admin"})
+	return settingsActor("sysadmin", tenancydomain.DefaultTenantID, []string{"system_admin"})
 }
 
 func pngOfSize(size int) []byte {
@@ -231,10 +231,10 @@ func pngOfSize(size int) []byte {
 // recordingSender は送ったメールを記録し、ok が false なら送信の失敗を返す。
 type recordingSender struct {
 	fail bool
-	sent []sharednotification.EmailMessage
+	sent []notificationports.EmailMessage
 }
 
-func (s *recordingSender) SendEmail(_ context.Context, message sharednotification.EmailMessage) bool {
+func (s *recordingSender) SendEmail(_ context.Context, message notificationports.EmailMessage) bool {
 	s.sent = append(s.sent, message)
 	return !s.fail
 }
@@ -244,11 +244,11 @@ type failingQuotaRepository struct {
 	tenantports.QuotaRepository
 }
 
-func (failingQuotaRepository) GetQuota(context.Context, string) (*domain.TenantQuota, error) {
+func (failingQuotaRepository) GetQuota(context.Context, string) (*tenancydomain.TenantQuota, error) {
 	return nil, errors.New("quota store unavailable")
 }
 
-func (failingQuotaRepository) GetUsage(context.Context, string) (*domain.TenantUsage, error) {
+func (failingQuotaRepository) GetUsage(context.Context, string) (*tenancydomain.TenantUsage, error) {
 	return nil, errors.New("quota store unavailable")
 }
 
@@ -418,12 +418,12 @@ func TestSystemAdminUpdatesATenantUnderTheTenantAdminRules(t *testing.T) {
 		t.Fatalf("display_name = %v, want the trimmed Acme Corp", name)
 	}
 	events := s.eventsOfType("TenantUpdated")
-	if len(events) != 1 || !slices.Equal(events[0].(*domain.TenantUpdated).ChangedFields, []string{"display_name"}) {
+	if len(events) != 1 || !slices.Equal(events[0].(*tenancydomain.TenantUpdated).ChangedFields, []string{"display_name"}) {
 		t.Fatalf("TenantUpdated = %+v, want one naming display_name", events)
 	}
 
 	refused := s.send(t, http.MethodPatch, tenantsPath+"/acme", map[string]any{
-		"display_name": "Other", "max_delegation_depth": domain.DefaultMaxDelegationDepth + 1,
+		"display_name": "Other", "max_delegation_depth": tenancydomain.DefaultMaxDelegationDepth + 1,
 	})
 	requireProblem(t, refused, http.StatusUnprocessableEntity, "policy_override_weaker")
 	if tenant, err := s.tenants.FindByRealm(context.Background(), "acme"); err != nil || tenant.DisplayName != "Acme Corp" {
@@ -444,14 +444,14 @@ func TestDisablingADisabledTenantSucceedsAgain(t *testing.T) {
 
 	requireStatus(t, s.send(t, http.MethodPost, path, nil), http.StatusNoContent)
 	first, _ := s.tenants.FindByRealm(context.Background(), "acme")
-	if first == nil || first.DisabledAt == nil || first.Status != domain.TenantStatusDisabled {
+	if first == nil || first.DisabledAt == nil || first.Status != tenancydomain.TenantStatusDisabled {
 		t.Fatalf("after the first disable: %+v", first)
 	}
 	firstAt := *first.DisabledAt
 
 	requireStatus(t, s.send(t, http.MethodPost, path, nil), http.StatusNoContent)
 	second, _ := s.tenants.FindByRealm(context.Background(), "acme")
-	if second == nil || second.Status != domain.TenantStatusDisabled || second.DisabledAt == nil || !second.DisabledAt.Equal(firstAt) {
+	if second == nil || second.Status != tenancydomain.TenantStatusDisabled || second.DisabledAt == nil || !second.DisabledAt.Equal(firstAt) {
 		t.Fatalf("disabled_at %v -> %+v, want the first request's time kept", firstAt, second)
 	}
 	if disabled := s.eventsOfType("TenantDisabled"); len(disabled) != 2 {
@@ -482,7 +482,7 @@ func TestDisablingWithoutRecentMfaSessionRequiresStepUp(t *testing.T) {
 	s := newRulesServer(t, systemAdmin(), rulesOptions{amr: []string{"pwd"}})
 
 	requireProblem(t, s.send(t, http.MethodPost, tenantsPath+"/acme/disable", nil), http.StatusForbidden, "step_up_required")
-	if tenant, err := s.tenants.FindByRealm(context.Background(), "acme"); err != nil || tenant.Status != domain.TenantStatusActive {
+	if tenant, err := s.tenants.FindByRealm(context.Background(), "acme"); err != nil || tenant.Status != tenancydomain.TenantStatusActive {
 		t.Fatalf("after the refusal: %+v, %v; want acme kept active", tenant, err)
 	}
 	if len(*s.events) != 0 {
@@ -625,12 +625,12 @@ func TestSettingsUpdateEventListsTheFieldsInTheRequest(t *testing.T) {
 
 	requireStatus(t, s.send(t, http.MethodPatch, settingsPath, map[string]string{"display_name": "Acme"}), http.StatusOK)
 	updated := s.eventsOfType("TenantUpdated")
-	if len(updated) != 1 || !slices.Contains(updated[0].(*domain.TenantUpdated).ChangedFields, "display_name") {
+	if len(updated) != 1 || !slices.Contains(updated[0].(*tenancydomain.TenantUpdated).ChangedFields, "display_name") {
 		t.Fatalf("TenantUpdated = %+v", updated)
 	}
 
 	response := s.send(t, http.MethodPatch, settingsPath, map[string]any{
-		"display_name": "Acme Corp", "max_delegation_depth": domain.DefaultMaxDelegationDepth + 1,
+		"display_name": "Acme Corp", "max_delegation_depth": tenancydomain.DefaultMaxDelegationDepth + 1,
 	})
 	requireProblem(t, response, http.StatusUnprocessableEntity, "policy_override_weaker")
 	if tenant, _ := s.tenants.FindByRealm(context.Background(), "acme"); tenant.DisplayName != "Acme" {
@@ -781,11 +781,11 @@ const passwordResetTemplate = "/realms/acme/api/admin/v1/tenant/notification-tem
 //spec:covers EX-TENANCY-038-01: 件名だけを指定したプレビューは、本文を組み込みの ja の文面で、テナントの表示名を使って描画する。
 func TestPreviewFillsBlankFieldsFromTheEffectiveTemplate(t *testing.T) {
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
-	builtin, err := template.Builtin(sharednotification.TemplateKeyPasswordReset, "ja")
+	builtin, err := template.Builtin(notificationports.TemplateKeyPasswordReset, "ja")
 	if err != nil {
 		t.Fatal(err)
 	}
-	vars := template.SampleVars(sharednotification.TemplateKeyPasswordReset)
+	vars := template.SampleVars(notificationports.TemplateKeyPasswordReset)
 	vars["tenant_display_name"] = "Acme"
 	want, err := template.Render(template.Definition{
 		Subject: "件名だけ", BodyText: builtin.BodyText, BodyHTML: builtin.BodyHTML,

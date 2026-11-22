@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type subjectDirectoryFake struct {
-	existing map[ports.SubjectRef]bool
+	existing map[appports.SubjectRef]bool
 	err      error
 }
 
@@ -23,7 +23,7 @@ type existingSubjectDirectoryFake struct{}
 func (existingSubjectDirectoryFake) SubjectExists(
 	context.Context,
 	string,
-	domain.AssignmentSubjectType,
+	appdomain.AssignmentSubjectType,
 	string,
 ) (bool, error) {
 	return true, nil
@@ -32,13 +32,13 @@ func (existingSubjectDirectoryFake) SubjectExists(
 func (f subjectDirectoryFake) SubjectExists(
 	_ context.Context,
 	_ string,
-	subjectType domain.AssignmentSubjectType,
+	subjectType appdomain.AssignmentSubjectType,
 	subjectID string,
 ) (bool, error) {
 	if f.err != nil {
 		return false, f.err
 	}
-	return f.existing[ports.SubjectRef{Type: subjectType, ID: subjectID}], nil
+	return f.existing[appports.SubjectRef{Type: subjectType, ID: subjectID}], nil
 }
 
 //spec:covers REQ-APPLICATION-007: 実在する User と Group だけを保存し、主体の不在または照合失敗では割当も ApplicationAssigned も残さない。
@@ -46,26 +46,26 @@ func TestAssignApplicationAcceptsOnlyExistingTenantSubjects(t *testing.T) {
 	lookupFailure := errors.New("subject lookup failed")
 	tests := []struct {
 		name        string
-		subjectType domain.AssignmentSubjectType
+		subjectType appdomain.AssignmentSubjectType
 		subjectID   string
 		directory   *subjectDirectoryFake
 		wantErr     error
 		wantSaved   bool
 	}{
 		{
-			name: "existing user", subjectType: domain.AssignmentSubjectUser, subjectID: "user-1",
-			directory: &subjectDirectoryFake{existing: map[ports.SubjectRef]bool{{Type: domain.AssignmentSubjectUser, ID: "user-1"}: true}},
+			name: "existing user", subjectType: appdomain.AssignmentSubjectUser, subjectID: "user-1",
+			directory: &subjectDirectoryFake{existing: map[appports.SubjectRef]bool{{Type: appdomain.AssignmentSubjectUser, ID: "user-1"}: true}},
 			wantSaved: true,
 		},
 		{
-			name: "existing group", subjectType: domain.AssignmentSubjectGroup, subjectID: "group-1",
-			directory: &subjectDirectoryFake{existing: map[ports.SubjectRef]bool{{Type: domain.AssignmentSubjectGroup, ID: "group-1"}: true}},
+			name: "existing group", subjectType: appdomain.AssignmentSubjectGroup, subjectID: "group-1",
+			directory: &subjectDirectoryFake{existing: map[appports.SubjectRef]bool{{Type: appdomain.AssignmentSubjectGroup, ID: "group-1"}: true}},
 			wantSaved: true,
 		},
-		{name: "missing user", subjectType: domain.AssignmentSubjectUser, subjectID: "missing-user", directory: &subjectDirectoryFake{}, wantErr: appusecases.ErrSubjectNotFound},
-		{name: "missing group", subjectType: domain.AssignmentSubjectGroup, subjectID: "missing-group", directory: &subjectDirectoryFake{}, wantErr: appusecases.ErrSubjectNotFound},
-		{name: "directory not configured", subjectType: domain.AssignmentSubjectUser, subjectID: "user-1", wantErr: appusecases.ErrSubjectNotFound},
-		{name: "lookup failure", subjectType: domain.AssignmentSubjectUser, subjectID: "user-1", directory: &subjectDirectoryFake{err: lookupFailure}, wantErr: lookupFailure},
+		{name: "missing user", subjectType: appdomain.AssignmentSubjectUser, subjectID: "missing-user", directory: &subjectDirectoryFake{}, wantErr: appusecases.ErrSubjectNotFound},
+		{name: "missing group", subjectType: appdomain.AssignmentSubjectGroup, subjectID: "missing-group", directory: &subjectDirectoryFake{}, wantErr: appusecases.ErrSubjectNotFound},
+		{name: "directory not configured", subjectType: appdomain.AssignmentSubjectUser, subjectID: "user-1", wantErr: appusecases.ErrSubjectNotFound},
+		{name: "lookup failure", subjectType: appdomain.AssignmentSubjectUser, subjectID: "user-1", directory: &subjectDirectoryFake{err: lookupFailure}, wantErr: lookupFailure},
 	}
 
 	for _, test := range tests {
@@ -73,9 +73,9 @@ func TestAssignApplicationAcceptsOnlyExistingTenantSubjects(t *testing.T) {
 			ctx := tenantContext()
 			applications := appmemory.NewApplicationRepository()
 			assignments := appmemory.NewApplicationAssignmentRepository()
-			if err := applications.Save(ctx, &domain.Application{
+			if err := applications.Save(ctx, &appdomain.Application{
 				TenantID: "acme", ID: "app-1", Name: "App 1",
-				Kind: domain.ApplicationWeblink, Status: domain.ApplicationActive,
+				Kind: appdomain.ApplicationWeblink, Status: appdomain.ApplicationActive,
 			}); err != nil {
 				t.Fatalf("seed application: %v", err)
 			}

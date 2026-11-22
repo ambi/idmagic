@@ -22,7 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	workloadmemory "github.com/ambi/idmagic/backend/workloadidentity/internal/db_memory"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 	"github.com/ambi/idmagic/backend/workloadidentity/internal/verification_jose"
 )
 
@@ -60,7 +60,7 @@ func signSVID(t *testing.T, key *rsa.PrivateKey, kid, iss string, iat, exp time.
 }
 
 type fixture struct {
-	deps    usecases.VerifyWorkloadAttestationDeps
+	deps    workloadusecases.VerifyWorkloadAttestationDeps
 	key     *rsa.PrivateKey
 	kid     string
 	now     time.Time
@@ -108,7 +108,7 @@ func newFixture(t *testing.T) *fixture {
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo
 
 	f := &fixture{key: key, kid: kid, now: time.Now().UTC()}
-	f.deps = usecases.VerifyWorkloadAttestationDeps{
+	f.deps = workloadusecases.VerifyWorkloadAttestationDeps{
 		TrustBundleRepo: bundleRepo,
 		BindingRepo:     bindingRepo,
 		AgentRepo:       agentRepo,
@@ -200,7 +200,7 @@ func TestVerifyWorkloadAttestation_Success(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{
 		ClientID: "agent_1-client", SubjectToken: token,
 	}, f.now)
 	if err != nil {
@@ -234,7 +234,7 @@ func TestVerifyWorkloadAttestation_RequiresTheRequestingClientToBeBound(t *testi
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
 
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{
 		ClientID: "agent_1-second-client", SubjectToken: token,
 	}, f.now)
 	if err != nil {
@@ -244,7 +244,7 @@ func TestVerifyWorkloadAttestation_RequiresTheRequestingClientToBeBound(t *testi
 		t.Fatalf("grant = %+v, want agent_1 with the requesting client", grant)
 	}
 
-	grant, err = usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{
+	grant, err = workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{
 		ClientID: "other-client", SubjectToken: token,
 	}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "client_not_bound")
@@ -263,7 +263,7 @@ func TestVerifyWorkloadAttestation_RequiresTheRequestingClientToBeBound(t *testi
 func TestVerifyWorkloadAttestation_UnregisteredIssuer(t *testing.T) {
 	f := newFixture(t)
 	token := signSVID(t, f.key, f.kid, "https://unknown-issuer.example", f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "unregistered_issuer")
 }
 
@@ -285,7 +285,7 @@ func TestVerifyWorkloadAttestation_SpoofedSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 	token := signSVID(t, attacker, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "invalid_signature")
 }
 
@@ -303,7 +303,7 @@ func TestVerifyWorkloadAttestation_Expired(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now.Add(-2*time.Hour), f.now.Add(-time.Hour))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "expired")
 }
 
@@ -323,7 +323,7 @@ func TestVerifyWorkloadAttestation_AmbiguousMatch(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/worker-*", "agent_b")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "ambiguous_match")
 }
 
@@ -341,7 +341,7 @@ func TestVerifyWorkloadAttestation_KilledAgent(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "agent_not_active")
 }
 
@@ -360,7 +360,7 @@ func TestVerifyWorkloadAttestation_CrossTenant(t *testing.T) {
 	f.registerBundle(t, "tenant-b", nil)
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "unregistered_issuer")
 }
 
@@ -375,6 +375,6 @@ func TestVerifyWorkloadAttestation_DisabledTrustBundle(t *testing.T) {
 	f.registerBinding(t, bundle.ID, "spiffe://example.org/ns/prod/sa/*", "agent_1")
 
 	token := signSVID(t, f.key, f.kid, testIssuer, f.now, f.now.Add(10*time.Minute))
-	grant, err := usecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, usecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
+	grant, err := workloadusecases.VerifyWorkloadAttestation(context.Background(), f.deps, testTenant, workloadusecases.VerifyWorkloadAttestationInput{SubjectToken: token}, f.now)
 	assertRefusedWithoutGrant(t, f, grant, err, "trust_bundle_disabled")
 }

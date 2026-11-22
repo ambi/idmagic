@@ -16,8 +16,8 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
@@ -31,7 +31,7 @@ func TestPostgresDelegationPersistsTheCapabilityAndCompletesTheBoundChallenge(t 
 	if _, err := users.Update(ctx, user.ID, func(u *userdomain.User) (bool, error) { u.PasswordHash = ""; return true, nil }); err != nil {
 		t.Fatal(err)
 	}
-	service := usecases.New(&ConnectorRepository{Pool: db}, nil, nil)
+	service := directoryusecases.New(&ConnectorRepository{Pool: db}, nil, nil)
 	grant, err := service.Create(ctx, tenant.ID, "AD")
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestPostgresDelegationPersistsTheCapabilityAndCompletesTheBoundChallenge(t 
 	if err := correlations.SaveUserCorrelation(ctx, directoryports.UserCorrelation{TenantID: tenant.ID, ConnectorID: c.ID, ExternalID: "directory-identity", UserID: user.ID, LastSeenRunID: uuid.NewV4().String()}); err != nil {
 		t.Fatal(err)
 	}
-	d := &usecases.Delegation{Service: service, Correlations: correlations, Challenges: store, Locks: &IngestionRunRepository{Pool: db}, Users: users, Now: time.Now}
+	d := &directoryusecases.Delegation{Service: service, Correlations: correlations, Challenges: store, Locks: &IngestionRunRepository{Pool: db}, Users: users, Now: time.Now}
 	if _, err := d.RegisterEncryption(ctx, c, jwk); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestPostgresDelegationPersistsTheCapabilityAndCompletesTheBoundChallenge(t 
 	if !c.DelegatedAuthentication || c.EncryptionKeyID == "" || c.EncryptionPublicKey == nil {
 		t.Fatalf("persisted capability=%+v", c)
 	}
-	done := make(chan usecases.PasswordVerification, 1)
+	done := make(chan directoryusecases.PasswordVerification, 1)
 	go func() { got, _ := d.Verify(ctx, user.ID, "directory-password"); done <- got }()
 	challenge, err := d.Poll(ctx, c)
 	if err != nil || challenge == nil {
@@ -76,25 +76,25 @@ func TestPostgresDelegationPersistsTheCapabilityAndCompletesTheBoundChallenge(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	var payload domain.PasswordPayload
+	var payload directorydomain.PasswordPayload
 	if err := json.Unmarshal(plain, &payload); err != nil {
 		t.Fatal(err)
 	}
 	if payload.Password != "directory-password" || payload.ID != challenge.ID || payload.TenantID != tenant.ID || !payload.ExpiresAt.Equal(challenge.ExpiresAt) {
 		t.Fatal("database transport changed the encrypted binding")
 	}
-	if err := d.Complete(ctx, c, challenge.ID, domain.PasswordAccepted); err != nil {
+	if err := d.Complete(ctx, c, challenge.ID, directorydomain.PasswordAccepted); err != nil {
 		t.Fatal(err)
 	}
 	select {
 	case got := <-done:
-		if !got.Delegated || got.Result != domain.PasswordAccepted {
+		if !got.Delegated || got.Result != directorydomain.PasswordAccepted {
 			t.Fatalf("result=%+v", got)
 		}
 	case <-time.After(6 * time.Second):
 		t.Fatal("verification did not finish")
 	}
-	if err := d.Complete(ctx, c, challenge.ID, domain.PasswordAccepted); err != nil {
+	if err := d.Complete(ctx, c, challenge.ID, directorydomain.PasswordAccepted); err != nil {
 		t.Fatalf("idempotent result=%v", err)
 	}
 	stored, err := store.Find(ctx, tenant.ID, challenge.ID)

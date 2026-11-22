@@ -8,13 +8,13 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type Fixture struct {
-	Repository ports.TrustedDeviceRepository
+	Repository trusteddeviceports.TrustedDeviceRepository
 	TenantID   string
 	UserID     string
 	Now        time.Time
@@ -26,11 +26,11 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	device, cookie, err := domain.NewTrustedDevice(f.TenantID, f.UserID, "Chrome", 24*time.Hour, f.Now, entropy.Crypto())
+	device, cookie, err := trusteddevicedomain.NewTrustedDevice(f.TenantID, f.UserID, "Chrome", 24*time.Hour, f.Now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
-	selector, verifier, ok := domain.ParseCookie(cookie)
+	selector, verifier, ok := trusteddevicedomain.ParseCookie(cookie)
 	if !ok || selector != device.Selector {
 		t.Fatalf("ParseCookie(%q): selector=%q ok=%v", cookie, selector, ok)
 	}

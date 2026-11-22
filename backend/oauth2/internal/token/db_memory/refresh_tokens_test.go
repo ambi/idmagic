@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -15,7 +15,7 @@ func TestRefreshTokenStore(t *testing.T) {
 	store := NewRefreshTokenStore()
 
 	t.Run("Save and FindByHash", func(t *testing.T) {
-		rec := &domain.RefreshTokenRecord{
+		rec := &oauthdomain.RefreshTokenRecord{
 			ID:                "token-1",
 			TenantID:          "tenant-1",
 			Hash:              "hash-1",
@@ -59,10 +59,10 @@ func TestRefreshTokenStore(t *testing.T) {
 		}
 
 		// SenderConstraint ありのトークン保存・検索
-		recWithConstraint := &domain.RefreshTokenRecord{
+		recWithConstraint := &oauthdomain.RefreshTokenRecord{
 			ID:   "token-constraint",
 			Hash: "hash-constraint",
-			SenderConstraint: &domain.SenderConstraint{
+			SenderConstraint: &oauthdomain.SenderConstraint{
 				Type: spec.SenderConstraintDPoP,
 				JKT:  "jkt-val",
 			},
@@ -75,7 +75,7 @@ func TestRefreshTokenStore(t *testing.T) {
 	})
 
 	t.Run("Rotate", func(t *testing.T) {
-		newRec := &domain.RefreshTokenRecord{
+		newRec := &oauthdomain.RefreshTokenRecord{
 			ID:       "token-2",
 			Hash:     "hash-2",
 			FamilyID: "family-1",
@@ -99,7 +99,7 @@ func TestRefreshTokenStore(t *testing.T) {
 		}
 
 		// すでに Rotated=true のトークンを親にして rotate しようとした場合 (nil, nil を返すはず)
-		againRec := &domain.RefreshTokenRecord{ID: "token-3", Hash: "hash-3"}
+		againRec := &oauthdomain.RefreshTokenRecord{ID: "token-3", Hash: "hash-3"}
 		again, err := store.Rotate(ctx, "token-1", againRec)
 		if err != nil {
 			t.Fatal(err)

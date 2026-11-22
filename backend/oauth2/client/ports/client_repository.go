@@ -6,27 +6,27 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 var ErrClientSecretCredentialLimitExceeded = errors.New("active client secret credential limit exceeded")
 
 type OAuth2ClientRepository interface {
-	FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error)
+	FindByID(ctx context.Context, tenantID, clientID string) (*oauthdomain.OAuth2Client, error)
 	// LookupBindableClient は、Agent の束縛先に保存型を渡さず、既存の照会と同じ条件で
 	// 存在と、Agent に束縛できる認証方式か (OAuth2Client.AgentClientAuthMethodAllowed) を調べる。
 	LookupBindableClient(ctx context.Context, tenantID, clientID string) (exists, agentAuthMethodAllowed bool, err error)
-	Save(ctx context.Context, c *domain.OAuth2Client) error
+	Save(ctx context.Context, c *oauthdomain.OAuth2Client) error
 	Delete(ctx context.Context, tenantID, clientID string) error
-	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)
+	FindAll(ctx context.Context, tenantID string) ([]*oauthdomain.OAuth2Client, error)
 	// ListPage returns up to limit clients for tenantID ordered by client_id
 	// ascending — matching the admin handler's pre-existing re-sort of
 	// FindAll's rows — strictly after afterClientID ("" for the first page).
 	// Backs ListAdminOAuth2Clients keyset pagination (wi-159).
-	ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error)
-	ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error)
-	ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error)
-	SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
-	IssueClientSecretCredential(ctx context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error
-	UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
+	ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*oauthdomain.OAuth2Client, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*oauthdomain.OAuth2Client, error)
+	ListClientSecretCredentials(ctx context.Context, clientID string) ([]oauthdomain.ClientSecretCredential, error)
+	SaveClientSecretCredential(ctx context.Context, credential oauthdomain.ClientSecretCredential) error
+	IssueClientSecretCredential(ctx context.Context, legacy *oauthdomain.ClientSecretCredential, credential oauthdomain.ClientSecretCredential, maxActive int, now time.Time) error
+	UpdateClientSecretCredential(ctx context.Context, credential oauthdomain.ClientSecretCredential) error
 }

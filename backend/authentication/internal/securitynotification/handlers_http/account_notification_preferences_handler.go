@@ -9,7 +9,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	"github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
+	securitynotificationdomain "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/domain"
 	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -57,9 +57,9 @@ func HandleUpdateNotificationPreferences(d httpdeps.Deps, c *echo.Context) error
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	disabled := make([]domain.Category, 0, len(input.DisabledCategories))
+	disabled := make([]securitynotificationdomain.Category, 0, len(input.DisabledCategories))
 	for _, value := range input.DisabledCategories {
-		disabled = append(disabled, domain.Category(value))
+		disabled = append(disabled, securitynotificationdomain.Category(value))
 	}
 	preferences, err := securitynotificationusecases.UpdatePreferences(
 		c.Request().Context(), d.NotificationPreferenceDeps(), sub, disabled, time.Now().UTC(),
@@ -84,10 +84,10 @@ func toResponse(preferences []securitynotificationusecases.CategoryPreference) n
 
 func writeNotificationPreferenceError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, domain.ErrMandatoryCategory):
+	case errors.Is(err, securitynotificationdomain.ErrMandatoryCategory):
 		return support.WriteProblem(c, http.StatusBadRequest, "mandatory_notification_category",
 			"This security notification cannot be turned off.")
-	case errors.Is(err, domain.ErrUnknownCategory):
+	case errors.Is(err, securitynotificationdomain.ErrUnknownCategory):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"The request names a notification category that does not exist.")
 	default:

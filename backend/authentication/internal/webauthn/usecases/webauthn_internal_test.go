@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 )
 
 func TestWebAuthnCredentialConversionRoundTrip(t *testing.T) {
 	aaguid := base64.RawURLEncoding.EncodeToString([]byte{1, 2, 3, 4})
-	original := &domain.WebAuthnCredential{
+	original := &webauthndomain.WebAuthnCredential{
 		CredentialID:   base64.RawURLEncoding.EncodeToString([]byte("credential-id-bytes")),
 		UserID:         "user-alice",
 		PublicKey:      base64.RawURLEncoding.EncodeToString([]byte("cose-public-key")),

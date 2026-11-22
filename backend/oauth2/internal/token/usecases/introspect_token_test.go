@@ -9,18 +9,18 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type fakeIntrospector struct {
-	result *ports.IntrospectionResult
+	result *oauthports.IntrospectionResult
 	err    error
 }
 
-func (f *fakeIntrospector) IntrospectAccessToken(ctx context.Context, token string) (*ports.IntrospectionResult, error) {
+func (f *fakeIntrospector) IntrospectAccessToken(ctx context.Context, token string) (*oauthports.IntrospectionResult, error) {
 	return f.result, f.err
 }
 
@@ -43,8 +43,8 @@ func TestIntrospectToken(t *testing.T) {
 
 	t.Run("RefreshTokenSucceeds", func(t *testing.T) {
 		tokenVal := "refresh-token-val"
-		hash := domain.HashRefreshToken(tokenVal)
-		rec := &domain.RefreshTokenRecord{
+		hash := oauthdomain.HashRefreshToken(tokenVal)
+		rec := &oauthdomain.RefreshTokenRecord{
 			ID:                "rt-1",
 			TenantID:          tenancydomain.DefaultTenantID,
 			ClientID:          "client-1",
@@ -54,7 +54,7 @@ func TestIntrospectToken(t *testing.T) {
 			ExpiresAt:         now.Add(10 * time.Minute),
 			AbsoluteExpiresAt: now.Add(24 * time.Hour),
 			Hash:              hash,
-			SenderConstraint: &domain.SenderConstraint{
+			SenderConstraint: &oauthdomain.SenderConstraint{
 				Type:    spec.SenderConstraintDPoP,
 				JKT:     "jkt-val",
 				X5TS256: "x5t-val",
@@ -79,10 +79,10 @@ func TestIntrospectToken(t *testing.T) {
 
 	t.Run("RefreshTokenInactiveCases", func(t *testing.T) {
 		tokenVal := "refresh-token-inactive"
-		hash := domain.HashRefreshToken(tokenVal)
+		hash := oauthdomain.HashRefreshToken(tokenVal)
 
 		// 1. Tenant ID Mismatch
-		rec := &domain.RefreshTokenRecord{
+		rec := &oauthdomain.RefreshTokenRecord{
 			ID:                "rt-inactive",
 			TenantID:          "another-tenant",
 			Hash:              hash,
@@ -115,7 +115,7 @@ func TestIntrospectToken(t *testing.T) {
 
 	t.Run("AccessTokenSucceeds", func(t *testing.T) {
 		tokenVal := "access-token-val"
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active:   true,
 			JTI:      "jti-1",
 			ClientID: "client-1",
@@ -123,7 +123,7 @@ func TestIntrospectToken(t *testing.T) {
 			Scope:    "openid",
 			Exp:      now.Add(10 * time.Minute).Unix(),
 			Iat:      now.Add(-10 * time.Minute).Unix(),
-			SenderConstraint: &domain.SenderConstraint{
+			SenderConstraint: &oauthdomain.SenderConstraint{
 				Type:    spec.SenderConstraintDPoP,
 				JKT:     "jkt-val",
 				X5TS256: "x5t-val",
@@ -145,7 +145,7 @@ func TestIntrospectToken(t *testing.T) {
 
 	t.Run("AccessTokenRevokedInDenylist", func(t *testing.T) {
 		tokenVal := "access-token-revoked"
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active: true, JTI: "jti-revoked", ClientID: "client-1", Sub: "user-1",
 			Scope: "openid profile", Exp: now.Add(10 * time.Minute).Unix(),
 			Iat: now.Add(-10 * time.Minute).Unix(),
@@ -170,7 +170,7 @@ func TestIntrospectToken(t *testing.T) {
 	})
 
 	t.Run("ZeroTimeHandling", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{Active: false}
+		introspector.result = &oauthports.IntrospectionResult{Active: false}
 		introspector.err = nil
 		// now = time.Time{} の場合に internal で time.Now() が使われるパスを通す
 		_, err := IntrospectToken(ctx, deps, IntrospectInput{Token: "token-zero", TokenTypeHint: "access_token"}, time.Time{})
@@ -191,13 +191,13 @@ func TestIntrospectTokenSearchesTheRefreshStoreWhateverTheHint(t *testing.T) {
 	now := time.Now().UTC()
 	refreshStore := memory.NewRefreshTokenStore()
 	const tokenVal = "refresh-under-another-hint"
-	_ = refreshStore.Save(ctx, &domain.RefreshTokenRecord{
+	_ = refreshStore.Save(ctx, &oauthdomain.RefreshTokenRecord{
 		ID: "rt-hint", TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", UserID: "user-1",
 		Scopes: []string{"openid"}, IssuedAt: now.Add(-time.Minute), ExpiresAt: now.Add(time.Hour),
-		AbsoluteExpiresAt: now.Add(24 * time.Hour), Hash: domain.HashRefreshToken(tokenVal),
+		AbsoluteExpiresAt: now.Add(24 * time.Hour), Hash: oauthdomain.HashRefreshToken(tokenVal),
 	})
 	deps := IntrospectDeps{
-		Introspector:        &fakeIntrospector{result: &ports.IntrospectionResult{Active: false}},
+		Introspector:        &fakeIntrospector{result: &oauthports.IntrospectionResult{Active: false}},
 		RefreshStore:        refreshStore,
 		AccessTokenDenylist: memory.NewAccessTokenDenylist(),
 	}
@@ -240,7 +240,7 @@ func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 	now := time.Now().UTC()
 
 	t.Run("制約なしのアクセストークンは Bearer を名乗る", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active: true, JTI: "jti-plain", ClientID: "client-1", Sub: "user-1",
 			Scope: "openid", Exp: now.Add(10 * time.Minute).Unix(), Iat: now.Unix(),
 		}
@@ -256,9 +256,9 @@ func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 	})
 
 	t.Run("DPoP 束縛のアクセストークンは DPoP を名乗る", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{
+		introspector.result = &oauthports.IntrospectionResult{
 			Active: true, JTI: "jti-dpop", ClientID: "client-1", Sub: "user-1",
-			SenderConstraint: &domain.SenderConstraint{
+			SenderConstraint: &oauthdomain.SenderConstraint{
 				Type: spec.SenderConstraintDPoP, JKT: "jkt-val",
 			},
 		}
@@ -275,7 +275,7 @@ func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 
 	t.Run("リフレッシュトークンは提示形式を名乗らない", func(t *testing.T) {
 		tokenVal := "refresh-token-presentation"
-		if err := refreshStore.Save(ctx, &domain.RefreshTokenRecord{
+		if err := refreshStore.Save(ctx, &oauthdomain.RefreshTokenRecord{
 			ID:                "rt-presentation",
 			TenantID:          tenancydomain.DefaultTenantID,
 			ClientID:          "client-1",
@@ -284,7 +284,7 @@ func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 			IssuedAt:          now.Add(-10 * time.Minute),
 			ExpiresAt:         now.Add(10 * time.Minute),
 			AbsoluteExpiresAt: now.Add(24 * time.Hour),
-			Hash:              domain.HashRefreshToken(tokenVal),
+			Hash:              oauthdomain.HashRefreshToken(tokenVal),
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -301,7 +301,7 @@ func TestIntrospectTokenReportsTheRFC6749PresentationType(t *testing.T) {
 	})
 
 	t.Run("無効なトークンは提示形式を名乗らない", func(t *testing.T) {
-		introspector.result = &ports.IntrospectionResult{Active: false}
+		introspector.result = &oauthports.IntrospectionResult{Active: false}
 		resp, err := IntrospectToken(ctx, deps, IntrospectInput{
 			Token: "inactive-access-token", TokenTypeHint: "access_token",
 		}, now)

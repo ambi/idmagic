@@ -34,10 +34,10 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	scim "github.com/ambi/idmagic/backend/provisioning/internal/client_scim"
 	memoryprov "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	identitysource "github.com/ambi/idmagic/backend/provisioning/internal/source_idmanagement"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -138,10 +138,10 @@ type e2eHarness struct {
 	taskRepo        *memoryprov.ProvisioningTaskRepository
 	linkRepo        *memoryprov.RemoteResourceLinkRepository
 	groupRepo       groupports.GroupRepository
-	groupNotifier   usecases.GroupMutationNotifier
+	groupNotifier   provisioningusecases.GroupMutationNotifier
 	idm             idmanagement.Module
 	lifecycle       idmanagement.LifecycleDeps
-	executeTaskDeps usecases.ExecuteTaskDeps
+	executeTaskDeps provisioningusecases.ExecuteTaskDeps
 	downstream      *fakeSCIMDownstream
 	server          *httptest.Server
 	tenantID        string
@@ -163,9 +163,9 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 	linkRepo := memoryprov.NewRemoteResourceLinkRepository()
 	connRepo := memoryprov.NewProvisioningConnectionRepository(taskRepo, linkRepo)
 
-	captureDeps := usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
-	notifier := usecases.UserMutationNotifier{CaptureDeps: captureDeps}
-	groupNotifier := usecases.GroupMutationNotifier{CaptureDeps: captureDeps}
+	captureDeps := provisioningusecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
+	notifier := provisioningusecases.UserMutationNotifier{CaptureDeps: captureDeps}
+	groupNotifier := provisioningusecases.GroupMutationNotifier{CaptureDeps: captureDeps}
 
 	idm := idmanagement.Module{UserRepo: userRepo, ProvisioningNotifier: notifier}
 	lifecycle := idmanagement.LifecycleDeps{
@@ -173,7 +173,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 		PasswordHistoryRepo: authentication.NewMemoryModule(nil).PasswordHistoryRepo,
 	}
 
-	executeTaskDeps := usecases.ExecuteTaskDeps{
+	executeTaskDeps := provisioningusecases.ExecuteTaskDeps{
 		ConnectionRepo: connRepo,
 		TaskRepo:       taskRepo,
 		LinkRepo:       linkRepo,
@@ -181,7 +181,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 			User:  &identitysource.UserAttributeSource{UserRepo: userRepo},
 			Group: &identitysource.GroupAttributeSource{GroupRepo: groupRepo, UserRepo: userRepo},
 		},
-		NewTargetClient: func(_ *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
+		NewTargetClient: func(_ *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error) {
 			return scim.NewBearerTokenClient(server.Client(), server.URL, secret), nil
 		},
 	}
@@ -204,20 +204,20 @@ func (h *e2eHarness) adminUsers() idmanagement.AdminUsers {
 func (h *e2eHarness) registerActiveConnection() {
 	h.t.Helper()
 	now := time.Now().UTC()
-	conn := &domain.ProvisioningConnection{
-		ApplicationID: h.connectionID, TenantID: h.tenantID, Status: domain.ConnectionActive,
+	conn := &provisioningdomain.ProvisioningConnection{
+		ApplicationID: h.connectionID, TenantID: h.tenantID, Status: provisioningdomain.ConnectionActive,
 		BaseURL:    h.server.URL,
-		Credential: domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-e2e", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
-		FeatureFlags: domain.ProvisioningFeatureFlags{
+		Credential: provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-e2e", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
+		FeatureFlags: provisioningdomain.ProvisioningFeatureFlags{
 			CreateUsers: true, UpdateUsers: true, DeactivateUsers: true, DeleteUsers: true,
 		},
-		Scope:    domain.ScopeAllUsers,
-		Matching: domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate,
+		Scope:    provisioningdomain.ScopeAllUsers,
+		Matching: provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate,
 		},
 		RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10,
-		Health: domain.HealthOK, CreatedAt: now, UpdatedAt: now,
+		Health: provisioningdomain.HealthOK, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := h.connRepo.Register(testing_tenant.Default(context.Background()), conn, e2eSecret); err != nil {
 		h.t.Fatalf("Register() error = %v", err)
@@ -226,23 +226,23 @@ func (h *e2eHarness) registerActiveConnection() {
 
 // pendingTaskFor finds the single pending task CaptureLifecycleEvent
 // created for userID and executes it, returning the resulting task.
-func (h *e2eHarness) executePendingTask(userID string) *domain.ProvisioningTask {
+func (h *e2eHarness) executePendingTask(userID string) *provisioningdomain.ProvisioningTask {
 	h.t.Helper()
 	ctx := testing_tenant.Default(context.Background())
 	tasks, err := h.taskRepo.ListByConnection(ctx, h.tenantID, h.connectionID, nil, 10)
 	if err != nil {
 		h.t.Fatalf("ListByConnection() error = %v", err)
 	}
-	var target *domain.ProvisioningTask
+	var target *provisioningdomain.ProvisioningTask
 	for _, d := range tasks {
-		if d.SourceID == userID && d.Status == domain.TaskPending {
+		if d.SourceID == userID && d.Status == provisioningdomain.TaskPending {
 			target = d
 		}
 	}
 	if target == nil {
 		h.t.Fatalf("no pending task found for user %s", userID)
 	}
-	if _, err := usecases.ExecuteTask(ctx, h.executeTaskDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
+	if _, err := provisioningusecases.ExecuteTask(ctx, h.executeTaskDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
 		h.t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	got, err := h.taskRepo.Find(ctx, h.tenantID, target.ID)
@@ -266,7 +266,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
 	created := h.executePendingTask(user.ID)
-	if created.Status != domain.TaskSucceeded {
+	if created.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("create task status = %v, want succeeded (last_error=%v)", created.Status, created.LastError)
 	}
 	if got := h.downstream.last(); got.method != http.MethodPost || got.path != "/Users" {
@@ -275,7 +275,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 	if h.downstream.last().auth != "Bearer "+e2eSecret {
 		t.Errorf("downstream Authorization = %q, want Bearer %s", h.downstream.last().auth, e2eSecret)
 	}
-	link, err := h.linkRepo.Find(ctx, h.connectionID, domain.SourceTypeUser, user.ID)
+	link, err := h.linkRepo.Find(ctx, h.connectionID, provisioningdomain.SourceTypeUser, user.ID)
 	if err != nil || link == nil || link.RemoteID != "remote-user-1" {
 		t.Fatalf("RemoteResourceLink after create = %+v, err=%v, want remote_id=remote-user-1", link, err)
 	}
@@ -288,7 +288,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 		t.Fatalf("UpdateUser() error = %v", err)
 	}
 	updated := h.executePendingTask(user.ID)
-	if updated.Status != domain.TaskSucceeded {
+	if updated.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("update task status = %v, want succeeded (last_error=%v)", updated.Status, updated.LastError)
 	}
 	if got := h.downstream.last(); got.method != http.MethodPut && got.method != http.MethodPatch {
@@ -300,7 +300,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 		t.Fatalf("SetUserDisabled() error = %v", err)
 	}
 	disabled := h.executePendingTask(user.ID)
-	if disabled.Status != domain.TaskSucceeded || disabled.Operation != domain.OperationDeactivate {
+	if disabled.Status != provisioningdomain.TaskSucceeded || disabled.Operation != provisioningdomain.OperationDeactivate {
 		t.Fatalf("disable task = %+v, want succeeded deactivate", disabled)
 	}
 
@@ -311,7 +311,7 @@ func TestE2E_CreateUpdateDisableDelete_ReachesRealDownstream(t *testing.T) {
 		t.Fatalf("DeleteUser() error = %v", err)
 	}
 	deleted := h.executePendingTask(user.ID)
-	if deleted.Status != domain.TaskSucceeded || deleted.Operation != domain.OperationDeactivate {
+	if deleted.Status != provisioningdomain.TaskSucceeded || deleted.Operation != provisioningdomain.OperationDeactivate {
 		t.Fatalf("delete task = %+v, want succeeded deactivate (on_delete policy)", deleted)
 	}
 
@@ -330,7 +330,7 @@ func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 	if err != nil || conn == nil {
 		t.Fatalf("Find() connection error = %v", err)
 	}
-	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn.DeprovisionPolicy.OnDelete = provisioningdomain.DeprovisionDelete
 	if err := h.connRepo.Update(ctx, conn, nil); err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
@@ -349,7 +349,7 @@ func TestE2E_DeleteWithDeleteOnPolicy_SendsRealDELETE(t *testing.T) {
 		t.Fatalf("DeleteUser() error = %v", err)
 	}
 	deleted := h.executePendingTask(user.ID)
-	if deleted.Status != domain.TaskSucceeded || deleted.Operation != domain.OperationDelete {
+	if deleted.Status != provisioningdomain.TaskSucceeded || deleted.Operation != provisioningdomain.OperationDelete {
 		t.Fatalf("delete task = %+v, want succeeded delete", deleted)
 	}
 	if got := h.downstream.last(); got.method != http.MethodDelete {
@@ -387,14 +387,14 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	connRepo := memoryprov.NewProvisioningConnectionRepository(taskRepo, linkRepo)
 	ctx := testing_tenant.Default(context.Background())
 	now := time.Now().UTC()
-	conn := &domain.ProvisioningConnection{
-		ApplicationID: "app-retry", TenantID: tenancydomain.DefaultTenantID, Status: domain.ConnectionActive, BaseURL: server.URL,
-		Credential:         domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-retry", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
-		FeatureFlags:       domain.ProvisioningFeatureFlags{CreateUsers: true},
-		Scope:              domain.ScopeAllUsers,
-		Matching:           domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy:  domain.DeprovisionPolicy{OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate},
-		RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10, Health: domain.HealthOK,
+	conn := &provisioningdomain.ProvisioningConnection{
+		ApplicationID: "app-retry", TenantID: tenancydomain.DefaultTenantID, Status: provisioningdomain.ConnectionActive, BaseURL: server.URL,
+		Credential:         provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-retry", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
+		FeatureFlags:       provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true},
+		Scope:              provisioningdomain.ScopeAllUsers,
+		Matching:           provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy:  provisioningdomain.DeprovisionPolicy{OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate},
+		RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10, Health: provisioningdomain.HealthOK,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := connRepo.Register(ctx, conn, "secret"); err != nil {
@@ -406,21 +406,21 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Save() user error = %v", err)
 	}
-	deps := usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, tenancydomain.DefaultTenantID, domain.SourceTypeUser, "user-retry", ports.TriggerUserCreated, "", now); err != nil {
+	deps := provisioningusecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, tenancydomain.DefaultTenantID, provisioningdomain.SourceTypeUser, "user-retry", provisioningports.TriggerUserCreated, "", now); err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
 	tasks, err := taskRepo.ListByConnection(ctx, tenancydomain.DefaultTenantID, "app-retry", nil, 10)
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("ListByConnection() = %v, err=%v, want 1 task", tasks, err)
 	}
-	executeTaskDeps := usecases.ExecuteTaskDeps{
+	executeTaskDeps := provisioningusecases.ExecuteTaskDeps{
 		ConnectionRepo: connRepo, TaskRepo: taskRepo, LinkRepo: linkRepo,
 		AttributeSource: identitysource.CombinedAttributeSource{
 			User:  &identitysource.UserAttributeSource{UserRepo: userRepo},
 			Group: &identitysource.GroupAttributeSource{GroupRepo: groupRepo, UserRepo: userRepo},
 		},
-		NewTargetClient: func(_ *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
+		NewTargetClient: func(_ *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error) {
 			return scim.NewBearerTokenClient(server.Client(), server.URL, secret), nil
 		},
 	}
@@ -428,15 +428,15 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 	// Attempt 1 and 2 fail (503, non-terminal from the caller's perspective —
 	// the Jobs runner would retry); attempt 3 succeeds.
 	for i := range 2 {
-		if _, err := usecases.ExecuteTask(ctx, executeTaskDeps, tenancydomain.DefaultTenantID, tasks[0].ID, time.Now().UTC()); err == nil {
+		if _, err := provisioningusecases.ExecuteTask(ctx, executeTaskDeps, tenancydomain.DefaultTenantID, tasks[0].ID, time.Now().UTC()); err == nil {
 			t.Fatalf("ExecuteTask() attempt %d: want error (downstream returns 503), got nil", i+1)
 		}
 	}
-	if _, err := usecases.ExecuteTask(ctx, executeTaskDeps, tenancydomain.DefaultTenantID, tasks[0].ID, time.Now().UTC()); err != nil {
+	if _, err := provisioningusecases.ExecuteTask(ctx, executeTaskDeps, tenancydomain.DefaultTenantID, tasks[0].ID, time.Now().UTC()); err != nil {
 		t.Fatalf("ExecuteTask() attempt 3: want success after transient failures, got %v", err)
 	}
 	got, err := taskRepo.Find(ctx, tenancydomain.DefaultTenantID, tasks[0].ID)
-	if err != nil || got.Status != domain.TaskSucceeded {
+	if err != nil || got.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("final task status = %+v, err=%v, want succeeded", got, err)
 	}
 	if attempts != 3 {
@@ -467,7 +467,7 @@ func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 	}
 
 	task := h.executePendingGroupTask(group.ID)
-	if task.Status != domain.TaskSucceeded {
+	if task.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("task status = %q, want succeeded (last_error=%v)", task.Status, task.LastError)
 	}
 
@@ -479,7 +479,7 @@ func TestE2E_GroupChange_ReachesRealDownstream(t *testing.T) {
 		t.Fatalf("POST /Groups body = %+v, want displayName=engineering", created.body)
 	}
 	// 相関が残っていること。次の変更が作成ではなく更新になる根拠である。
-	link, err := h.linkRepo.Find(ctx, h.connectionID, domain.SourceTypeGroup, group.ID)
+	link, err := h.linkRepo.Find(ctx, h.connectionID, provisioningdomain.SourceTypeGroup, group.ID)
 	if err != nil || link == nil || link.RemoteID == "" {
 		t.Fatalf("RemoteResourceLink = (%+v, %v), want a link carrying the downstream id", link, err)
 	}
@@ -503,7 +503,7 @@ func TestE2E_GroupChange_ProducesNothingWhenPushGroupsIsOff(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, d := range tasks {
-		if d.SourceType == domain.SourceTypeGroup {
+		if d.SourceType == provisioningdomain.SourceTypeGroup {
 			t.Fatalf("push_groups が無効なのに Group のプロビジョニングタスクが生まれている: %+v", d)
 		}
 	}
@@ -523,13 +523,13 @@ func (h *e2eHarness) enablePushGroups() {
 		h.t.Fatalf("Find() = (%+v, %v)", conn, err)
 	}
 	conn.FeatureFlags.PushGroups = true
-	conn.GroupPush = &domain.GroupPushConfig{
-		Selection: domain.GroupSelectionAssignedGroups, DisplayNameSource: "name",
+	conn.GroupPush = &provisioningdomain.GroupPushConfig{
+		Selection: provisioningdomain.GroupSelectionAssignedGroups, DisplayNameSource: "name",
 	}
 	conn.AttributeMappings = append(conn.AttributeMappings,
-		domain.AttributeMappingRule{
-			TargetPath: "displayName", SourceKind: domain.SourceKindAttribute,
-			SourceKey: "display_name", ApplyOn: domain.ApplyCreateAndUpdate,
+		provisioningdomain.AttributeMappingRule{
+			TargetPath: "displayName", SourceKind: provisioningdomain.SourceKindAttribute,
+			SourceKey: "display_name", ApplyOn: provisioningdomain.ApplyCreateAndUpdate,
 		})
 	if err := h.connRepo.Update(ctx, conn, nil); err != nil {
 		h.t.Fatalf("Update() error = %v", err)
@@ -555,24 +555,24 @@ func (h *e2eHarness) seedGroup() *groupdomain.Group {
 
 // executePendingTaskFor は sourceType/sourceID に対する pending のプロビジョニングタスクを 1 件実行する。
 // executePendingGroupTask は sourceID に対する pending の Group プロビジョニングタスクを 1 件実行する。
-func (h *e2eHarness) executePendingGroupTask(sourceID string) *domain.ProvisioningTask {
+func (h *e2eHarness) executePendingGroupTask(sourceID string) *provisioningdomain.ProvisioningTask {
 	h.t.Helper()
-	const sourceType = domain.SourceTypeGroup
+	const sourceType = provisioningdomain.SourceTypeGroup
 	ctx := testing_tenant.Default(context.Background())
 	tasks, err := h.taskRepo.ListByConnection(ctx, h.tenantID, h.connectionID, nil, 20)
 	if err != nil {
 		h.t.Fatalf("ListByConnection() error = %v", err)
 	}
-	var target *domain.ProvisioningTask
+	var target *provisioningdomain.ProvisioningTask
 	for _, d := range tasks {
-		if d.SourceType == sourceType && d.SourceID == sourceID && d.Status == domain.TaskPending {
+		if d.SourceType == sourceType && d.SourceID == sourceID && d.Status == provisioningdomain.TaskPending {
 			target = d
 		}
 	}
 	if target == nil {
 		h.t.Fatalf("no pending %s task for %s (tasks=%d)", sourceType, sourceID, len(tasks))
 	}
-	if _, err := usecases.ExecuteTask(ctx, h.executeTaskDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
+	if _, err := provisioningusecases.ExecuteTask(ctx, h.executeTaskDeps, h.tenantID, target.ID, time.Now().UTC()); err != nil {
 		h.t.Fatalf("ExecuteTask() error = %v", err)
 	}
 	got, err := h.taskRepo.Find(ctx, h.tenantID, target.ID)
@@ -613,7 +613,7 @@ func TestE2E_GroupMembership_PatchesOnlyProvisionedMembers(t *testing.T) {
 		t.Fatalf("NotifyGroupMutation() error = %v", err)
 	}
 	task := h.executePendingGroupTask(group.ID)
-	if task.Status != domain.TaskSucceeded {
+	if task.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("task status = %q, want succeeded (last_error=%v)", task.Status, task.LastError)
 	}
 
@@ -699,8 +699,8 @@ func TestE2E_GroupChange_EachGuardStopsTaskOnItsOwn(t *testing.T) {
 		h := newE2EHarness(t)
 		h.enablePushGroups()
 		// 明示指定で、別の Group だけを対象にする。機能フラグは有効のままである。
-		h.setGroupPush(&domain.GroupPushConfig{
-			Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"group-other"},
+		h.setGroupPush(&provisioningdomain.GroupPushConfig{
+			Selection: provisioningdomain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"group-other"},
 		})
 		group := h.seedGroup()
 
@@ -725,14 +725,14 @@ func TestE2E_GroupChange_EachGuardStopsTaskOnItsOwn(t *testing.T) {
 		// 上の 2 件が「何もプロビジョニングタスクを作らない実装」でも通ってしまわないための対である。
 		h := newE2EHarness(t)
 		h.enablePushGroups()
-		h.setGroupPush(&domain.GroupPushConfig{
-			Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"group-eng"},
+		h.setGroupPush(&provisioningdomain.GroupPushConfig{
+			Selection: provisioningdomain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"group-eng"},
 		})
 		group := h.seedGroup()
 
 		h.notifyGroupCreated(group.ID)
 		task := h.executePendingGroupTask(group.ID)
-		if task.Status != domain.TaskSucceeded {
+		if task.Status != provisioningdomain.TaskSucceeded {
 			t.Fatalf("task status = %q, want succeeded", task.Status)
 		}
 		if h.downstream.find(http.MethodPost, "/Groups") == nil {
@@ -758,7 +758,7 @@ func (h *e2eHarness) assertNoGroupTask() {
 		h.t.Fatal(err)
 	}
 	for _, d := range tasks {
-		if d.SourceType == domain.SourceTypeGroup {
+		if d.SourceType == provisioningdomain.SourceTypeGroup {
 			h.t.Fatalf("Group のプロビジョニングタスクが生まれている: %+v", d)
 		}
 	}
@@ -774,14 +774,14 @@ func (h *e2eHarness) setPushGroups(enabled bool) {
 	h.saveConnection(conn)
 }
 
-func (h *e2eHarness) setGroupPush(config *domain.GroupPushConfig) {
+func (h *e2eHarness) setGroupPush(config *provisioningdomain.GroupPushConfig) {
 	h.t.Helper()
 	conn := h.connection()
 	conn.GroupPush = config
 	h.saveConnection(conn)
 }
 
-func (h *e2eHarness) connection() *domain.ProvisioningConnection {
+func (h *e2eHarness) connection() *provisioningdomain.ProvisioningConnection {
 	h.t.Helper()
 	conn, err := h.connRepo.Find(testing_tenant.Default(context.Background()), h.tenantID, h.connectionID)
 	if err != nil || conn == nil {
@@ -790,7 +790,7 @@ func (h *e2eHarness) connection() *domain.ProvisioningConnection {
 	return conn
 }
 
-func (h *e2eHarness) saveConnection(conn *domain.ProvisioningConnection) {
+func (h *e2eHarness) saveConnection(conn *provisioningdomain.ProvisioningConnection) {
 	h.t.Helper()
 	if err := h.connRepo.Update(testing_tenant.Default(context.Background()), conn, nil); err != nil {
 		h.t.Fatalf("Update() error = %v", err)
@@ -806,10 +806,10 @@ func TestE2E_GroupDeleted_SendsRealDELETE(t *testing.T) {
 
 	// まず作成を届けて相関を作る。相関が無ければ削除は何もせず成功で終わる。
 	h.notifyGroupCreated(group.ID)
-	if got := h.executePendingGroupTask(group.ID); got.Status != domain.TaskSucceeded {
+	if got := h.executePendingGroupTask(group.ID); got.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("create task status = %q", got.Status)
 	}
-	link, err := h.linkRepo.Find(testing_tenant.Default(context.Background()), h.connectionID, domain.SourceTypeGroup, group.ID)
+	link, err := h.linkRepo.Find(testing_tenant.Default(context.Background()), h.connectionID, provisioningdomain.SourceTypeGroup, group.ID)
 	if err != nil || link == nil {
 		t.Fatalf("RemoteResourceLink = (%+v, %v)", link, err)
 	}
@@ -820,7 +820,7 @@ func TestE2E_GroupDeleted_SendsRealDELETE(t *testing.T) {
 		t.Fatalf("NotifyGroupMutation() error = %v", err)
 	}
 	deleted := h.executePendingGroupTask(group.ID)
-	if deleted.Status != domain.TaskSucceeded {
+	if deleted.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("delete task status = %q (last_error=%v)", deleted.Status, deleted.LastError)
 	}
 	if got := h.downstream.find(http.MethodDelete, "/Groups/"+link.RemoteID); got == nil {
@@ -849,7 +849,7 @@ func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
 	h.addMember(group.ID, leaves)
 
 	h.notifyGroupMembershipChanged(group.ID)
-	if got := h.executePendingGroupTask(group.ID); got.Status != domain.TaskSucceeded {
+	if got := h.executePendingGroupTask(group.ID); got.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("membership task status = %q (last_error=%v)", got.Status, got.LastError)
 	}
 	// 2 人とも届いていること。除去を送らないという主張が、そもそも 1 人しか
@@ -870,7 +870,7 @@ func TestE2E_GroupMembership_NeverSendsRemovalWhenAMemberLeaves(t *testing.T) {
 	h.notifyGroupMembershipChanged(group.ID)
 	after := h.executePendingGroupTask(group.ID)
 	// 非提供であって拒否ではない。除去を送れないことは失敗ではない。
-	if after.Status != domain.TaskSucceeded {
+	if after.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("メンバーが抜けたプロビジョニングタスクの status = %q, want succeeded (last_error=%v)", after.Status, after.LastError)
 	}
 
@@ -927,7 +927,7 @@ func (h *e2eHarness) provisionUser(username string) string {
 // remoteUserID は provision 済みの User の下流 id を返す。
 func (h *e2eHarness) remoteUserID(userID string) string {
 	h.t.Helper()
-	link, err := h.linkRepo.Find(testing_tenant.Default(context.Background()), h.connectionID, domain.SourceTypeUser, userID)
+	link, err := h.linkRepo.Find(testing_tenant.Default(context.Background()), h.connectionID, provisioningdomain.SourceTypeUser, userID)
 	if err != nil || link == nil || link.RemoteID == "" {
 		h.t.Fatalf("RemoteResourceLink(%s) = (%+v, %v), want a link carrying the downstream id", userID, link, err)
 	}
@@ -976,11 +976,11 @@ func TestE2E_GroupChange_DisplayNameFollowsTheConfiguredSource(t *testing.T) {
 	h.setGroupEmail(group.ID, "engineering@example.com")
 
 	config := h.connection().GroupPush
-	config.DisplayNameSource = domain.GroupDisplayNameSourceEmail
+	config.DisplayNameSource = provisioningdomain.GroupDisplayNameSourceEmail
 	h.setGroupPush(config)
 
 	h.notifyGroupCreated(group.ID)
-	if got := h.executePendingGroupTask(group.ID); got.Status != domain.TaskSucceeded {
+	if got := h.executePendingGroupTask(group.ID); got.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("task status = %q (last_error=%v)", got.Status, got.LastError)
 	}
 
@@ -1002,12 +1002,12 @@ func TestE2E_GroupChange_DisplayNameFallsBackToTheNameWhenTheSourceIsEmpty(t *te
 	group := h.seedGroup() // email も description も持たない。
 
 	config := h.connection().GroupPush
-	config.DisplayNameSource = domain.GroupDisplayNameSourceEmail
+	config.DisplayNameSource = provisioningdomain.GroupDisplayNameSourceEmail
 	h.setGroupPush(config)
 
 	h.notifyGroupCreated(group.ID)
 	task := h.executePendingGroupTask(group.ID)
-	if task.Status != domain.TaskSucceeded {
+	if task.Status != provisioningdomain.TaskSucceeded {
 		t.Fatalf("task status = %q, want succeeded (last_error=%v)", task.Status, task.LastError)
 	}
 	created := h.downstream.find(http.MethodPost, "/Groups")

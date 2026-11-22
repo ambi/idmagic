@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // settleFullResync は resync の対象を数え直し、全件が終端なら完了させて FullResyncCompleted を発行する。
 // 完了の書き込みは running のときだけ成立するので、同時に判定した呼び出しや再実行があっても発行は一度だけである。
-func settleFullResync(ctx context.Context, repo ports.ProvisioningTaskRepository, emitFn func(spec.DomainEvent), resync *domain.FullResync, now time.Time) error {
-	if resync == nil || resync.Status != domain.FullResyncStatusRunning {
+func settleFullResync(ctx context.Context, repo provisioningports.ProvisioningTaskRepository, emitFn func(spec.DomainEvent), resync *provisioningdomain.FullResync, now time.Time) error {
+	if resync == nil || resync.Status != provisioningdomain.FullResyncStatusRunning {
 		return nil
 	}
 	tally, err := repo.TallyFullResync(ctx, resync.TenantID, resync.ID)

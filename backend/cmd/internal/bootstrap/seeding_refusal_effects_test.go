@@ -31,7 +31,7 @@ import (
 	"testing"
 
 	manifestadapter "github.com/ambi/idmagic/backend/seeding"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -141,17 +141,17 @@ resources:
 //spec:covers EX-SEEDING-003-01: 指定したプロファイルと異なるマニフェストは、シークレットの解決と
 func TestSeedRefusesManifestProfileMismatchBeforeSecretsAndWrites(t *testing.T) {
 	deps := newSeedRefusalDeps(t)
-	testManifest, err := manifestadapter.LocateDefaultPath(domain.ProfileTest)
+	testManifest, err := manifestadapter.LocateDefaultPath(seedingdomain.ProfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// 要求は development プロファイル、マニフェストは test プロファイル。
 	// 要求そのものは妥当なので、拒否はマニフェストとの不一致だけに由来する。
-	_, seedErr := Seed(context.Background(), deps, domain.Request{
-		Environment:  domain.EnvironmentDevelopment,
-		Profile:      domain.ProfileDevelopment,
-		Mode:         domain.ModeApply,
+	_, seedErr := Seed(context.Background(), deps, seedingdomain.Request{
+		Environment:  seedingdomain.EnvironmentDevelopment,
+		Profile:      seedingdomain.ProfileDevelopment,
+		Mode:         seedingdomain.ModeApply,
 		ManifestPath: testManifest,
 	}, "")
 	assertRefusedBeforeSecretsAndWrites(t, deps, seedErr, "does not match request profile")
@@ -160,16 +160,16 @@ func TestSeedRefusesManifestProfileMismatchBeforeSecretsAndWrites(t *testing.T) 
 	// 不一致だけが止めていたことを示す。
 	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
-	plan, err := Seed(context.Background(), newSeedRefusalDeps(t), domain.Request{
-		Environment:  domain.EnvironmentTest,
-		Profile:      domain.ProfileTest,
-		Mode:         domain.ModeDryRun,
+	plan, err := Seed(context.Background(), newSeedRefusalDeps(t), seedingdomain.Request{
+		Environment:  seedingdomain.EnvironmentTest,
+		Profile:      seedingdomain.ProfileTest,
+		Mode:         seedingdomain.ModeDryRun,
 		ManifestPath: testManifest,
 	}, "")
 	if err != nil {
 		t.Fatalf("対照の計画が失敗した: %v", err)
 	}
-	if plan.Count(domain.OperationCreate) == 0 {
+	if plan.Count(seedingdomain.OperationCreate) == 0 {
 		t.Fatalf("対照の計画に create が無い: %+v", plan)
 	}
 }
@@ -246,10 +246,10 @@ profile: bootstrap
 		t.Run(testCase.name, func(t *testing.T) {
 			deps := newSeedRefusalDeps(t)
 
-			_, err := Seed(context.Background(), deps, domain.Request{
-				Environment:  domain.EnvironmentDevelopment,
-				Profile:      domain.ProfileBootstrap,
-				Mode:         domain.ModeApply,
+			_, err := Seed(context.Background(), deps, seedingdomain.Request{
+				Environment:  seedingdomain.EnvironmentDevelopment,
+				Profile:      seedingdomain.ProfileBootstrap,
+				Mode:         seedingdomain.ModeApply,
 				ManifestPath: testCase.build(t),
 			}, "")
 
@@ -269,10 +269,10 @@ resources:
     clients:
       - {id: `+seedAdminConsoleClientID+`, name: IdMagic Admin Console, scope: "openid"}
 `)
-		if _, err := Seed(context.Background(), deps, domain.Request{
-			Environment:  domain.EnvironmentDevelopment,
-			Profile:      domain.ProfileBootstrap,
-			Mode:         domain.ModeApply,
+		if _, err := Seed(context.Background(), deps, seedingdomain.Request{
+			Environment:  seedingdomain.EnvironmentDevelopment,
+			Profile:      seedingdomain.ProfileBootstrap,
+			Mode:         seedingdomain.ModeApply,
 			ManifestPath: valid,
 		}, ""); err != nil {
 			t.Fatalf("対照の投入が失敗した: %v", err)
@@ -290,16 +290,16 @@ resources:
 //
 //spec:covers EX-SEEDING-005-01: 本番で env シークレットプロバイダーを参照するマニフェストは、
 func TestSeedRefusesEnvSecretProviderInProductionBeforeResolvingIt(t *testing.T) {
-	for _, mode := range []domain.Mode{domain.ModeDryRun, domain.ModeApply} {
+	for _, mode := range []seedingdomain.Mode{seedingdomain.ModeDryRun, seedingdomain.ModeApply} {
 		t.Run(string(mode), func(t *testing.T) {
 			deps := newSeedRefusalDeps(t)
 			manifest := writeSeedManifest(t, t.TempDir(), "main.yaml", bootstrapManifestBody(""))
 
 			// 要求そのものは本番の bootstrap として妥当 (リダイレクト URI も満たす)。
 			// 残る違反は env シークレットプロバイダーだけである。
-			_, err := Seed(context.Background(), deps, domain.Request{
-				Environment:            domain.EnvironmentProduction,
-				Profile:                domain.ProfileBootstrap,
+			_, err := Seed(context.Background(), deps, seedingdomain.Request{
+				Environment:            seedingdomain.EnvironmentProduction,
+				Profile:                seedingdomain.ProfileBootstrap,
 				Mode:                   mode,
 				ManifestPath:           manifest,
 				FirstPartyRedirectURIs: []string{seedProductionRedirectURI},
@@ -328,10 +328,10 @@ resources:
         locator: client_secret
         version: v1
 `)
-		if _, err := Seed(context.Background(), deps, domain.Request{
-			Environment:            domain.EnvironmentProduction,
-			Profile:                domain.ProfileBootstrap,
-			Mode:                   domain.ModeApply,
+		if _, err := Seed(context.Background(), deps, seedingdomain.Request{
+			Environment:            seedingdomain.EnvironmentProduction,
+			Profile:                seedingdomain.ProfileBootstrap,
+			Mode:                   seedingdomain.ModeApply,
 			ManifestPath:           manifest,
 			FirstPartyRedirectURIs: []string{seedProductionRedirectURI},
 		}, secretRoot); err != nil {
@@ -352,19 +352,19 @@ resources:
 //spec:covers EX-SEEDING-007-01: 本番では development と performance のプロファイルを書き込み前に拒否し、
 func TestSeedRefusesDevelopmentAndPerformanceProfilesInProduction(t *testing.T) {
 	for _, testCase := range []struct {
-		profile domain.Profile
+		profile seedingdomain.Profile
 		count   int
 	}{
-		{profile: domain.ProfileDevelopment},
-		{profile: domain.ProfilePerformance, count: 5},
+		{profile: seedingdomain.ProfileDevelopment},
+		{profile: seedingdomain.ProfilePerformance, count: 5},
 	} {
 		t.Run(string(testCase.profile), func(t *testing.T) {
-			for _, mode := range []domain.Mode{domain.ModeDryRun, domain.ModeApply} {
+			for _, mode := range []seedingdomain.Mode{seedingdomain.ModeDryRun, seedingdomain.ModeApply} {
 				t.Run(string(mode), func(t *testing.T) {
 					deps := newSeedRefusalDeps(t)
 
-					_, err := Seed(context.Background(), deps, domain.Request{
-						Environment: domain.EnvironmentProduction,
+					_, err := Seed(context.Background(), deps, seedingdomain.Request{
+						Environment: seedingdomain.EnvironmentProduction,
 						Profile:     testCase.profile,
 						Mode:        mode,
 						Count:       testCase.count,
@@ -389,10 +389,10 @@ func TestSeedRefusesDevelopmentAndPerformanceProfilesInProduction(t *testing.T) 
 		t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 		t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
 		deps := newSeedRefusalDeps(t)
-		if _, err := Seed(context.Background(), deps, domain.Request{
-			Environment: domain.EnvironmentDevelopment,
-			Profile:     domain.ProfileDevelopment,
-			Mode:        domain.ModeApply,
+		if _, err := Seed(context.Background(), deps, seedingdomain.Request{
+			Environment: seedingdomain.EnvironmentDevelopment,
+			Profile:     seedingdomain.ProfileDevelopment,
+			Mode:        seedingdomain.ModeApply,
 		}, ""); err != nil {
 			t.Fatalf("対照の投入が失敗した: %v", err)
 		}
@@ -426,10 +426,10 @@ func TestSeedRefusesProductionBootstrapRedirectURIsBeforeWriting(t *testing.T) {
 			deps := newSeedRefusalDeps(t)
 			manifest := writeSeedManifest(t, t.TempDir(), "main.yaml", bootstrapManifestBody(""))
 
-			_, err := Seed(context.Background(), deps, domain.Request{
-				Environment:            domain.EnvironmentProduction,
-				Profile:                domain.ProfileBootstrap,
-				Mode:                   domain.ModeApply,
+			_, err := Seed(context.Background(), deps, seedingdomain.Request{
+				Environment:            seedingdomain.EnvironmentProduction,
+				Profile:                seedingdomain.ProfileBootstrap,
+				Mode:                   seedingdomain.ModeApply,
 				ManifestPath:           manifest,
 				FirstPartyRedirectURIs: testCase.uris,
 			}, "")
@@ -449,10 +449,10 @@ resources:
     clients:
       - {id: `+seedAdminConsoleClientID+`, name: IdMagic Admin Console, scope: "openid"}
 `)
-		if _, err := Seed(context.Background(), deps, domain.Request{
-			Environment:            domain.EnvironmentProduction,
-			Profile:                domain.ProfileBootstrap,
-			Mode:                   domain.ModeApply,
+		if _, err := Seed(context.Background(), deps, seedingdomain.Request{
+			Environment:            seedingdomain.EnvironmentProduction,
+			Profile:                seedingdomain.ProfileBootstrap,
+			Mode:                   seedingdomain.ModeApply,
 			ManifestPath:           manifest,
 			FirstPartyRedirectURIs: []string{seedProductionRedirectURI},
 		}, ""); err != nil {
@@ -485,8 +485,8 @@ func TestSeedRefusesManualDriftAndKeepsTheChangedValue(t *testing.T) {
 			t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
 			ctx := context.Background()
 			deps := newSeedRefusalDeps(t)
-			request := domain.Request{
-				Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply,
+			request := seedingdomain.Request{
+				Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply,
 			}
 			if _, err := Seed(ctx, deps, request, ""); err != nil {
 				t.Fatalf("初回の投入が失敗した: %v", err)

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 //spec:covers REQ-IDMANAGEMENT-106: 対象 Agent とテナントで絞り込み、期限切れと撤回済みも材料として返す。
@@ -23,7 +23,7 @@ func TestListDelegationsForAgentIsTenantScoped(t *testing.T) {
 		if row.user == "expired" {
 			expires = now
 		}
-		if err := repo.SaveAgentDelegation(t.Context(), row.tenant, &domain.Consent{UserID: row.user, AgentID: row.agent, Scopes: []string{"read"}, GrantedAt: now.Add(-time.Hour), ExpiresAt: expires}); err != nil {
+		if err := repo.SaveAgentDelegation(t.Context(), row.tenant, &oauthdomain.Consent{UserID: row.user, AgentID: row.agent, Scopes: []string{"read"}, GrantedAt: now.Add(-time.Hour), ExpiresAt: expires}); err != nil {
 			t.Fatal(err)
 		}
 		if row.user == "revoked" {
@@ -53,11 +53,11 @@ func TestConsentRepository(t *testing.T) {
 	repo := NewConsentRepository()
 
 	t.Run("Save and Find", func(t *testing.T) {
-		consent := &domain.Consent{
+		consent := &oauthdomain.Consent{
 			UserID:    "user-1",
 			ClientID:  "client-1",
 			Scopes:    []string{"read", "write"},
-			State:     domain.ConsentGranted,
+			State:     oauthdomain.ConsentGranted,
 			GrantedAt: time.Now(),
 			ExpiresAt: time.Now().Add(24 * time.Hour),
 		}
@@ -93,9 +93,9 @@ func TestConsentRepository(t *testing.T) {
 
 	t.Run("FindAll and Sort", func(t *testing.T) {
 		// すでに user-1 / client-1 が tenant-1 にある
-		c2 := &domain.Consent{UserID: "user-2", ClientID: "client-2", State: domain.ConsentGranted}
-		c3 := &domain.Consent{UserID: "user-1", ClientID: "client-2", State: domain.ConsentGranted}
-		cOther := &domain.Consent{UserID: "user-1", ClientID: "client-1", State: domain.ConsentGranted}
+		c2 := &oauthdomain.Consent{UserID: "user-2", ClientID: "client-2", State: oauthdomain.ConsentGranted}
+		c3 := &oauthdomain.Consent{UserID: "user-1", ClientID: "client-2", State: oauthdomain.ConsentGranted}
+		cOther := &oauthdomain.Consent{UserID: "user-1", ClientID: "client-1", State: oauthdomain.ConsentGranted}
 
 		_ = repo.Save(ctx, "tenant-1", c2)
 		_ = repo.Save(ctx, "tenant-1", c3)
@@ -143,7 +143,7 @@ func TestConsentRepository(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if found.State != domain.ConsentRevoked {
+		if found.State != oauthdomain.ConsentRevoked {
 			t.Errorf("expected state to be ConsentRevoked, got %v", found.State)
 		}
 		if found.RevokedAt == nil {
@@ -186,15 +186,15 @@ func TestConsentRepositoryListPageByTenant(t *testing.T) {
 	repo := NewConsentRepository()
 	pairs := [][2]string{{"u3", "c1"}, {"u1", "c1"}, {"u2", "c1"}, {"u4", "c1"}, {"u5", "c1"}}
 	for _, p := range pairs {
-		if err := repo.Save(ctx, "tenant-1", &domain.Consent{
-			UserID: p[0], ClientID: p[1], Scopes: []string{"read"}, State: domain.ConsentGranted,
+		if err := repo.Save(ctx, "tenant-1", &oauthdomain.Consent{
+			UserID: p[0], ClientID: p[1], Scopes: []string{"read"}, State: oauthdomain.ConsentGranted,
 			GrantedAt: time.Now(), ExpiresAt: time.Now().Add(24 * time.Hour),
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := repo.Save(ctx, "tenant-2", &domain.Consent{
-		UserID: "other", ClientID: "c1", Scopes: []string{"read"}, State: domain.ConsentGranted,
+	if err := repo.Save(ctx, "tenant-2", &oauthdomain.Consent{
+		UserID: "other", ClientID: "c1", Scopes: []string{"read"}, State: oauthdomain.ConsentGranted,
 		GrantedAt: time.Now(), ExpiresAt: time.Now().Add(24 * time.Hour),
 	}); err != nil {
 		t.Fatal(err)

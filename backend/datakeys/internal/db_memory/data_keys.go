@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
 )
 
 // DataKeyRepository is the in-process reference implementation of
@@ -16,22 +16,22 @@ import (
 // adapter must never diverge from it.
 type DataKeyRepository struct {
 	mu       sync.Mutex
-	byTenant map[string][]*domain.TenantDataEncryptionKey // newest version last
+	byTenant map[string][]*datakeysdomain.TenantDataEncryptionKey // newest version last
 	nextID   int
 }
 
 func NewDataKeyRepository() *DataKeyRepository {
-	return &DataKeyRepository{byTenant: map[string][]*domain.TenantDataEncryptionKey{}}
+	return &DataKeyRepository{byTenant: map[string][]*datakeysdomain.TenantDataEncryptionKey{}}
 }
 
-func (r *DataKeyRepository) Bootstrap(_ context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Bootstrap(_ context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	nextVersion := 1
 	for _, k := range r.byTenant[tenantID] {
-		if k.Status != domain.DataKeyStatusDestroyed {
-			return nil, domain.ErrDataKeyAlreadyBootstrapped
+		if k.Status != datakeysdomain.DataKeyStatusDestroyed {
+			return nil, datakeysdomain.ErrDataKeyAlreadyBootstrapped
 		}
 		if k.Version >= nextVersion {
 			nextVersion = k.Version + 1
@@ -43,105 +43,105 @@ func (r *DataKeyRepository) Bootstrap(_ context.Context, tenantID string, wrappe
 	return cloneKey(key), nil
 }
 
-func (r *DataKeyRepository) Rotate(_ context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*domain.TenantDataEncryptionKey, *domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Rotate(_ context.Context, tenantID string, wrappedDEK []byte, masterKeyID string, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, *datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	versions := r.byTenant[tenantID]
-	var previous *domain.TenantDataEncryptionKey
+	var previous *datakeysdomain.TenantDataEncryptionKey
 	for _, k := range versions {
-		if k.Status == domain.DataKeyStatusActive {
+		if k.Status == datakeysdomain.DataKeyStatusActive {
 			previous = k
 			break
 		}
 	}
 	if previous == nil {
-		return nil, nil, domain.ErrNoActiveDataKey
+		return nil, nil, datakeysdomain.ErrNoActiveDataKey
 	}
 
-	previous.Status = domain.DataKeyStatusRetiring
+	previous.Status = datakeysdomain.DataKeyStatusRetiring
 	next := r.newKeyLocked(tenantID, previous.Version+1, wrappedDEK, masterKeyID, now)
 	r.byTenant[tenantID] = append(r.byTenant[tenantID], next)
 	return cloneKey(next), cloneKey(previous), nil
 }
 
-func (r *DataKeyRepository) Disable(_ context.Context, tenantID string, version int, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Disable(_ context.Context, tenantID string, version int, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	key := r.findLocked(tenantID, version)
 	if key == nil {
-		return nil, domain.ErrDataKeyNotFound
+		return nil, datakeysdomain.ErrDataKeyNotFound
 	}
-	if key.Status == domain.DataKeyStatusActive {
-		return nil, domain.ErrDataKeyIsActive
+	if key.Status == datakeysdomain.DataKeyStatusActive {
+		return nil, datakeysdomain.ErrDataKeyIsActive
 	}
-	if key.Status != domain.DataKeyStatusRetiring {
-		return nil, domain.ErrDataKeyNotDisableable
+	if key.Status != datakeysdomain.DataKeyStatusRetiring {
+		return nil, datakeysdomain.ErrDataKeyNotDisableable
 	}
-	key.Status = domain.DataKeyStatusDisabled
+	key.Status = datakeysdomain.DataKeyStatusDisabled
 	disabledAt := now
 	key.DisabledAt = &disabledAt
 	return cloneKey(key), nil
 }
 
-func (r *DataKeyRepository) Destroy(_ context.Context, tenantID string, version int, now time.Time) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) Destroy(_ context.Context, tenantID string, version int, now time.Time) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	key := r.findLocked(tenantID, version)
 	if key == nil {
-		return nil, domain.ErrDataKeyNotFound
+		return nil, datakeysdomain.ErrDataKeyNotFound
 	}
-	if key.Status == domain.DataKeyStatusActive {
-		return nil, domain.ErrDataKeyIsActive
+	if key.Status == datakeysdomain.DataKeyStatusActive {
+		return nil, datakeysdomain.ErrDataKeyIsActive
 	}
-	if key.Status != domain.DataKeyStatusRetiring && key.Status != domain.DataKeyStatusDisabled {
-		return nil, domain.ErrDataKeyNotDestroyable
+	if key.Status != datakeysdomain.DataKeyStatusRetiring && key.Status != datakeysdomain.DataKeyStatusDisabled {
+		return nil, datakeysdomain.ErrDataKeyNotDestroyable
 	}
-	key.Status = domain.DataKeyStatusDestroyed
+	key.Status = datakeysdomain.DataKeyStatusDestroyed
 	key.WrappedDEK = nil
 	destroyedAt := now
 	key.DestroyedAt = &destroyedAt
 	return cloneKey(key), nil
 }
 
-func (r *DataKeyRepository) FindActive(_ context.Context, tenantID string) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) FindActive(_ context.Context, tenantID string) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	for _, k := range r.byTenant[tenantID] {
-		if k.Status == domain.DataKeyStatusActive {
+		if k.Status == datakeysdomain.DataKeyStatusActive {
 			return cloneKey(k), nil
 		}
 	}
-	return nil, domain.ErrNoActiveDataKey
+	return nil, datakeysdomain.ErrNoActiveDataKey
 }
 
-func (r *DataKeyRepository) FindByVersion(_ context.Context, tenantID string, version int) (*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) FindByVersion(_ context.Context, tenantID string, version int) (*datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	key := r.findLocked(tenantID, version)
 	if key == nil {
-		return nil, domain.ErrDataKeyNotFound
+		return nil, datakeysdomain.ErrDataKeyNotFound
 	}
 	return cloneKey(key), nil
 }
 
-func (r *DataKeyRepository) ListAll(_ context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) ListAll(_ context.Context, tenantID string) ([]*datakeysdomain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	versions := r.byTenant[tenantID]
-	out := make([]*domain.TenantDataEncryptionKey, len(versions))
+	out := make([]*datakeysdomain.TenantDataEncryptionKey, len(versions))
 	for i, k := range versions {
 		out[len(versions)-1-i] = cloneKey(k)
 	}
 	return out, nil
 }
 
-func (r *DataKeyRepository) findLocked(tenantID string, version int) *domain.TenantDataEncryptionKey {
+func (r *DataKeyRepository) findLocked(tenantID string, version int) *datakeysdomain.TenantDataEncryptionKey {
 	for _, k := range r.byTenant[tenantID] {
 		if k.Version == version {
 			return k
@@ -150,14 +150,14 @@ func (r *DataKeyRepository) findLocked(tenantID string, version int) *domain.Ten
 	return nil
 }
 
-func (r *DataKeyRepository) newKeyLocked(tenantID string, version int, wrappedDEK []byte, masterKeyID string, now time.Time) *domain.TenantDataEncryptionKey {
+func (r *DataKeyRepository) newKeyLocked(tenantID string, version int, wrappedDEK []byte, masterKeyID string, now time.Time) *datakeysdomain.TenantDataEncryptionKey {
 	r.nextID++
 	activatedAt := now
-	return &domain.TenantDataEncryptionKey{
+	return &datakeysdomain.TenantDataEncryptionKey{
 		ID:          idFor(tenantID, version),
 		TenantID:    tenantID,
 		Version:     version,
-		Status:      domain.DataKeyStatusActive,
+		Status:      datakeysdomain.DataKeyStatusActive,
 		WrappedDEK:  append([]byte(nil), wrappedDEK...),
 		MasterKeyID: masterKeyID,
 		CreatedAt:   now,
@@ -169,7 +169,7 @@ func idFor(tenantID string, version int) string {
 	return tenantID + ":" + strconv.Itoa(version)
 }
 
-func cloneKey(k *domain.TenantDataEncryptionKey) *domain.TenantDataEncryptionKey {
+func cloneKey(k *datakeysdomain.TenantDataEncryptionKey) *datakeysdomain.TenantDataEncryptionKey {
 	clone := *k
 	clone.WrappedDEK = append([]byte(nil), k.WrappedDEK...)
 	return &clone

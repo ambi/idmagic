@@ -6,7 +6,7 @@ import (
 	"time"
 
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -32,7 +32,7 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 	if client == nil {
 		return nil, ErrClientNotFound
 	}
-	if client.TokenEndpointAuthMethod != domain.AuthMethodClientSecretBasic && client.TokenEndpointAuthMethod != domain.AuthMethodClientSecretPost {
+	if client.TokenEndpointAuthMethod != oauthdomain.AuthMethodClientSecretBasic && client.TokenEndpointAuthMethod != oauthdomain.AuthMethodClientSecretPost {
 		return nil, ErrClientSecretNotRotatable
 	}
 	credentials, err := deps.ClientRepo.ListClientSecretCredentials(ctx, client.ClientID)
@@ -55,7 +55,7 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 		if err != nil {
 			return nil, err
 		}
-		legacy := domain.ClientSecretCredential{ID: id, ClientID: client.ClientID, SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt}
+		legacy := oauthdomain.ClientSecretCredential{ID: id, ClientID: client.ClientID, SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt}
 		credentials = append(credentials, legacy)
 		legacyBackfill = true
 	}
@@ -88,8 +88,8 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 	if err != nil {
 		return nil, err
 	}
-	credential := domain.ClientSecretCredential{ID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(secret), CreatedAt: now}
-	var legacy *domain.ClientSecretCredential
+	credential := oauthdomain.ClientSecretCredential{ID: id, ClientID: client.ClientID, SecretHash: oauthdomain.HashClientSecret(secret), CreatedAt: now}
+	var legacy *oauthdomain.ClientSecretCredential
 	if legacyBackfill {
 		legacy = &credentials[0]
 	}
@@ -100,6 +100,6 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 		return nil, err
 	}
 	credentials = append(credentials, credential)
-	emit(deps.Emit, &domain.ClientSecretRotated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: client.ClientID, GraceUntil: graceUntil, RevokedImmediately: graceUntil == nil})
+	emit(deps.Emit, &oauthdomain.ClientSecretRotated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: client.ClientID, GraceUntil: graceUntil, RevokedImmediately: graceUntil == nil})
 	return &RotateClientSecretResult{ClientSecret: secret, GraceUntil: graceUntil, Credentials: credentials}, nil
 }

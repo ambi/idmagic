@@ -11,8 +11,8 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
-	"github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
-	"github.com/ambi/idmagic/backend/oauth2/logout/ports"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
+	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -20,14 +20,14 @@ import (
 type EnqueueFunc func(context.Context, jobsports.EnqueueInput, time.Time) (*jobsdomain.Job, error)
 
 type StartBackChannelLogoutDeps struct {
-	ClientSessions ports.ClientSessionStore
+	ClientSessions logoutports.ClientSessionStore
 	Clients        clientports.OAuth2ClientRepository
-	Notifications  ports.LogoutNotificationStore
+	Notifications  logoutports.LogoutNotificationStore
 	Enqueue        EnqueueFunc
 	NewID          func() (string, error)
 }
 
-func StartBackChannelLogout(ctx context.Context, deps StartBackChannelLogoutDeps, sid, subject, issuer string, now time.Time) ([]*domain.LogoutNotification, error) {
+func StartBackChannelLogout(ctx context.Context, deps StartBackChannelLogoutDeps, sid, subject, issuer string, now time.Time) ([]*logoutdomain.LogoutNotification, error) {
 	if deps.ClientSessions == nil || deps.Clients == nil || deps.Notifications == nil || deps.Enqueue == nil {
 		return nil, errors.New("logout: incomplete back-channel dependencies")
 	}
@@ -40,7 +40,7 @@ func StartBackChannelLogout(ctx context.Context, deps StartBackChannelLogoutDeps
 	if err != nil {
 		return nil, fmt.Errorf("logout: list client sessions: %w", err)
 	}
-	created := make([]*domain.LogoutNotification, 0, len(sessions))
+	created := make([]*logoutdomain.LogoutNotification, 0, len(sessions))
 	for _, session := range sessions {
 		client, findErr := deps.Clients.FindByID(ctx, tenantID, session.ClientID)
 		if findErr != nil {
@@ -57,20 +57,20 @@ func StartBackChannelLogout(ctx context.Context, deps StartBackChannelLogoutDeps
 		if idErr != nil {
 			return nil, fmt.Errorf("logout: create logout token jti: %w", idErr)
 		}
-		notification := &domain.LogoutNotification{
+		notification := &logoutdomain.LogoutNotification{
 			ID: notificationID, TenantID: tenantID, Sid: sid, ClientID: client.ClientID,
 			LogoutTokenJTI: jti, TargetURI: *client.BackChannelLogoutURI,
-			State: domain.LogoutNotificationPending, CreatedAt: now,
+			State: logoutdomain.LogoutNotificationPending, CreatedAt: now,
 		}
 		if saveErr := deps.Notifications.Save(ctx, notification); saveErr != nil {
 			return nil, fmt.Errorf("logout: save notification: %w", saveErr)
 		}
-		params, marshalErr := json.Marshal(ports.BackChannelLogoutJobParams{NotificationID: notification.ID, Subject: subject, Issuer: issuer})
+		params, marshalErr := json.Marshal(logoutports.BackChannelLogoutJobParams{NotificationID: notification.ID, Subject: subject, Issuer: issuer})
 		if marshalErr != nil {
 			return nil, fmt.Errorf("logout: encode job params: %w", marshalErr)
 		}
 		dedupKey := "logout-notification:" + notification.ID
-		job, enqueueErr := deps.Enqueue(ctx, jobsports.EnqueueInput{TenantID: tenantID, Kind: domain.KindBackChannelLogoutDelivery, Params: params, DedupKey: &dedupKey}, now)
+		job, enqueueErr := deps.Enqueue(ctx, jobsports.EnqueueInput{TenantID: tenantID, Kind: logoutdomain.KindBackChannelLogoutDelivery, Params: params, DedupKey: &dedupKey}, now)
 		if enqueueErr != nil {
 			return nil, fmt.Errorf("logout: enqueue delivery: %w", enqueueErr)
 		}
@@ -84,11 +84,11 @@ func StartBackChannelLogout(ctx context.Context, deps StartBackChannelLogoutDeps
 }
 
 type FrontChannelLogoutDeps struct {
-	ClientSessions ports.ClientSessionStore
+	ClientSessions logoutports.ClientSessionStore
 	Clients        clientports.OAuth2ClientRepository
 }
 
-func FrontChannelLogoutTargets(ctx context.Context, deps FrontChannelLogoutDeps, sid, issuer string) ([]domain.FrontChannelLogoutTarget, error) {
+func FrontChannelLogoutTargets(ctx context.Context, deps FrontChannelLogoutDeps, sid, issuer string) ([]logoutdomain.FrontChannelLogoutTarget, error) {
 	if deps.ClientSessions == nil || deps.Clients == nil {
 		return nil, errors.New("logout: incomplete front-channel dependencies")
 	}
@@ -97,7 +97,7 @@ func FrontChannelLogoutTargets(ctx context.Context, deps FrontChannelLogoutDeps,
 	if err != nil {
 		return nil, fmt.Errorf("logout: list client sessions: %w", err)
 	}
-	targets := make([]domain.FrontChannelLogoutTarget, 0, len(sessions))
+	targets := make([]logoutdomain.FrontChannelLogoutTarget, 0, len(sessions))
 	for _, session := range sessions {
 		client, findErr := deps.Clients.FindByID(ctx, tenantID, session.ClientID)
 		if findErr != nil {
@@ -118,15 +118,15 @@ func FrontChannelLogoutTargets(ctx context.Context, deps FrontChannelLogoutDeps,
 			u.RawQuery = query.Encode()
 			iframeURI = u.String()
 		}
-		targets = append(targets, domain.FrontChannelLogoutTarget{ClientID: client.ClientID, IframeURI: iframeURI})
+		targets = append(targets, logoutdomain.FrontChannelLogoutTarget{ClientID: client.ClientID, IframeURI: iframeURI})
 	}
 	return targets, nil
 }
 
 type BackChannelLogoutHandlerDeps struct {
-	Notifications ports.LogoutNotificationStore
-	Signer        ports.LogoutTokenSigner
-	Client        ports.BackChannelLogoutClient
+	Notifications logoutports.LogoutNotificationStore
+	Signer        logoutports.LogoutTokenSigner
+	Client        logoutports.BackChannelLogoutClient
 	Now           func() time.Time
 }
 
@@ -135,7 +135,7 @@ func BackChannelLogoutHandler(deps BackChannelLogoutHandlerDeps) func(context.Co
 		if deps.Notifications == nil || deps.Signer == nil || deps.Client == nil {
 			return nil, errors.New("logout: incomplete delivery dependencies")
 		}
-		var params ports.BackChannelLogoutJobParams
+		var params logoutports.BackChannelLogoutJobParams
 		if err := json.Unmarshal(job.Params, &params); err != nil {
 			return nil, fmt.Errorf("logout: decode job params: %w", err)
 		}
@@ -146,14 +146,14 @@ func BackChannelLogoutHandler(deps BackChannelLogoutHandlerDeps) func(context.Co
 		if notification == nil {
 			return nil, errors.New("logout: notification not found")
 		}
-		if notification.State != domain.LogoutNotificationPending {
+		if notification.State != logoutdomain.LogoutNotificationPending {
 			return json.RawMessage("{}"), nil
 		}
 		now := time.Now().UTC()
 		if deps.Now != nil {
 			now = deps.Now().UTC()
 		}
-		token, deliveryErr := deps.Signer.SignLogoutToken(ctx, ports.LogoutTokenInput{Issuer: params.Issuer, Subject: params.Subject, Audience: notification.ClientID, Sid: notification.Sid, JTI: notification.LogoutTokenJTI, IssuedAt: now})
+		token, deliveryErr := deps.Signer.SignLogoutToken(ctx, logoutports.LogoutTokenInput{Issuer: params.Issuer, Subject: params.Subject, Audience: notification.ClientID, Sid: notification.Sid, JTI: notification.LogoutTokenJTI, IssuedAt: now})
 		if deliveryErr == nil {
 			deliveryErr = deps.Client.Deliver(ctx, notification.TargetURI, token)
 		}
@@ -162,7 +162,7 @@ func BackChannelLogoutHandler(deps BackChannelLogoutHandlerDeps) func(context.Co
 			message := deliveryErr.Error()
 			notification.LastError = &message
 			if job.Attempts >= job.MaxAttempts {
-				notification.State, err = domain.TransitionLogoutNotification(notification.State, domain.LogoutNotificationExhaust)
+				notification.State, err = logoutdomain.TransitionLogoutNotification(notification.State, logoutdomain.LogoutNotificationExhaust)
 				if err != nil {
 					return nil, err
 				}
@@ -172,7 +172,7 @@ func BackChannelLogoutHandler(deps BackChannelLogoutHandlerDeps) func(context.Co
 			}
 			return nil, deliveryErr
 		}
-		notification.State, err = domain.TransitionLogoutNotification(notification.State, domain.LogoutNotificationDeliver)
+		notification.State, err = logoutdomain.TransitionLogoutNotification(notification.State, logoutdomain.LogoutNotificationDeliver)
 		if err != nil {
 			return nil, err
 		}

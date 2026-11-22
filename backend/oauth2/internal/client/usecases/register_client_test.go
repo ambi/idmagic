@@ -8,7 +8,7 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -20,7 +20,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 	result, err := RegisterClient(testing_tenant.Default(context.Background()), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 	}, time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestRegisterClientHashesSecret(t *testing.T) {
 	if *result.Client.ClientSecretHash == result.ClientSecret {
 		t.Fatal("client secret was stored in plaintext")
 	}
-	if !domain.VerifyClientSecret(result.ClientSecret, *result.Client.ClientSecretHash) {
+	if !oauthdomain.VerifyClientSecret(result.ClientSecret, *result.Client.ClientSecretHash) {
 		t.Fatal("stored client secret hash does not verify")
 	}
 }
@@ -53,7 +53,7 @@ func TestRegisterClient_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	in := RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 	}
 	if _, err := RegisterClient(ctx, deps, in, time.Now()); err != nil {
 		t.Fatalf("first RegisterClient: %v", err)
@@ -73,7 +73,7 @@ func TestRegisterPrivateKeyJWTRequiresInlineJWKS(t *testing.T) {
 	_, err := RegisterClient(testing_tenant.Default(context.Background()), RegisterClientDeps{ClientRepo: repo}, RegisterClientInput{
 		ClientType:              spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
-		TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
 	}, time.Now())
 	if err == nil {
 		t.Fatal("expected missing jwks rejection")
@@ -94,16 +94,16 @@ func TestRegisterClientRejectedMetadataDoesNotConsumeQuota(t *testing.T) {
 	deps := RegisterClientDeps{ClientRepo: oauth2memory.NewClientRepository(), QuotaRepo: quotaRepo}
 	rejected := []RegisterClientInput{
 		// authorization_code の登録に redirect_uris がない。
-		{ClientType: spec.ClientConfidential, TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic},
+		{ClientType: spec.ClientConfidential, TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic},
 		// private_key_jwt に鍵がない。
 		{
 			ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://client.example/cb"},
-			TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
 		},
 		// redirect_uri が URL でないので Validate が拒否する。
 		{
 			ClientType: spec.ClientConfidential, RedirectURIs: []string{"not a url"},
-			TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+			TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 		},
 	}
 	for i, in := range rejected {
@@ -121,7 +121,7 @@ func TestRegisterClientRejectedMetadataDoesNotConsumeQuota(t *testing.T) {
 	}
 	if _, err := RegisterClient(ctx, deps, RegisterClientInput{
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{"https://client.example/cb"},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 	}, time.Now()); err != nil {
 		t.Fatalf("valid registration within the limit: %v", err)
 	}

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 )
 
 var (
@@ -22,39 +22,39 @@ var (
 
 // ConnectorRepository はコネクタの保存先である。ClientSecret は平文で受け渡し、暗号化は実装が担う。
 type ConnectorRepository interface {
-	Create(ctx context.Context, connector *domain.Connector) error
+	Create(ctx context.Context, connector *tokenvaultdomain.Connector) error
 	// Update は connector.Version が保存の値と一致するときだけ更新する。一致しなければ ErrConnectorConflict を返す。
-	Update(ctx context.Context, connector *domain.Connector) error
-	Find(ctx context.Context, tenantID, id string) (*domain.Connector, error)
-	List(ctx context.Context, tenantID string) ([]*domain.Connector, error)
+	Update(ctx context.Context, connector *tokenvaultdomain.Connector) error
+	Find(ctx context.Context, tenantID, id string) (*tokenvaultdomain.Connector, error)
+	List(ctx context.Context, tenantID string) ([]*tokenvaultdomain.Connector, error)
 	Delete(ctx context.Context, tenantID, id string) (bool, error)
 }
 
 // ConnectionRepository は接続の保存先である。トークンは平文で受け渡し、暗号化は実装が担う。
 type ConnectionRepository interface {
-	Find(ctx context.Context, tenantID, connectorID, userID string) (*domain.Connection, error)
-	ListByUser(ctx context.Context, tenantID, userID string) ([]*domain.Connection, error)
+	Find(ctx context.Context, tenantID, connectorID, userID string) (*tokenvaultdomain.Connection, error)
+	ListByUser(ctx context.Context, tenantID, userID string) ([]*tokenvaultdomain.Connection, error)
 	// SaveLinked は組の行を作るか、トークンと付与スコープを置き換えて active にする。
-	SaveLinked(ctx context.Context, connection *domain.Connection) error
+	SaveLinked(ctx context.Context, connection *tokenvaultdomain.Connection) error
 	// AcquireRefreshLease は tokenVersion が一致し、リースが切れているときだけリースを取る。
 	AcquireRefreshLease(ctx context.Context, tenantID, id string, tokenVersion int64, now, until time.Time) (bool, error)
 	// ReleaseRefreshLease はトークンを変えずにリースを手放す。
 	ReleaseRefreshLease(ctx context.Context, tenantID, id string, tokenVersion int64) error
 	// StoreRefreshed は tokenVersion が一致するときだけトークンを置き換え、版を進めてリースを手放す。
-	StoreRefreshed(ctx context.Context, connection *domain.Connection, tokenVersion int64) (bool, error)
+	StoreRefreshed(ctx context.Context, connection *tokenvaultdomain.Connection, tokenVersion int64) (bool, error)
 	// MarkReauthorizationRequired は tokenVersion が一致するときだけトークンを消して状態を変える。
 	MarkReauthorizationRequired(ctx context.Context, tenantID, id string, tokenVersion int64, now time.Time) (bool, error)
 	TouchLastUsed(ctx context.Context, tenantID, id string, now time.Time) error
 	// Delete は行を消し、消した行を返す。行がなければ nil を返す。
-	Delete(ctx context.Context, tenantID, connectorID, userID string) (*domain.Connection, error)
+	Delete(ctx context.Context, tenantID, connectorID, userID string) (*tokenvaultdomain.Connection, error)
 }
 
 // AttemptStore は進行中の連携の保存先である。
 type AttemptStore interface {
 	// Save は同じ本人とコネクタの連携を置き換える。
-	Save(ctx context.Context, attempt *domain.ConnectionAttempt) error
+	Save(ctx context.Context, attempt *tokenvaultdomain.ConnectionAttempt) error
 	// Consume は一致する期限内の連携を原子的に消して返す。なければ nil を返す。
-	Consume(ctx context.Context, tenantID, connectorID, userID string, stateHash []byte, now time.Time) (*domain.ConnectionAttempt, error)
+	Consume(ctx context.Context, tenantID, connectorID, userID string, stateHash []byte, now time.Time) (*tokenvaultdomain.ConnectionAttempt, error)
 }
 
 // OAuthClient はトークンエンドポイントを呼ぶためのコネクタの設定である。
@@ -63,7 +63,7 @@ type OAuthClient struct {
 	RevocationEndpoint string
 	ClientID           string
 	ClientSecret       string
-	AuthMethod         domain.TokenEndpointAuthMethod
+	AuthMethod         tokenvaultdomain.TokenEndpointAuthMethod
 }
 
 // TokenResponse は上流のトークンの応答である。
@@ -127,5 +127,5 @@ type CallerCredential struct {
 // TokenVerifier は失効の判定まで済ませて呼び出し元のトークンを返す。無効なら nil を返し、
 // 判定できなければ error を返す。呼び出し側は error を許可へ退避しない。
 type TokenVerifier interface {
-	Verify(ctx context.Context, credential CallerCredential) (*domain.CallerToken, error)
+	Verify(ctx context.Context, credential CallerCredential) (*tokenvaultdomain.CallerToken, error)
 }

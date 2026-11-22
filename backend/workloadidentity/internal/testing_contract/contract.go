@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 type Fixture struct {
-	TrustBundles ports.WorkloadTrustBundleRepository
+	TrustBundles workloadports.WorkloadTrustBundleRepository
 	TenantA      string
 	TenantB      string
 	BundleID     string
@@ -28,11 +28,11 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	bundle := &domain.WorkloadTrustBundle{
-		ID: f.BundleID, TenantID: f.TenantA, Name: "Production", Profile: domain.WorkloadTrustBundleProfileOIDC, TrustDomain: "example.test",
+	bundle := &workloaddomain.WorkloadTrustBundle{
+		ID: f.BundleID, TenantID: f.TenantA, Name: "Production", Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, TrustDomain: "example.test",
 		Issuer: "https://issuer.example.test", JWKS: map[string]any{"keys": []any{}},
 		AcceptedAudiences: []string{"idmagic"}, MaxSubjectTokenTTLSeconds: 300,
-		Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
+		Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
 	}
 	if err := f.TrustBundles.Save(ctx, bundle); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -68,7 +68,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 		t.Fatalf("before fetch = (%+v, %v)", before, err)
 	}
 	at := f.Now.Add(time.Minute)
-	fetched := domain.JWKSSnapshot{Keys: []map[string]any{{"kty": "EC", "kid": "fetched", "crv": "P-256"}}, FetchedAt: at}
+	fetched := workloaddomain.JWKSSnapshot{Keys: []map[string]any{{"kty": "EC", "kid": "fetched", "crv": "P-256"}}, FetchedAt: at}
 	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantB, f.BundleID, nil, fetched); err != nil {
 		t.Fatalf("other tenant RecordJWKSFetched: %v", err)
 	}
@@ -105,10 +105,10 @@ func Run(t *testing.T, newFixture NewFixture) {
 //   - 保存済みより古い取得は書かず、別の取得元からの取得も書かない。
 //   - jwks_uri を変えない更新は、読んだときの値で保存した鍵を戻さない。
 //   - jwks_uri を変える更新は、保存した鍵と時刻を消す。
-func runJWKSStoreConditions(t *testing.T, f Fixture, stored *domain.WorkloadTrustBundle) {
+func runJWKSStoreConditions(t *testing.T, f Fixture, stored *workloaddomain.WorkloadTrustBundle) {
 	t.Helper()
 	ctx := context.Background()
-	reload := func() *domain.WorkloadTrustBundle {
+	reload := func() *workloaddomain.WorkloadTrustBundle {
 		t.Helper()
 		b, err := f.TrustBundles.FindByID(ctx, f.TenantA, f.BundleID)
 		if err != nil || b == nil {
@@ -117,12 +117,12 @@ func runJWKSStoreConditions(t *testing.T, f Fixture, stored *domain.WorkloadTrus
 		return b
 	}
 	staleRead := *stored
-	stale := domain.JWKSSnapshot{Keys: []map[string]any{{"kid": "older"}}, FetchedAt: stored.JWKSCachedAt.Add(-time.Second)}
+	stale := workloaddomain.JWKSSnapshot{Keys: []map[string]any{{"kid": "older"}}, FetchedAt: stored.JWKSCachedAt.Add(-time.Second)}
 	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, nil, stale); err != nil {
 		t.Fatalf("older RecordJWKSFetched: %v", err)
 	}
 	otherSource := "https://other-source.example.test/jwks"
-	foreign := domain.JWKSSnapshot{Keys: []map[string]any{{"kid": "foreign"}}, FetchedAt: stored.JWKSCachedAt.Add(time.Hour)}
+	foreign := workloaddomain.JWKSSnapshot{Keys: []map[string]any{{"kid": "foreign"}}, FetchedAt: stored.JWKSCachedAt.Add(time.Hour)}
 	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, &otherSource, foreign); err != nil {
 		t.Fatalf("other source RecordJWKSFetched: %v", err)
 	}
@@ -130,7 +130,7 @@ func runJWKSStoreConditions(t *testing.T, f Fixture, stored *domain.WorkloadTrus
 		t.Fatalf("older or foreign fetch changed the stored keys = %+v, want %+v", got, stored)
 	}
 
-	newer := domain.JWKSSnapshot{Keys: []map[string]any{{"kid": "newer"}}, FetchedAt: stored.JWKSCachedAt.Add(time.Minute)}
+	newer := workloaddomain.JWKSSnapshot{Keys: []map[string]any{{"kid": "newer"}}, FetchedAt: stored.JWKSCachedAt.Add(time.Minute)}
 	if err := f.TrustBundles.RecordJWKSFetched(ctx, f.TenantA, f.BundleID, nil, newer); err != nil {
 		t.Fatalf("newer RecordJWKSFetched: %v", err)
 	}
@@ -163,12 +163,12 @@ func runJWKSStoreConditions(t *testing.T, f Fixture, stored *domain.WorkloadTrus
 func runSPIFFE(t *testing.T, f Fixture) {
 	t.Helper()
 	ctx := context.Background()
-	oidc := &domain.WorkloadTrustBundle{
+	oidc := &workloaddomain.WorkloadTrustBundle{
 		ID: f.SPIFFEIDs[0], TenantID: f.TenantA, Name: "OIDC with the same label",
-		Profile: domain.WorkloadTrustBundleProfileOIDC, TrustDomain: "spiffe.example.test",
+		Profile: workloaddomain.WorkloadTrustBundleProfileOIDC, TrustDomain: "spiffe.example.test",
 		Issuer: "https://oidc.example.test", JWKS: map[string]any{"keys": []any{}},
 		AcceptedAudiences: []string{"idmagic"}, MaxSubjectTokenTTLSeconds: 300,
-		Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
+		Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
 	}
 	if err := f.TrustBundles.Save(ctx, oidc); err != nil {
 		t.Fatalf("Save oidc: %v", err)
@@ -176,17 +176,17 @@ func runSPIFFE(t *testing.T, f Fixture) {
 	if found, err := f.TrustBundles.FindSPIFFEByTrustDomain(ctx, f.TenantA, "spiffe.example.test"); err != nil || found != nil {
 		t.Fatalf("oidc bundle found by trust domain = (%+v, %v)", found, err)
 	}
-	spiffe := &domain.WorkloadTrustBundle{
+	spiffe := &workloaddomain.WorkloadTrustBundle{
 		ID: f.SPIFFEIDs[1], TenantID: f.TenantA, Name: "SPIRE",
-		Profile: domain.WorkloadTrustBundleProfileSPIFFE, TrustDomain: "spiffe.example.test",
+		Profile: workloaddomain.WorkloadTrustBundleProfileSPIFFE, TrustDomain: "spiffe.example.test",
 		JWKS: map[string]any{"keys": []any{}}, AcceptedAudiences: []string{"idmagic"},
-		MaxSubjectTokenTTLSeconds: 300, Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
+		MaxSubjectTokenTTLSeconds: 300, Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: f.Now,
 	}
 	if err := f.TrustBundles.Save(ctx, spiffe); err != nil {
 		t.Fatalf("Save spiffe without issuer: %v", err)
 	}
 	found, err := f.TrustBundles.FindSPIFFEByTrustDomain(ctx, f.TenantA, "spiffe.example.test")
-	if err != nil || found == nil || found.ID != f.SPIFFEIDs[1] || found.Profile != domain.WorkloadTrustBundleProfileSPIFFE || found.Issuer != "" {
+	if err != nil || found == nil || found.ID != f.SPIFFEIDs[1] || found.Profile != workloaddomain.WorkloadTrustBundleProfileSPIFFE || found.Issuer != "" {
 		t.Fatalf("FindSPIFFEByTrustDomain = (%+v, %v)", found, err)
 	}
 	if byEmptyIssuer, err := f.TrustBundles.FindByIssuer(ctx, f.TenantA, ""); err != nil || byEmptyIssuer != nil {

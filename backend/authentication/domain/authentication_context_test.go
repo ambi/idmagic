@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/authentication/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 // HTTPHeadersAdapter は標準 http.Header を framework 非依存の Headers に変換する。
@@ -12,7 +12,7 @@ func TestHTTPHeadersAdapterGet(t *testing.T) {
 	h := http.Header{}
 	h.Set("X-Forwarded-User", "alice")
 
-	adapter := domain.HTTPHeadersAdapter{H: h}
+	adapter := authdomain.HTTPHeadersAdapter{H: h}
 
 	if got := adapter.Get("X-Forwarded-User"); got != "alice" {
 		t.Errorf("Get(X-Forwarded-User) = %q, want alice", got)
@@ -28,5 +28,5 @@ func TestHTTPHeadersAdapterGet(t *testing.T) {
 
 // HTTPHeadersAdapter は domain.Headers インターフェースを満たす。
 func TestHTTPHeadersAdapterImplementsHeaders(t *testing.T) {
-	var _ domain.Headers = domain.HTTPHeadersAdapter{H: http.Header{}}
+	var _ authdomain.Headers = authdomain.HTTPHeadersAdapter{H: http.Header{}}
 }

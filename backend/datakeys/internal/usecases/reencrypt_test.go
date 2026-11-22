@@ -12,8 +12,8 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
@@ -79,9 +79,11 @@ func TestReencryptTenantFieldExcludesOnlyUnavailableVersions(t *testing.T) {
 	}
 }
 
-type unavailableReencryptionKeyRepository struct{ ports.DataKeyRepository }
+type unavailableReencryptionKeyRepository struct {
+	datakeysports.DataKeyRepository
+}
 
-func (r unavailableReencryptionKeyRepository) ListAll(context.Context, string) ([]*domain.TenantDataEncryptionKey, error) {
+func (r unavailableReencryptionKeyRepository) ListAll(context.Context, string) ([]*datakeysdomain.TenantDataEncryptionKey, error) {
 	return nil, errors.New("key states unavailable")
 }
 
@@ -104,7 +106,7 @@ func (f *fakeReencryptMigrator) PendingCount(ctx context.Context, tenantID strin
 
 // newReencryptTestRepo bootstraps a DataKeyRepository with "tenant-a"'s
 // first DataEncryptionKey active, the tenant every test in this file uses.
-func newReencryptTestRepo(t *testing.T) ports.DataKeyRepository {
+func newReencryptTestRepo(t *testing.T) datakeysports.DataKeyRepository {
 	t.Helper()
 	repo := db_memory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()

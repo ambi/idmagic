@@ -43,7 +43,7 @@ import (
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -94,8 +94,8 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 	now := time.Now().UTC()
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	secretHash := domain.HashClientSecret(tpClientSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(tpClientSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tpRedirectURI},
@@ -103,15 +103,15 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken, spec.GrantClientCredentials,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile email offline_access read",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	// 他クライアント所有のトークンを作るための 2 つ目のクライアント。
-	otherHash := domain.HashClientSecret(tpOtherSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	otherHash := oauthdomain.HashClientSecret(tpOtherSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpOtherClientID, ClientSecretHash: &otherHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tpRedirectURI},
@@ -119,29 +119,29 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken, spec.GrantClientCredentials,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile offline_access read",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	// 内省を要求するリソースサーバー。トークンを発行しないので、内省の応答が
 	// 「自分が発行したものだから返せた」ではないことがこの分離で読める。
-	rsHash := domain.HashClientSecret(tpRSSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	rsHash := oauthdomain.HashClientSecret(tpRSSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpRSClientID, ClientSecretHash: &rsHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tpRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "read",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	subjectDN := tpMTLSSubjectDN
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tpMTLSClientID, ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{tpRedirectURI},
@@ -149,11 +149,11 @@ func newTokenPresentationFixture(t *testing.T) *tpFixture {
 			spec.GrantAuthorizationCode, spec.GrantClientCredentials,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodTlsClientAuth,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodTlsClientAuth,
 		TlsClientAuthSubjectDN:   &subjectDN,
 		Scope:                    "openid profile read",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 
@@ -904,7 +904,7 @@ func TestRevocationIsOfferedToAuthenticatedClients(t *testing.T) {
 	// 応答が 200 で、再発行が止まっただけでは足りない。記録そのものが Revoked へ
 	// 遷移し、失効が通知として残ることまで読む。
 	record, err := fixture.refreshTokens.FindByHash(
-		context.Background(), domain.HashRefreshToken(issued.RefreshToken))
+		context.Background(), oauthdomain.HashRefreshToken(issued.RefreshToken))
 	if err != nil || record == nil {
 		t.Fatalf("リフレッシュトークンの記録が見つからない: record=%v err=%v", record, err)
 	}
@@ -1023,7 +1023,7 @@ func TestSenderConstraintIsRecordedInCnfAndCheckedAtTheResource(t *testing.T) {
 		t.Fatalf("DPoP トークンの cnf=%v, want jkt=%q", dpopClaims["cnf"], jkt)
 	}
 	dpopRefresh, err := fixture.refreshTokens.FindByHash(
-		context.Background(), domain.HashRefreshToken(dpopIssued.RefreshToken))
+		context.Background(), oauthdomain.HashRefreshToken(dpopIssued.RefreshToken))
 	if err != nil || dpopRefresh == nil {
 		t.Fatalf("DPoP 発行のリフレッシュトークンの記録が無い: record=%v err=%v", dpopRefresh, err)
 	}

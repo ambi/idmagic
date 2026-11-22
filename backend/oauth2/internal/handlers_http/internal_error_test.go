@@ -19,9 +19,9 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -43,7 +43,7 @@ func TestUserInfoInternalErrors(t *testing.T) {
 		errors.New("private-marker: cipher: message authentication failed"),
 		errors.New("private-marker: goroutine 1 [running]:\n/internal/claims.go:42"),
 		fmt.Errorf("read: %w", errors.New("private-marker: dial tcp 10.0.0.5:5432")),
-		usecases.NewOAuthError("server_error", "private-marker: internal library failure"),
+		oauthusecases.NewOAuthError("server_error", "private-marker: internal library failure"),
 		nil, // 保存済みポリシーのクレーム解決に失敗する経路。
 	} {
 		for _, method := range []string{http.MethodGet, http.MethodPost} {
@@ -62,7 +62,7 @@ func TestUserInfoInternalErrors(t *testing.T) {
 					t.Fatal(err)
 				}
 				clients := memory.NewClientRepository()
-				client := &domain.OAuth2Client{
+				client := &oauthdomain.OAuth2Client{
 					TenantID: tenancydomain.DefaultTenantID, ClientID: "client-1", CreatedAt: now,
 					ClaimPolicy: &claimdomain.ClaimMappingPolicy{
 						NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "private-marker"},

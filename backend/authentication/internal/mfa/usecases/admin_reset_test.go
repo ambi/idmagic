@@ -13,7 +13,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	mfamemory "github.com/ambi/idmagic/backend/authentication/internal/mfa/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	recoverymemory "github.com/ambi/idmagic/backend/authentication/internal/recovery/db_memory"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/internal/totp/db_memory"
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/internal/webauthn/db_memory"
@@ -25,7 +25,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
-func newAuthenticatorResetDeps(t *testing.T) (usecases.AuthenticatorResetDeps, userports.UserRepository, *[]spec.DomainEvent) {
+func newAuthenticatorResetDeps(t *testing.T) (mfausecases.AuthenticatorResetDeps, userports.UserRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	now := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
@@ -34,7 +34,7 @@ func newAuthenticatorResetDeps(t *testing.T) (usecases.AuthenticatorResetDeps, u
 		CreatedAt: now, UpdatedAt: now,
 	})
 	var events []spec.DomainEvent
-	deps := usecases.AuthenticatorResetDeps{
+	deps := mfausecases.AuthenticatorResetDeps{
 		TrustedDevices:         trusteddeviceusecases.UserDeviceRevoker{Repo: trusteddevicememory.NewTrustedDeviceRepository()},
 		UserRepo:               userRepo,
 		MfaFactorRepo:          totpmemory.NewMfaFactorRepository(),
@@ -86,7 +86,7 @@ func TestResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 		MfaEnrolled: true, CreatedAt: now, UpdatedAt: now,
 	})
 
-	result, err := usecases.ResetUserAuthenticators(
+	result, err := mfausecases.ResetUserAuthenticators(
 		ctx, deps, "admin-1", "user-alice",
 		[]spec.AuthenticatorResetTarget{spec.AuthenticatorResetTotp, spec.AuthenticatorResetRecoveryCode},
 		now,
@@ -140,7 +140,7 @@ func TestResetUserAuthenticatorsPartialResetKeepsMfaEnrolled(t *testing.T) {
 		MfaEnrolled: true, CreatedAt: now, UpdatedAt: now,
 	})
 
-	result, err := usecases.ResetUserAuthenticators(
+	result, err := mfausecases.ResetUserAuthenticators(
 		ctx, deps, "admin-1", "user-alice",
 		[]spec.AuthenticatorResetTarget{spec.AuthenticatorResetWebauthn},
 		now,
@@ -169,7 +169,7 @@ func TestResetUserAuthenticatorsRejectsEmptyTargets(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	deps, _, _ := newAuthenticatorResetDeps(t)
 	now := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
-	if _, err := usecases.ResetUserAuthenticators(ctx, deps, "admin-1", "user-alice", nil, now); !errors.Is(err, usecases.ErrAuthenticatorResetNotAllowed) {
+	if _, err := mfausecases.ResetUserAuthenticators(ctx, deps, "admin-1", "user-alice", nil, now); !errors.Is(err, mfausecases.ErrAuthenticatorResetNotAllowed) {
 		t.Fatalf("error=%v, want ErrAuthenticatorResetNotAllowed", err)
 	}
 }
@@ -182,10 +182,10 @@ func TestResetUserAuthenticatorsRejectsCrossTenantTarget(t *testing.T) {
 		ID: "user-bob", TenantID: "other-tenant", PreferredUsername: "bob", PasswordHash: "unused",
 		CreatedAt: now, UpdatedAt: now,
 	})
-	if _, err := usecases.ResetUserAuthenticators(
+	if _, err := mfausecases.ResetUserAuthenticators(
 		ctx, deps, "admin-1", "user-bob",
 		[]spec.AuthenticatorResetTarget{spec.AuthenticatorResetTotp}, now,
-	); !errors.Is(err, usecases.ErrAuthenticatorResetNotAllowed) {
+	); !errors.Is(err, mfausecases.ErrAuthenticatorResetNotAllowed) {
 		t.Fatalf("error=%v, want ErrAuthenticatorResetNotAllowed", err)
 	}
 }

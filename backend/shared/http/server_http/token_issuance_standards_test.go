@@ -41,7 +41,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -91,8 +91,8 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	}
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	secretHash := domain.HashClientSecret(tiClientSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(tiClientSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tiClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{tiRedirectURI},
@@ -101,32 +101,32 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 			spec.GrantClientCredentials, spec.GrantTokenExchange,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile offline_access read write idmagic.account idmagic.admin",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	// public クライアントは client_credentials を宣言していても使えない。
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tiPublicClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{tiRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantClientCredentials},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodNone,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodNone,
 		Scope:                    "openid read",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: tiAssertionClient, ClientType: spec.ClientConfidential,
 		RedirectURIs:            []string{tiRedirectURI},
 		GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodPrivateKeyJwt,
 		Scope:                   "read",
 		JWKS: map[string]any{"keys": []any{map[string]any{
 			"kty": "RSA", "kid": "assertion-key",
@@ -134,7 +134,7 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 			"e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(assertionKey.PublicKey.E)).Bytes()),
 		}}},
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 
@@ -150,15 +150,15 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 	})
 
 	resourceServers := oauth2.NewMemoryModule().McpResourceServerRepo
-	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		ID: "rs-orders", Resource: tiResource, Name: "Orders API",
 		Scopes: []string{"openid", "profile", "offline_access", "read", "write"},
-		State:  domain.McpResourceServerActive,
+		State:  oauthdomain.McpResourceServerActive,
 	})
 	// 無効な資源サーバー。登録済みでも `Active` でなければ audience にできない。
-	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		ID: "rs-invoices", Resource: tiOtherResource, Name: "Invoices API",
-		Scopes: []string{"read"}, State: domain.McpResourceServerDisabled,
+		Scopes: []string{"read"}, State: oauthdomain.McpResourceServerDisabled,
 	})
 
 	tenants := tenancy.NewMemoryModule().TenantRepo
@@ -383,9 +383,9 @@ func assertOAuthErrorCode(t *testing.T, what, body, want string) {
 }
 
 // refreshRecord は平文のリフレッシュトークンに対応する保存層の記録を返す。
-func (f *tiFixture) refreshRecord(ctx context.Context, t *testing.T, token string) *domain.RefreshTokenRecord {
+func (f *tiFixture) refreshRecord(ctx context.Context, t *testing.T, token string) *oauthdomain.RefreshTokenRecord {
 	t.Helper()
-	record, err := f.refreshTokens.FindByHash(ctx, domain.HashRefreshToken(token))
+	record, err := f.refreshTokens.FindByHash(ctx, oauthdomain.HashRefreshToken(token))
 	if err != nil || record == nil {
 		t.Fatalf("リフレッシュトークンの記録が見つからない: record=%v err=%v", record, err)
 	}

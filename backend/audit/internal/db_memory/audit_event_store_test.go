@@ -7,12 +7,12 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 )
 
-func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, userID string) *ports.AuditEventRecord {
+func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, userID string) *auditports.AuditEventRecord {
 	t.Helper()
-	return &ports.AuditEventRecord{
+	return &auditports.AuditEventRecord{
 		ID:         tenantID + ":" + typ + ":" + userID + ":" + occurredAt.Format(time.RFC3339Nano),
 		TenantID:   tenantID,
 		Type:       typ,
@@ -24,7 +24,7 @@ func newAuditEvent(t *testing.T, tenantID, typ string, occurredAt time.Time, use
 func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	store := NewAuditEventStore(0)
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	for i, ev := range []*ports.AuditEventRecord{
+	for i, ev := range []*auditports.AuditEventRecord{
 		newAuditEvent(t, "acme", "UserAuthenticated", base, "alice"),
 		newAuditEvent(t, "acme", "AccessTokenIssued", base.Add(2*time.Second), "alice"),
 		newAuditEvent(t, tenancydomain.DefaultTenantID, "UserAuthenticated", base.Add(3*time.Second), "bob"),
@@ -36,7 +36,7 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	}
 
 	// 全テナントを暗黙に閉じた acme フィルタは acme のみ降順で返す。
-	out, err := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme"})
+	out, err := store.List(context.Background(), auditports.AuditEventQuery{TenantID: "acme"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	}
 
 	// type フィルタ + sub フィルタの結合。
-	filtered, err := store.List(context.Background(), ports.AuditEventQuery{
+	filtered, err := store.List(context.Background(), auditports.AuditEventQuery{
 		TenantID: "acme", Type: "UserAuthenticated", UserID: "alice",
 	})
 	if err != nil {
@@ -59,7 +59,7 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	}
 
 	// AllTenants=true は default を含めて全件を返す。
-	all, err := store.List(context.Background(), ports.AuditEventQuery{AllTenants: true})
+	all, err := store.List(context.Background(), auditports.AuditEventQuery{AllTenants: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestAuditEventStoreFiltersAndOrders(t *testing.T) {
 	}
 
 	// After フィルタは境界を含む (BeforeForce: rec.Before(After) を弾く)。
-	after, err := store.List(context.Background(), ports.AuditEventQuery{
+	after, err := store.List(context.Background(), auditports.AuditEventQuery{
 		TenantID: "acme", After: base.Add(3 * time.Second),
 	})
 	if err != nil {
@@ -84,7 +84,7 @@ func TestAuditEventStoreEvictsBeyondCapacity(t *testing.T) {
 	store := NewAuditEventStore(3)
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	first := newAuditEvent(t, "acme", "X", base, "a")
-	for _, ev := range []*ports.AuditEventRecord{
+	for _, ev := range []*auditports.AuditEventRecord{
 		first,
 		newAuditEvent(t, "acme", "X", base.Add(time.Second), "b"),
 		newAuditEvent(t, "acme", "X", base.Add(2*time.Second), "c"),
@@ -97,7 +97,7 @@ func TestAuditEventStoreEvictsBeyondCapacity(t *testing.T) {
 	if got, _ := store.FindByID(context.Background(), first.ID); got != nil {
 		t.Fatal("oldest event must be evicted")
 	}
-	out, err := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme"})
+	out, err := store.List(context.Background(), auditports.AuditEventQuery{TenantID: "acme"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,13 +110,13 @@ func TestAuditEventStoreLimitCapsAt1000(t *testing.T) {
 	store := NewAuditEventStore(0)
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for i := range 1100 {
-		_ = store.Append(context.Background(), &ports.AuditEventRecord{
+		_ = store.Append(context.Background(), &auditports.AuditEventRecord{
 			ID: "e" + time.Duration(i).String(), TenantID: "acme", Type: "X",
 			OccurredAt: base.Add(time.Duration(i) * time.Second),
 			Payload:    map[string]any{"userId": "u"},
 		})
 	}
-	out, _ := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme", Limit: 10000})
+	out, _ := store.List(context.Background(), auditports.AuditEventQuery{TenantID: "acme", Limit: 10000})
 	if len(out) != 1000 {
 		t.Fatalf("limit must cap at 1000, got %d", len(out))
 	}
@@ -126,7 +126,7 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 	store := NewAuditEventStore(0)
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for i := range 5 {
-		if err := store.Append(context.Background(), &ports.AuditEventRecord{
+		if err := store.Append(context.Background(), &auditports.AuditEventRecord{
 			ID: "e" + string(rune('0'+i)), TenantID: "acme", Type: "X",
 			OccurredAt: base.Add(time.Duration(i) * time.Second),
 			Payload:    map[string]any{"userId": "u"},
@@ -135,7 +135,7 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 		}
 	}
 
-	first, err := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme", Limit: 2})
+	first, err := store.List(context.Background(), auditports.AuditEventQuery{TenantID: "acme", Limit: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 	}
 
 	last := first[len(first)-1]
-	next, err := store.List(context.Background(), ports.AuditEventQuery{
+	next, err := store.List(context.Background(), auditports.AuditEventQuery{
 		TenantID: "acme", Limit: 2, AfterOccurredAt: last.OccurredAt, AfterID: last.ID,
 	})
 	if err != nil {
@@ -154,11 +154,11 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 	if len(next) != 2 || next[0].ID != "e2" || next[1].ID != "e1" {
 		t.Fatalf("unexpected continuation page: %+v", next)
 	}
-	total, err := store.Count(context.Background(), ports.AuditEventQuery{TenantID: "acme", Type: "X"})
+	total, err := store.Count(context.Background(), auditports.AuditEventQuery{TenantID: "acme", Type: "X"})
 	if err != nil || total != 5 {
 		t.Fatalf("Count = %d, err=%v", total, err)
 	}
-	fromEnd, err := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme", Limit: 2, FromEnd: true})
+	fromEnd, err := store.List(context.Background(), auditports.AuditEventQuery{TenantID: "acme", Limit: 2, FromEnd: true})
 	if err != nil || len(fromEnd) != 2 || fromEnd[0].ID != "e1" || fromEnd[1].ID != "e0" {
 		t.Fatalf("end page = %+v, err=%v", fromEnd, err)
 	}
@@ -180,16 +180,16 @@ func TestAuditEventStoreMatchesAnyValueOfAMultiValuedAttribute(t *testing.T) {
 		"delegation.actor": {"bob"},
 		"delegation.mode":  {"direct"},
 	}
-	for i, ev := range []*ports.AuditEventRecord{chained, direct} {
+	for i, ev := range []*auditports.AuditEventRecord{chained, direct} {
 		if err := store.Append(context.Background(), ev); err != nil {
 			t.Fatalf("append #%d: %v", i, err)
 		}
 	}
 
 	// チェーンの中間にいる参加者からでも引ける。
-	events, err := store.List(context.Background(), ports.AuditEventQuery{
+	events, err := store.List(context.Background(), auditports.AuditEventQuery{
 		TenantID: "acme",
-		Filters:  []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpEq, Values: []string{"app-a"}}},
+		Filters:  []auditports.AuditFilterExpression{{Field: "delegation.actor", Operator: auditports.OpEq, Values: []string{"app-a"}}},
 	})
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -199,9 +199,9 @@ func TestAuditEventStoreMatchesAnyValueOfAMultiValuedAttribute(t *testing.T) {
 	}
 
 	// 参加していない主体では引けない。
-	events, err = store.List(context.Background(), ports.AuditEventQuery{
+	events, err = store.List(context.Background(), auditports.AuditEventQuery{
 		TenantID: "acme",
-		Filters:  []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpEq, Values: []string{"app-c"}}},
+		Filters:  []auditports.AuditFilterExpression{{Field: "delegation.actor", Operator: auditports.OpEq, Values: []string{"app-c"}}},
 	})
 	if err != nil {
 		t.Fatalf("list: %v", err)

@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // TenantBrandingRepository は branding config を PostgreSQL に保存する (wi-89)
@@ -16,7 +16,7 @@ import (
 // 列を追加しない。クエリは sqlc 生成。
 type TenantBrandingRepository struct{ Pool sharedpg.DB }
 
-func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID string) (*domain.TenantBranding, error) {
+func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID string) (*tenancydomain.TenantBranding, error) {
 	row, err := New(r.Pool).FindTenantBrandingByTenant(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -24,7 +24,7 @@ func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID st
 	if err != nil {
 		return nil, err
 	}
-	return &domain.TenantBranding{
+	return &tenancydomain.TenantBranding{
 		TenantID:         row.TenantID,
 		ProductName:      row.ProductName.String,
 		LogoObjectKey:    row.LogoObjectKey.String,
@@ -33,15 +33,15 @@ func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID st
 		FaviconURL:       row.FaviconUrl.String,
 		PrimaryColor:     row.PrimaryColor.String,
 		AccentColor:      row.AccentColor.String,
-		FooterLink1:      domain.TenantFooterLink{Label: row.FooterLink1Label.String, URL: row.FooterLink1Url.String},
-		FooterLink2:      domain.TenantFooterLink{Label: row.FooterLink2Label.String, URL: row.FooterLink2Url.String},
+		FooterLink1:      tenancydomain.TenantFooterLink{Label: row.FooterLink1Label.String, URL: row.FooterLink1Url.String},
+		FooterLink2:      tenancydomain.TenantFooterLink{Label: row.FooterLink2Label.String, URL: row.FooterLink2Url.String},
 		FooterText:       row.FooterText.String,
 		CreatedAt:        row.CreatedAt,
 		UpdatedAt:        row.UpdatedAt,
 	}, nil
 }
 
-func (r *TenantBrandingRepository) Save(ctx context.Context, branding *domain.TenantBranding) error {
+func (r *TenantBrandingRepository) Save(ctx context.Context, branding *tenancydomain.TenantBranding) error {
 	return New(r.Pool).SaveTenantBranding(ctx, SaveTenantBrandingParams{
 		TenantID:         branding.TenantID,
 		ProductName:      textOrNil(branding.ProductName),
@@ -72,7 +72,7 @@ func textOrNil(s string) pgtype.Text {
 // (wi-89)。application_icons と同型だが専用テーブルに分離する。
 type TenantBrandingAssetStore struct{ Pool sharedpg.DB }
 
-func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *domain.TenantBrandingAsset) error {
+func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *tenancydomain.TenantBrandingAsset) error {
 	return New(s.Pool).UpsertTenantBrandingAsset(ctx, UpsertTenantBrandingAssetParams{
 		TenantID: asset.TenantID, Kind: string(asset.Kind), ID: asset.ID,
 		ContentType: asset.ContentType, SizeBytes: int32(asset.SizeBytes), //nolint:gosec // G115: asset size is bounded by upload limits, well under int32 max
@@ -80,7 +80,7 @@ func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *domain.Tenan
 	})
 }
 
-func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, kind domain.TenantBrandingAssetKind, id string) (*domain.TenantBrandingAsset, error) {
+func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, kind tenancydomain.TenantBrandingAssetKind, id string) (*tenancydomain.TenantBrandingAsset, error) {
 	row, err := New(s.Pool).GetTenantBrandingAsset(ctx, GetTenantBrandingAssetParams{
 		TenantID: tenantID, Kind: string(kind), ID: id,
 	})
@@ -90,14 +90,14 @@ func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, ki
 	if err != nil {
 		return nil, err
 	}
-	return &domain.TenantBrandingAsset{
-		TenantID: row.TenantID, Kind: domain.TenantBrandingAssetKind(row.Kind), ID: row.ID,
+	return &tenancydomain.TenantBrandingAsset{
+		TenantID: row.TenantID, Kind: tenancydomain.TenantBrandingAssetKind(row.Kind), ID: row.ID,
 		ContentType: row.ContentType, SizeBytes: int(row.SizeBytes), Data: row.Data,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }
 
-func (s *TenantBrandingAssetStore) DeleteByTenant(ctx context.Context, tenantID string, kind domain.TenantBrandingAssetKind) error {
+func (s *TenantBrandingAssetStore) DeleteByTenant(ctx context.Context, tenantID string, kind tenancydomain.TenantBrandingAssetKind) error {
 	return New(s.Pool).DeleteTenantBrandingAssetsByKind(ctx, DeleteTenantBrandingAssetsByKindParams{
 		TenantID: tenantID, Kind: string(kind),
 	})

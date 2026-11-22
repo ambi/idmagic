@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 // AgentGuardrailFixture は二つのテナントと、最初のテナントの Agent を渡す。
 type AgentGuardrailFixture struct {
-	Repo     ports.AgentGuardrailPolicyRepository
+	Repo     oauthports.AgentGuardrailPolicyRepository
 	Context  context.Context
 	TenantID string
 	Other    string
@@ -24,17 +24,17 @@ type AgentGuardrailFixture struct {
 func RunAgentGuardrail(t *testing.T, f AgentGuardrailFixture) {
 	t.Helper()
 	ttl := 60
-	first := &domain.AgentGuardrailPolicy{
+	first := &oauthdomain.AgentGuardrailPolicy{
 		TenantID: f.TenantID, AgentID: f.AgentID, UpdatedAt: f.Now,
 		AllowedResources: []string{}, MaxTokenTTLSeconds: &ttl,
 	}
-	if err := f.Repo.Save(f.Context, first, "stale"); !errors.Is(err, ports.ErrAgentGuardrailConflict) {
+	if err := f.Repo.Save(f.Context, first, "stale"); !errors.Is(err, oauthports.ErrAgentGuardrailConflict) {
 		t.Fatalf("save without a row and a version = %v", err)
 	}
 	if err := f.Repo.Save(f.Context, first, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Repo.Save(f.Context, first, ""); !errors.Is(err, ports.ErrAgentGuardrailConflict) {
+	if err := f.Repo.Save(f.Context, first, ""); !errors.Is(err, oauthports.ErrAgentGuardrailConflict) {
 		t.Fatalf("second create = %v", err)
 	}
 	found, err := f.Repo.Find(f.Context, f.TenantID, f.AgentID)
@@ -48,15 +48,15 @@ func RunAgentGuardrail(t *testing.T, f AgentGuardrailFixture) {
 		t.Fatalf("version changed across storage: %s != %s", found.Version(), first.Version())
 	}
 
-	second := &domain.AgentGuardrailPolicy{TenantID: f.TenantID, AgentID: f.AgentID, UpdatedAt: f.Now}
-	if err := f.Repo.Save(f.Context, second, second.Version()); !errors.Is(err, ports.ErrAgentGuardrailConflict) {
+	second := &oauthdomain.AgentGuardrailPolicy{TenantID: f.TenantID, AgentID: f.AgentID, UpdatedAt: f.Now}
+	if err := f.Repo.Save(f.Context, second, second.Version()); !errors.Is(err, oauthports.ErrAgentGuardrailConflict) {
 		t.Fatalf("stale update = %v", err)
 	}
 	if err := f.Repo.Save(f.Context, second, first.Version()); err != nil {
 		t.Fatal(err)
 	}
 
-	tenantDefault := &domain.AgentGuardrailPolicy{TenantID: f.TenantID, UpdatedAt: f.Now, RequireApproval: true}
+	tenantDefault := &oauthdomain.AgentGuardrailPolicy{TenantID: f.TenantID, UpdatedAt: f.Now, RequireApproval: true}
 	if err := f.Repo.Save(f.Context, tenantDefault, ""); err != nil {
 		t.Fatal(err)
 	}

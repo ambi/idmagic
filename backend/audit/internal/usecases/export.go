@@ -9,8 +9,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/domain"
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditdomain "github.com/ambi/idmagic/backend/audit/domain"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -33,14 +33,14 @@ var (
 )
 
 type ExportDeps struct {
-	Events    ports.AuditEventRepository
-	Artifacts ports.ExportArtifactStore
+	Events    auditports.AuditEventRepository
+	Artifacts auditports.ExportArtifactStore
 	Jobs      jobsports.JobRepository
 	Enqueuer  jobsports.Enqueuer
 	Canceler  jobsports.Canceler
 	Codec     *support.CursorCodec
 	Emit      func(spec.DomainEvent)
-	Metrics   ports.ExportMetrics
+	Metrics   auditports.ExportMetrics
 	Now       func() time.Time
 }
 
@@ -76,7 +76,7 @@ type ExportView struct {
 	Downloadable bool       `json:"downloadable"`
 }
 
-func StartExport(ctx context.Context, d ExportDeps, p ports.ExportParams) (*ExportView, error) {
+func StartExport(ctx context.Context, d ExportDeps, p auditports.ExportParams) (*ExportView, error) {
 	if d.Enqueuer == nil || d.Artifacts == nil || d.Jobs == nil || d.Emit == nil {
 		return nil, ErrExportFailed
 	}
@@ -98,13 +98,13 @@ func StartExport(ctx context.Context, d ExportDeps, p ports.ExportParams) (*Expo
 	if err != nil {
 		return nil, err
 	}
-	d.Emit(&domain.AuditExportRequested{ExportEvent: exportEvent(job, p, p.RequestedAt)})
+	d.Emit(&auditdomain.AuditExportRequested{ExportEvent: exportEvent(job, p, p.RequestedAt)})
 	d.record("requested", "accepted")
 	return exportView(job, p, d.now()), nil
 }
 
 // StreamExport は JSON 全体の大きさを検査し、ページ一つと一つのイベントだけを保持する。
-func StreamExport(ctx context.Context, d ExportDeps, p ports.ExportParams, out io.Writer, check func() error, truncate bool) (int, error) {
+func StreamExport(ctx context.Context, d ExportDeps, p auditports.ExportParams, out io.Writer, check func() error, truncate bool) (int, error) {
 	if d.Codec == nil || (d.Events == nil && !p.NoMatch) {
 		return 0, ErrExportFailed
 	}
@@ -211,7 +211,7 @@ func (w *exportLimitWriter) Write(p []byte) (int, error) {
 
 func ExportHandler(d ExportDeps) jobsports.Handler {
 	return func(ctx context.Context, job *jobsdomain.Job) (json.RawMessage, error) {
-		var p ports.ExportParams
+		var p auditports.ExportParams
 		if json.Unmarshal(job.Params, &p) != nil || p.Query.TenantID != job.TenantID || p.Policy.Validate() != nil || p.Format != "json" {
 			return nil, ErrExportFailed
 		}
@@ -231,9 +231,9 @@ func ExportHandler(d ExportDeps) jobsports.Handler {
 		if err := check(); err != nil {
 			return nil, err
 		}
-		artifact, err := d.Artifacts.Write(ctx, job.TenantID, job.ID, func(out io.Writer) (ports.ExportCompletion, error) {
+		artifact, err := d.Artifacts.Write(ctx, job.TenantID, job.ID, func(out io.Writer) (auditports.ExportCompletion, error) {
 			count, err := StreamExport(ctx, d, p, out, check, false)
-			return ports.ExportCompletion{Events: count, ExpiresAt: d.now().Add(p.Policy.TTL), BeforePublish: check}, err
+			return auditports.ExportCompletion{Events: count, ExpiresAt: d.now().Add(p.Policy.TTL), BeforePublish: check}, err
 		})
 		if err != nil {
 			if errors.Is(err, ErrEventLimit) || errors.Is(err, ErrByteLimit) {
@@ -254,15 +254,15 @@ func ExportHandler(d ExportDeps) jobsports.Handler {
 	}
 }
 
-func scopedExport(ctx context.Context, d ExportDeps, s ExportScope, id string) (*jobsdomain.Job, ports.ExportParams, error) {
+func scopedExport(ctx context.Context, d ExportDeps, s ExportScope, id string) (*jobsdomain.Job, auditports.ExportParams, error) {
 	job, err := d.Jobs.Get(ctx, id)
 	if errors.Is(err, jobsports.ErrJobNotFound) {
-		return nil, ports.ExportParams{}, ErrExportNotFound
+		return nil, auditports.ExportParams{}, ErrExportNotFound
 	}
 	if err != nil {
-		return nil, ports.ExportParams{}, err
+		return nil, auditports.ExportParams{}, err
 	}
-	var p ports.ExportParams
+	var p auditports.ExportParams
 	if job.Kind != KindAuditExport || job.TenantID != s.TenantID || json.Unmarshal(job.Params, &p) != nil || p.Query.TenantID != s.TenantID || p.Query.AllTenants != s.System || p.RequestedBy != s.RequestedBy {
 		return nil, p, ErrExportNotFound
 	}
@@ -284,7 +284,7 @@ func ListExports(ctx context.Context, d ExportDeps, s ExportScope) ([]*ExportVie
 	}
 	views := make([]*ExportView, 0, 20)
 	for _, job := range jobs {
-		var p ports.ExportParams
+		var p auditports.ExportParams
 		if json.Unmarshal(job.Params, &p) != nil || p.Query.AllTenants != s.System || p.RequestedBy != s.RequestedBy {
 			continue
 		}
@@ -311,33 +311,33 @@ func CancelExport(ctx context.Context, d ExportDeps, s ExportScope, id string) (
 	return exportView(canceled, p, d.now()), nil
 }
 
-func DownloadExport(ctx context.Context, d ExportDeps, s ExportScope, id string) (io.ReadCloser, ports.ExportArtifact, error) {
+func DownloadExport(ctx context.Context, d ExportDeps, s ExportScope, id string) (io.ReadCloser, auditports.ExportArtifact, error) {
 	job, p, err := scopedExport(ctx, d, s, id)
 	if err != nil {
-		return nil, ports.ExportArtifact{}, err
+		return nil, auditports.ExportArtifact{}, err
 	}
 	view := exportView(job, p, d.now())
 	if !view.Downloadable {
-		return nil, ports.ExportArtifact{}, ErrExportUnavailable
+		return nil, auditports.ExportArtifact{}, ErrExportUnavailable
 	}
 	reader, artifact, err := d.Artifacts.Open(ctx, job.TenantID, job.ID)
-	if errors.Is(err, ports.ErrExportArtifactNotFound) {
+	if errors.Is(err, auditports.ErrExportArtifactNotFound) {
 		return nil, artifact, ErrExportUnavailable
 	}
 	if err != nil {
 		return nil, artifact, err
 	}
-	var result ports.ExportArtifact
+	var result auditports.ExportArtifact
 	if json.Unmarshal(job.Result, &result) != nil || artifact.Ref != result.Ref || artifact.JobID != result.JobID || artifact.TenantID != result.TenantID || artifact.SHA256 != result.SHA256 || artifact.ByteSize != result.ByteSize || artifact.Events != result.Events || !artifact.ExpiresAt.Equal(result.ExpiresAt) || !d.now().Before(artifact.ExpiresAt) {
 		_ = reader.Close()
 		return nil, artifact, ErrExportUnavailable
 	}
-	d.Emit(&domain.AuditExportDownloaded{ExportEvent: exportEvent(job, p, d.now())})
+	d.Emit(&auditdomain.AuditExportDownloaded{ExportEvent: exportEvent(job, p, d.now())})
 	d.record("downloaded", "accepted")
 	return reader, artifact, nil
 }
 
-func exportView(job *jobsdomain.Job, p ports.ExportParams, now time.Time) *ExportView {
+func exportView(job *jobsdomain.Job, p auditports.ExportParams, now time.Time) *ExportView {
 	view := &ExportView{ID: job.ID, Status: string(job.Status), Scope: "tenant", Format: "json", RequestedBy: p.RequestedBy, CreatedAt: job.CreatedAt}
 	if p.Query.AllTenants {
 		view.Scope = "system"
@@ -351,7 +351,7 @@ func exportView(job *jobsdomain.Job, p ports.ExportParams, now time.Time) *Expor
 		}
 	}
 	if job.Status == jobsdomain.StatusSucceeded {
-		var result ports.ExportArtifact
+		var result auditports.ExportArtifact
 		if json.Unmarshal(job.Result, &result) != nil || result.JobID != job.ID || result.TenantID != job.TenantID {
 			view.Status = "failed"
 			view.ErrorCode = ErrExportFailed.Error()
@@ -366,12 +366,12 @@ func exportView(job *jobsdomain.Job, p ports.ExportParams, now time.Time) *Expor
 	return view
 }
 
-func exportEvent(job *jobsdomain.Job, p ports.ExportParams, now time.Time) domain.ExportEvent {
+func exportEvent(job *jobsdomain.Job, p auditports.ExportParams, now time.Time) auditdomain.ExportEvent {
 	scope := "tenant"
 	if p.Query.AllTenants {
 		scope = "system"
 	}
-	return domain.ExportEvent{At: now, TenantID: job.TenantID, ExportID: job.ID, ActorUserID: p.RequestedBy, Scope: scope}
+	return auditdomain.ExportEvent{At: now, TenantID: job.TenantID, ExportID: job.ID, ActorUserID: p.RequestedBy, Scope: scope}
 }
 
 // ObserveExportJob は Jobs の確定後にだけ業務上のライフサイクルを記録する。
@@ -402,20 +402,20 @@ func ObserveExportJob(ctx context.Context, d ExportDeps, event spec.DomainEvent)
 	if job.Kind != KindAuditExport {
 		return nil
 	}
-	var p ports.ExportParams
+	var p auditports.ExportParams
 	if err := json.Unmarshal(job.Params, &p); err != nil {
 		return err
 	}
 	base := exportEvent(job, p, event.OccurredAt())
 	switch operation {
 	case "started":
-		d.Emit(&domain.AuditExportStarted{ExportEvent: base})
+		d.Emit(&auditdomain.AuditExportStarted{ExportEvent: base})
 	case "succeeded":
-		d.Emit(&domain.AuditExportSucceeded{ExportEvent: base})
+		d.Emit(&auditdomain.AuditExportSucceeded{ExportEvent: base})
 	case "failed":
-		d.Emit(&domain.AuditExportFailed{ExportEvent: base})
+		d.Emit(&auditdomain.AuditExportFailed{ExportEvent: base})
 	case "canceled":
-		d.Emit(&domain.AuditExportCanceled{ExportEvent: base})
+		d.Emit(&auditdomain.AuditExportCanceled{ExportEvent: base})
 	}
 	d.record(operation, operation)
 	return nil

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
+	workloadusecases "github.com/ambi/idmagic/backend/workloadidentity/internal/usecases"
 	"github.com/labstack/echo/v5"
 )
 
@@ -26,7 +26,7 @@ func (d Deps) handleUpdateBinding(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, 400, "invalid_request", "The JSON request body is invalid.")
 	}
-	binding, err := usecases.UpdateAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), c.Param("binding_id"), usecases.UpdateAgentWorkloadBindingInput{SubjectPattern: req.SubjectPattern, AgentID: req.AgentID}, time.Now().UTC())
+	binding, err := workloadusecases.UpdateAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), c.Param("binding_id"), workloadusecases.UpdateAgentWorkloadBindingInput{SubjectPattern: req.SubjectPattern, AgentID: req.AgentID}, time.Now().UTC())
 	if err != nil {
 		return writeAdminWorkloadIdentityError(c, err)
 	}
@@ -56,7 +56,7 @@ func (d Deps) handlePreviewBindings(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, 400, "invalid_request", "The JSON request body is invalid.")
 	}
-	result, err := usecases.PreviewAgentWorkloadBindings(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"), usecases.PreviewAgentWorkloadBindingsInput{Subject: req.Subject, SubjectPattern: req.SubjectPattern, ExcludeBindingID: req.ExcludeBindingID})
+	result, err := workloadusecases.PreviewAgentWorkloadBindings(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"), workloadusecases.PreviewAgentWorkloadBindingsInput{Subject: req.Subject, SubjectPattern: req.SubjectPattern, ExcludeBindingID: req.ExcludeBindingID})
 	if err != nil {
 		return writeAdminWorkloadIdentityError(c, err)
 	}

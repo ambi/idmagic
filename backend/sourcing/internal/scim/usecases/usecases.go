@@ -8,8 +8,8 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 var ErrNotFound = errors.New("SCIM resource not found")
@@ -32,21 +32,21 @@ func scimDeleted(user *userdomain.User) bool {
 }
 
 type Usecases struct {
-	ScimRepo      ports.ScimRepository
+	ScimRepo      scimports.ScimRepository
 	UserRepo      userports.UserRepository
 	GroupRepo     groupports.GroupRepository
-	UserLifecycle ports.UserLifecycle
+	UserLifecycle scimports.UserLifecycle
 	Emit          func(spec.DomainEvent)
-	Writes        ports.IdentityWrites
+	Writes        scimports.IdentityWrites
 }
 
 func NewUsecases(
-	scimRepo ports.ScimRepository,
+	scimRepo scimports.ScimRepository,
 	userRepo userports.UserRepository,
 	groupRepo groupports.GroupRepository,
-	userLifecycle ports.UserLifecycle,
+	userLifecycle scimports.UserLifecycle,
 	emit func(spec.DomainEvent),
-	writes ports.IdentityWrites,
+	writes scimports.IdentityWrites,
 ) *Usecases {
 	return &Usecases{
 		ScimRepo:      scimRepo,
@@ -102,7 +102,7 @@ func (u *Usecases) resolveLiveUserID(ctx context.Context, tenantID, kind, scimID
 	user, err := u.findLiveUserByScimID(ctx, tenantID, scimID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return "", domain.NewMutationError("invalidValue", "%s %q does not resolve to a User in this tenant", kind, scimID)
+			return "", scimdomain.NewMutationError("invalidValue", "%s %q does not resolve to a User in this tenant", kind, scimID)
 		}
 		return "", err
 	}

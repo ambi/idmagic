@@ -7,15 +7,15 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	directorywrites "github.com/ambi/idmagic/backend/sourcing/directory/ports"
+	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	directorymemory "github.com/ambi/idmagic/backend/sourcing/internal/directory/db_memory"
 	directorypostgres "github.com/ambi/idmagic/backend/sourcing/internal/directory/db_postgres"
-	directoryports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/db_postgres"
 	"github.com/ambi/idmagic/backend/sourcing/internal/scim/source_idmanagement"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -45,7 +45,7 @@ func (m Module) UserOwnershipGuard() userports.UserSourceOwnershipGuard {
 
 type sourceOwnership struct {
 	scim      userports.UserSourceOwnershipGuard
-	directory directoryports.CorrelationRepository
+	directory directoryinternalports.CorrelationRepository
 }
 
 func (o sourceOwnership) SourceManagedUserIDs(ctx context.Context, tenantID string, userIDs []string) (map[string]bool, error) {
@@ -84,13 +84,13 @@ func (m Module) SCIMGroupLookup() groupports.SCIMGroupLookup {
 }
 
 // Usecases は HTTP と同じライフサイクル操作を使う SCIM の呼び出し口を組み立てる。
-func (m Module) Usecases(users userports.UserRepository, groups groupports.GroupRepository, emit func(spec.DomainEvent)) *usecases.Usecases {
-	return usecases.NewUsecases(m.ScimRepo, users, groups, m.UserLifecycle, emit, m.Writes)
+func (m Module) Usecases(users userports.UserRepository, groups groupports.GroupRepository, emit func(spec.DomainEvent)) *scimusecases.Usecases {
+	return scimusecases.NewUsecases(m.ScimRepo, users, groups, m.UserLifecycle, emit, m.Writes)
 }
 
 // CreateInTransaction は、所有者の作成と SCIM の対応表を同じ Tx で確定する。
 // メモリの対応表には I/O と保存の失敗がなく、tx は nil になる。
-func (m Module) CreateInTransaction(ctx context.Context, create func(pgx.Tx, ports.ScimRepository) error) error {
+func (m Module) CreateInTransaction(ctx context.Context, create func(pgx.Tx, scimports.ScimRepository) error) error {
 	return m.inTransaction(ctx, func(tx pgx.Tx) error {
 		if tx == nil {
 			return create(nil, m.ScimRepo)
@@ -101,7 +101,7 @@ func (m Module) CreateInTransaction(ctx context.Context, create func(pgx.Tx, por
 
 // CreateDirectoryUserInTransaction は、所有者の作成と Directory Connector の対応を同じ Tx で確定する。
 // メモリの対応には I/O と保存の失敗がなく、tx は nil になる。
-func (m Module) CreateDirectoryUserInTransaction(ctx context.Context, create func(pgx.Tx, directorywrites.CorrelationWriter) error) error {
+func (m Module) CreateDirectoryUserInTransaction(ctx context.Context, create func(pgx.Tx, directoryports.CorrelationWriter) error) error {
 	return m.inTransaction(ctx, func(tx pgx.Tx) error {
 		if tx == nil {
 			return create(nil, m.memoryCorrelations)

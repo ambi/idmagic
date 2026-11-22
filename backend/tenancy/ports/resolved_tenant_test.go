@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/ambi/idmagic/backend/shared/tenantcontext"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // WithTenant で格納したテナントが Tenant / TenantID から取り出せる。
 func TestWithTenantAndAccessors(t *testing.T) {
-	tenant := &domain.Tenant{ID: "acme"}
+	tenant := &tenancydomain.Tenant{ID: "acme"}
 	ctx := tenantports.WithTenant(context.Background(), tenant, "https://acme.example.com/", "/realms/acme/")
 
 	if got := tenantports.Tenant(ctx); got == nil || got.ID != "acme" {
@@ -34,7 +34,7 @@ func TestWithTenantAndAccessors(t *testing.T) {
 func TestTenantIDPanicsWithoutResolvedTenant(t *testing.T) {
 	for name, ctx := range map[string]context.Context{
 		"テナントがない": context.Background(),
-		"ID が空":   tenantports.WithTenant(context.Background(), &domain.Tenant{ID: ""}, "", ""),
+		"ID が空":   tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: ""}, "", ""),
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {
@@ -88,7 +88,7 @@ func TestTenantIDOnlyContext(t *testing.T) {
 }
 
 func TestTenantIDOnlyContextReplacesResolvedSettings(t *testing.T) {
-	resolved := tenantports.WithTenant(context.Background(), &domain.Tenant{ID: "http-tenant"}, "https://http.example", "/realms/http")
+	resolved := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "http-tenant"}, "https://http.example", "/realms/http")
 	ctx := tenantports.WithTenantID(resolved, "job-tenant")
 	if got := tenantports.TenantID(ctx); got != "job-tenant" {
 		t.Fatalf("TenantID() = %q, want job-tenant", got)
@@ -102,7 +102,7 @@ func TestTenantIDOnlyContextReplacesResolvedSettings(t *testing.T) {
 	if got := tenantports.URLPrefix(ctx); got != "" {
 		t.Fatalf("URLPrefix() = %q, want empty", got)
 	}
-	ctx = tenantports.WithTenant(ctx, &domain.Tenant{ID: "next-http"}, "https://next.example", "/realms/next")
+	ctx = tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: "next-http"}, "https://next.example", "/realms/next")
 	if got := tenantports.TenantID(ctx); got != "next-http" {
 		t.Fatalf("TenantID() = %q, want next-http", got)
 	}
@@ -115,11 +115,11 @@ func TestTenantIDOnlyContextReplacesResolvedSettings(t *testing.T) {
 func TestResolvedTenantPublishesHTTPLocation(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
-		tenant       *domain.Tenant
+		tenant       *tenancydomain.Tenant
 		wantHostOnly bool
 	}{
-		{"subdomain", &domain.Tenant{ID: "sub", EndpointStyle: domain.TenantEndpointStyleSubdomain}, true},
-		{"path", &domain.Tenant{ID: "path", EndpointStyle: domain.TenantEndpointStylePath}, false},
+		{"subdomain", &tenancydomain.Tenant{ID: "sub", EndpointStyle: tenancydomain.TenantEndpointStyleSubdomain}, true},
+		{"path", &tenancydomain.Tenant{ID: "path", EndpointStyle: tenancydomain.TenantEndpointStylePath}, false},
 		{"missing", nil, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

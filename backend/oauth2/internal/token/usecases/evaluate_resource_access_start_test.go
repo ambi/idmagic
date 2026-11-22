@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	policyports "github.com/ambi/idmagic/backend/accesscontrol/ports"
+	accessports "github.com/ambi/idmagic/backend/accesscontrol/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvalmemory "github.com/ambi/idmagic/backend/oauth2/internal/approval/db_memory"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -42,9 +42,9 @@ type startFixture struct {
 	now      time.Time
 	store    *approvalmemory.ApprovalRequestStore
 	notified *recordedNotifications
-	relation policyports.RelationDecision
-	rule     domain.ResourceAccessRule
-	servers  ports.McpResourceServerRepository
+	relation accessports.RelationDecision
+	rule     oauthdomain.ResourceAccessRule
+	servers  oauthports.McpResourceServerRepository
 	events   []spec.DomainEvent
 }
 
@@ -52,14 +52,14 @@ func newStartFixture(t *testing.T) *startFixture {
 	t.Helper()
 	f := &startFixture{
 		t: t, now: time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC), store: approvalmemory.NewApprovalRequestStore(),
-		notified: &recordedNotifications{}, relation: policyports.RelationDecision{Permitted: true}, rule: approvedRule(),
+		notified: &recordedNotifications{}, relation: accessports.RelationDecision{Permitted: true}, rule: approvedRule(),
 	}
 	f.servers = evalServer(t, f.rule)
 	return f
 }
 
-func startUserToken() *ports.IntrospectionResult {
-	return &ports.IntrospectionResult{
+func startUserToken() *oauthports.IntrospectionResult {
+	return &oauthports.IntrospectionResult{
 		Active: true, JTI: "jti-user", Sub: "alice", ClientID: "generic-client", Scope: "docs:read", Aud: []string{evalResource},
 	}
 }
@@ -70,7 +70,7 @@ func startRequest(key, parameters string) ResourceAccessRequest {
 	return in
 }
 
-func (f *startFixture) deps(token *ports.IntrospectionResult) ResourceAccessDeps {
+func (f *startFixture) deps(token *oauthports.IntrospectionResult) ResourceAccessDeps {
 	email := "alice@example.com"
 	return ResourceAccessDeps{
 		Servers: f.servers, Tokens: evalTokens{result: token}, Relations: &evalRelations{decision: f.relation},
@@ -80,7 +80,7 @@ func (f *startFixture) deps(token *ports.IntrospectionResult) ResourceAccessDeps
 	}
 }
 
-func (f *startFixture) evaluate(token *ports.IntrospectionResult, in ResourceAccessRequest) ResourceAccessDecision {
+func (f *startFixture) evaluate(token *oauthports.IntrospectionResult, in ResourceAccessRequest) ResourceAccessDecision {
 	f.t.Helper()
 	decision, err := EvaluateResourceAccess(evalTenantContext(), f.deps(token), in, f.now)
 	if err != nil {
@@ -122,7 +122,7 @@ func TestEvaluationStartsAnApprovalAndPermitsItsReferenceOnce(t *testing.T) {
 	parameters := `{"amount":100}`
 
 	started := f.evaluate(token, startRequest("k0", parameters))
-	requireReason(t, started, domain.ReasonApprovalPending)
+	requireReason(t, started, oauthdomain.ReasonApprovalPending)
 	approval := started.StartedApproval
 	if approval == nil || approval.Status != "pending" || approval.URI != startApprovalURL+"?request="+approval.ID ||
 		!approval.ExpiresAt.Equal(f.now.Add(600*time.Second)) || started.Remediation != nil {
@@ -144,14 +144,14 @@ func TestEvaluationStartsAnApprovalAndPermitsItsReferenceOnce(t *testing.T) {
 		f.notified.sent[0].Vars["approval_url"] != approval.URI {
 		t.Fatalf("notifications=%+v", f.notified.sent)
 	}
-	evaluated, _ := f.events[len(f.events)-1].(*domain.ResourceAccessEvaluated)
+	evaluated, _ := f.events[len(f.events)-1].(*oauthdomain.ResourceAccessEvaluated)
 	if evaluated == nil || evaluated.ApprovalRequestID != approval.ID || evaluated.Permitted {
 		t.Fatalf("event=%+v", f.events[len(f.events)-1])
 	}
 
 	// 保留中の同じ操作は起票し直さず、通知も送らない。
 	again := f.evaluate(token, startRequest("k1", `{ "amount": 100 }`))
-	requireReason(t, again, domain.ReasonApprovalPending)
+	requireReason(t, again, oauthdomain.ReasonApprovalPending)
 	if again.StartedApproval == nil || again.StartedApproval.ID != approval.ID || len(f.notified.sent) != 1 {
 		t.Fatalf("repeated start: %+v notifications=%d", again.StartedApproval, len(f.notified.sent))
 	}
@@ -160,7 +160,7 @@ func TestEvaluationStartsAnApprovalAndPermitsItsReferenceOnce(t *testing.T) {
 		in.ApprovalRequestID = approval.ID
 		return in
 	}
-	requireReason(t, f.evaluate(token, reference("k2")), domain.ReasonApprovalPending)
+	requireReason(t, f.evaluate(token, reference("k2")), oauthdomain.ReasonApprovalPending)
 
 	f.decide(approval.ID, spec.ApprovalEventApprove)
 	permitted := f.evaluate(token, reference("k3"))
@@ -171,7 +171,7 @@ func TestEvaluationStartsAnApprovalAndPermitsItsReferenceOnce(t *testing.T) {
 	if consumed := f.stored(approval.ID); consumed.State != spec.ApprovalConsumed || consumed.Use == nil {
 		t.Fatalf("after the use: %+v", consumed)
 	}
-	requireReason(t, f.evaluate(token, reference("k4")), domain.ReasonApprovalAlreadyUsed)
+	requireReason(t, f.evaluate(token, reference("k4")), oauthdomain.ReasonApprovalAlreadyUsed)
 	if replay := f.evaluate(token, reference("k3")); !replay.Permitted || !replay.ApprovedOperation.Replayed {
 		t.Fatalf("same key: %+v", replay)
 	}
@@ -209,23 +209,23 @@ func TestApprovalReferencesOnlyTheirOwnStartedApproval(t *testing.T) {
 	cases := []struct {
 		name   string
 		mutate func(*approvaldomain.ApprovalRequest)
-		token  func(*ports.IntrospectionResult)
+		token  func(*oauthports.IntrospectionResult)
 		in     func(*ResourceAccessRequest)
 		reason string
 		// restarts は、起票を求めた参照が新しい承認リクエストを起票することを表す。
 		restarts bool
 	}{
-		{name: "他人のトークン", token: func(r *ports.IntrospectionResult) { r.Sub = "mallory" }, reason: domain.ReasonApprovalPending, restarts: true},
-		{name: "別のクライアント", token: func(r *ports.IntrospectionResult) { r.ClientID = "other-client" }, reason: domain.ReasonApprovalPending, restarts: true},
-		{name: "別の Agent", token: func(r *ports.IntrospectionResult) { r.AgentID = "A9" }, reason: domain.ReasonApprovalPending, restarts: true},
-		{name: "別の登録の起票", mutate: func(r *approvaldomain.ApprovalRequest) { other := "rs-2"; r.ResourceServerID = &other }, reason: domain.ReasonApprovalPending, restarts: true},
+		{name: "他人のトークン", token: func(r *oauthports.IntrospectionResult) { r.Sub = "mallory" }, reason: oauthdomain.ReasonApprovalPending, restarts: true},
+		{name: "別のクライアント", token: func(r *oauthports.IntrospectionResult) { r.ClientID = "other-client" }, reason: oauthdomain.ReasonApprovalPending, restarts: true},
+		{name: "別の Agent", token: func(r *oauthports.IntrospectionResult) { r.AgentID = "A9" }, reason: oauthdomain.ReasonApprovalPending, restarts: true},
+		{name: "別の登録の起票", mutate: func(r *approvaldomain.ApprovalRequest) { other := "rs-2"; r.ResourceServerID = &other }, reason: oauthdomain.ReasonApprovalPending, restarts: true},
 		{name: "CIBA の承認", mutate: func(r *approvaldomain.ApprovalRequest) {
 			r.Initiator, r.ResourceServerID, r.OperationDigest, r.AuthReqIDHash, r.IntervalSeconds = "", nil, nil, "hash", 5
-		}, reason: domain.ReasonApprovalPending, restarts: true},
-		{name: "期限切れで起票を求めない", mutate: func(r *approvaldomain.ApprovalRequest) { r.ExpiresAt = r.RequestedAt }, in: func(r *ResourceAccessRequest) { r.ApprovalStart = false }, reason: domain.ReasonApprovalExpired},
-		{name: "期限切れで起票を求める", mutate: func(r *approvaldomain.ApprovalRequest) { r.ExpiresAt = r.RequestedAt }, reason: domain.ReasonApprovalPending, restarts: true},
-		{name: "引数の変更", in: func(r *ResourceAccessRequest) { r.OperationParameters = `{"amount":101}` }, reason: domain.ReasonApprovedOperationMismatch},
-		{name: "対象の変更", in: func(r *ResourceAccessRequest) { r.ResourceID = "d2" }, reason: domain.ReasonApprovedOperationMismatch},
+		}, reason: oauthdomain.ReasonApprovalPending, restarts: true},
+		{name: "期限切れで起票を求めない", mutate: func(r *approvaldomain.ApprovalRequest) { r.ExpiresAt = r.RequestedAt }, in: func(r *ResourceAccessRequest) { r.ApprovalStart = false }, reason: oauthdomain.ReasonApprovalExpired},
+		{name: "期限切れで起票を求める", mutate: func(r *approvaldomain.ApprovalRequest) { r.ExpiresAt = r.RequestedAt }, reason: oauthdomain.ReasonApprovalPending, restarts: true},
+		{name: "引数の変更", in: func(r *ResourceAccessRequest) { r.OperationParameters = `{"amount":101}` }, reason: oauthdomain.ReasonApprovedOperationMismatch},
+		{name: "対象の変更", in: func(r *ResourceAccessRequest) { r.ResourceID = "d2" }, reason: oauthdomain.ReasonApprovedOperationMismatch},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -258,7 +258,7 @@ func TestApprovalReferencesOnlyTheirOwnStartedApproval(t *testing.T) {
 		in := startRequest("k1", parameters)
 		in.ApprovalRequestID = id
 		decision := f.evaluate(startUserToken(), in)
-		requireReason(t, decision, domain.ReasonApprovalDenied)
+		requireReason(t, decision, oauthdomain.ReasonApprovalDenied)
 		if decision.StartedApproval != nil || len(f.notified.sent) != 1 {
 			t.Fatalf("denied approval restarted: %+v notifications=%d", decision.StartedApproval, len(f.notified.sent))
 		}
@@ -272,7 +272,7 @@ func TestApprovalStartIsLimitedToMissingApprovals(t *testing.T) {
 	parameters := `{"amount":100}`
 	t.Run("関係の不許可", func(t *testing.T) {
 		f := newStartFixture(t)
-		f.relation = policyports.RelationDecision{Permitted: false, Reasons: []string{"relation_denied"}}
+		f.relation = accessports.RelationDecision{Permitted: false, Reasons: []string{"relation_denied"}}
 		decision := f.evaluate(startUserToken(), startRequest("k", parameters))
 		if decision.Permitted || decision.StartedApproval != nil || len(f.notified.sent) != 0 {
 			t.Fatalf("decision=%+v notifications=%d", decision, len(f.notified.sent))
@@ -281,7 +281,7 @@ func TestApprovalStartIsLimitedToMissingApprovals(t *testing.T) {
 	t.Run("主体が Agent", func(t *testing.T) {
 		f := newStartFixture(t)
 		decision := f.evaluate(evalAgentToken(), startRequest("k", parameters))
-		requireReason(t, decision, domain.ReasonApprovalRequired)
+		requireReason(t, decision, oauthdomain.ReasonApprovalRequired)
 		if decision.StartedApproval != nil || decision.Remediation == nil || len(f.notified.sent) != 0 {
 			t.Fatalf("decision=%+v notifications=%d", decision, len(f.notified.sent))
 		}
@@ -298,10 +298,10 @@ func TestApprovalStartIsLimitedToMissingApprovals(t *testing.T) {
 	t.Run("保留中の上限", func(t *testing.T) {
 		f := newStartFixture(t)
 		for i := range approvaldomain.MaxPendingResourceServerApprovals {
-			requireReason(t, f.evaluate(startUserToken(), startRequest("k", `{"amount":`+strings.Repeat("1", i+1)+`}`)), domain.ReasonApprovalPending)
+			requireReason(t, f.evaluate(startUserToken(), startRequest("k", `{"amount":`+strings.Repeat("1", i+1)+`}`)), oauthdomain.ReasonApprovalPending)
 		}
 		decision := f.evaluate(startUserToken(), startRequest("k", `{"amount":0}`))
-		requireReason(t, decision, domain.ReasonApprovalRequestLimitExceeded)
+		requireReason(t, decision, oauthdomain.ReasonApprovalRequestLimitExceeded)
 		if decision.StartedApproval != nil || len(f.notified.sent) != approvaldomain.MaxPendingResourceServerApprovals {
 			t.Fatalf("decision=%+v notifications=%d", decision, len(f.notified.sent))
 		}

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ambi/idmagic/backend/audit/internal/usecases"
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditusecases "github.com/ambi/idmagic/backend/audit/internal/usecases"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -14,7 +14,7 @@ import (
 //
 // 製品のすべてのプロセスの Emit (cmd/internal/bootstrap) と、同じ組み立てを再現する
 // テストの基盤が、同じ変換を通るように Audit が持つ。
-func NewEventRecord(e spec.DomainEvent) (*ports.AuditEventRecord, error) {
+func NewEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, error) {
 	wire, err := spec.MarshalDomainEvent(e)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func NewEventRecord(e spec.DomainEvent) (*ports.AuditEventRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	rec := &ports.AuditEventRecord{
+	rec := &auditports.AuditEventRecord{
 		ID:         id,
 		Type:       e.EventType(),
 		OccurredAt: e.OccurredAt(),
@@ -39,6 +39,6 @@ func NewEventRecord(e spec.DomainEvent) (*ports.AuditEventRecord, error) {
 	if rec.Payload == nil {
 		return nil, fmt.Errorf("audit event %s: empty payload", e.EventType())
 	}
-	rec.SearchAttributes = usecases.ExtractSearchAttributes(rec)
+	rec.SearchAttributes = auditusecases.ExtractSearchAttributes(rec)
 	return rec, nil
 }

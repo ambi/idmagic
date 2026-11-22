@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
-	"github.com/ambi/idmagic/backend/oauth2/logout/ports"
+	logoutdomain "github.com/ambi/idmagic/backend/oauth2/internal/logout/domain"
+	logoutports "github.com/ambi/idmagic/backend/oauth2/logout/ports"
 )
 
 type Fixture struct {
-	Sessions      ports.ClientSessionStore
-	Notifications ports.LogoutNotificationStore
+	Sessions      logoutports.ClientSessionStore
+	Notifications logoutports.LogoutNotificationStore
 	TenantID      string
 	ClientID      string
 	Now           time.Time
@@ -28,7 +28,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if clientID == "" {
 		clientID = "client-contract"
 	}
-	session := &domain.ClientSession{TenantID: f.TenantID, Sid: "00000000-0000-0000-0000-000000000002", ClientID: clientID, FirstIssuedAt: f.Now, LastIssuedAt: f.Now}
+	session := &logoutdomain.ClientSession{TenantID: f.TenantID, Sid: "00000000-0000-0000-0000-000000000002", ClientID: clientID, FirstIssuedAt: f.Now, LastIssuedAt: f.Now}
 	if err := f.Sessions.Upsert(ctx, session); err != nil {
 		t.Fatalf("Sessions.Upsert: %v", err)
 	}
@@ -36,7 +36,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err != nil || len(sessions) != 1 || sessions[0].ClientID != session.ClientID {
 		t.Fatalf("Sessions.ListBySid = (%+v, %v)", sessions, err)
 	}
-	notification := &domain.LogoutNotification{ID: "00000000-0000-0000-0000-000000000001", TenantID: f.TenantID, Sid: session.Sid, ClientID: session.ClientID, LogoutTokenJTI: "00000000-0000-0000-0000-000000000003", TargetURI: "https://client.example/logout", State: domain.LogoutNotificationPending, CreatedAt: f.Now}
+	notification := &logoutdomain.LogoutNotification{ID: "00000000-0000-0000-0000-000000000001", TenantID: f.TenantID, Sid: session.Sid, ClientID: session.ClientID, LogoutTokenJTI: "00000000-0000-0000-0000-000000000003", TargetURI: "https://client.example/logout", State: logoutdomain.LogoutNotificationPending, CreatedAt: f.Now}
 	if err := f.Notifications.Save(ctx, notification); err != nil {
 		t.Fatalf("Notifications.Save: %v", err)
 	}

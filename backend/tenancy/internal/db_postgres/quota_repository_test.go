@@ -10,26 +10,26 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 // quotaResources は超過を拒否する Hard Quota の資源である。Soft は共有契約で検査する。
 var quotaResources = []string{
-	domain.ResourceUsers, domain.ResourceGroups, domain.ResourceAgents, domain.ResourceApplications,
-	domain.ResourceOAuth2Clients, domain.ResourceActiveSessions, domain.ResourceConsents, domain.ResourceActiveJobs,
-	domain.ResourceSsfStreams,
+	tenancydomain.ResourceUsers, tenancydomain.ResourceGroups, tenancydomain.ResourceAgents, tenancydomain.ResourceApplications,
+	tenancydomain.ResourceOAuth2Clients, tenancydomain.ResourceActiveSessions, tenancydomain.ResourceConsents, tenancydomain.ResourceActiveJobs,
+	tenancydomain.ResourceSsfStreams,
 }
 
 // seedQuotaTenant は tenant_usages の外部キーが指すテナントを作る。fixtures_postgres は
 // このパッケージを import するので、ここでは使えない。
-func seedQuotaTenant(ctx context.Context, t *testing.T, db sharedpg.DB) *domain.Tenant {
+func seedQuotaTenant(ctx context.Context, t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	t.Helper()
 	id, err := spec.NewUUIDv4()
 	if err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	tenant := &domain.Tenant{ID: id, Realm: "quota-" + id, DisplayName: "Quota", Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
+	tenant := &tenancydomain.Tenant{ID: id, Realm: "quota-" + id, DisplayName: "Quota", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 	if err := (&TenantRepository{Pool: db}).Save(ctx, tenant); err != nil {
 		t.Fatalf("seed tenant: %v", err)
 	}
@@ -55,13 +55,13 @@ func usageByResource(ctx context.Context, t *testing.T, repo *QuotaRepository, t
 	return out
 }
 
-func quotaLimiting(t *testing.T, resource string, limit int) *domain.TenantQuota {
+func quotaLimiting(t *testing.T, resource string, limit int) *tenancydomain.TenantQuota {
 	t.Helper()
 	encoded, err := json.Marshal(map[string]int{resource: limit})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var quota domain.TenantQuota
+	var quota tenancydomain.TenantQuota
 	if err := json.Unmarshal(encoded, &quota); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestQuotaRepositoryCountsOnlyTheNamedResourceUpToItsLimit(t *testing.T) {
 					t.Fatalf("CheckAndIncrement within the limit: %v", err)
 				}
 			}
-			var exceeded *domain.QuotaExceededError
+			var exceeded *tenancydomain.QuotaExceededError
 			if err := repo.CheckAndIncrement(ctx, tenant.ID, resource, 1); !errors.As(err, &exceeded) || exceeded.Resource != resource {
 				t.Fatalf("CheckAndIncrement past the limit err=%v, want QuotaExceededError for %s", err, resource)
 			}
@@ -112,12 +112,12 @@ func TestQuotaRepositoryAppliesTheDefaultLimitWithoutAnOverride(t *testing.T) {
 	repo := NewQuotaRepository(db)
 	ctx := context.Background()
 	tenant := seedQuotaTenant(ctx, t, db)
-	limit := domain.DefaultTenantQuota[domain.ResourceActiveJobs]
-	if err := repo.CheckAndIncrement(ctx, tenant.ID, domain.ResourceActiveJobs, limit); err != nil {
+	limit := tenancydomain.DefaultTenantQuota[tenancydomain.ResourceActiveJobs]
+	if err := repo.CheckAndIncrement(ctx, tenant.ID, tenancydomain.ResourceActiveJobs, limit); err != nil {
 		t.Fatalf("CheckAndIncrement up to the default limit: %v", err)
 	}
-	var exceeded *domain.QuotaExceededError
-	if err := repo.CheckAndIncrement(ctx, tenant.ID, domain.ResourceActiveJobs, 1); !errors.As(err, &exceeded) {
+	var exceeded *tenancydomain.QuotaExceededError
+	if err := repo.CheckAndIncrement(ctx, tenant.ID, tenancydomain.ResourceActiveJobs, 1); !errors.As(err, &exceeded) {
 		t.Fatalf("CheckAndIncrement past the default limit err=%v, want QuotaExceededError", err)
 	}
 }

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -26,7 +26,7 @@ func TestSeedUsesOwnerCommandsAndAuditsOnlyNewResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply}
 	if _, err := Seed(ctx, deps, request, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestSeedPlansDemoDriftWithoutWriting(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply}
 	if _, err := Seed(ctx, deps, request, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -88,12 +88,12 @@ func TestSeedPlansDemoDriftWithoutWriting(t *testing.T) {
 	if err := deps.OAuth2.ClientRepo.Save(ctx, client); err != nil {
 		t.Fatal(err)
 	}
-	request.Mode = domain.ModeDryRun
+	request.Mode = seedingdomain.ModeDryRun
 	plan, _ := Seed(ctx, deps, request, "")
-	if plan.Count(domain.OperationConflict) != 1 {
+	if plan.Count(seedingdomain.OperationConflict) != 1 {
 		t.Fatalf("dry_run plan = %+v, want one conflict", plan)
 	}
-	request.Mode = domain.ModeApply
+	request.Mode = seedingdomain.ModeApply
 	if _, err := Seed(ctx, deps, request, ""); err == nil {
 		t.Fatal("apply accepted manual drift")
 	}
@@ -118,12 +118,12 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
 	ctx := context.Background()
-	dryRun := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeDryRun}
+	dryRun := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeDryRun}
 	plan, err := Seed(ctx, deps, dryRun, "")
 	if err != nil {
 		t.Fatalf("Seed(dry-run) error = %v", err)
 	}
-	if plan.Count(domain.OperationCreate) == 0 {
+	if plan.Count(seedingdomain.OperationCreate) == 0 {
 		t.Fatal("dry-run plan has no create operation")
 	}
 	if rendered := fmt.Sprintf("%+v", plan); strings.Contains(rendered, "demo-client-secret") || strings.Contains(rendered, "demo-password-1234") {
@@ -135,12 +135,12 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	}
 
 	apply := dryRun
-	apply.Mode = domain.ModeApply
+	apply.Mode = seedingdomain.ModeApply
 	first, err := Seed(ctx, deps, apply, "")
 	if err != nil {
 		t.Fatalf("Seed(first apply) error = %v", err)
 	}
-	if first.Count(domain.OperationNoop) == 0 {
+	if first.Count(seedingdomain.OperationNoop) == 0 {
 		t.Fatalf("first apply plan = %+v, want converged no-op plan", first)
 	}
 	demoClient, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
@@ -162,7 +162,7 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Seed(second apply) error = %v", err)
 	}
-	if len(second.Operations) == 0 || second.Count(domain.OperationNoop) != len(second.Operations) {
+	if len(second.Operations) == 0 || second.Count(seedingdomain.OperationNoop) != len(second.Operations) {
 		t.Fatalf("second apply plan = %+v, want only no-op operations", second)
 	}
 	aliceAfter, err := deps.IdManagement.UserRepo.FindBySub(ctx, seedUserAliceID)
@@ -186,7 +186,7 @@ func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
 	ctx := context.Background()
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfileDevelopment, Mode: seedingdomain.ModeApply}
 	if _, err := Seed(ctx, deps, request, ""); err != nil {
 		t.Fatalf("Seed(initial) error = %v", err)
 	}
@@ -211,7 +211,7 @@ func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 }
 
 func TestSameClientIgnoresApplicationCatalogOwnership(t *testing.T) {
-	desired := firstPartyClients([]domain.FirstPartyClientSeed{{
+	desired := firstPartyClients([]seedingdomain.FirstPartyClientSeed{{
 		ID:    "00000000-0000-4000-8000-000000000022",
 		Name:  "Admin Console",
 		Scope: "openid",
@@ -229,7 +229,7 @@ func TestPerformanceSeedIsDeterministicAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
-	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfilePerformance, Mode: domain.ModeApply, Count: 3}
+	request := seedingdomain.Request{Environment: seedingdomain.EnvironmentDevelopment, Profile: seedingdomain.ProfilePerformance, Mode: seedingdomain.ModeApply, Count: 3}
 	if _, err := Seed(context.Background(), deps, request, ""); err != nil {
 		t.Fatalf("Seed(first apply) error = %v", err)
 	}
@@ -237,7 +237,7 @@ func TestPerformanceSeedIsDeterministicAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Seed(second apply) error = %v", err)
 	}
-	if second.Count(domain.OperationCreate) != 0 || second.Count(domain.OperationNoop) == 0 {
+	if second.Count(seedingdomain.OperationCreate) != 0 || second.Count(seedingdomain.OperationNoop) == 0 {
 		t.Fatalf("second apply plan = %+v, want no-op", second)
 	}
 }

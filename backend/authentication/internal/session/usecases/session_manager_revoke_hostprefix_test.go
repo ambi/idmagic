@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
@@ -18,15 +18,15 @@ import (
 // 成功を返したままサーバー側のセッションが生き続け、Cookie を復元すれば再び認証できてしまう。
 func TestRevokeHonorsHostPrefixedCookie(t *testing.T) {
 	for name, cookieName := range map[string]string{
-		"subdomain tenant": "__Host-" + usecases.SessionCookie,
-		"path tenant":      usecases.SessionCookie,
+		"subdomain tenant": "__Host-" + sessionusecases.SessionCookie,
+		"path tenant":      sessionusecases.SessionCookie,
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := db_memory.NewSessionStore()
 			ctx := testing_tenant.Default(context.Background())
 			now := time.Now().UTC()
 
-			session := &domain.LoginSession{
+			session := &sessiondomain.LoginSession{
 				ID:        "sid-under-test",
 				TenantID:  "tenant-a",
 				UserID:    "user-1",
@@ -37,7 +37,7 @@ func TestRevokeHonorsHostPrefixedCookie(t *testing.T) {
 				t.Fatalf("save session: %v", err)
 			}
 
-			manager := usecases.NewSessionManager(store)
+			manager := sessionusecases.NewSessionManager(store)
 			if err := manager.Revoke(ctx, cookieName+"="+session.ID); err != nil {
 				t.Fatalf("revoke: %v", err)
 			}
@@ -58,10 +58,10 @@ func TestRevokeHonorsHostPrefixedCookie(t *testing.T) {
 // 呼び出し側から検査する。同じヘッダに対して 3 つの入口が同じセッションを指さなければならない。
 func TestSessionEntryPointsResolveTheSameCookie(t *testing.T) {
 	headers := map[string]string{
-		"host prefixed only": "__Host-" + usecases.SessionCookie + "=sid-1",
-		"plain only":         usecases.SessionCookie + "=sid-1",
-		"both present":       "__Host-" + usecases.SessionCookie + "=sid-1; " + usecases.SessionCookie + "=sid-2",
-		"with noise":         "other=x; __Host-" + usecases.SessionCookie + "=sid-1; foo=bar",
+		"host prefixed only": "__Host-" + sessionusecases.SessionCookie + "=sid-1",
+		"plain only":         sessionusecases.SessionCookie + "=sid-1",
+		"both present":       "__Host-" + sessionusecases.SessionCookie + "=sid-1; " + sessionusecases.SessionCookie + "=sid-2",
+		"with noise":         "other=x; __Host-" + sessionusecases.SessionCookie + "=sid-1; foo=bar",
 	}
 	for name, header := range headers {
 		t.Run(name, func(t *testing.T) {
@@ -69,13 +69,13 @@ func TestSessionEntryPointsResolveTheSameCookie(t *testing.T) {
 			ctx := testing_tenant.Default(context.Background())
 			now := time.Now().UTC()
 
-			manager := usecases.NewSessionManager(store)
+			manager := sessionusecases.NewSessionManager(store)
 			resolved := manager.SessionIDFromCookie(header)
 			if resolved != "sid-1" {
 				t.Fatalf("SessionIDFromCookie=%q, want sid-1", resolved)
 			}
 
-			session := &domain.LoginSession{
+			session := &sessiondomain.LoginSession{
 				ID: resolved, TenantID: "tenant-a", UserID: "user-1",
 				AuthTime: now.Unix(), ExpiresAt: now.Add(time.Hour),
 			}

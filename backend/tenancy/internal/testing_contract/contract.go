@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
-	"github.com/ambi/idmagic/backend/tenancy/ports"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type Fixture struct {
-	Repository ports.TenantRepository
-	Tenant     *domain.Tenant
+	Repository tenantports.TenantRepository
+	Tenant     *tenancydomain.Tenant
 }
 
 type NewFixture func(t *testing.T) Fixture

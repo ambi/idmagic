@@ -11,7 +11,7 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 type AgentWorkloadBindingRepository struct {
@@ -64,7 +64,7 @@ func (r *AgentWorkloadBindingRepository) Save(_ context.Context, b *workloaddoma
 		return nil
 	}
 	if r.patternTaken(b.TenantID, b.TrustBundleID, b.ID, b.SubjectPattern) {
-		return ports.ErrBindingPatternConflict
+		return workloadports.ErrBindingPatternConflict
 	}
 	r.bindings[key] = cloneBinding(b)
 	return nil
@@ -86,7 +86,7 @@ func (r *AgentWorkloadBindingRepository) UpdateMapping(_ context.Context, tenant
 		return nil, nil
 	}
 	if pattern != nil && r.patternTaken(tenantID, current.TrustBundleID, id, *pattern) {
-		return nil, ports.ErrBindingPatternConflict
+		return nil, workloadports.ErrBindingPatternConflict
 	}
 	updated := cloneBinding(current)
 	if pattern != nil {

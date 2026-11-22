@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 const (
@@ -51,13 +51,13 @@ type ConnectorRepository struct {
 	Cipher SecretCipher
 }
 
-func (r *ConnectorRepository) encryptSecret(ctx context.Context, connector *domain.Connector) (int32, []byte, error) {
+func (r *ConnectorRepository) encryptSecret(ctx context.Context, connector *tokenvaultdomain.Connector) (int32, []byte, error) {
 	version, ciphertext, err := r.Cipher.Encrypt(ctx, connector.TenantID, recordContext, connectorsTable, connector.ID, secretField, connector.ClientSecret)
 	return int32(version), ciphertext, err //nolint:gosec // G115: DEK version is a small monotonic counter
 }
 
 // Create はコネクタを保存する。名前が重複すれば ErrConnectorConflict を返す。
-func (r *ConnectorRepository) Create(ctx context.Context, c *domain.Connector) error {
+func (r *ConnectorRepository) Create(ctx context.Context, c *tokenvaultdomain.Connector) error {
 	version, ciphertext, err := r.encryptSecret(ctx, c)
 	if err != nil {
 		return err
@@ -77,13 +77,13 @@ func (r *ConnectorRepository) Create(ctx context.Context, c *domain.Connector) e
 		return err
 	}
 	if inserted == 0 {
-		return ports.ErrConnectorConflict
+		return tokenvaultports.ErrConnectorConflict
 	}
 	return nil
 }
 
 // Update は読んだ版が保存の値と一致するときだけ更新する。
-func (r *ConnectorRepository) Update(ctx context.Context, c *domain.Connector) error {
+func (r *ConnectorRepository) Update(ctx context.Context, c *tokenvaultdomain.Connector) error {
 	version, ciphertext, err := r.encryptSecret(ctx, c)
 	if err != nil {
 		return err
@@ -101,19 +101,19 @@ func (r *ConnectorRepository) Update(ctx context.Context, c *domain.Connector) e
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
-			return ports.ErrConnectorConflict
+			return tokenvaultports.ErrConnectorConflict
 		}
 		return err
 	}
 	if updated == 0 {
-		return ports.ErrConnectorConflict
+		return tokenvaultports.ErrConnectorConflict
 	}
 	c.Version++
 	return nil
 }
 
 // Find はコネクタを返す。なければ nil を返す。
-func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*domain.Connector, error) {
+func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*tokenvaultdomain.Connector, error) {
 	if !validIDs(id) {
 		return nil, nil
 	}
@@ -128,12 +128,12 @@ func (r *ConnectorRepository) Find(ctx context.Context, tenantID, id string) (*d
 }
 
 // List はテナントのコネクタを名前の順に返す。
-func (r *ConnectorRepository) List(ctx context.Context, tenantID string) ([]*domain.Connector, error) {
+func (r *ConnectorRepository) List(ctx context.Context, tenantID string) ([]*tokenvaultdomain.Connector, error) {
 	rows, err := New(r.Pool).ListConnectors(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*domain.Connector, 0, len(rows))
+	result := make([]*tokenvaultdomain.Connector, 0, len(rows))
 	for _, row := range rows {
 		connector, err := r.toDomain(ctx, row)
 		if err != nil {
@@ -153,15 +153,15 @@ func (r *ConnectorRepository) Delete(ctx context.Context, tenantID, id string) (
 	return deleted > 0, err
 }
 
-func (r *ConnectorRepository) toDomain(ctx context.Context, row *TokenVaultConnector) (*domain.Connector, error) {
+func (r *ConnectorRepository) toDomain(ctx context.Context, row *TokenVaultConnector) (*tokenvaultdomain.Connector, error) {
 	secret, err := r.Cipher.Decrypt(ctx, row.TenantID, recordContext, connectorsTable, row.ID, secretField, int(row.SecretKeyVersion), row.SecretCiphertext)
 	if err != nil {
 		return nil, err
 	}
-	connector := &domain.Connector{
-		ID: row.ID, TenantID: row.TenantID, Name: row.Name, Status: domain.ConnectorStatus(row.Status),
+	connector := &tokenvaultdomain.Connector{
+		ID: row.ID, TenantID: row.TenantID, Name: row.Name, Status: tokenvaultdomain.ConnectorStatus(row.Status),
 		AuthorizationEndpoint: row.AuthorizationEndpoint, TokenEndpoint: row.TokenEndpoint, RevocationEndpoint: row.RevocationEndpoint,
-		ClientID: row.ClientID, TokenEndpointAuthMethod: domain.TokenEndpointAuthMethod(row.TokenEndpointAuthMethod),
+		ClientID: row.ClientID, TokenEndpointAuthMethod: tokenvaultdomain.TokenEndpointAuthMethod(row.TokenEndpointAuthMethod),
 		ClientSecret: secret, Version: row.Version, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if err := json.Unmarshal(row.AllowedScopes, &connector.AllowedScopes); err != nil {
@@ -173,7 +173,7 @@ func (r *ConnectorRepository) toDomain(ctx context.Context, row *TokenVaultConne
 	return connector, nil
 }
 
-func connectorJSON(c *domain.Connector) (scopes, rules []byte, err error) {
+func connectorJSON(c *tokenvaultdomain.Connector) (scopes, rules []byte, err error) {
 	if scopes, err = marshalList(c.AllowedScopes); err != nil {
 		return nil, nil, err
 	}
@@ -249,10 +249,10 @@ func fromPgTime(t pgtype.Timestamptz) *time.Time {
 	return &t.Time
 }
 
-func (r *ConnectionRepository) toDomain(ctx context.Context, row *TokenVaultConnection) (*domain.Connection, error) {
-	connection := &domain.Connection{
+func (r *ConnectionRepository) toDomain(ctx context.Context, row *TokenVaultConnection) (*tokenvaultdomain.Connection, error) {
+	connection := &tokenvaultdomain.Connection{
 		ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, UserID: row.UserID,
-		Status: domain.ConnectionStatus(row.Status), ExpiresAt: fromPgTime(row.ExpiresAt), TokenVersion: row.TokenVersion,
+		Status: tokenvaultdomain.ConnectionStatus(row.Status), ExpiresAt: fromPgTime(row.ExpiresAt), TokenVersion: row.TokenVersion,
 		LastUsedAt: fromPgTime(row.LastUsedAt), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	if err := json.Unmarshal(row.GrantedScopes, &connection.GrantedScopes); err != nil {
@@ -276,7 +276,7 @@ func (r *ConnectionRepository) toDomain(ctx context.Context, row *TokenVaultConn
 }
 
 // Find は接続を返す。なければ nil を返す。
-func (r *ConnectionRepository) Find(ctx context.Context, tenantID, connectorID, userID string) (*domain.Connection, error) {
+func (r *ConnectionRepository) Find(ctx context.Context, tenantID, connectorID, userID string) (*tokenvaultdomain.Connection, error) {
 	if !validIDs(connectorID, userID) {
 		return nil, nil
 	}
@@ -291,15 +291,15 @@ func (r *ConnectionRepository) Find(ctx context.Context, tenantID, connectorID, 
 }
 
 // ListByUser は本人の接続を返す。一覧はトークンを使わないが、復号の失敗を隠さない。
-func (r *ConnectionRepository) ListByUser(ctx context.Context, tenantID, userID string) ([]*domain.Connection, error) {
+func (r *ConnectionRepository) ListByUser(ctx context.Context, tenantID, userID string) ([]*tokenvaultdomain.Connection, error) {
 	if !validIDs(userID) {
-		return []*domain.Connection{}, nil
+		return []*tokenvaultdomain.Connection{}, nil
 	}
 	rows, err := New(r.Pool).ListConnectionsByUser(ctx, ListConnectionsByUserParams{TenantID: tenantID, UserID: userID})
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*domain.Connection, 0, len(rows))
+	result := make([]*tokenvaultdomain.Connection, 0, len(rows))
 	for _, row := range rows {
 		connection, err := r.toDomain(ctx, row)
 		if err != nil {
@@ -311,7 +311,7 @@ func (r *ConnectionRepository) ListByUser(ctx context.Context, tenantID, userID 
 }
 
 // SaveLinked は組の行を作るか置き換える。
-func (r *ConnectionRepository) SaveLinked(ctx context.Context, c *domain.Connection) error {
+func (r *ConnectionRepository) SaveLinked(ctx context.Context, c *tokenvaultdomain.Connection) error {
 	sealed, err := seal(ctx, r.Cipher, c.TenantID, connectionRecordID(c.ConnectorID, c.UserID), c.AccessToken, c.RefreshToken)
 	if err != nil {
 		return err
@@ -343,7 +343,7 @@ func (r *ConnectionRepository) ReleaseRefreshLease(ctx context.Context, tenantID
 }
 
 // StoreRefreshed は版が一致するときだけ更新の結果を保存する。
-func (r *ConnectionRepository) StoreRefreshed(ctx context.Context, c *domain.Connection, tokenVersion int64) (bool, error) {
+func (r *ConnectionRepository) StoreRefreshed(ctx context.Context, c *tokenvaultdomain.Connection, tokenVersion int64) (bool, error) {
 	sealed, err := seal(ctx, r.Cipher, c.TenantID, connectionRecordID(c.ConnectorID, c.UserID), c.AccessToken, c.RefreshToken)
 	if err != nil {
 		return false, err
@@ -376,7 +376,7 @@ func (r *ConnectionRepository) TouchLastUsed(ctx context.Context, tenantID, id s
 }
 
 // Delete は接続を消して返す。行があれば消すことを先に確定し、復号の失敗で解除を妨げない。
-func (r *ConnectionRepository) Delete(ctx context.Context, tenantID, connectorID, userID string) (*domain.Connection, error) {
+func (r *ConnectionRepository) Delete(ctx context.Context, tenantID, connectorID, userID string) (*tokenvaultdomain.Connection, error) {
 	if !validIDs(connectorID, userID) {
 		return nil, nil
 	}
@@ -389,7 +389,7 @@ func (r *ConnectionRepository) Delete(ctx context.Context, tenantID, connectorID
 	}
 	connection, err := r.toDomain(ctx, row)
 	if err != nil {
-		return &domain.Connection{ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, UserID: row.UserID}, nil //nolint:nilerr // 上流の失効を諦めるだけで、解除は成功である。
+		return &tokenvaultdomain.Connection{ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, UserID: row.UserID}, nil //nolint:nilerr // 上流の失効を諦めるだけで、解除は成功である。
 	}
 	return connection, nil
 }
@@ -401,7 +401,7 @@ type AttemptStore struct {
 }
 
 // Save は連携を保存し、テナントの期限切れの連携を片付ける。
-func (s *AttemptStore) Save(ctx context.Context, a *domain.ConnectionAttempt) error {
+func (s *AttemptStore) Save(ctx context.Context, a *tokenvaultdomain.ConnectionAttempt) error {
 	version, ciphertext, err := s.Cipher.Encrypt(ctx, a.TenantID, recordContext, attemptsTable, a.ID, verifierField, a.CodeVerifier)
 	if err != nil {
 		return err
@@ -421,7 +421,7 @@ func (s *AttemptStore) Save(ctx context.Context, a *domain.ConnectionAttempt) er
 }
 
 // Consume は一致する期限内の連携を原子的に消して返す。
-func (s *AttemptStore) Consume(ctx context.Context, tenantID, connectorID, userID string, stateHash []byte, now time.Time) (*domain.ConnectionAttempt, error) {
+func (s *AttemptStore) Consume(ctx context.Context, tenantID, connectorID, userID string, stateHash []byte, now time.Time) (*tokenvaultdomain.ConnectionAttempt, error) {
 	if !validIDs(connectorID, userID) {
 		return nil, nil
 	}
@@ -438,7 +438,7 @@ func (s *AttemptStore) Consume(ctx context.Context, tenantID, connectorID, userI
 	if err != nil {
 		return nil, err
 	}
-	attempt := &domain.ConnectionAttempt{
+	attempt := &tokenvaultdomain.ConnectionAttempt{
 		ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, UserID: row.UserID, StateHash: row.StateHash,
 		CodeVerifier: verifier, ExpiresAt: row.ExpiresAt,
 	}
@@ -446,7 +446,7 @@ func (s *AttemptStore) Consume(ctx context.Context, tenantID, connectorID, userI
 }
 
 var (
-	_ ports.ConnectorRepository  = (*ConnectorRepository)(nil)
-	_ ports.ConnectionRepository = (*ConnectionRepository)(nil)
-	_ ports.AttemptStore         = (*AttemptStore)(nil)
+	_ tokenvaultports.ConnectorRepository  = (*ConnectorRepository)(nil)
+	_ tokenvaultports.ConnectionRepository = (*ConnectionRepository)(nil)
+	_ tokenvaultports.AttemptStore         = (*AttemptStore)(nil)
 )

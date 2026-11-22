@@ -8,23 +8,23 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 )
 
 // Store は 1 テナント分の関係タプル・モデルのバージョン・書き込みバージョンをまとめて持つ。
 // 書き込みバージョンはタプルとモデルで共有するため、両 Repository が同じ Store を指す。
 type Store struct {
 	mu       sync.RWMutex
-	tuples   map[string]map[string]domain.RelationTuple // tenantID -> tuple key -> tuple
-	models   map[string][]*domain.AuthorizationModel    // tenantID -> version 昇順
-	versions map[string]int64                           // tenantID -> 書き込みバージョン
+	tuples   map[string]map[string]accessdomain.RelationTuple // tenantID -> tuple key -> tuple
+	models   map[string][]*accessdomain.AuthorizationModel    // tenantID -> version 昇順
+	versions map[string]int64                                 // tenantID -> 書き込みバージョン
 }
 
 func NewStore() *Store {
 	return &Store{
-		tuples:   map[string]map[string]domain.RelationTuple{},
-		models:   map[string][]*domain.AuthorizationModel{},
+		tuples:   map[string]map[string]accessdomain.RelationTuple{},
+		models:   map[string][]*accessdomain.AuthorizationModel{},
 		versions: map[string]int64{},
 	}
 }
@@ -42,38 +42,38 @@ func NewRelationTupleRepository(store *Store) *RelationTupleRepository {
 	return &RelationTupleRepository{store: store}
 }
 
-func (r *RelationTupleRepository) ListSubjects(_ context.Context, tenantID string, resource domain.ObjectRef, relation string) ([]domain.SubjectRef, error) {
+func (r *RelationTupleRepository) ListSubjects(_ context.Context, tenantID string, resource accessdomain.ObjectRef, relation string) ([]accessdomain.SubjectRef, error) {
 	s := r.store
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := make([]domain.SubjectRef, 0)
+	out := make([]accessdomain.SubjectRef, 0)
 	for _, t := range s.tuples[tenantID] {
 		if t.Resource == resource && t.Relation == relation {
 			out = append(out, t.Subject)
 		}
 	}
-	slices.SortFunc(out, func(a, b domain.SubjectRef) int { return strings.Compare(a.String(), b.String()) })
+	slices.SortFunc(out, func(a, b accessdomain.SubjectRef) int { return strings.Compare(a.String(), b.String()) })
 	return out, nil
 }
 
-func (r *RelationTupleRepository) List(_ context.Context, tenantID string, filter ports.RelationTupleFilter, limit int) ([]domain.RelationTuple, error) {
+func (r *RelationTupleRepository) List(_ context.Context, tenantID string, filter accessinternalports.RelationTupleFilter, limit int) ([]accessdomain.RelationTuple, error) {
 	s := r.store
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := make([]domain.RelationTuple, 0)
+	out := make([]accessdomain.RelationTuple, 0)
 	for _, t := range s.tuples[tenantID] {
 		if matchesFilter(t, filter) {
 			out = append(out, t)
 		}
 	}
-	slices.SortFunc(out, func(a, b domain.RelationTuple) int { return strings.Compare(a.Key(), b.Key()) })
+	slices.SortFunc(out, func(a, b accessdomain.RelationTuple) int { return strings.Compare(a.Key(), b.Key()) })
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]
 	}
 	return out, nil
 }
 
-func matchesFilter(t domain.RelationTuple, f ports.RelationTupleFilter) bool {
+func matchesFilter(t accessdomain.RelationTuple, f accessinternalports.RelationTupleFilter) bool {
 	switch {
 	case f.ResourceType != "" && t.Resource.Type != f.ResourceType:
 		return false
@@ -112,12 +112,12 @@ func (r *RelationTupleRepository) ListResourceIDs(_ context.Context, tenantID, r
 	return out, nil
 }
 
-func (r *RelationTupleRepository) Write(_ context.Context, tenantID string, write ports.TupleWrite) (ports.TupleWriteResult, error) {
+func (r *RelationTupleRepository) Write(_ context.Context, tenantID string, write accessinternalports.TupleWrite) (accessinternalports.TupleWriteResult, error) {
 	s := r.store
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.tuples[tenantID] == nil {
-		s.tuples[tenantID] = map[string]domain.RelationTuple{}
+		s.tuples[tenantID] = map[string]accessdomain.RelationTuple{}
 	}
 	tenant := s.tuples[tenantID]
 
@@ -143,7 +143,7 @@ func (r *RelationTupleRepository) Write(_ context.Context, tenantID string, writ
 		}
 		tenant[t.Key()] = t
 	}
-	return ports.TupleWriteResult{WrittenCount: written, DeletedCount: deleted, Version: s.bumpVersion(tenantID)}, nil
+	return accessinternalports.TupleWriteResult{WrittenCount: written, DeletedCount: deleted, Version: s.bumpVersion(tenantID)}, nil
 }
 
 func (r *RelationTupleRepository) Version(_ context.Context, tenantID string) (int64, error) {
@@ -159,18 +159,18 @@ func NewAuthorizationModelRepository(store *Store) *AuthorizationModelRepository
 	return &AuthorizationModelRepository{store: store}
 }
 
-func cloneModel(m *domain.AuthorizationModel) *domain.AuthorizationModel {
+func cloneModel(m *accessdomain.AuthorizationModel) *accessdomain.AuthorizationModel {
 	cloned := *m
 	cloned.ResourceTypes = slices.Clone(m.ResourceTypes)
 	return &cloned
 }
 
-func (r *AuthorizationModelRepository) Publish(_ context.Context, model *domain.AuthorizationModel, expectedVersion int) (*domain.AuthorizationModel, int64, error) {
+func (r *AuthorizationModelRepository) Publish(_ context.Context, model *accessdomain.AuthorizationModel, expectedVersion int) (*accessdomain.AuthorizationModel, int64, error) {
 	s := r.store
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if latest := len(s.models[model.TenantID]); latest != expectedVersion {
-		return nil, 0, domain.ErrModelVersionConflict
+		return nil, 0, accessdomain.ErrModelVersionConflict
 	}
 	stored := cloneModel(model)
 	stored.Version = expectedVersion + 1
@@ -178,7 +178,7 @@ func (r *AuthorizationModelRepository) Publish(_ context.Context, model *domain.
 	return cloneModel(stored), s.bumpVersion(model.TenantID), nil
 }
 
-func (r *AuthorizationModelRepository) Latest(_ context.Context, tenantID string) (*domain.AuthorizationModel, error) {
+func (r *AuthorizationModelRepository) Latest(_ context.Context, tenantID string) (*accessdomain.AuthorizationModel, error) {
 	s := r.store
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -189,7 +189,7 @@ func (r *AuthorizationModelRepository) Latest(_ context.Context, tenantID string
 	return cloneModel(versions[len(versions)-1]), nil
 }
 
-func (r *AuthorizationModelRepository) FindByVersion(_ context.Context, tenantID string, version int) (*domain.AuthorizationModel, error) {
+func (r *AuthorizationModelRepository) FindByVersion(_ context.Context, tenantID string, version int) (*accessdomain.AuthorizationModel, error) {
 	s := r.store
 	s.mu.RLock()
 	defer s.mu.RUnlock()

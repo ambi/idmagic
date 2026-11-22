@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 )
 
 type Fixture struct {
-	Categories ports.ApplicationCategoryRepository
+	Categories appports.ApplicationCategoryRepository
 	TenantA    string
 	TenantB    string
 	CategoryA  string
@@ -25,7 +25,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := context.Background()
-	categories := []*domain.ApplicationCategory{
+	categories := []*appdomain.ApplicationCategory{
 		{TenantID: f.TenantA, ID: f.CategoryA, Name: "Beta", Position: 2, CreatedAt: f.Now, UpdatedAt: f.Now},
 		{TenantID: f.TenantA, ID: f.CategoryB, Name: "Alpha", Position: 1, CreatedAt: f.Now, UpdatedAt: f.Now},
 	}

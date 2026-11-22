@@ -6,102 +6,102 @@ import (
 	"math"
 	"sync"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type QuotaRepository struct {
 	mu     sync.Mutex
-	quotas map[string]*domain.TenantQuota
-	usages map[string]*domain.TenantUsage
+	quotas map[string]*tenancydomain.TenantQuota
+	usages map[string]*tenancydomain.TenantUsage
 }
 
 var _ tenantports.QuotaRepository = (*QuotaRepository)(nil)
 
 func NewQuotaRepository() *QuotaRepository {
 	return &QuotaRepository{
-		quotas: make(map[string]*domain.TenantQuota),
-		usages: make(map[string]*domain.TenantUsage),
+		quotas: make(map[string]*tenancydomain.TenantQuota),
+		usages: make(map[string]*tenancydomain.TenantUsage),
 	}
 }
 
 func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resource string, delta int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if domain.IsSoftQuota(resource) && delta < 0 {
+	if tenancydomain.IsSoftQuota(resource) && delta < 0 {
 		return fmt.Errorf("soft quota: negative increment")
 	}
 
 	usage := r.usages[tenantID]
 	if usage == nil {
-		usage = &domain.TenantUsage{}
+		usage = &tenancydomain.TenantUsage{}
 		r.usages[tenantID] = usage
 	}
 
 	quota := r.quotas[tenantID]
 	if quota == nil {
-		quota = &domain.TenantQuota{}
+		quota = &tenancydomain.TenantQuota{}
 	}
 
 	var currentUsage int
 
 	switch resource {
-	case domain.ResourceUsers:
+	case tenancydomain.ResourceUsers:
 		currentUsage = usage.Users
-	case domain.ResourceGroups:
+	case tenancydomain.ResourceGroups:
 		currentUsage = usage.Groups
-	case domain.ResourceAgents:
+	case tenancydomain.ResourceAgents:
 		currentUsage = usage.Agents
-	case domain.ResourceApplications:
+	case tenancydomain.ResourceApplications:
 		currentUsage = usage.Applications
-	case domain.ResourceOAuth2Clients:
+	case tenancydomain.ResourceOAuth2Clients:
 		currentUsage = usage.OAuth2Clients
-	case domain.ResourceActiveSessions:
+	case tenancydomain.ResourceActiveSessions:
 		currentUsage = usage.ActiveSessions
-	case domain.ResourceConsents:
+	case tenancydomain.ResourceConsents:
 		currentUsage = usage.Consents
-	case domain.ResourceActiveJobs:
+	case tenancydomain.ResourceActiveJobs:
 		currentUsage = usage.ActiveJobs
-	case domain.ResourceSsfStreams:
+	case tenancydomain.ResourceSsfStreams:
 		currentUsage = usage.SsfStreams
-	case domain.ResourceAuditEventsRetained:
+	case tenancydomain.ResourceAuditEventsRetained:
 		currentUsage = usage.AuditEventsRetained
-	case domain.ResourceExportArtifactsBytes:
+	case tenancydomain.ResourceExportArtifactsBytes:
 		currentUsage = usage.ExportArtifactsBytes
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
 	}
 	currentQuota := quota.EffectiveLimit(resource)
 
-	if domain.IsSoftQuota(resource) && delta > math.MaxInt-currentUsage {
+	if tenancydomain.IsSoftQuota(resource) && delta > math.MaxInt-currentUsage {
 		return fmt.Errorf("soft quota: usage overflow")
 	}
-	if !domain.IsSoftQuota(resource) && currentUsage+delta > currentQuota {
-		return &domain.QuotaExceededError{TenantID: tenantID, Resource: resource}
+	if !tenancydomain.IsSoftQuota(resource) && currentUsage+delta > currentQuota {
+		return &tenancydomain.QuotaExceededError{TenantID: tenantID, Resource: resource}
 	}
 
 	switch resource {
-	case domain.ResourceUsers:
+	case tenancydomain.ResourceUsers:
 		usage.Users += delta
-	case domain.ResourceGroups:
+	case tenancydomain.ResourceGroups:
 		usage.Groups += delta
-	case domain.ResourceAgents:
+	case tenancydomain.ResourceAgents:
 		usage.Agents += delta
-	case domain.ResourceApplications:
+	case tenancydomain.ResourceApplications:
 		usage.Applications += delta
-	case domain.ResourceOAuth2Clients:
+	case tenancydomain.ResourceOAuth2Clients:
 		usage.OAuth2Clients += delta
-	case domain.ResourceActiveSessions:
+	case tenancydomain.ResourceActiveSessions:
 		usage.ActiveSessions += delta
-	case domain.ResourceConsents:
+	case tenancydomain.ResourceConsents:
 		usage.Consents += delta
-	case domain.ResourceActiveJobs:
+	case tenancydomain.ResourceActiveJobs:
 		usage.ActiveJobs += delta
-	case domain.ResourceSsfStreams:
+	case tenancydomain.ResourceSsfStreams:
 		usage.SsfStreams += delta
-	case domain.ResourceAuditEventsRetained:
+	case tenancydomain.ResourceAuditEventsRetained:
 		usage.AuditEventsRetained += delta
-	case domain.ResourceExportArtifactsBytes:
+	case tenancydomain.ResourceExportArtifactsBytes:
 		usage.ExportArtifactsBytes += delta
 	}
 
@@ -111,7 +111,7 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource string, delta int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if domain.IsSoftQuota(resource) && delta < 0 {
+	if tenancydomain.IsSoftQuota(resource) && delta < 0 {
 		return fmt.Errorf("soft quota: negative decrement")
 	}
 
@@ -128,27 +128,27 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	}
 
 	switch resource {
-	case domain.ResourceUsers:
+	case tenancydomain.ResourceUsers:
 		decrementValue(&usage.Users)
-	case domain.ResourceGroups:
+	case tenancydomain.ResourceGroups:
 		decrementValue(&usage.Groups)
-	case domain.ResourceAgents:
+	case tenancydomain.ResourceAgents:
 		decrementValue(&usage.Agents)
-	case domain.ResourceApplications:
+	case tenancydomain.ResourceApplications:
 		decrementValue(&usage.Applications)
-	case domain.ResourceOAuth2Clients:
+	case tenancydomain.ResourceOAuth2Clients:
 		decrementValue(&usage.OAuth2Clients)
-	case domain.ResourceActiveSessions:
+	case tenancydomain.ResourceActiveSessions:
 		decrementValue(&usage.ActiveSessions)
-	case domain.ResourceConsents:
+	case tenancydomain.ResourceConsents:
 		decrementValue(&usage.Consents)
-	case domain.ResourceActiveJobs:
+	case tenancydomain.ResourceActiveJobs:
 		decrementValue(&usage.ActiveJobs)
-	case domain.ResourceSsfStreams:
+	case tenancydomain.ResourceSsfStreams:
 		decrementValue(&usage.SsfStreams)
-	case domain.ResourceAuditEventsRetained:
+	case tenancydomain.ResourceAuditEventsRetained:
 		decrementValue(&usage.AuditEventsRetained)
-	case domain.ResourceExportArtifactsBytes:
+	case tenancydomain.ResourceExportArtifactsBytes:
 		decrementValue(&usage.ExportArtifactsBytes)
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
@@ -156,14 +156,14 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	return nil
 }
 
-func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *domain.TenantQuota) error {
+func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *tenancydomain.TenantQuota) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.quotas[tenantID] = quota
 	return nil
 }
 
-func (r *QuotaRepository) SetSoftUsage(_ context.Context, tenantID string, measured domain.SoftQuotaUsage) error {
+func (r *QuotaRepository) SetSoftUsage(_ context.Context, tenantID string, measured tenancydomain.SoftQuotaUsage) error {
 	if err := measured.Validate(); err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (r *QuotaRepository) SetSoftUsage(_ context.Context, tenantID string, measu
 	defer r.mu.Unlock()
 	usage := r.usages[tenantID]
 	if usage == nil {
-		usage = &domain.TenantUsage{}
+		usage = &tenancydomain.TenantUsage{}
 		r.usages[tenantID] = usage
 	}
 	usage.AuditEventsRetained = measured.AuditEventsRetained
@@ -195,7 +195,7 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 	}
 	usage := r.usages[tenantID]
 	if usage == nil {
-		usage = &domain.TenantUsage{}
+		usage = &tenancydomain.TenantUsage{}
 		r.usages[tenantID] = usage
 	}
 	previous := *field(usage)
@@ -204,27 +204,27 @@ func (r *QuotaRepository) RecountUsage(ctx context.Context, tenantID, resource s
 }
 
 // recountFields は、実データの件数で使用量を置き換えるリソースの列である。
-var recountFields = map[string]func(*domain.TenantUsage) *int{
-	domain.ResourceUsers:          func(u *domain.TenantUsage) *int { return &u.Users },
-	domain.ResourceActiveSessions: func(u *domain.TenantUsage) *int { return &u.ActiveSessions },
+var recountFields = map[string]func(*tenancydomain.TenantUsage) *int{
+	tenancydomain.ResourceUsers:          func(u *tenancydomain.TenantUsage) *int { return &u.Users },
+	tenancydomain.ResourceActiveSessions: func(u *tenancydomain.TenantUsage) *int { return &u.ActiveSessions },
 }
 
-func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domain.TenantQuota, error) {
+func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*tenancydomain.TenantQuota, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	quota, ok := r.quotas[tenantID]
 	if !ok {
-		return &domain.TenantQuota{}, nil
+		return &tenancydomain.TenantQuota{}, nil
 	}
 	return quota, nil
 }
 
-func (r *QuotaRepository) GetUsage(ctx context.Context, tenantID string) (*domain.TenantUsage, error) {
+func (r *QuotaRepository) GetUsage(ctx context.Context, tenantID string) (*tenancydomain.TenantUsage, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	usage, ok := r.usages[tenantID]
 	if !ok {
-		return &domain.TenantUsage{}, nil
+		return &tenancydomain.TenantUsage{}, nil
 	}
 	snapshot := *usage
 	return &snapshot, nil

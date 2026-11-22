@@ -7,18 +7,18 @@ import (
 	"time"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/signinpolicy/domain"
+	policydomain "github.com/ambi/idmagic/backend/signinpolicy/domain"
 	"github.com/jackc/pgx/v5"
 )
 
 // SignInPolicyRepository は Application sign-in policy を PostgreSQL に永続化する。
 type SignInPolicyRepository struct{ Pool sharedpg.DB }
 
-func signInPolicyFromFields(tenantID, applicationID string, rules []byte, createdAt, updatedAt time.Time) (*domain.AppSignInPolicy, error) {
-	policy := &domain.AppSignInPolicy{
+func signInPolicyFromFields(tenantID, applicationID string, rules []byte, createdAt, updatedAt time.Time) (*policydomain.AppSignInPolicy, error) {
+	policy := &policydomain.AppSignInPolicy{
 		TenantID: tenantID, ApplicationID: applicationID,
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
-		Rules: []domain.SignInRule{},
+		Rules: []policydomain.SignInRule{},
 	}
 	if len(rules) > 0 {
 		if err := json.Unmarshal(rules, &policy.Rules); err != nil {
@@ -28,7 +28,7 @@ func signInPolicyFromFields(tenantID, applicationID string, rules []byte, create
 	return policy, nil
 }
 
-func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationID string) (*domain.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationID string) (*policydomain.AppSignInPolicy, error) {
 	row, err := New(r.Pool).GetAppSignInPolicy(ctx, GetAppSignInPolicyParams{
 		TenantID: tenantID, ApplicationID: applicationID,
 	})
@@ -41,12 +41,12 @@ func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationI
 	return signInPolicyFromFields(row.TenantID, row.ApplicationID, row.Rules, row.CreatedAt, row.UpdatedAt)
 }
 
-func (r *SignInPolicyRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) ListAll(ctx context.Context, tenantID string) ([]*policydomain.AppSignInPolicy, error) {
 	rows, err := New(r.Pool).ListAppSignInPoliciesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.AppSignInPolicy, 0, len(rows))
+	out := make([]*policydomain.AppSignInPolicy, 0, len(rows))
 	for _, row := range rows {
 		policy, err := signInPolicyFromFields(row.TenantID, row.ApplicationID, row.Rules, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
@@ -57,10 +57,10 @@ func (r *SignInPolicyRepository) ListAll(ctx context.Context, tenantID string) (
 	return out, nil
 }
 
-func (r *SignInPolicyRepository) Save(ctx context.Context, policy *domain.AppSignInPolicy) error {
+func (r *SignInPolicyRepository) Save(ctx context.Context, policy *policydomain.AppSignInPolicy) error {
 	rules := policy.Rules
 	if rules == nil {
-		rules = []domain.SignInRule{}
+		rules = []policydomain.SignInRule{}
 	}
 	encoded, err := json.Marshal(rules)
 	if err != nil {
@@ -81,7 +81,7 @@ func (r *SignInPolicyRepository) Delete(ctx context.Context, tenantID, applicati
 // DefaultSignInPolicyRepository はテナント既定 sign-in policy を PostgreSQL に永続化する。
 type DefaultSignInPolicyRepository struct{ Pool sharedpg.DB }
 
-func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string) (*domain.TenantDefaultSignInPolicy, error) {
+func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string) (*policydomain.TenantDefaultSignInPolicy, error) {
 	row, err := New(r.Pool).GetTenantDefaultSignInPolicy(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -89,9 +89,9 @@ func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string
 	if err != nil {
 		return nil, err
 	}
-	policy := &domain.TenantDefaultSignInPolicy{
+	policy := &policydomain.TenantDefaultSignInPolicy{
 		TenantID: row.TenantID, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-		Rules: []domain.SignInRule{},
+		Rules: []policydomain.SignInRule{},
 	}
 	if len(row.Rules) > 0 {
 		if err := json.Unmarshal(row.Rules, &policy.Rules); err != nil {
@@ -101,10 +101,10 @@ func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string
 	return policy, nil
 }
 
-func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *domain.TenantDefaultSignInPolicy) error {
+func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *policydomain.TenantDefaultSignInPolicy) error {
 	rules := policy.Rules
 	if rules == nil {
-		rules = []domain.SignInRule{}
+		rules = []policydomain.SignInRule{}
 	}
 	encoded, err := json.Marshal(rules)
 	if err != nil {

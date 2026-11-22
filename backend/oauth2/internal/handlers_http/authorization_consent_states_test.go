@@ -13,9 +13,9 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -23,7 +23,7 @@ import (
 
 // 保存値を共有する場合と独立した値を返す場合の両方で、状態と主体の保存を検査する。
 type consentStateStore struct {
-	ports.AuthorizationRequestStore
+	oauthports.AuthorizationRequestStore
 	id     string
 	states []spec.AuthorizationCodeFlowState
 	share  bool
@@ -34,7 +34,7 @@ func TestConsentRejectsUnavailableOrMismatchedTransactions(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		state   spec.AuthorizationCodeFlowState
-		change  func(*domain.AuthorizationRequest, *authdomain.AuthenticationContext)
+		change  func(*oauthdomain.AuthorizationRequest, *authdomain.AuthenticationContext)
 		problem string
 	}{
 		{name: "received", state: spec.AuthFlowReceived},
@@ -45,12 +45,16 @@ func TestConsentRejectsUnavailableOrMismatchedTransactions(t *testing.T) {
 		{name: "exchanged", state: spec.AuthFlowExchanged},
 		{name: "rejected", state: spec.AuthFlowRejected},
 		{name: "expired", state: spec.AuthFlowExpired},
-		{name: "foreign_tenant", state: spec.AuthFlowConsentPending, change: func(req *domain.AuthorizationRequest, _ *authdomain.AuthenticationContext) { req.TenantID = "foreign" }},
-		{name: "deadline", state: spec.AuthFlowConsentPending, change: func(req *domain.AuthorizationRequest, _ *authdomain.AuthenticationContext) {
+		{name: "foreign_tenant", state: spec.AuthFlowConsentPending, change: func(req *oauthdomain.AuthorizationRequest, _ *authdomain.AuthenticationContext) {
+			req.TenantID = "foreign"
+		}},
+		{name: "deadline", state: spec.AuthFlowConsentPending, change: func(req *oauthdomain.AuthorizationRequest, _ *authdomain.AuthenticationContext) {
 			req.ExpiresAt = time.Now().Add(-time.Minute)
 		}},
-		{name: "different_subject", state: spec.AuthFlowConsentPending, change: func(_ *domain.AuthorizationRequest, authn *authdomain.AuthenticationContext) { authn.UserID = "bob" }, problem: "authentication_required"},
-		{name: "pending_session", state: spec.AuthFlowConsentPending, change: func(_ *domain.AuthorizationRequest, authn *authdomain.AuthenticationContext) {
+		{name: "different_subject", state: spec.AuthFlowConsentPending, change: func(_ *oauthdomain.AuthorizationRequest, authn *authdomain.AuthenticationContext) {
+			authn.UserID = "bob"
+		}, problem: "authentication_required"},
+		{name: "pending_session", state: spec.AuthFlowConsentPending, change: func(_ *oauthdomain.AuthorizationRequest, authn *authdomain.AuthenticationContext) {
 			authn.AuthenticationPending = true
 		}, problem: "authentication_required"},
 	} {
@@ -104,12 +108,12 @@ func TestConsentRejectsUnavailableOrMismatchedTransactions(t *testing.T) {
 	}
 }
 
-func (s *consentStateStore) Save(ctx context.Context, req *domain.AuthorizationRequest) error {
+func (s *consentStateStore) Save(ctx context.Context, req *oauthdomain.AuthorizationRequest) error {
 	s.id = req.ID
 	return s.AuthorizationRequestStore.Save(ctx, req)
 }
 
-func (s *consentStateStore) Find(ctx context.Context, id string) (*domain.AuthorizationRequest, error) {
+func (s *consentStateStore) Find(ctx context.Context, id string) (*oauthdomain.AuthorizationRequest, error) {
 	req, err := s.AuthorizationRequestStore.Find(ctx, id)
 	if err != nil || req == nil || s.share {
 		return req, err
@@ -204,7 +208,7 @@ func TestAuthorizationConsentStateProgression(t *testing.T) {
 			}
 			if action == "allow" {
 				want = append(want, spec.AuthFlowConsented, spec.AuthFlowCodeIssued)
-				if codes.saved != 1 || redirect.Query().Get("code") == "" || consent == nil || consent.State != domain.ConsentGranted {
+				if codes.saved != 1 || redirect.Query().Get("code") == "" || consent == nil || consent.State != oauthdomain.ConsentGranted {
 					t.Fatalf("許可後の保存 code=%d consent=%+v redirect=%s", codes.saved, consent, redirect)
 				}
 				if len(*events) != 2 || (*events)[0].EventType() != "ConsentGranted" || (*events)[1].EventType() != "AuthorizationCodeIssued" {

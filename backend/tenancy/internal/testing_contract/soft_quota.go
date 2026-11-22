@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
 func RunSoftQuota(t *testing.T, newFixture NewQuotaFixture) {
@@ -15,10 +15,10 @@ func RunSoftQuota(t *testing.T, newFixture NewQuotaFixture) {
 			ctx := context.Background()
 			f := newFixture(t)
 			one := 1
-			if err := f.Repository.SetQuota(ctx, f.TenantID, &domain.TenantQuota{AuditEventsRetained: &one, ExportArtifactsBytes: &one}); err != nil {
+			if err := f.Repository.SetQuota(ctx, f.TenantID, &tenancydomain.TenantQuota{AuditEventsRetained: &one, ExportArtifactsBytes: &one}); err != nil {
 				t.Fatal(err)
 			}
-			read := func(u *domain.TenantUsage) int {
+			read := func(u *tenancydomain.TenantUsage) int {
 				if resource == "audit_events_retained" {
 					return u.AuditEventsRetained
 				}
@@ -31,7 +31,7 @@ func RunSoftQuota(t *testing.T, newFixture NewQuotaFixture) {
 				requireUsage(ctx, t, f, read, want)
 			}
 			zero := 0
-			if err := f.Repository.SetQuota(ctx, f.TenantID, &domain.TenantQuota{AuditEventsRetained: &zero, ExportArtifactsBytes: &zero}); err != nil {
+			if err := f.Repository.SetQuota(ctx, f.TenantID, &tenancydomain.TenantQuota{AuditEventsRetained: &zero, ExportArtifactsBytes: &zero}); err != nil {
 				t.Fatal(err)
 			}
 			const large = 3 << 30
@@ -62,21 +62,21 @@ func RunSoftQuota(t *testing.T, newFixture NewQuotaFixture) {
 			other := newFixture(t)
 			requireUsage(ctx, t, other, read, 0)
 			largeLimit := large + 1
-			if err := f.Repository.SetQuota(ctx, f.TenantID, &domain.TenantQuota{AuditEventsRetained: &largeLimit, ExportArtifactsBytes: &largeLimit}); err != nil {
+			if err := f.Repository.SetQuota(ctx, f.TenantID, &tenancydomain.TenantQuota{AuditEventsRetained: &largeLimit, ExportArtifactsBytes: &largeLimit}); err != nil {
 				t.Fatal(err)
 			}
 			quota, err := f.Repository.GetQuota(ctx, f.TenantID)
 			if err != nil || quota.EffectiveLimit(resource) != largeLimit {
 				t.Fatalf("large override: quota=%+v err=%v", quota, err)
 			}
-			if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, domain.ResourceGroups, 1); err != nil {
+			if err := f.Repository.CheckAndIncrement(ctx, f.TenantID, tenancydomain.ResourceGroups, 1); err != nil {
 				t.Fatal(err)
 			}
-			measured := domain.SoftQuotaUsage{AuditEventsRetained: 3, ExportArtifactsBytes: large}
+			measured := tenancydomain.SoftQuotaUsage{AuditEventsRetained: 3, ExportArtifactsBytes: large}
 			if err := f.Repository.SetSoftUsage(ctx, f.TenantID, measured); err != nil {
 				t.Fatal(err)
 			}
-			if err := f.Repository.SetSoftUsage(ctx, f.TenantID, domain.SoftQuotaUsage{AuditEventsRetained: -1}); err == nil {
+			if err := f.Repository.SetSoftUsage(ctx, f.TenantID, tenancydomain.SoftQuotaUsage{AuditEventsRetained: -1}); err == nil {
 				t.Fatal("negative snapshot accepted")
 			}
 			usage, err := f.Repository.GetUsage(ctx, f.TenantID)
@@ -85,9 +85,9 @@ func RunSoftQuota(t *testing.T, newFixture NewQuotaFixture) {
 			}
 			// 読み戻した値の変更は保存した値へ伝播しない。
 			usage.AuditEventsRetained = 99
-			requireUsage(ctx, t, f, func(u *domain.TenantUsage) int { return u.AuditEventsRetained }, 3)
+			requireUsage(ctx, t, f, func(u *tenancydomain.TenantUsage) int { return u.AuditEventsRetained }, 3)
 			requireUsage(ctx, t, other, read, 0)
-			if err := f.Repository.SetSoftUsage(ctx, f.TenantID, domain.SoftQuotaUsage{}); err != nil {
+			if err := f.Repository.SetSoftUsage(ctx, f.TenantID, tenancydomain.SoftQuotaUsage{}); err != nil {
 				t.Fatal(err)
 			}
 			requireUsage(ctx, t, f, read, 0)

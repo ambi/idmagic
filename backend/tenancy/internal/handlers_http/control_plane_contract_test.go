@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
@@ -98,10 +98,10 @@ func TestControlPlaneTenantHTTPContracts(t *testing.T) {
 func TestControlPlaneTenantContractsRefuseTenantAdmin(t *testing.T) {
 	quotas := memory.NewQuotaRepository()
 	users := 200
-	if err := quotas.SetQuota(context.Background(), "acme", &domain.TenantQuota{Users: &users}); err != nil {
+	if err := quotas.SetQuota(context.Background(), "acme", &tenancydomain.TenantQuota{Users: &users}); err != nil {
 		t.Fatal(err)
 	}
-	s := newRulesServer(t, settingsActor("admin", domain.DefaultTenantID, []string{"admin"}), rulesOptions{quotas: quotas})
+	s := newRulesServer(t, settingsActor("admin", tenancydomain.DefaultTenantID, []string{"admin"}), rulesOptions{quotas: quotas})
 	for _, request := range []struct {
 		method, path string
 		body         any

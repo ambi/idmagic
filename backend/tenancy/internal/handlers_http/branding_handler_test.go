@@ -25,14 +25,14 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/internal/handlers_http"
 
 	"github.com/labstack/echo/v5"
 )
 
-func newBrandingServer(t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant) (*echo.Echo, *memory.TenantBrandingRepository, *memory.TenantBrandingAssetStore, *[]spec.DomainEvent) {
+func newBrandingServer(t *testing.T, actor *userdomain.User, tenants ...*tenancydomain.Tenant) (*echo.Echo, *memory.TenantBrandingRepository, *memory.TenantBrandingAssetStore, *[]spec.DomainEvent) {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
@@ -139,7 +139,7 @@ func TestUpdateBrandingPersistsAndIsPubliclyVisible(t *testing.T) {
 	if len(*events) != 1 {
 		t.Fatalf("events=%d want 1", len(*events))
 	}
-	if _, ok := (*events)[0].(*domain.TenantBrandingUpdated); !ok {
+	if _, ok := (*events)[0].(*tenancydomain.TenantBrandingUpdated); !ok {
 		t.Fatalf("event type=%T", (*events)[0])
 	}
 
@@ -222,7 +222,7 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	if !ok || uploadBranding["logo_url"] != saved.LogoURL {
 		t.Fatalf("upload response=%v, want logo_url=%s", uploadBody, saved.LogoURL)
 	}
-	if _, err := assetStore.Find(context.Background(), "acme", domain.TenantBrandingAssetKindLogo, saved.LogoObjectKey); err != nil {
+	if _, err := assetStore.Find(context.Background(), "acme", tenancydomain.TenantBrandingAssetKindLogo, saved.LogoObjectKey); err != nil {
 		t.Fatalf("find asset: %v", err)
 	}
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -24,12 +24,12 @@ func WriteRelationTuples(
 	ctx context.Context,
 	d Deps,
 	tenantID string,
-	write ports.TupleWrite,
+	write accessinternalports.TupleWrite,
 	now time.Time,
 ) (TupleWriteOutcome, error) {
 	// 組み込み型だけの差分は利用者のモデルを不要にする。混在する通常型は従来どおり公開モデルで検証する。
 	onlyOperations := len(write.Writes)+len(write.Deletes)+len(write.DeleteObjects) > 0
-	for _, tuple := range append(append([]domain.RelationTuple{}, write.Writes...), write.Deletes...) {
+	for _, tuple := range append(append([]accessdomain.RelationTuple{}, write.Writes...), write.Deletes...) {
 		onlyOperations = onlyOperations && tuple.Resource.Type == spec.ResourceTypeMcpOperation
 	}
 	for _, object := range write.DeleteObjects {
@@ -47,7 +47,7 @@ func WriteRelationTuples(
 	for _, t := range write.Writes {
 		tupleModel := model
 		if t.Resource.Type == spec.ResourceTypeMcpOperation {
-			tupleModel = domain.McpOperationModel(tenantID)
+			tupleModel = accessdomain.McpOperationModel(tenantID)
 		}
 		if err := tupleModel.ValidateTuple(t); err != nil {
 			return TupleWriteOutcome{}, err
@@ -60,12 +60,12 @@ func WriteRelationTuples(
 			return TupleWriteOutcome{}, err
 		}
 		if _, conflict := seen[t.Key()]; conflict {
-			return TupleWriteOutcome{}, fmt.Errorf("%w: %s appears in both writes and deletes", domain.ErrTupleInvalid, t)
+			return TupleWriteOutcome{}, fmt.Errorf("%w: %s appears in both writes and deletes", accessdomain.ErrTupleInvalid, t)
 		}
 	}
 	for _, object := range write.DeleteObjects {
 		if object.Type == "" || object.ID == "" {
-			return TupleWriteOutcome{}, fmt.Errorf("%w: delete_objects entries require a type and an id", domain.ErrTupleInvalid)
+			return TupleWriteOutcome{}, fmt.Errorf("%w: delete_objects entries require a type and an id", accessdomain.ErrTupleInvalid)
 		}
 	}
 
@@ -73,14 +73,14 @@ func WriteRelationTuples(
 	if err != nil {
 		return TupleWriteOutcome{}, err
 	}
-	consistency := domain.EncodeConsistencyToken(tenantID, result.Version)
+	consistency := accessdomain.EncodeConsistencyToken(tenantID, result.Version)
 	if result.WrittenCount > 0 {
-		d.emit(&domain.RelationTupleWritten{
+		d.emit(&accessdomain.RelationTupleWritten{
 			At: now, TenantID: tenantID, WrittenCount: result.WrittenCount, Consistency: consistency,
 		})
 	}
 	if result.DeletedCount > 0 {
-		d.emit(&domain.RelationTupleDeleted{
+		d.emit(&accessdomain.RelationTupleDeleted{
 			At: now, TenantID: tenantID, DeletedCount: result.DeletedCount, Consistency: consistency,
 		})
 	}
@@ -91,7 +91,7 @@ func WriteRelationTuples(
 
 // ListedTuples は絞り込んだタプルと、その時点の整合トークン。
 type ListedTuples struct {
-	Tuples      []domain.RelationTuple
+	Tuples      []accessdomain.RelationTuple
 	Consistency string
 }
 
@@ -100,7 +100,7 @@ func ListRelationTuples(
 	ctx context.Context,
 	d Deps,
 	tenantID string,
-	filter ports.RelationTupleFilter,
+	filter accessinternalports.RelationTupleFilter,
 	limit int,
 ) (ListedTuples, error) {
 	tuples, err := d.Tuples.List(ctx, tenantID, filter, limit)
@@ -111,5 +111,5 @@ func ListRelationTuples(
 	if err != nil {
 		return ListedTuples{}, err
 	}
-	return ListedTuples{Tuples: tuples, Consistency: domain.EncodeConsistencyToken(tenantID, version)}, nil
+	return ListedTuples{Tuples: tuples, Consistency: accessdomain.EncodeConsistencyToken(tenantID, version)}, nil
 }

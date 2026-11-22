@@ -13,7 +13,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
 	"github.com/ambi/idmagic/backend/directoryconnector/internal/ldap_goldap"
 )
 
@@ -52,9 +52,9 @@ type Config struct {
 	Proxy        *url.URL
 	StateDir     string
 	LDAP         ldap_goldap.Config
-	Dialect      domain.Dialect
-	Scope        domain.Scope
-	Mapping      domain.Mapping
+	Dialect      directoryconnectordomain.Dialect
+	Scope        directoryconnectordomain.Scope
+	Mapping      directoryconnectordomain.Mapping
 	Interval     time.Duration
 	FullInterval time.Duration
 }
@@ -106,19 +106,19 @@ func LoadConfig(path string) (Config, error) {
 		}
 		config.Proxy = proxy
 	}
-	if config.Dialect, err = domain.ParseDialect(file.LDAP.Dialect); err != nil {
+	if config.Dialect, err = directoryconnectordomain.ParseDialect(file.LDAP.Dialect); err != nil {
 		return Config{}, fmt.Errorf("ldap.dialect: %w", err)
 	}
-	if err := domain.ValidateBaseDNs(file.LDAP.BaseDNs); err != nil {
+	if err := directoryconnectordomain.ValidateBaseDNs(file.LDAP.BaseDNs); err != nil {
 		return Config{}, err
 	}
-	config.Scope = domain.Scope{BaseDNs: file.LDAP.BaseDNs, Filter: file.LDAP.UserFilter}
+	config.Scope = directoryconnectordomain.Scope{BaseDNs: file.LDAP.BaseDNs, Filter: file.LDAP.UserFilter}
 	if config.Scope.Filter == "" {
-		config.Scope.Filter = domain.DefaultUserFilter(config.Dialect)
+		config.Scope.Filter = directoryconnectordomain.DefaultUserFilter(config.Dialect)
 	} else if err := ldap_goldap.ValidateFilter(config.Scope.Filter); err != nil {
 		return Config{}, fmt.Errorf("ldap.user_filter: %w", err)
 	}
-	if config.Mapping, err = domain.EffectiveMapping(config.Dialect, file.LDAP.Attributes); err != nil {
+	if config.Mapping, err = directoryconnectordomain.EffectiveMapping(config.Dialect, file.LDAP.Attributes); err != nil {
 		return Config{}, err
 	}
 	pageSize := defaultPageSize

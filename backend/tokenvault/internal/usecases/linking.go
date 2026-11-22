@@ -12,11 +12,11 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
-type oauthClientConfig = ports.OAuthClient
+type oauthClientConfig = tokenvaultports.OAuthClient
 
 // コールバックの結果。戻り先の result に載せる。上流の値を含めない。
 const (
@@ -74,10 +74,10 @@ func StartLink(ctx context.Context, deps Deps, in StartLinkInput) (string, error
 	if err != nil {
 		return "", err
 	}
-	if err := deps.Attempts.Save(ctx, &domain.ConnectionAttempt{
+	if err := deps.Attempts.Save(ctx, &tokenvaultdomain.ConnectionAttempt{
 		ID: uuid.NewV4().String(), TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID,
 		StateHash: hashState(state), CodeVerifier: verifier, RequestedScopes: scopes,
-		ExpiresAt: deps.now().Add(domain.AttemptTTL),
+		ExpiresAt: deps.now().Add(tokenvaultdomain.AttemptTTL),
 	}); err != nil {
 		return "", err
 	}
@@ -96,12 +96,12 @@ func StartLink(ctx context.Context, deps Deps, in StartLinkInput) (string, error
 	return authorization.String(), nil
 }
 
-func activeConnector(ctx context.Context, deps Deps, tenantID, id string) (*domain.Connector, error) {
+func activeConnector(ctx context.Context, deps Deps, tenantID, id string) (*tokenvaultdomain.Connector, error) {
 	connector, err := GetConnector(ctx, deps, tenantID, id)
 	if err != nil {
 		return nil, err
 	}
-	if connector.Status != domain.ConnectorActive {
+	if connector.Status != tokenvaultdomain.ConnectorActive {
 		return nil, ErrConnectorNotFound
 	}
 	return connector, nil
@@ -136,7 +136,7 @@ func CompleteLink(ctx context.Context, deps Deps, in CompleteLinkInput) (string,
 	if err != nil {
 		return LinkResultExchangeFailed, err
 	}
-	failed := &domain.TokenVaultConnectionLinkFailed{At: now, TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID}
+	failed := &tokenvaultdomain.TokenVaultConnectionLinkFailed{At: now, TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID}
 	if in.Code == "" {
 		deps.emit(failed)
 		return LinkResultExchangeFailed, nil
@@ -150,23 +150,23 @@ func CompleteLink(ctx context.Context, deps Deps, in CompleteLinkInput) (string,
 		deps.emit(failed)
 		return LinkResultExchangeFailed, err
 	}
-	deps.emit(&domain.TokenVaultConnectionLinked{At: now, TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID})
+	deps.emit(&tokenvaultdomain.TokenVaultConnectionLinked{At: now, TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID})
 	return LinkResultLinked, nil
 }
 
-func linkedConnection(attempt *domain.ConnectionAttempt, response ports.TokenResponse, now time.Time) *domain.Connection {
+func linkedConnection(attempt *tokenvaultdomain.ConnectionAttempt, response tokenvaultports.TokenResponse, now time.Time) *tokenvaultdomain.Connection {
 	scopes := response.Scopes
 	if scopes == nil {
 		scopes = attempt.RequestedScopes
 	}
-	return &domain.Connection{
+	return &tokenvaultdomain.Connection{
 		ID: uuid.NewV4().String(), TenantID: attempt.TenantID, ConnectorID: attempt.ConnectorID, UserID: attempt.UserID,
-		Status: domain.ConnectionActive, GrantedScopes: scopes, AccessToken: response.AccessToken,
+		Status: tokenvaultdomain.ConnectionActive, GrantedScopes: scopes, AccessToken: response.AccessToken,
 		RefreshToken: response.RefreshToken, ExpiresAt: expiry(response, now), CreatedAt: now, UpdatedAt: now,
 	}
 }
 
-func expiry(response ports.TokenResponse, now time.Time) *time.Time {
+func expiry(response tokenvaultports.TokenResponse, now time.Time) *time.Time {
 	if response.ExpiresIn == nil {
 		return nil
 	}
@@ -176,8 +176,8 @@ func expiry(response ports.TokenResponse, now time.Time) *time.Time {
 
 // MyConnection は本人から見たコネクタと接続である。Connection は接続がなければ nil である。
 type MyConnection struct {
-	Connector  *domain.Connector
-	Connection *domain.Connection
+	Connector  *tokenvaultdomain.Connector
+	Connection *tokenvaultdomain.Connection
 }
 
 // ListMyConnections は active のコネクタと、本人の接続を持つコネクタを返す (REQ-TOKENVAULT-006)。
@@ -192,12 +192,12 @@ func ListMyConnections(ctx context.Context, deps Deps, tenantID, userID string) 
 	}
 	result := make([]MyConnection, 0, len(connectors))
 	for _, connector := range connectors {
-		index := slices.IndexFunc(connections, func(c *domain.Connection) bool { return c.ConnectorID == connector.ID })
-		var connection *domain.Connection
+		index := slices.IndexFunc(connections, func(c *tokenvaultdomain.Connection) bool { return c.ConnectorID == connector.ID })
+		var connection *tokenvaultdomain.Connection
 		if index >= 0 {
 			connection = connections[index]
 		}
-		if connector.Status == domain.ConnectorActive || connection != nil {
+		if connector.Status == tokenvaultdomain.ConnectorActive || connection != nil {
 			result = append(result, MyConnection{Connector: connector, Connection: connection})
 		}
 	}
@@ -214,29 +214,29 @@ func Unlink(ctx context.Context, deps Deps, tenantID, connectorID, userID string
 		return ErrConnectionNotFound
 	}
 	outcome := revokeUpstream(ctx, deps, connection)
-	deps.emit(&domain.TokenVaultConnectionUnlinked{
+	deps.emit(&tokenvaultdomain.TokenVaultConnectionUnlinked{
 		At: deps.now(), TenantID: tenantID, ConnectorID: connectorID, UserID: userID, UpstreamRevocation: outcome,
 	})
 	return nil
 }
 
-func revokeUpstream(ctx context.Context, deps Deps, connection *domain.Connection) string {
+func revokeUpstream(ctx context.Context, deps Deps, connection *tokenvaultdomain.Connection) string {
 	token, hint := connection.RefreshToken, "refresh_token"
 	if token == "" {
 		token, hint = connection.AccessToken, "access_token"
 	}
 	connector, err := deps.Connectors.Find(ctx, connection.TenantID, connection.ConnectorID)
 	if err != nil {
-		return domain.UpstreamRevocationFailed
+		return tokenvaultdomain.UpstreamRevocationFailed
 	}
 	if connector == nil || connector.RevocationEndpoint == "" || token == "" {
-		return domain.UpstreamRevocationNotConfigured
+		return tokenvaultdomain.UpstreamRevocationNotConfigured
 	}
 	// 解除は確定しているので、呼び出し元の切断で失効の試行を止めない。
 	revokeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), upstreamRevocationTimeout)
 	defer cancel()
 	if err := deps.Upstream.Revoke(revokeCtx, oauthClient(connector), token, hint); err != nil {
-		return domain.UpstreamRevocationFailed
+		return tokenvaultdomain.UpstreamRevocationFailed
 	}
-	return domain.UpstreamRevocationSucceeded
+	return tokenvaultdomain.UpstreamRevocationSucceeded
 }

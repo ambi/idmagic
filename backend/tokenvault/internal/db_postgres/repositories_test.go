@@ -18,7 +18,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/db_postgres"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 	"github.com/ambi/idmagic/backend/tokenvault/internal/testing_contract"
 )
 
@@ -34,20 +34,20 @@ func TestTokenVaultReencryptionSkipsDisabledKeys(t *testing.T) {
 	module := datakeys.NewMemoryModule(envelope_crypto.NewTinkEnvelopeCrypto(master))
 	connectors := &db_postgres.ConnectorRepository{Pool: pool, Cipher: module.FieldCipher()}
 	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: module.FieldCipher()}
-	var saved []*domain.Connection
+	var saved []*tokenvaultdomain.Connection
 	for i, id := range []string{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"} {
-		connector := &domain.Connector{
-			ID: id, TenantID: tenant.ID, Name: id, Status: domain.ConnectorActive,
+		connector := &tokenvaultdomain.Connector{
+			ID: id, TenantID: tenant.ID, Name: id, Status: tokenvaultdomain.ConnectorActive,
 			AuthorizationEndpoint: "https://idp.example/a", TokenEndpoint: "https://idp.example/t",
-			ClientID: id, ClientSecret: "client-secret", TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+			ClientID: id, ClientSecret: "client-secret", TokenEndpointAuthMethod: tokenvaultdomain.AuthMethodClientSecretBasic,
 			Version: 1, CreatedAt: now, UpdatedAt: now,
 		}
 		if err := connectors.Create(ctx, connector); err != nil {
 			t.Fatal(err)
 		}
-		connection := &domain.Connection{
+		connection := &tokenvaultdomain.Connection{
 			ID: id, TenantID: tenant.ID, ConnectorID: id, UserID: seedUser(t, pool, tenant.ID),
-			Status: domain.ConnectionActive, AccessToken: "access", RefreshToken: "refresh", UpdatedAt: now,
+			Status: tokenvaultdomain.ConnectionActive, AccessToken: "access", RefreshToken: "refresh", UpdatedAt: now,
 		}
 		if err := connections.SaveLinked(ctx, connection); err != nil {
 			t.Fatal(err)
@@ -169,10 +169,10 @@ func newConnectionFixture(t *testing.T) connectionFixture {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	cipher := newCipher(t, tenant.ID)
 	now := pgtest.Now()
-	connector := &domain.Connector{
-		ID: uuid.NewV4().String(), TenantID: tenant.ID, Name: "c", Status: domain.ConnectorActive,
+	connector := &tokenvaultdomain.Connector{
+		ID: uuid.NewV4().String(), TenantID: tenant.ID, Name: "c", Status: tokenvaultdomain.ConnectorActive,
 		AuthorizationEndpoint: "https://idp.example.com/a", TokenEndpoint: "https://idp.example.com/t",
-		ClientID: "c", ClientSecret: "client-secret", TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		ClientID: "c", ClientSecret: "client-secret", TokenEndpointAuthMethod: tokenvaultdomain.AuthMethodClientSecretBasic,
 		Version: 1, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := (&db_postgres.ConnectorRepository{Pool: pool, Cipher: cipher}).Create(context.Background(), connector); err != nil {
@@ -181,13 +181,13 @@ func newConnectionFixture(t *testing.T) connectionFixture {
 	return connectionFixture{pool, cipher, &db_postgres.ConnectionRepository{Pool: pool, Cipher: cipher}, tenant.ID, connector.ID, now}
 }
 
-func (f connectionFixture) link(t *testing.T, access, refresh string) *domain.Connection {
+func (f connectionFixture) link(t *testing.T, access, refresh string) *tokenvaultdomain.Connection {
 	t.Helper()
 	ctx := context.Background()
 	userID := seedUser(t, f.pool, f.tenantID)
-	if err := f.connections.SaveLinked(ctx, &domain.Connection{
+	if err := f.connections.SaveLinked(ctx, &tokenvaultdomain.Connection{
 		ID: uuid.NewV4().String(), TenantID: f.tenantID, ConnectorID: f.connectorID, UserID: userID,
-		Status: domain.ConnectionActive, GrantedScopes: []string{}, AccessToken: access, RefreshToken: refresh, UpdatedAt: f.now,
+		Status: tokenvaultdomain.ConnectionActive, GrantedScopes: []string{}, AccessToken: access, RefreshToken: refresh, UpdatedAt: f.now,
 	}); err != nil {
 		t.Fatal(err)
 	}

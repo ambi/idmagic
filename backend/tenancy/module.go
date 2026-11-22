@@ -4,15 +4,15 @@
 package tenancy
 
 import (
-	"github.com/ambi/idmagic/backend/tenancy/ports"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // Module は tenancy context が所有する永続化 port の束。
 type Module struct {
-	TenantRepo         ports.TenantRepository
-	BrandingRepo       ports.TenantBrandingRepository
-	BrandingAssetStore ports.TenantBrandingAssetStore
+	TenantRepo         tenantports.TenantRepository
+	BrandingRepo       tenantports.TenantBrandingRepository
+	BrandingAssetStore tenantports.TenantBrandingAssetStore
 	// NotificationTemplates はテナントによる通知テンプレート上書き (wi-288)。
-	NotificationTemplates ports.NotificationTemplateRepository
-	QuotaRepo             ports.QuotaRepository
+	NotificationTemplates tenantports.NotificationTemplateRepository
+	QuotaRepo             tenantports.QuotaRepository
 }

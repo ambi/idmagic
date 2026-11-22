@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	d "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,14 +16,14 @@ import (
 type AccessReviewRepository struct{ Pool sharedpg.DB }
 
 type accessReviewRecord struct {
-	Review              *d.AccessReview                    `json:"review"`
-	Notified            map[string]bool                    `json:"notified"`
-	FailedNotifications map[string]bool                    `json:"failed_notifications"`
-	WorkLeases          map[string]d.AccessReviewWorkLease `json:"work_leases"`
+	Review              *igdomain.AccessReview                    `json:"review"`
+	Notified            map[string]bool                           `json:"notified"`
+	FailedNotifications map[string]bool                           `json:"failed_notifications"`
+	WorkLeases          map[string]igdomain.AccessReviewWorkLease `json:"work_leases"`
 }
 
-func decodeReviewPlan(tenant string, data []byte) (*d.AccessReviewPlan, error) {
-	var p d.AccessReviewPlan
+func decodeReviewPlan(tenant string, data []byte) (*igdomain.AccessReviewPlan, error) {
+	var p igdomain.AccessReviewPlan
 	if err := json.Unmarshal(data, &p); err != nil {
 		return nil, err
 	}
@@ -31,13 +31,13 @@ func decodeReviewPlan(tenant string, data []byte) (*d.AccessReviewPlan, error) {
 	return &p, nil
 }
 
-func decodeReview(tenant string, data []byte) (*d.AccessReview, error) {
+func decodeReview(tenant string, data []byte) (*igdomain.AccessReview, error) {
 	var record accessReviewRecord
 	if err := json.Unmarshal(data, &record); err != nil {
 		return nil, err
 	}
 	if record.Review == nil {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	record.Review.TenantID = tenant
 	record.Review.Notified = record.Notified
@@ -53,7 +53,7 @@ func reviewNext(at *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *at, Valid: true}
 }
 
-func (r *AccessReviewRepository) CreatePlan(ctx context.Context, p *d.AccessReviewPlan) error {
+func (r *AccessReviewRepository) CreatePlan(ctx context.Context, p *igdomain.AccessReviewPlan) error {
 	data, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -61,12 +61,12 @@ func (r *AccessReviewRepository) CreatePlan(ctx context.Context, p *d.AccessRevi
 	return New(r.Pool).CreateAccessReviewPlan(ctx, CreateAccessReviewPlanParams{ID: p.ID, TenantID: p.TenantID, Enabled: p.Enabled, NextStartAt: reviewNext(p.NextStartAt), Data: data})
 }
 
-func (r *AccessReviewRepository) ListPlans(ctx context.Context, tenant string) ([]*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) ListPlans(ctx context.Context, tenant string) ([]*igdomain.AccessReviewPlan, error) {
 	rows, err := New(r.Pool).ListAccessReviewPlans(ctx, tenant)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*d.AccessReviewPlan, 0, len(rows))
+	out := make([]*igdomain.AccessReviewPlan, 0, len(rows))
 	for _, row := range rows {
 		p, err := decodeReviewPlan(row.TenantID, row.Data)
 		if err != nil {
@@ -77,12 +77,12 @@ func (r *AccessReviewRepository) ListPlans(ctx context.Context, tenant string) (
 	return out, nil
 }
 
-func (r *AccessReviewRepository) ReadyPlans(ctx context.Context, now time.Time) ([]*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) ReadyPlans(ctx context.Context, now time.Time) ([]*igdomain.AccessReviewPlan, error) {
 	rows, err := New(r.Pool).ReadyAccessReviewPlans(ctx, pgtype.Timestamptz{Time: now, Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*d.AccessReviewPlan, 0, len(rows))
+	out := make([]*igdomain.AccessReviewPlan, 0, len(rows))
 	for _, row := range rows {
 		p, err := decodeReviewPlan(row.TenantID, row.Data)
 		if err != nil {
@@ -93,7 +93,7 @@ func (r *AccessReviewRepository) ReadyPlans(ctx context.Context, now time.Time) 
 	return out, nil
 }
 
-func (r *AccessReviewRepository) FindPlan(ctx context.Context, tenant, id string) (*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) FindPlan(ctx context.Context, tenant, id string) (*igdomain.AccessReviewPlan, error) {
 	if !sharedpg.IsUUIDText(id) {
 		return nil, nil
 	}
@@ -107,7 +107,7 @@ func (r *AccessReviewRepository) FindPlan(ctx context.Context, tenant, id string
 	return decodeReviewPlan(row.TenantID, row.Data)
 }
 
-func saveReviewPlan(ctx context.Context, q *Queries, p *d.AccessReviewPlan) error {
+func saveReviewPlan(ctx context.Context, q *Queries, p *igdomain.AccessReviewPlan) error {
 	data, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -115,9 +115,9 @@ func saveReviewPlan(ctx context.Context, q *Queries, p *d.AccessReviewPlan) erro
 	return q.SaveAccessReviewPlan(ctx, SaveAccessReviewPlanParams{TenantID: p.TenantID, ID: p.ID, Enabled: p.Enabled, NextStartAt: reviewNext(p.NextStartAt), Data: data})
 }
 
-func (r *AccessReviewRepository) UpdatePlan(ctx context.Context, tenant, id string, apply func(*d.AccessReviewPlan) error) (*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) UpdatePlan(ctx context.Context, tenant, id string, apply func(*igdomain.AccessReviewPlan) error) (*igdomain.AccessReviewPlan, error) {
 	if !sharedpg.IsUUIDText(id) {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
@@ -127,7 +127,7 @@ func (r *AccessReviewRepository) UpdatePlan(ctx context.Context, tenant, id stri
 	q := New(tx)
 	row, err := q.LockAccessReviewPlan(ctx, LockAccessReviewPlanParams{TenantID: tenant, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (r *AccessReviewRepository) UpdatePlan(ctx context.Context, tenant, id stri
 	return p, tx.Commit(ctx)
 }
 
-func (r *AccessReviewRepository) CaptureReview(ctx context.Context, p *d.AccessReviewPlan, review *d.AccessReview, next *time.Time) (bool, error) {
+func (r *AccessReviewRepository) CaptureReview(ctx context.Context, p *igdomain.AccessReviewPlan, review *igdomain.AccessReview, next *time.Time) (bool, error) {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
 		return false, err
@@ -177,15 +177,15 @@ func (r *AccessReviewRepository) CaptureReview(ctx context.Context, p *d.AccessR
 	return true, tx.Commit(ctx)
 }
 
-func (r *AccessReviewRepository) ListByPlan(ctx context.Context, tenant, planID string) ([]*d.AccessReview, error) {
+func (r *AccessReviewRepository) ListByPlan(ctx context.Context, tenant, planID string) ([]*igdomain.AccessReview, error) {
 	if !sharedpg.IsUUIDText(planID) {
-		return []*d.AccessReview{}, nil
+		return []*igdomain.AccessReview{}, nil
 	}
 	rows, err := New(r.Pool).ListAccessReviews(ctx, ListAccessReviewsParams{TenantID: tenant, PlanID: planID})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*d.AccessReview, 0, len(rows))
+	out := make([]*igdomain.AccessReview, 0, len(rows))
 	for _, row := range rows {
 		v, err := decodeReview(row.TenantID, row.Data)
 		if err != nil {
@@ -196,29 +196,29 @@ func (r *AccessReviewRepository) ListByPlan(ctx context.Context, tenant, planID 
 	return out, nil
 }
 
-func (r *AccessReviewRepository) ListForReviewer(ctx context.Context, tenant, userID string) ([]*d.AccessReview, error) {
+func (r *AccessReviewRepository) ListForReviewer(ctx context.Context, tenant, userID string) ([]*igdomain.AccessReview, error) {
 	rows, err := New(r.Pool).ListReviewerAccessReviews(ctx, ListReviewerAccessReviewsParams{TenantID: tenant, Column2: userID})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*d.AccessReview, 0, len(rows))
+	out := make([]*igdomain.AccessReview, 0, len(rows))
 	for _, row := range rows {
 		v, err := decodeReview(row.TenantID, row.Data)
 		if err != nil {
 			return nil, err
 		}
-		v.Items = slices.DeleteFunc(v.Items, func(i d.AccessReviewItem) bool { return i.ReviewerID != userID })
+		v.Items = slices.DeleteFunc(v.Items, func(i igdomain.AccessReviewItem) bool { return i.ReviewerID != userID })
 		out = append(out, v)
 	}
 	return out, nil
 }
 
-func (r *AccessReviewRepository) ActiveReviews(ctx context.Context) ([]*d.AccessReview, error) {
+func (r *AccessReviewRepository) ActiveReviews(ctx context.Context) ([]*igdomain.AccessReview, error) {
 	rows, err := New(r.Pool).ListActiveAccessReviews(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*d.AccessReview, 0, len(rows))
+	out := make([]*igdomain.AccessReview, 0, len(rows))
 	for _, row := range rows {
 		v, err := decodeReview(row.TenantID, row.Data)
 		if err != nil {
@@ -229,9 +229,9 @@ func (r *AccessReviewRepository) ActiveReviews(ctx context.Context) ([]*d.Access
 	return out, nil
 }
 
-func (r *AccessReviewRepository) UpdateReview(ctx context.Context, tenant, id string, apply func(*d.AccessReview) error) (*d.AccessReview, error) {
+func (r *AccessReviewRepository) UpdateReview(ctx context.Context, tenant, id string, apply func(*igdomain.AccessReview) error) (*igdomain.AccessReview, error) {
 	if !sharedpg.IsUUIDText(id) {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
@@ -241,7 +241,7 @@ func (r *AccessReviewRepository) UpdateReview(ctx context.Context, tenant, id st
 	q := New(tx)
 	row, err := q.LockAccessReview(ctx, LockAccessReviewParams{TenantID: tenant, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	if err != nil {
 		return nil, err

@@ -10,8 +10,8 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
 )
 
 // Verifier は ports.TokenVerifier の実装である。Introspector は失効の判定を含む。
@@ -21,7 +21,7 @@ type Verifier struct {
 }
 
 // Verify はトークンと DPoP の証明を確かめる。証明の jti はトークンが有効なときだけ記録する。
-func (v Verifier) Verify(ctx context.Context, credential ports.CallerCredential) (*domain.CallerToken, error) {
+func (v Verifier) Verify(ctx context.Context, credential tokenvaultports.CallerCredential) (*tokenvaultdomain.CallerToken, error) {
 	result, err := v.Introspector.IntrospectAccessToken(ctx, credential.Token)
 	if err != nil {
 		return nil, err
@@ -44,10 +44,10 @@ func (v Verifier) Verify(ctx context.Context, credential ports.CallerCredential)
 			return nil, nil //nolint:nilnil,nilerr // 証明の不一致は無効なトークンとして扱う。
 		}
 	}
-	return &domain.CallerToken{
+	return &tokenvaultdomain.CallerToken{
 		Delegated: len(result.Act) > 0, Subject: result.Sub, PrincipalType: result.PrincipalType, AgentID: result.AgentID,
 		AgentChain: result.AgentChain, AuthorizationDetails: result.AuthorizationDetails,
 	}, nil
 }
 
-var _ ports.TokenVerifier = Verifier{}
+var _ tokenvaultports.TokenVerifier = Verifier{}

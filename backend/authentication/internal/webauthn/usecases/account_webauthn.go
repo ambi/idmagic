@@ -17,7 +17,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
-	"github.com/ambi/idmagic/backend/authentication/webauthn/domain"
+	webauthndomain "github.com/ambi/idmagic/backend/authentication/webauthn/domain"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -176,7 +176,7 @@ func ListWebAuthnCredentials(
 	ctx context.Context,
 	deps WebAuthnDeps,
 	sub string,
-) ([]*domain.WebAuthnCredential, error) {
+) ([]*webauthndomain.WebAuthnCredential, error) {
 	if _, err := authusecases.LoadSelfUser(ctx, deps.UserRepo, sub); err != nil {
 		return nil, err
 	}

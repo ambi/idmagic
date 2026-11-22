@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
@@ -16,14 +16,14 @@ type TokenExchangeGrantStore struct {
 	Pool sharedpg.DB
 }
 
-func (s *TokenExchangeGrantStore) Save(ctx context.Context, grantHash string, grant domain.TokenExchangeGrant) error {
+func (s *TokenExchangeGrantStore) Save(ctx context.Context, grantHash string, grant oauthdomain.TokenExchangeGrant) error {
 	return New(s.Pool).InsertOauth2TokenExchangeGrant(ctx, InsertOauth2TokenExchangeGrantParams{
 		TenantID: tenantports.TenantID(ctx), GrantHash: grantHash, ClientID: grant.ClientID,
 		SubjectTokenID: grant.SubjectTokenID, Resource: grant.Resource, ExpiresAt: grant.ExpiresAt,
 	})
 }
 
-func (s *TokenExchangeGrantStore) Claim(ctx context.Context, grantHash string, grant domain.TokenExchangeGrant, now time.Time) (bool, error) {
+func (s *TokenExchangeGrantStore) Claim(ctx context.Context, grantHash string, grant oauthdomain.TokenExchangeGrant, now time.Time) (bool, error) {
 	_, err := New(s.Pool).ClaimOauth2TokenExchangeGrant(ctx, ClaimOauth2TokenExchangeGrantParams{
 		TenantID: tenantports.TenantID(ctx), GrantHash: grantHash, ClientID: grant.ClientID,
 		SubjectTokenID: grant.SubjectTokenID, Resource: grant.Resource, Now: now,

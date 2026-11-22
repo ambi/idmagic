@@ -20,7 +20,7 @@ import (
 	stack "github.com/ambi/idmagic/backend/shared/http/testing_stack"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -35,37 +35,37 @@ const (
 // ドメインを記録する。
 type fakeRealms struct {
 	mu      sync.Mutex
-	answers map[string]feddomain.EntraDomainRealm
+	answers map[string]wsfeddomain.EntraDomainRealm
 	calls   []string
 }
 
-func (f *fakeRealms) answer(domain string, realm feddomain.EntraDomainRealm) {
+func (f *fakeRealms) answer(domain string, realm wsfeddomain.EntraDomainRealm) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.answers[domain] = realm
 }
 
-func (f *fakeRealms) Discover(_ context.Context, domain string) (feddomain.EntraDomainRealm, error) {
+func (f *fakeRealms) Discover(_ context.Context, domain string) (wsfeddomain.EntraDomainRealm, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, domain)
 	realm, ok := f.answers[domain]
 	if !ok {
-		return feddomain.EntraDomainRealm{}, errors.New("realm discovery unavailable")
+		return wsfeddomain.EntraDomainRealm{}, errors.New("realm discovery unavailable")
 	}
 	return realm, nil
 }
 
 // federatedRealm は、Entra のサインインの画面が WS-Fed の受動のエンドポイントへ送るときの探索の答えである。
 // AuthURL は、登録した PassiveSignInUri に Entra が問い合わせ文字列を付けた形になる。
-func federatedRealm(passive, domain string) feddomain.EntraDomainRealm {
-	return feddomain.EntraDomainRealm{
+func federatedRealm(passive, domain string) wsfeddomain.EntraDomainRealm {
+	return wsfeddomain.EntraDomainRealm{
 		NamespaceType: "Federated",
 		AuthURL:       passive + "?username=idmagic-realm-check%40" + domain + "&wa=wsignin1.0&wtrealm=urn%3afederation%3aMicrosoftOnline&wctx=",
 	}
 }
 
-var managedRealm = feddomain.EntraDomainRealm{NamespaceType: "Managed"}
+var managedRealm = wsfeddomain.EntraDomainRealm{NamespaceType: "Managed"}
 
 // managedRollbackObservation は、contoso.com を Managed に切り戻した後に読み戻した観測文書である。
 func managedRollbackObservation(t *testing.T, retrievedAt time.Time) string {
@@ -128,7 +128,7 @@ func entraRelyingParty(t *testing.T, s entraServer) *listedEntraRP {
 func entraRemovalServer(t *testing.T) (entraServer, entraKeys, wsfedports.EntraFederationObservationRepository, *fakeRealms) {
 	t.Helper()
 	var observations wsfedports.EntraFederationObservationRepository
-	realms := &fakeRealms{answers: map[string]feddomain.EntraDomainRealm{}}
+	realms := &fakeRealms{answers: map[string]wsfeddomain.EntraDomainRealm{}}
 	s, keys := newEntraVerificationServerWith(t, func(d *httpadapter.Deps) {
 		observations = d.WsFederation.ObservationRepo
 		d.WsFederation.RealmDiscovery = realms
@@ -279,7 +279,7 @@ func TestEntraDomainRemovalRefusesWhileEntraStillFederatesTheDomain(t *testing.T
 	}
 	for _, tc := range []struct {
 		name        string
-		realm       *feddomain.EntraDomainRealm // nil なら探索は失敗する
+		realm       *wsfeddomain.EntraDomainRealm // nil なら探索は失敗する
 		observation func(*testing.T, entraKeys) string
 		path        string
 		status      int
@@ -299,11 +299,11 @@ func TestEntraDomainRemovalRefusesWhileEntraStillFederatesTheDomain(t *testing.T
 			name: "lookup failed without an observation", status: http.StatusUnprocessableEntity, code: "entra_rollback_unconfirmed", lookups: 1,
 		},
 		{
-			name: "federated with an unreadable destination", realm: &feddomain.EntraDomainRealm{NamespaceType: "Federated", AuthURL: "https://%zz"},
+			name: "federated with an unreadable destination", realm: &wsfeddomain.EntraDomainRealm{NamespaceType: "Federated", AuthURL: "https://%zz"},
 			status: http.StatusUnprocessableEntity, code: "entra_rollback_unconfirmed", lookups: 1,
 		},
 		{
-			name: "unknown with an observation that still points to IdMagic", realm: &feddomain.EntraDomainRealm{NamespaceType: "Unknown"},
+			name: "unknown with an observation that still points to IdMagic", realm: &wsfeddomain.EntraDomainRealm{NamespaceType: "Unknown"},
 			observation: func(t *testing.T, keys entraKeys) string {
 				t.Helper()
 				return observationDocument(t, contosoTenantID, "contoso.com", retrievedAt, appliedContosoConfig(keys.current))
@@ -437,7 +437,7 @@ type failingRemovalRPs struct {
 }
 
 func (r *failingRemovalRPs) Update(ctx context.Context, tenantID, realm string, change wsfedports.RelyingPartyChange) error {
-	return r.WsFedRelyingPartyRepository.Update(ctx, tenantID, realm, func(rp *feddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
+	return r.WsFedRelyingPartyRepository.Update(ctx, tenantID, realm, func(rp *wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
 		outcome, err := change(rp)
 		if err == nil && outcome != wsfedports.RelyingPartyUnchanged && r.fail != nil {
 			return wsfedports.RelyingPartyUnchanged, r.fail
@@ -464,7 +464,7 @@ func TestEntraDomainRemovalCanResumeAfterStorageFailure(t *testing.T) {
 		t.Run(failure, func(t *testing.T) {
 			var rps *failingRemovalRPs
 			var observations *failingRemovalObservations
-			realms := &fakeRealms{answers: map[string]feddomain.EntraDomainRealm{}}
+			realms := &fakeRealms{answers: map[string]wsfeddomain.EntraDomainRealm{}}
 			s, _ := newEntraVerificationServerWith(t, func(d *httpadapter.Deps) {
 				rps = &failingRemovalRPs{WsFedRelyingPartyRepository: d.WsFederation.RPRepo}
 				observations = &failingRemovalObservations{EntraFederationObservationRepository: d.WsFederation.ObservationRepo}
@@ -507,9 +507,9 @@ func TestEntraDomainRemovalCanResumeAfterStorageFailure(t *testing.T) {
 	}
 }
 
-type realmDiscoveryFunc func(context.Context, string) (feddomain.EntraDomainRealm, error)
+type realmDiscoveryFunc func(context.Context, string) (wsfeddomain.EntraDomainRealm, error)
 
-func (f realmDiscoveryFunc) Discover(ctx context.Context, domain string) (feddomain.EntraDomainRealm, error) {
+func (f realmDiscoveryFunc) Discover(ctx context.Context, domain string) (wsfeddomain.EntraDomainRealm, error) {
 	return f(ctx, domain)
 }
 
@@ -517,7 +517,7 @@ func (f realmDiscoveryFunc) Discover(ctx context.Context, domain string) (feddom
 func TestEntraDomainRemovalPreservesAConfigurationSavedDuringDiscovery(t *testing.T) {
 	var s entraServer
 	s, _ = newEntraVerificationServerWith(t, func(d *httpadapter.Deps) {
-		d.WsFederation.RealmDiscovery = realmDiscoveryFunc(func(context.Context, string) (feddomain.EntraDomainRealm, error) {
+		d.WsFederation.RealmDiscovery = realmDiscoveryFunc(func(context.Context, string) (wsfeddomain.EntraDomainRealm, error) {
 			// 探索の呼び出しの間に別の管理者が保存する操作列を、待機に頼らず再現する。
 			if rec := configureEntra(s.e, `{"domain":"fabrikam.com","issuer_uri":"`+fabrikamIssuer+`","source_anchor_attribute":"object_guid"}`); rec.Code != http.StatusCreated {
 				t.Fatalf("configure during discovery: status=%d body=%s", rec.Code, rec.Body.String())

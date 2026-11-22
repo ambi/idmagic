@@ -6,13 +6,13 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 type TenantKeyHealthDeps struct {
 	TenantRepo tenantports.TenantRepository
-	KeyStore   ports.KeyStore
+	KeyStore   signingports.KeyStore
 }
 
 // ListTenantKeyHealth は全テナントの署名鍵ヘルスを集約する。秘密鍵は返さない。

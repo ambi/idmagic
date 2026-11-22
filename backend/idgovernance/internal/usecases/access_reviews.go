@@ -8,14 +8,14 @@ import (
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
-	d "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -32,7 +32,7 @@ type AccessReviewDeps struct {
 	GroupMembership        igports.GroupMembership
 	ApplicationAssignments igports.ReviewedApplicationAssignments
 	Agents                 igports.ReviewedAgents
-	Notifier               notification.Notifier
+	Notifier               notificationports.Notifier
 	Emit                   func(spec.DomainEvent)
 }
 
@@ -48,16 +48,16 @@ func reviewUser(ctx context.Context, deps AccessReviewDeps, tenant, id string) (
 	return u, nil
 }
 
-func validateReviewReferences(ctx context.Context, deps AccessReviewDeps, tenant string, input d.AccessReviewPlanInput) error {
+func validateReviewReferences(ctx context.Context, deps AccessReviewDeps, tenant string, input igdomain.AccessReviewPlanInput) error {
 	if deps.UserRepo == nil {
-		return d.ErrAccessReviewInvalid
+		return igdomain.ErrAccessReviewInvalid
 	}
 	u, err := reviewUser(ctx, deps, tenant, input.FallbackReviewerID)
 	if err != nil {
 		return err
 	}
 	if u == nil {
-		return d.ErrAccessReviewInvalid
+		return igdomain.ErrAccessReviewInvalid
 	}
 	if input.TargetKind != "agent" {
 		u, err = reviewUser(ctx, deps, tenant, input.ReviewerID)
@@ -65,50 +65,50 @@ func validateReviewReferences(ctx context.Context, deps AccessReviewDeps, tenant
 			return err
 		}
 		if u == nil {
-			return d.ErrAccessReviewInvalid
+			return igdomain.ErrAccessReviewInvalid
 		}
 	}
 	for _, id := range input.ResourceIDs {
 		switch input.TargetKind {
 		case "group_membership":
 			if deps.GroupRepo == nil {
-				return d.ErrAccessReviewInvalid
+				return igdomain.ErrAccessReviewInvalid
 			}
 			g, err := deps.GroupRepo.FindByID(ctx, tenant, id)
 			if err != nil {
 				return err
 			}
 			if g == nil || g.MembershipType.Effective() != groupdomain.GroupMembershipManual || g.UpstreamManaged {
-				return d.ErrAccessReviewInvalid
+				return igdomain.ErrAccessReviewInvalid
 			}
 		case "application_assignment":
 			if deps.ApplicationRepo == nil || deps.AssignmentRepo == nil {
-				return d.ErrAccessReviewInvalid
+				return igdomain.ErrAccessReviewInvalid
 			}
 			a, err := deps.ApplicationRepo.FindByID(ctx, tenant, id)
 			if err != nil {
 				return err
 			}
 			if a == nil {
-				return d.ErrAccessReviewInvalid
+				return igdomain.ErrAccessReviewInvalid
 			}
 		case "agent":
 			if deps.AgentRepo == nil {
-				return d.ErrAccessReviewInvalid
+				return igdomain.ErrAccessReviewInvalid
 			}
 			a, err := deps.AgentRepo.FindByID(ctx, tenant, id)
 			if err != nil {
 				return err
 			}
 			if a == nil {
-				return d.ErrAccessReviewInvalid
+				return igdomain.ErrAccessReviewInvalid
 			}
 		}
 	}
 	return nil
 }
 
-func CreateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, actor string, input d.AccessReviewPlanInput, now time.Time) (*d.AccessReviewPlan, error) {
+func CreateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, actor string, input igdomain.AccessReviewPlanInput, now time.Time) (*igdomain.AccessReviewPlan, error) {
 	if deps.Emit == nil {
 		return nil, errors.New("access review audit is not configured")
 	}
@@ -122,7 +122,7 @@ func CreateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, 
 	if err != nil {
 		return nil, err
 	}
-	p := &d.AccessReviewPlan{AccessReviewPlanInput: input, ID: id, TenantID: tenant, Revision: 1, NextStartAt: &input.StartsAt}
+	p := &igdomain.AccessReviewPlan{AccessReviewPlanInput: input, ID: id, TenantID: tenant, Revision: 1, NextStartAt: &input.StartsAt}
 	if err := deps.Plans.CreatePlan(ctx, p); err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func CreateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, 
 	return p, nil
 }
 
-func UpdateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, actor, id string, revision int64, input d.AccessReviewPlanInput, now time.Time) (*d.AccessReviewPlan, error) {
+func UpdateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, actor, id string, revision int64, input igdomain.AccessReviewPlanInput, now time.Time) (*igdomain.AccessReviewPlan, error) {
 	if deps.Emit == nil {
 		return nil, errors.New("access review audit is not configured")
 	}
@@ -142,10 +142,10 @@ func UpdateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, 
 		return nil, err
 	}
 	if current == nil {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	if current.Revision != revision {
-		return nil, d.ErrAccessReviewConflict
+		return nil, igdomain.ErrAccessReviewConflict
 	}
 	// 参照先が止まっていても、設定を変えずに計画だけを止められる。
 	if input.Enabled || !sameReviewDefinition(input, current.AccessReviewPlanInput) {
@@ -164,9 +164,9 @@ func UpdateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, 
 			lastStart = &at
 		}
 	}
-	p, err := deps.Plans.UpdatePlan(ctx, tenant, id, func(plan *d.AccessReviewPlan) error {
+	p, err := deps.Plans.UpdatePlan(ctx, tenant, id, func(plan *igdomain.AccessReviewPlan) error {
 		if plan.Revision != revision || !sameReviewTime(plan.NextStartAt, current.NextStartAt) {
-			return d.ErrAccessReviewConflict
+			return igdomain.ErrAccessReviewConflict
 		}
 		// 更新後の開始時刻は以後の回だけに使い、過去の実施を作り直さない。
 		if !plan.StartsAt.Equal(input.StartsAt) || (!plan.Enabled && input.Enabled) {
@@ -189,12 +189,12 @@ func UpdateAccessReviewPlan(ctx context.Context, deps AccessReviewDeps, tenant, 
 	return p, err
 }
 
-func DecideAccessReview(ctx context.Context, deps AccessReviewDeps, tenant, reviewID, itemID, reviewer, decision string, now time.Time) (*d.AccessReview, error) {
+func DecideAccessReview(ctx context.Context, deps AccessReviewDeps, tenant, reviewID, itemID, reviewer, decision string, now time.Time) (*igdomain.AccessReview, error) {
 	if deps.Emit == nil {
 		return nil, errors.New("access review audit is not configured")
 	}
 	changed := false
-	r, err := deps.Reviews.UpdateReview(ctx, tenant, reviewID, func(r *d.AccessReview) error {
+	r, err := deps.Reviews.UpdateReview(ctx, tenant, reviewID, func(r *igdomain.AccessReview) error {
 		var err error
 		changed, err = r.Decide(itemID, reviewer, decision, now)
 		return err
@@ -206,11 +206,11 @@ func DecideAccessReview(ctx context.Context, deps AccessReviewDeps, tenant, revi
 		emitReviewEvent(deps, tenant, reviewer, r.PlanID, r.ID, itemID, "decision_recorded", now)
 	}
 	// 本人の回答の応答にも、同じ回の他人の項目を混ぜない。
-	r.Items = slices.DeleteFunc(r.Items, func(i d.AccessReviewItem) bool { return i.ReviewerID != reviewer })
+	r.Items = slices.DeleteFunc(r.Items, func(i igdomain.AccessReviewItem) bool { return i.ReviewerID != reviewer })
 	return r, nil
 }
 
-func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *d.AccessReviewPlan, now time.Time) (*d.AccessReview, error) {
+func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *igdomain.AccessReviewPlan, now time.Time) (*igdomain.AccessReview, error) {
 	// 開始時は停止した明示の担当者を代替へ回せるので、対象と代替だけを再検証する。
 	validation := plan.AccessReviewPlanInput
 	if validation.TargetKind != "agent" {
@@ -223,7 +223,7 @@ func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *d.Acces
 	if err != nil {
 		return nil, err
 	}
-	r := &d.AccessReview{ID: id, TenantID: plan.TenantID, PlanID: plan.ID, Name: plan.Name, TargetKind: plan.TargetKind, DefaultDecision: plan.DefaultDecision, Status: "open", StartedAt: now, DueAt: now.Add(time.Duration(plan.DurationDays) * 24 * time.Hour), Items: []d.AccessReviewItem{}, Notified: map[string]bool{}}
+	r := &igdomain.AccessReview{ID: id, TenantID: plan.TenantID, PlanID: plan.ID, Name: plan.Name, TargetKind: plan.TargetKind, DefaultDecision: plan.DefaultDecision, Status: "open", StartedAt: now, DueAt: now.Add(time.Duration(plan.DurationDays) * 24 * time.Hour), Items: []igdomain.AccessReviewItem{}, Notified: map[string]bool{}}
 	reviewer := plan.ReviewerID
 	if plan.TargetKind != "agent" {
 		u, err := reviewUser(ctx, deps, plan.TenantID, reviewer)
@@ -236,13 +236,13 @@ func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *d.Acces
 	}
 	appendItem := func(resourceID, resourceName, subjectType, subjectID, subjectName, reviewerID string) error {
 		if len(r.Items) >= 1000 {
-			return d.ErrAccessReviewInvalid
+			return igdomain.ErrAccessReviewInvalid
 		}
 		itemID, err := spec.NewUUIDv4()
 		if err != nil {
 			return err
 		}
-		r.Items = append(r.Items, d.AccessReviewItem{ID: itemID, ResourceID: resourceID, ResourceName: resourceName, SubjectType: subjectType, SubjectID: subjectID, SubjectName: subjectName, ReviewerID: reviewerID})
+		r.Items = append(r.Items, igdomain.AccessReviewItem{ID: itemID, ResourceID: resourceID, ResourceName: resourceName, SubjectType: subjectType, SubjectID: subjectID, SubjectName: subjectName, ReviewerID: reviewerID})
 		return nil
 	}
 	for _, resourceID := range plan.ResourceIDs {
@@ -253,7 +253,7 @@ func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *d.Acces
 				return nil, err
 			}
 			if g == nil || g.UpstreamManaged || g.MembershipType.Effective() != groupdomain.GroupMembershipManual {
-				return nil, d.ErrAccessReviewInvalid
+				return nil, igdomain.ErrAccessReviewInvalid
 			}
 			members, err := deps.GroupRepo.ListMembersByGroup(ctx, plan.TenantID, resourceID)
 			if err != nil {
@@ -278,7 +278,7 @@ func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *d.Acces
 				return nil, err
 			}
 			if a == nil {
-				return nil, d.ErrAccessReviewInvalid
+				return nil, igdomain.ErrAccessReviewInvalid
 			}
 			assignments, err := deps.AssignmentRepo.ListByApplication(ctx, plan.TenantID, resourceID)
 			if err != nil {
@@ -313,7 +313,7 @@ func buildAccessReview(ctx context.Context, deps AccessReviewDeps, plan *d.Acces
 				return nil, err
 			}
 			if a == nil {
-				return nil, d.ErrAccessReviewInvalid
+				return nil, igdomain.ErrAccessReviewInvalid
 			}
 			u, err := reviewUser(ctx, deps, plan.TenantID, a.OwnerUserID)
 			if err != nil {
@@ -343,7 +343,7 @@ func AdvanceAccessReviews(ctx context.Context, deps AccessReviewDeps, now time.T
 	for _, plan := range plans {
 		r, err := buildAccessReview(ctx, deps, plan, now)
 		if err != nil {
-			_, saveErr := deps.Plans.UpdatePlan(ctx, plan.TenantID, plan.ID, func(p *d.AccessReviewPlan) error {
+			_, saveErr := deps.Plans.UpdatePlan(ctx, plan.TenantID, plan.ID, func(p *igdomain.AccessReviewPlan) error {
 				if p.Revision == plan.Revision {
 					p.LastError = "start_failed"
 				}
@@ -378,7 +378,7 @@ func AdvanceAccessReviews(ctx context.Context, deps AccessReviewDeps, now time.T
 	return errors.Join(failures...)
 }
 
-func revokeReviewItem(ctx context.Context, deps AccessReviewDeps, r *d.AccessReview, item *d.AccessReviewItem, now time.Time) error {
+func revokeReviewItem(ctx context.Context, deps AccessReviewDeps, r *igdomain.AccessReview, item *igdomain.AccessReviewItem, now time.Time) error {
 	switch r.TargetKind {
 	case "group_membership":
 		if deps.GroupMembership == nil || deps.GroupRepo == nil {
@@ -389,7 +389,7 @@ func revokeReviewItem(ctx context.Context, deps AccessReviewDeps, r *d.AccessRev
 			return err
 		}
 		if g.UpstreamManaged || g.MembershipType.Effective() != groupdomain.GroupMembershipManual {
-			return d.ErrAccessReviewInvalid
+			return igdomain.ErrAccessReviewInvalid
 		}
 		_, err = deps.GroupMembership.SetGroupMembership(ctx, r.TenantID, item.ResourceID, item.SubjectID, false, now)
 		return err
@@ -404,14 +404,14 @@ func revokeReviewItem(ctx context.Context, deps AccessReviewDeps, r *d.AccessRev
 		}
 		return deps.Agents.DisableReviewedAgent(ctx, r.TenantID, item.ResourceID, now)
 	}
-	return d.ErrAccessReviewInvalid
+	return igdomain.ErrAccessReviewInvalid
 }
 
 func emitReviewEvent(deps AccessReviewDeps, tenant, actor, planID, reviewID, itemID, action string, now time.Time) {
-	deps.Emit(&d.AccessReviewChanged{At: now, TenantID: tenant, ActorUserID: actor, PlanID: planID, ReviewID: reviewID, ItemID: itemID, Action: action})
+	deps.Emit(&igdomain.AccessReviewChanged{At: now, TenantID: tenant, ActorUserID: actor, PlanID: planID, ReviewID: reviewID, ItemID: itemID, Action: action})
 }
 
-func sameReviewDefinition(a, b d.AccessReviewPlanInput) bool {
+func sameReviewDefinition(a, b igdomain.AccessReviewPlanInput) bool {
 	return a.Name == b.Name && a.TargetKind == b.TargetKind && slices.Equal(a.ResourceIDs, b.ResourceIDs) && a.ReviewerID == b.ReviewerID && a.FallbackReviewerID == b.FallbackReviewerID && a.DefaultDecision == b.DefaultDecision && a.StartsAt.Equal(b.StartsAt) && a.DurationDays == b.DurationDays && a.RecurrenceDays == b.RecurrenceDays
 }
 

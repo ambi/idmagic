@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/wsfederation/domain"
-	"github.com/ambi/idmagic/backend/wsfederation/ports"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 type Fixture struct {
-	Repository ports.WsFedRelyingPartyRepository
+	Repository wsfedports.WsFedRelyingPartyRepository
 	TenantA    string
 	TenantB    string
 	Now        time.Time
@@ -29,10 +29,10 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if got, err := f.Repository.FindByWtrealm(ctx, f.TenantA, "missing"); err != nil || got != nil {
 		t.Fatalf("missing FindByWtrealm = (%+v, %v)", got, err)
 	}
-	rp := &domain.WsFedRelyingParty{
+	rp := &wsfeddomain.WsFedRelyingParty{
 		TenantID: f.TenantA, Wtrealm: "urn:example:rp", DisplayName: "Example RP",
 		ReplyURLs: []string{"https://rp.example/callback"}, Audience: "urn:example:audience",
-		TokenType: domain.TokenTypeSAML11, CreatedAt: f.Now, UpdatedAt: f.Now,
+		TokenType: wsfeddomain.TokenTypeSAML11, CreatedAt: f.Now, UpdatedAt: f.Now,
 	}
 	if err := f.Repository.Save(ctx, rp); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -63,30 +63,30 @@ func Run(t *testing.T, newFixture NewFixture) {
 }
 
 // runUpdate は、Update が最新の RP を読み直して結果を当て、失敗では変えず、同時の更新を失わないことを確かめる。
-func runUpdate(t *testing.T, f Fixture, stored domain.WsFedRelyingParty) {
+func runUpdate(t *testing.T, f Fixture, stored wsfeddomain.WsFedRelyingParty) {
 	t.Helper()
 	ctx := context.Background()
-	if err := f.Repository.Update(ctx, f.TenantA, "missing", func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+	if err := f.Repository.Update(ctx, f.TenantA, "missing", func(rp *wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
 		if rp != nil {
 			t.Fatalf("Update of a missing RP passed %+v", rp)
 		}
-		return ports.RelyingPartyUnchanged, nil
+		return wsfedports.RelyingPartyUnchanged, nil
 	}); err != nil {
 		t.Fatalf("Update missing: %v", err)
 	}
-	if err := f.Repository.Update(ctx, f.TenantB, stored.Wtrealm, func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+	if err := f.Repository.Update(ctx, f.TenantB, stored.Wtrealm, func(rp *wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
 		if rp != nil {
 			t.Fatalf("Update in another tenant read %+v", rp)
 		}
-		return ports.RelyingPartyUnchanged, nil
+		return wsfedports.RelyingPartyUnchanged, nil
 	}); err != nil {
 		t.Fatalf("Update other tenant: %v", err)
 	}
 
 	refused := errors.New("refused")
-	if err := f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+	if err := f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(rp *wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
 		rp.DisplayName = "must not be saved"
-		return ports.RelyingPartySaved, refused
+		return wsfedports.RelyingPartySaved, refused
 	}); !errors.Is(err, refused) {
 		t.Fatalf("Update with an error = %v, want the change's error", err)
 	}
@@ -100,9 +100,9 @@ func runUpdate(t *testing.T, f Fixture, stored domain.WsFedRelyingParty) {
 	errs := make(chan error, writers)
 	for range writers {
 		wg.Go(func() {
-			errs <- f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(rp *domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
+			errs <- f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(rp *wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
 				rp.ReplyURLs = append(rp.ReplyURLs, "https://rp.example/callback/"+strconv.Itoa(len(rp.ReplyURLs)))
-				return ports.RelyingPartySaved, nil
+				return wsfedports.RelyingPartySaved, nil
 			})
 		})
 	}
@@ -118,8 +118,8 @@ func runUpdate(t *testing.T, f Fixture, stored domain.WsFedRelyingParty) {
 		t.Fatalf("Find after concurrent Updates = (%+v, %v), want %d reply URLs", got, err, len(stored.ReplyURLs)+writers)
 	}
 
-	if err := f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(*domain.WsFedRelyingParty) (ports.RelyingPartyOutcome, error) {
-		return ports.RelyingPartyDeleted, nil
+	if err := f.Repository.Update(ctx, f.TenantA, stored.Wtrealm, func(*wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
+		return wsfedports.RelyingPartyDeleted, nil
 	}); err != nil {
 		t.Fatalf("Update delete: %v", err)
 	}

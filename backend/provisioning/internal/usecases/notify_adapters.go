@@ -7,8 +7,8 @@ import (
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
 // UserMutationNotifier implements userports.ProvisioningNotifier by translating
@@ -23,15 +23,15 @@ func (n UserMutationNotifier) NotifyUserMutation(ctx context.Context, tenantID, 
 	if !ok {
 		return nil
 	}
-	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, domain.SourceTypeUser, userID, mapped, "", now)
+	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, provisioningdomain.SourceTypeUser, userID, mapped, "", now)
 }
 
-var userTriggerMap = map[userports.ProvisioningTrigger]ports.ProvisioningTrigger{
-	userports.ProvisioningUserCreated:           ports.TriggerUserCreated,
-	userports.ProvisioningUserAttributesChanged: ports.TriggerUserAttributes,
-	userports.ProvisioningUserDisabled:          ports.TriggerUserDisabled,
-	userports.ProvisioningUserEnabled:           ports.TriggerUserEnabled,
-	userports.ProvisioningUserDeleted:           ports.TriggerUserDeleted,
+var userTriggerMap = map[userports.ProvisioningTrigger]provisioningports.ProvisioningTrigger{
+	userports.ProvisioningUserCreated:           provisioningports.TriggerUserCreated,
+	userports.ProvisioningUserAttributesChanged: provisioningports.TriggerUserAttributes,
+	userports.ProvisioningUserDisabled:          provisioningports.TriggerUserDisabled,
+	userports.ProvisioningUserEnabled:           provisioningports.TriggerUserEnabled,
+	userports.ProvisioningUserDeleted:           provisioningports.TriggerUserDeleted,
 }
 
 // GroupMutationNotifier implements groupports.ProvisioningNotifier by
@@ -47,14 +47,14 @@ func (n GroupMutationNotifier) NotifyGroupMutation(ctx context.Context, tenantID
 	if !ok {
 		return nil
 	}
-	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, domain.SourceTypeGroup, groupID, mapped, "", now)
+	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, provisioningdomain.SourceTypeGroup, groupID, mapped, "", now)
 }
 
-var groupTriggerMap = map[groupports.ProvisioningTrigger]ports.ProvisioningTrigger{
-	groupports.ProvisioningGroupCreated:           ports.TriggerGroupCreated,
-	groupports.ProvisioningGroupChanged:           ports.TriggerGroupAttributes,
-	groupports.ProvisioningGroupDeleted:           ports.TriggerGroupDeleted,
-	groupports.ProvisioningGroupMembershipChanged: ports.TriggerGroupMembership,
+var groupTriggerMap = map[groupports.ProvisioningTrigger]provisioningports.ProvisioningTrigger{
+	groupports.ProvisioningGroupCreated:           provisioningports.TriggerGroupCreated,
+	groupports.ProvisioningGroupChanged:           provisioningports.TriggerGroupAttributes,
+	groupports.ProvisioningGroupDeleted:           provisioningports.TriggerGroupDeleted,
+	groupports.ProvisioningGroupMembershipChanged: provisioningports.TriggerGroupMembership,
 }
 
 // AssignmentMutationNotifier implements appports.ProvisioningNotifier.
@@ -67,10 +67,10 @@ func (n AssignmentMutationNotifier) NotifyAssignmentMutation(ctx context.Context
 	if !ok {
 		return nil
 	}
-	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, domain.SourceTypeUser, userID, mapped, applicationID, now)
+	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, provisioningdomain.SourceTypeUser, userID, mapped, applicationID, now)
 }
 
-var assignmentTriggerMap = map[appports.ProvisioningTrigger]ports.ProvisioningTrigger{
-	appports.ProvisioningAssignmentAdded:   ports.TriggerAssignmentAdded,
-	appports.ProvisioningAssignmentRemoved: ports.TriggerAssignmentRemoved,
+var assignmentTriggerMap = map[appports.ProvisioningTrigger]provisioningports.ProvisioningTrigger{
+	appports.ProvisioningAssignmentAdded:   provisioningports.TriggerAssignmentAdded,
+	appports.ProvisioningAssignmentRemoved: provisioningports.TriggerAssignmentRemoved,
 }

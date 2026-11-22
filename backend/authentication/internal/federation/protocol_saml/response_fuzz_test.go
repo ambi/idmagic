@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 )
 
 type fuzzReplayStore struct{}
@@ -20,17 +20,17 @@ func FuzzUpstreamSAMLResponse(f *testing.F) {
 	f.Add([]byte(`<!DOCTYPE x [<!ENTITY e SYSTEM "file:///etc/passwd">]><Response>&e;</Response>`))
 	f.Add([]byte(`<Response><Assertion>`))
 
-	connection := domain.IdentityProviderConnection{
+	connection := federationdomain.IdentityProviderConnection{
 		ID: "provider", TenantID: "tenant", DisplayName: "Provider",
-		Protocol: domain.ProtocolSAML, Status: domain.ConnectionActive,
+		Protocol: federationdomain.ProtocolSAML, Status: federationdomain.ConnectionActive,
 		Issuer: "https://idmagic.example", SAMLEntityID: "https://idp.example",
 		SAMLSSOURL: "https://idp.example/sso", SAMLSigningCertificates: []string{"invalid"},
-		ClaimMapping:  domain.ClaimMapping{Subject: "NameID", Username: "username"},
-		LinkingPolicy: domain.LinkingNone, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		ClaimMapping:  federationdomain.ClaimMapping{Subject: "NameID", Username: "username"},
+		LinkingPolicy: federationdomain.LinkingNone, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
-	attempt := domain.FederatedLoginAttempt{
+	attempt := federationdomain.FederatedLoginAttempt{
 		State: "state", TenantID: "tenant", ProviderID: "provider",
-		Protocol: domain.ProtocolSAML, RequestID: "_request",
+		Protocol: federationdomain.ProtocolSAML, RequestID: "_request",
 		CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute),
 	}
 	f.Fuzz(func(t *testing.T, xmlInput []byte) {

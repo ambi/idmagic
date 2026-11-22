@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 )
@@ -39,7 +39,7 @@ type discoveryDocument struct {
 }
 
 // Discover は設定の入力候補を返す。取得処理に保存済みの接続を渡さない。
-func (c Client) Discover(ctx context.Context, issuer string) (*domain.MetadataPreview, error) {
+func (c Client) Discover(ctx context.Context, issuer string) (*federationdomain.MetadataPreview, error) {
 	var document discoveryDocument
 	discoveryURL := strings.TrimRight(issuer, "/") + "/.well-known/openid-configuration"
 	if err := c.getJSON(ctx, discoveryURL, &document); err != nil {
@@ -60,7 +60,7 @@ func (c Client) Discover(ctx context.Context, issuer string) (*domain.MetadataPr
 	if _, err := keys.rsaKeys(); err != nil {
 		return nil, err
 	}
-	return &domain.MetadataPreview{
+	return &federationdomain.MetadataPreview{
 		Issuer: issuer, AuthorizationEndpoint: document.AuthorizationEndpoint,
 		TokenEndpoint: document.TokenEndpoint, JWKSURI: document.JWKSURI,
 	}, nil
@@ -69,8 +69,8 @@ func (c Client) Discover(ctx context.Context, issuer string) (*domain.MetadataPr
 // TestConnection reports, without performing any authorization_code flow, whether the
 // connection's fixed trust-source endpoints are reachable and its secret_reference resolves.
 // It never returns the secret value, tokens, or certificate bodies; an empty slice means success.
-func (c Client) TestConnection(ctx context.Context, connection domain.IdentityProviderConnection) []string {
-	if connection.Protocol != domain.ProtocolOIDC {
+func (c Client) TestConnection(ctx context.Context, connection federationdomain.IdentityProviderConnection) []string {
+	if connection.Protocol != federationdomain.ProtocolOIDC {
 		return []string{"connection is not OIDC"}
 	}
 	client := c.HTTPClient
@@ -123,8 +123,8 @@ func reachable(ctx context.Context, client *http.Client, rawURL string) error {
 	return nil
 }
 
-func AuthorizationURL(connection domain.IdentityProviderConnection, attempt domain.FederatedLoginAttempt, redirectURI string) (string, error) {
-	if !connection.Active() || connection.Protocol != domain.ProtocolOIDC {
+func AuthorizationURL(connection federationdomain.IdentityProviderConnection, attempt federationdomain.FederatedLoginAttempt, redirectURI string) (string, error) {
+	if !connection.Active() || connection.Protocol != federationdomain.ProtocolOIDC {
 		return "", errors.New("OIDC connection is not active")
 	}
 	if attempt.State == "" || attempt.Nonce == "" || len(attempt.PKCEVerifier) < 43 {
@@ -149,13 +149,13 @@ func AuthorizationURL(connection domain.IdentityProviderConnection, attempt doma
 
 func (c Client) ExchangeAndValidate(
 	ctx context.Context,
-	connection domain.IdentityProviderConnection,
-	attempt domain.FederatedLoginAttempt,
+	connection federationdomain.IdentityProviderConnection,
+	attempt federationdomain.FederatedLoginAttempt,
 	code, redirectURI string,
 	now time.Time,
-) (domain.NormalizedClaims, error) {
-	var empty domain.NormalizedClaims
-	if !connection.Active() || connection.Protocol != domain.ProtocolOIDC || code == "" {
+) (federationdomain.NormalizedClaims, error) {
+	var empty federationdomain.NormalizedClaims
+	if !connection.Active() || connection.Protocol != federationdomain.ProtocolOIDC || code == "" {
 		return empty, errors.New("invalid OIDC callback")
 	}
 	secret, err := c.resolveSecret(ctx, connection.SecretReference)
@@ -202,8 +202,8 @@ func (c Client) ExchangeAndValidate(
 }
 
 // NormalizeClaims applies a saved provider mapping to already validated claims.
-func NormalizeClaims(mapping domain.ClaimMapping, claims map[string]any) (domain.NormalizedClaims, error) {
-	out := domain.NormalizedClaims{
+func NormalizeClaims(mapping federationdomain.ClaimMapping, claims map[string]any) (federationdomain.NormalizedClaims, error) {
+	out := federationdomain.NormalizedClaims{
 		Subject:  stringClaim(claims, mapping.Subject),
 		Username: stringClaim(claims, mapping.Username),
 		Email:    stringClaim(claims, mapping.Email),
@@ -213,12 +213,12 @@ func NormalizeClaims(mapping domain.ClaimMapping, claims map[string]any) (domain
 		out.EmailVerified, _ = claims[mapping.EmailVerified].(bool)
 	}
 	if out.Subject == "" || out.Username == "" {
-		return domain.NormalizedClaims{}, errors.New("required mapped claims are missing")
+		return federationdomain.NormalizedClaims{}, errors.New("required mapped claims are missing")
 	}
 	return out, nil
 }
 
-func normalizeClaims(mapping domain.ClaimMapping, claims map[string]any) (domain.NormalizedClaims, error) {
+func normalizeClaims(mapping federationdomain.ClaimMapping, claims map[string]any) (federationdomain.NormalizedClaims, error) {
 	return NormalizeClaims(mapping, claims)
 }
 
@@ -369,8 +369,8 @@ func unsafeIP(ip net.IP) bool {
 func verifyUpstreamIDToken(
 	idToken string,
 	keySet []rsaSigningKey,
-	connection domain.IdentityProviderConnection,
-	attempt domain.FederatedLoginAttempt,
+	connection federationdomain.IdentityProviderConnection,
+	attempt federationdomain.FederatedLoginAttempt,
 	now time.Time,
 ) (map[string]any, error) {
 	claims, err := tokens_jose.VerifyJWT(idToken, "RS256", func(header map[string]any) (crypto.PublicKey, error) {

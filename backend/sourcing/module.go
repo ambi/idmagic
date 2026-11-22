@@ -14,36 +14,36 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	directorywrites "github.com/ambi/idmagic/backend/sourcing/directory/ports"
+	directoryports "github.com/ambi/idmagic/backend/sourcing/directory/ports"
 	directoryhttp "github.com/ambi/idmagic/backend/sourcing/internal/directory/handlers_http"
-	directoryports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
 	scimhttp "github.com/ambi/idmagic/backend/sourcing/internal/scim/handlers_http"
 	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v5"
 )
 
 type Module struct {
-	ScimRepo ports.ScimRepository
-	Writes   ports.IdentityWrites
+	ScimRepo scimports.ScimRepository
+	Writes   scimports.IdentityWrites
 	begin    func(context.Context) (pgx.Tx, error)
 	// UserLifecycle は、SCIM が User を止める、削除を予約するときに通す IdManagement の操作である。
 	// イベントの出力先が決まった後で、組み立ての地点が設定する。
-	UserLifecycle ports.UserLifecycle
+	UserLifecycle scimports.UserLifecycle
 	// DirectoryWrites と DirectoryUserLifecycle は、Directory Connector の取り込みが通す
 	// IdManagement の操作である。actor を directory_connector にして組み立て地点が設定する。
-	DirectoryWrites        directorywrites.IdentityWrites
-	DirectoryUserLifecycle directorywrites.UserLifecycle
-	PasswordDiagnosticGate directorywrites.PasswordDiagnosticGate
-	connectors             directoryports.ConnectorRepository
-	correlations           directoryports.CorrelationRepository
+	DirectoryWrites        directoryports.IdentityWrites
+	DirectoryUserLifecycle directoryports.UserLifecycle
+	PasswordDiagnosticGate directoryports.PasswordDiagnosticGate
+	connectors             directoryinternalports.ConnectorRepository
+	correlations           directoryinternalports.CorrelationRepository
 	// memoryCorrelations は、トランザクションを持たないメモリ構成で対応を保存する先である。
-	memoryCorrelations directorywrites.CorrelationWriter
-	runs               directoryports.IngestionRunRepository
-	passwordChallenges directoryports.PasswordChallengeStore
+	memoryCorrelations directoryports.CorrelationWriter
+	runs               directoryinternalports.IngestionRunRepository
+	passwordChallenges directoryinternalports.PasswordChallengeStore
 }
 
 // Register は SCIM と Directory Connector の経路を登録する。replay は Connector の JWT の

@@ -11,7 +11,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 )
 
 // ErrJobNotFound is returned when a Job ID does not exist.
@@ -31,11 +31,11 @@ var ErrJobAlreadyTerminal = errors.New("jobs: job already in a terminal state")
 // EnqueueInput is the input to JobRepository.Enqueue.
 type EnqueueInput struct {
 	TenantID string
-	Kind     domain.JobKind
+	Kind     jobsdomain.JobKind
 	// Lane is derived by usecases.Enqueue from Kind's registered
 	// domain.ExecutionLane; callers of the usecase cannot set it
 	// directly. The repository just persists what it is given.
-	Lane        domain.ExecutionLane
+	Lane        jobsdomain.ExecutionLane
 	Params      json.RawMessage
 	DedupKey    *string
 	MaxAttempts int
@@ -49,8 +49,8 @@ type EnqueueInput struct {
 // the configured backoff (domain.NextRetryRunAt) before calling Fail, since that
 // decision depends on runtime configuration the repository does not own.
 type FailOutcome struct {
-	NextStatus domain.JobStatus // StatusQueued (retry) or StatusFailed (dead-letter)
-	RunAt      time.Time        // next claimable time; only meaningful when retrying
+	NextStatus jobsdomain.JobStatus // StatusQueued (retry) or StatusFailed (dead-letter)
+	RunAt      time.Time            // next claimable time; only meaningful when retrying
 	Error      string
 }
 
@@ -62,7 +62,7 @@ type JobRepository interface {
 	// input.DedupKey is set and a non-terminal Job already exists for the same
 	// TenantID and DedupKey, that existing Job is returned instead with
 	// created=false rather than creating a duplicate (JobHandlerIdempotency).
-	Enqueue(ctx context.Context, input EnqueueInput) (job *domain.Job, created bool, err error)
+	Enqueue(ctx context.Context, input EnqueueInput) (job *jobsdomain.Job, created bool, err error)
 
 	// ClaimBatch atomically selects up to batchSize claimable Jobs within lane
 	// and places them under a lease held by workerID until now+leaseDuration
@@ -73,23 +73,23 @@ type JobRepository interface {
 	// lane isolation). Each claimed Job's Attempts is incremented by 1 as part
 	// of the claim, so the returned Job's Attempts is the attempt number now
 	// starting (JobStarted's Attempt payload).
-	ClaimBatch(ctx context.Context, workerID string, lane domain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*domain.Job, error)
+	ClaimBatch(ctx context.Context, workerID string, lane jobsdomain.ExecutionLane, batchSize int, leaseDuration time.Duration, now time.Time) ([]*jobsdomain.Job, error)
 
 	// Heartbeat extends jobID's lease for workerID and returns the new expiry.
 	Heartbeat(ctx context.Context, jobID, workerID string, leaseDuration time.Duration, now time.Time) (time.Time, error)
 
 	// Complete marks jobID StatusSucceeded with the given result.
-	Complete(ctx context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*domain.Job, error)
+	Complete(ctx context.Context, jobID, workerID string, result json.RawMessage, now time.Time) (*jobsdomain.Job, error)
 
 	// Fail applies outcome (retry or dead-letter) to jobID.
-	Fail(ctx context.Context, jobID, workerID string, outcome FailOutcome, now time.Time) (*domain.Job, error)
+	Fail(ctx context.Context, jobID, workerID string, outcome FailOutcome, now time.Time) (*jobsdomain.Job, error)
 
 	// Cancel transitions jobID to StatusCanceled if it has not yet reached a
 	// terminal state, otherwise returns ErrJobAlreadyTerminal.
-	Cancel(ctx context.Context, jobID string, now time.Time) (*domain.Job, error)
+	Cancel(ctx context.Context, jobID string, now time.Time) (*jobsdomain.Job, error)
 
 	// Get returns jobID, or ErrJobNotFound.
-	Get(ctx context.Context, jobID string) (*domain.Job, error)
+	Get(ctx context.Context, jobID string) (*jobsdomain.Job, error)
 
 	// LaneDepths returns the current StatusQueued and StatusRunning row count
 	// for every lane that has at least one such row (a lane with zero of both
@@ -102,7 +102,7 @@ type JobRepository interface {
 	// newest-created first, capped at limit (limit <= 0 means no cap). It is a
 	// scoped read for feature consumers that surface their own kind's Jobs to
 	// admins (wi-148 DataExport listing). Passing no kinds returns no rows.
-	ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error)
+	ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []jobsdomain.JobKind, limit int) ([]*jobsdomain.Job, error)
 
 	// ListForAdmin returns one keyset page of the cross-kind administration
 	// listing (wi-157), newest-created first. It is the console's read: the
@@ -110,7 +110,7 @@ type JobRepository interface {
 	// narrowing, so unlike every other query here it cannot be a static
 	// statement. Tenant scoping is part of the filter and is decided by the
 	// caller's authorization, never by a request parameter.
-	ListForAdmin(ctx context.Context, filter AdminJobFilter) ([]*domain.Job, error)
+	ListForAdmin(ctx context.Context, filter AdminJobFilter) ([]*jobsdomain.Job, error)
 }
 
 // AdminJobFilter narrows ListForAdmin. The zero value would list every tenant's
@@ -125,11 +125,11 @@ type AdminJobFilter struct {
 	// repository takes it as already-authorized.
 	AllTenants bool
 	// Statuses, when non-empty, keeps only Jobs in one of these states.
-	Statuses []domain.JobStatus
+	Statuses []jobsdomain.JobStatus
 	// Kinds, when non-empty, keeps only Jobs of one of these kinds.
-	Kinds []domain.JobKind
+	Kinds []jobsdomain.JobKind
 	// Lane, when non-empty, keeps only Jobs on that lane.
-	Lane domain.ExecutionLane
+	Lane jobsdomain.ExecutionLane
 	// Limit caps the page (<= 0 means the implementation's default page size).
 	Limit int
 	// BeforeCreatedAt and BeforeID continue a previous page: return only rows
@@ -147,7 +147,7 @@ var ErrAdminJobFilterUnscoped = errors.New("jobs: admin job filter must set Tena
 
 // LaneDepth is one ExecutionLane's current queue depth (wi-261 T006).
 type LaneDepth struct {
-	Lane    domain.ExecutionLane
+	Lane    jobsdomain.ExecutionLane
 	Queued  int
 	Running int
 }

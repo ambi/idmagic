@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -20,21 +20,21 @@ import (
 // read では昇格列を payload に overlay して単文 CAS による payload の陳腐化を隠す。
 type AuthorizationCodeStore struct{ Pool sharedpg.DB }
 
-func codeFromPayload(payload []byte) (*domain.AuthorizationCodeRecord, error) {
-	var rec domain.AuthorizationCodeRecord
+func codeFromPayload(payload []byte) (*oauthdomain.AuthorizationCodeRecord, error) {
+	var rec oauthdomain.AuthorizationCodeRecord
 	if err := json.Unmarshal(payload, &rec); err != nil {
 		return nil, err
 	}
 	return &rec, nil
 }
 
-func overlayCode(rec *domain.AuthorizationCodeRecord, state string, redeemedAt pgtype.Timestamptz, family pgtype.Text) {
+func overlayCode(rec *oauthdomain.AuthorizationCodeRecord, state string, redeemedAt pgtype.Timestamptz, family pgtype.Text) {
 	rec.State = spec.AuthorizationCodeRecordState(state)
 	rec.RedeemedAt = timestamptzPtr(redeemedAt)
 	rec.IssuedFamilyID = textPtr(family)
 }
 
-func (s *AuthorizationCodeStore) Save(ctx context.Context, code *domain.AuthorizationCodeRecord) error {
+func (s *AuthorizationCodeStore) Save(ctx context.Context, code *oauthdomain.AuthorizationCodeRecord) error {
 	code.TenantID = tenantports.TenantID(ctx)
 	payload, err := json.Marshal(code)
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *AuthorizationCodeStore) Save(ctx context.Context, code *domain.Authoriz
 	})
 }
 
-func (s *AuthorizationCodeStore) Find(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Find(ctx context.Context, code string) (*oauthdomain.AuthorizationCodeRecord, error) {
 	row, err := New(s.Pool).FindAuthorizationCode(ctx, FindAuthorizationCodeParams{
 		Code:     code,
 		TenantID: tenantports.TenantID(ctx),
@@ -70,7 +70,7 @@ func (s *AuthorizationCodeStore) Find(ctx context.Context, code string) (*domain
 	return rec, nil
 }
 
-func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now time.Time) (*domain.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now time.Time) (*oauthdomain.AuthorizationCodeRecord, error) {
 	row, err := New(s.Pool).RedeemAuthorizationCode(ctx, RedeemAuthorizationCodeParams{
 		RedeemedAt: pgtype.Timestamptz{Time: now.UTC(), Valid: true},
 		Code:       code,
@@ -90,7 +90,7 @@ func (s *AuthorizationCodeStore) Redeem(ctx context.Context, code string, now ti
 	return rec, nil
 }
 
-func (s *AuthorizationCodeStore) MarkExpired(ctx context.Context, code string) (*domain.AuthorizationCodeRecord, error) {
+func (s *AuthorizationCodeStore) MarkExpired(ctx context.Context, code string) (*oauthdomain.AuthorizationCodeRecord, error) {
 	row, err := New(s.Pool).MarkAuthorizationCodeExpired(ctx, MarkAuthorizationCodeExpiredParams{
 		Code:     code,
 		TenantID: tenantports.TenantID(ctx),

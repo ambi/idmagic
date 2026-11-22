@@ -12,12 +12,12 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 )
 
 type Fixture struct {
-	Repository ports.ConnectorRepository
+	Repository directoryinternalports.ConnectorRepository
 	TenantID   string
 	// OtherTenantID は、同じ Repository に存在する別のテナント。
 	OtherTenantID string
@@ -32,19 +32,19 @@ func Run(t *testing.T, newFixture NewFixture) {
 	ctx := context.Background()
 	base := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)
 
-	later, err := domain.NewConnector(f.TenantID, uuid.NewV4().String(), "後の Connector", hash("later"), base.Add(time.Minute))
+	later, err := directorydomain.NewConnector(f.TenantID, uuid.NewV4().String(), "後の Connector", hash("later"), base.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := domain.NewConnector(f.TenantID, uuid.NewV4().String(), "先の Connector", hash("first"), base)
+	first, err := directorydomain.NewConnector(f.TenantID, uuid.NewV4().String(), "先の Connector", hash("first"), base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := domain.NewConnector(f.OtherTenantID, uuid.NewV4().String(), "別のテナント", hash("other"), base)
+	other, err := directorydomain.NewConnector(f.OtherTenantID, uuid.NewV4().String(), "別のテナント", hash("other"), base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range []domain.Connector{later, first, other} {
+	for _, c := range []directorydomain.Connector{later, first, other} {
 		if err := f.Repository.Create(ctx, c); err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -81,7 +81,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err := f.Repository.Update(ctx, enrolled); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if err := f.Repository.Update(ctx, enrolled); !errors.Is(err, ports.ErrStaleConnector) {
+	if err := f.Repository.Update(ctx, enrolled); !errors.Is(err, directoryinternalports.ErrStaleConnector) {
 		t.Fatalf("Update with a stale revision = %v", err)
 	}
 	if got, _ := f.Repository.FindByEnrollmentTokenHash(ctx, f.TenantID, hash("first")); got != nil {
@@ -103,7 +103,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	}
 
 	disabled, _ := enrolled.Disable(base.Add(3 * time.Second))
-	disabled.Thresholds = domain.DisableThresholds{Count: 7, Percent: 51}
+	disabled.Thresholds = directorydomain.DisableThresholds{Count: 7, Percent: 51}
 	if err := f.Repository.Update(ctx, disabled); err != nil {
 		t.Fatalf("Update to disabled: %v", err)
 	}
@@ -114,9 +114,9 @@ func Run(t *testing.T, newFixture NewFixture) {
 	assertSame(t, "Find after disabling", *got, disabled)
 }
 
-func assertSame(t *testing.T, label string, got, want domain.Connector) {
+func assertSame(t *testing.T, label string, got, want directorydomain.Connector) {
 	t.Helper()
-	normalize := func(c domain.Connector) domain.Connector {
+	normalize := func(c directorydomain.Connector) directorydomain.Connector {
 		c.CreatedAt = c.CreatedAt.UTC()
 		c.EnrollmentExpiresAt = c.EnrollmentExpiresAt.UTC()
 		for _, p := range []**time.Time{&c.EnrolledAt, &c.LastSeenAt, &c.DisabledAt} {

@@ -9,8 +9,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -29,21 +29,21 @@ const defaultListLimit = 1000
 // RelationTupleRepository は関係タプルを PostgreSQL に永続化する。クエリは sqlc 生成。
 type RelationTupleRepository struct{ Pool sharedpg.DB }
 
-func (r *RelationTupleRepository) ListSubjects(ctx context.Context, tenantID string, resource domain.ObjectRef, relation string) ([]domain.SubjectRef, error) {
+func (r *RelationTupleRepository) ListSubjects(ctx context.Context, tenantID string, resource accessdomain.ObjectRef, relation string) ([]accessdomain.SubjectRef, error) {
 	rows, err := New(r.Pool).ListRelationTupleSubjects(ctx, ListRelationTupleSubjectsParams{
 		TenantID: tenantID, ResourceType: resource.Type, ResourceID: resource.ID, Relation: relation,
 	})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]domain.SubjectRef, 0, len(rows))
+	out := make([]accessdomain.SubjectRef, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, domain.SubjectRef{Type: row.SubjectType, ID: row.SubjectID, Relation: row.SubjectRelation})
+		out = append(out, accessdomain.SubjectRef{Type: row.SubjectType, ID: row.SubjectID, Relation: row.SubjectRelation})
 	}
 	return out, nil
 }
 
-func (r *RelationTupleRepository) List(ctx context.Context, tenantID string, filter ports.RelationTupleFilter, limit int) ([]domain.RelationTuple, error) {
+func (r *RelationTupleRepository) List(ctx context.Context, tenantID string, filter accessinternalports.RelationTupleFilter, limit int) ([]accessdomain.RelationTuple, error) {
 	rows, err := New(r.Pool).ListRelationTuples(ctx, ListRelationTuplesParams{
 		TenantID: tenantID,
 		Column2:  filter.ResourceType,
@@ -56,12 +56,12 @@ func (r *RelationTupleRepository) List(ctx context.Context, tenantID string, fil
 	if err != nil {
 		return nil, err
 	}
-	out := make([]domain.RelationTuple, 0, len(rows))
+	out := make([]accessdomain.RelationTuple, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, domain.RelationTuple{
-			Resource: domain.ObjectRef{Type: row.ResourceType, ID: row.ResourceID},
+		out = append(out, accessdomain.RelationTuple{
+			Resource: accessdomain.ObjectRef{Type: row.ResourceType, ID: row.ResourceID},
 			Relation: row.Relation,
-			Subject:  domain.SubjectRef{Type: row.SubjectType, ID: row.SubjectID, Relation: row.SubjectRelation},
+			Subject:  accessdomain.SubjectRef{Type: row.SubjectType, ID: row.SubjectID, Relation: row.SubjectRelation},
 		})
 	}
 	return out, nil
@@ -89,22 +89,22 @@ func boundedLimit(limit int) int32 {
 	return int32(limit)
 }
 
-func (r *RelationTupleRepository) Write(ctx context.Context, tenantID string, write ports.TupleWrite) (ports.TupleWriteResult, error) {
+func (r *RelationTupleRepository) Write(ctx context.Context, tenantID string, write accessinternalports.TupleWrite) (accessinternalports.TupleWriteResult, error) {
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {
-		return ports.TupleWriteResult{}, err
+		return accessinternalports.TupleWriteResult{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	queries := New(r.Pool).WithTx(tx)
 
-	result := ports.TupleWriteResult{}
+	result := accessinternalports.TupleWriteResult{}
 	for _, t := range write.Deletes {
 		affected, err := queries.DeleteRelationTuple(ctx, DeleteRelationTupleParams{
 			TenantID: tenantID, ResourceType: t.Resource.Type, ResourceID: t.Resource.ID, Relation: t.Relation,
 			SubjectType: t.Subject.Type, SubjectID: t.Subject.ID, SubjectRelation: t.Subject.Relation,
 		})
 		if err != nil {
-			return ports.TupleWriteResult{}, err
+			return accessinternalports.TupleWriteResult{}, err
 		}
 		result.DeletedCount += int(affected)
 	}
@@ -113,7 +113,7 @@ func (r *RelationTupleRepository) Write(ctx context.Context, tenantID string, wr
 			TenantID: tenantID, ResourceType: object.Type, ResourceID: object.ID,
 		})
 		if err != nil {
-			return ports.TupleWriteResult{}, err
+			return accessinternalports.TupleWriteResult{}, err
 		}
 		result.DeletedCount += int(affected)
 	}
@@ -123,16 +123,16 @@ func (r *RelationTupleRepository) Write(ctx context.Context, tenantID string, wr
 			SubjectType: t.Subject.Type, SubjectID: t.Subject.ID, SubjectRelation: t.Subject.Relation,
 		})
 		if err != nil {
-			return ports.TupleWriteResult{}, err
+			return accessinternalports.TupleWriteResult{}, err
 		}
 		result.WrittenCount += int(affected)
 	}
 	version, err := queries.BumpAuthorizationWriteVersion(ctx, tenantID)
 	if err != nil {
-		return ports.TupleWriteResult{}, err
+		return accessinternalports.TupleWriteResult{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return ports.TupleWriteResult{}, err
+		return accessinternalports.TupleWriteResult{}, err
 	}
 	result.Version = version
 	return result, nil
@@ -153,10 +153,10 @@ func (r *RelationTupleRepository) Version(ctx context.Context, tenantID string) 
 // バージョンの採番は INSERT の中で行い、同時登録が同じバージョンを採らないようにする。
 type AuthorizationModelRepository struct{ Pool sharedpg.DB }
 
-func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domain.AuthorizationModel, expectedVersion int) (*domain.AuthorizationModel, int64, error) {
+func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *accessdomain.AuthorizationModel, expectedVersion int) (*accessdomain.AuthorizationModel, int64, error) {
 	// 列は INTEGER なので、範囲外の基にしたバージョンは最新と一致しない。
 	if expectedVersion < 0 || expectedVersion >= math.MaxInt32 {
-		return nil, 0, domain.ErrModelVersionConflict
+		return nil, 0, accessdomain.ErrModelVersionConflict
 	}
 	definition, err := json.Marshal(model.ResourceTypes)
 	if err != nil {
@@ -178,7 +178,7 @@ func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domai
 		Definition: definition, CreatedAt: createdAt,
 	})
 	if errors.Is(err, pgx.ErrNoRows) || isVersionTaken(err) {
-		return nil, 0, domain.ErrModelVersionConflict
+		return nil, 0, accessdomain.ErrModelVersionConflict
 	}
 	if err != nil {
 		return nil, 0, err
@@ -197,7 +197,7 @@ func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *domai
 	return stored, version, nil
 }
 
-func (r *AuthorizationModelRepository) Latest(ctx context.Context, tenantID string) (*domain.AuthorizationModel, error) {
+func (r *AuthorizationModelRepository) Latest(ctx context.Context, tenantID string) (*accessdomain.AuthorizationModel, error) {
 	row, err := New(r.Pool).GetLatestAuthorizationModel(ctx, tenantID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -208,7 +208,7 @@ func (r *AuthorizationModelRepository) Latest(ctx context.Context, tenantID stri
 	return modelFromRow(row)
 }
 
-func (r *AuthorizationModelRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*domain.AuthorizationModel, error) {
+func (r *AuthorizationModelRepository) FindByVersion(ctx context.Context, tenantID string, version int) (*accessdomain.AuthorizationModel, error) {
 	// バージョンは列の型 (INTEGER) を超えられないので、範囲外の要求は存在しないバージョンとして扱う。
 	if version <= 0 || version > math.MaxInt32 {
 		return nil, nil
@@ -225,12 +225,12 @@ func (r *AuthorizationModelRepository) FindByVersion(ctx context.Context, tenant
 	return modelFromRow(row)
 }
 
-func modelFromRow(row *AuthorizationModel) (*domain.AuthorizationModel, error) {
-	var resourceTypes []domain.ResourceTypeDefinition
+func modelFromRow(row *AuthorizationModel) (*accessdomain.AuthorizationModel, error) {
+	var resourceTypes []accessdomain.ResourceTypeDefinition
 	if err := json.Unmarshal(row.Definition, &resourceTypes); err != nil {
 		return nil, err
 	}
-	return &domain.AuthorizationModel{
+	return &accessdomain.AuthorizationModel{
 		ID: row.ID, TenantID: row.TenantID, Version: int(row.Version),
 		ResourceTypes: resourceTypes, CreatedAt: row.CreatedAt,
 	}, nil

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
 )
 
 // newSafeHTTPClient builds an http.Client whose DialContext re-resolves the
@@ -42,7 +42,7 @@ func newSafeHTTPClient() *http.Client {
 			if len(via) >= 3 {
 				return errors.New("provisioning/scim: too many redirects")
 			}
-			return domain.ValidateOutboundBaseURL(req.URL.Scheme + "://" + req.URL.Host)
+			return provisioningdomain.ValidateOutboundBaseURL(req.URL.Scheme + "://" + req.URL.Host)
 		},
 	}
 }

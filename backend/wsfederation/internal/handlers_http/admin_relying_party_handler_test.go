@@ -10,14 +10,14 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 //spec:covers REQ-WSFEDERATION-001: Application に属する RP と同じ wtrealm の登録は 409 の application_owned_protocol で拒否し、RP を変えない。
 func TestRegisterRelyingPartyRefusesApplicationOwnedParty(t *testing.T) {
 	const wtrealm = "urn:rp:owned"
 	module := wsfederation.NewMemoryModule()
-	owned := &feddomain.WsFedRelyingParty{
+	owned := &wsfeddomain.WsFedRelyingParty{
 		TenantID: tenancydomain.DefaultTenantID, Wtrealm: wtrealm, DisplayName: "Owned", ApplicationID: "app-1",
 		ReplyURLs: []string{"https://owned.example/wsfed"},
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{

@@ -5,18 +5,18 @@ import (
 	"slices"
 	"time"
 
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
 // EntraRemovalResult は、ドメインの解除の結果と、発行するイベントである。
 type EntraRemovalResult struct {
-	Domain feddomain.EntraDomainFederation
+	Domain wsfeddomain.EntraDomainFederation
 	// RemainingDomains は、解除の後に残るドメインをドメインの順で並べる。
 	RemainingDomains    []string
 	RelyingPartyDeleted bool
-	ConfirmedBy         feddomain.EntraReleaseEvidence
-	Event               *feddomain.EntraFederationDomainRemoved
+	ConfirmedBy         wsfeddomain.EntraReleaseEvidence
+	Event               *wsfeddomain.EntraFederationDomainRemoved
 }
 
 // Remove は、Entra がもうドメインの利用者を IdMagic へ送らないことを確かめたときだけ、ドメインの組を
@@ -39,13 +39,13 @@ func (v EntraFederationVerification) Remove(ctx context.Context, tenantID, domai
 		return EntraRemovalResult{}, err
 	}
 	// 失敗は「確かめられない」として判定へ渡し、取り込んだ観測記録へ戻る。
-	var realm *feddomain.EntraDomainRealm
+	var realm *wsfeddomain.EntraDomainRealm
 	if discovered, err := v.Realms.Discover(ctx, configured.Domain); err == nil {
 		realm = &discovered
 	}
 
 	var result EntraRemovalResult
-	err = v.RPRepo.Update(ctx, tenantID, feddomain.EntraRealm, func(rp *feddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
+	err = v.RPRepo.Update(ctx, tenantID, wsfeddomain.EntraRealm, func(rp *wsfeddomain.WsFedRelyingParty) (wsfedports.RelyingPartyOutcome, error) {
 		if rp == nil || rp.EntraProfile == nil {
 			return wsfedports.RelyingPartyUnchanged, ErrEntraDomainNotConfigured
 		}
@@ -57,8 +57,8 @@ func (v EntraFederationVerification) Remove(ctx context.Context, tenantID, domai
 		if err != nil {
 			return wsfedports.RelyingPartyUnchanged, err
 		}
-		expected := feddomain.ExpectedEntraSettings(*rp.EntraProfile, domain, current, next)
-		evidence, err := feddomain.DecideEntraRelease(realm, record, expected)
+		expected := wsfeddomain.ExpectedEntraSettings(*rp.EntraProfile, domain, current, next)
+		evidence, err := wsfeddomain.DecideEntraRelease(realm, record, expected)
 		if err != nil {
 			return wsfedports.RelyingPartyUnchanged, err
 		}
@@ -81,14 +81,14 @@ func (v EntraFederationVerification) Remove(ctx context.Context, tenantID, domai
 	if err != nil {
 		return EntraRemovalResult{}, err
 	}
-	result.Event = &feddomain.EntraFederationDomainRemoved{
+	result.Event = &wsfeddomain.EntraFederationDomainRemoved{
 		At: now, TenantID: tenantID, Domain: result.Domain.Domain, IssuerURI: result.Domain.IssuerURI,
 		ConfirmedBy: result.ConfirmedBy, RelyingPartyDeleted: result.RelyingPartyDeleted,
 	}
 	return result, nil
 }
 
-func domainNames(profile feddomain.EntraFederationProfile) []string {
+func domainNames(profile wsfeddomain.EntraFederationProfile) []string {
 	names := make([]string, 0, len(profile.Domains))
 	for _, d := range profile.Domains {
 		names = append(names, d.Domain)

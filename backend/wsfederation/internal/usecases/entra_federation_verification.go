@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedports "github.com/ambi/idmagic/backend/wsfederation/ports"
 )
 
@@ -33,10 +33,10 @@ type EntraFederationVerification struct {
 
 // EntraDomainView は、一つのドメインの保存した設定、期待値、確認の状態である。
 type EntraDomainView struct {
-	RelyingParty *feddomain.WsFedRelyingParty
-	Domain       feddomain.EntraDomainFederation
-	Expected     feddomain.EntraExpectedSettings
-	Verification feddomain.EntraVerification
+	RelyingParty *wsfeddomain.WsFedRelyingParty
+	Domain       wsfeddomain.EntraDomainFederation
+	Expected     wsfeddomain.EntraExpectedSettings
+	Verification wsfeddomain.EntraVerification
 }
 
 // Domains は、構成済みのドメインをドメインの順で返す。Entra の構成がなければ空を返す。
@@ -53,7 +53,7 @@ func (v EntraFederationVerification) Domains(ctx context.Context, tenantID strin
 	if err != nil {
 		return nil, err
 	}
-	byDomain := map[string]*feddomain.EntraFederationObservationRecord{}
+	byDomain := map[string]*wsfeddomain.EntraFederationObservationRecord{}
 	for _, record := range records {
 		byDomain[record.Domain] = record
 	}
@@ -89,23 +89,23 @@ func (v EntraFederationVerification) Domain(ctx context.Context, tenantID, domai
 // Record は、観測を現在の期待値と比べて最新の記録として残し、記録から見た状態を返す。
 // 文書が不正なら feddomain.ErrInvalidEntraObservation を、古い観測なら
 // wsfedports.ErrEntraObservationOutdated を返し、どちらも記録を変えない。
-func (v EntraFederationVerification) Record(ctx context.Context, tenantID, domainName string, observation feddomain.EntraFederationObservation, now time.Time) (feddomain.EntraVerification, error) {
+func (v EntraFederationVerification) Record(ctx context.Context, tenantID, domainName string, observation wsfeddomain.EntraFederationObservation, now time.Time) (wsfeddomain.EntraVerification, error) {
 	current, err := v.Domain(ctx, tenantID, domainName)
 	if err != nil {
-		return feddomain.EntraVerification{}, err
+		return wsfeddomain.EntraVerification{}, err
 	}
 	if err := observation.Validate(current.Domain.Domain, now); err != nil {
-		return feddomain.EntraVerification{}, err
+		return wsfeddomain.EntraVerification{}, err
 	}
-	record := feddomain.NewEntraFederationObservationRecord(tenantID, current.Expected, observation, now)
+	record := wsfeddomain.NewEntraFederationObservationRecord(tenantID, current.Expected, observation, now)
 	if err := v.Observations.Save(ctx, record); err != nil {
-		return feddomain.EntraVerification{}, err
+		return wsfeddomain.EntraVerification{}, err
 	}
-	return feddomain.EntraVerificationFor(&record, current.Expected), nil
+	return wsfeddomain.EntraVerificationFor(&record, current.Expected), nil
 }
 
-func (v EntraFederationVerification) entraRelyingParty(ctx context.Context, tenantID string) (*feddomain.WsFedRelyingParty, error) {
-	rp, err := v.RPRepo.FindByWtrealm(ctx, tenantID, feddomain.EntraRealm)
+func (v EntraFederationVerification) entraRelyingParty(ctx context.Context, tenantID string) (*wsfeddomain.WsFedRelyingParty, error) {
+	rp, err := v.RPRepo.FindByWtrealm(ctx, tenantID, wsfeddomain.EntraRealm)
 	if err != nil || rp == nil || rp.EntraProfile == nil {
 		return nil, err
 	}
@@ -127,9 +127,9 @@ func (v EntraFederationVerification) certificates(ctx context.Context) (*x509.Ce
 	return current, next, nil
 }
 
-func configuredDomain(rp *feddomain.WsFedRelyingParty, domainName string) (feddomain.EntraDomainFederation, bool) {
+func configuredDomain(rp *wsfeddomain.WsFedRelyingParty, domainName string) (wsfeddomain.EntraDomainFederation, bool) {
 	if rp == nil {
-		return feddomain.EntraDomainFederation{}, false
+		return wsfeddomain.EntraDomainFederation{}, false
 	}
 	want := strings.ToLower(strings.TrimSpace(domainName))
 	for _, domain := range rp.EntraProfile.Domains {
@@ -137,13 +137,13 @@ func configuredDomain(rp *feddomain.WsFedRelyingParty, domainName string) (feddo
 			return domain, true
 		}
 	}
-	return feddomain.EntraDomainFederation{}, false
+	return wsfeddomain.EntraDomainFederation{}, false
 }
 
-func view(rp *feddomain.WsFedRelyingParty, domain feddomain.EntraDomainFederation, current, next *x509.Certificate, record *feddomain.EntraFederationObservationRecord) EntraDomainView {
-	expected := feddomain.ExpectedEntraSettings(*rp.EntraProfile, domain, current, next)
+func view(rp *wsfeddomain.WsFedRelyingParty, domain wsfeddomain.EntraDomainFederation, current, next *x509.Certificate, record *wsfeddomain.EntraFederationObservationRecord) EntraDomainView {
+	expected := wsfeddomain.ExpectedEntraSettings(*rp.EntraProfile, domain, current, next)
 	return EntraDomainView{
 		RelyingParty: rp, Domain: domain, Expected: expected,
-		Verification: feddomain.EntraVerificationFor(record, expected),
+		Verification: wsfeddomain.EntraVerificationFor(record, expected),
 	}
 }

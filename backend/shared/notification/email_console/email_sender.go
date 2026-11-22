@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/ambi/idmagic/backend/shared/logging"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
 // ConsoleEmailSender は dev / demo 用の配送アダプタ。本番では EMAIL_SENDER=smtp を使う。
@@ -12,7 +12,7 @@ import (
 // 確認するために出力する (本アダプタは本番では動かない)。
 type ConsoleEmailSender struct{}
 
-func (ConsoleEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
+func (ConsoleEmailSender) SendEmail(ctx context.Context, message notificationports.EmailMessage) bool {
 	// HTML 本文は同じ内容を装飾した alternative part なので、行数を膨らませないよう
 	// 有無だけを出す。dev で確認したいリンクはテキスト側に必ず入っている。
 	logging.Info(ctx, "email delivered (console sender)",

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -98,7 +98,7 @@ func TestExchangeCodeForToken_resourceBoundAtAuthorize_propagatesToRefreshTokenR
 	if out.RefreshToken == "" {
 		t.Fatal("refresh token missing")
 	}
-	hash := domain.HashRefreshToken(out.RefreshToken)
+	hash := oauthdomain.HashRefreshToken(out.RefreshToken)
 	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), hash)
 	if err != nil || rec == nil {
 		t.Fatalf("expected refresh token record to be findable: %v", err)

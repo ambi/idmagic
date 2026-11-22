@@ -11,17 +11,17 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func seedPaymentType(repo *oauth2memory.AuthorizationDetailTypeRepository) {
-	repo.Seed(&domain.AuthorizationDetailType{
-		TenantID: tenancydomain.DefaultTenantID, Type: "payment_initiation", State: domain.DetailTypeEnabled,
-		Schema: domain.AuthorizationDetailsSchema{Rules: []domain.AuthorizationDetailFieldRule{
-			{Name: "actions", Semantics: domain.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status"}},
-			{Name: "instructedAmount", Semantics: domain.DetailFieldAtMost, Required: true},
+	repo.Seed(&oauthdomain.AuthorizationDetailType{
+		TenantID: tenancydomain.DefaultTenantID, Type: "payment_initiation", State: oauthdomain.DetailTypeEnabled,
+		Schema: oauthdomain.AuthorizationDetailsSchema{Rules: []oauthdomain.AuthorizationDetailFieldRule{
+			{Name: "actions", Semantics: oauthdomain.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status"}},
+			{Name: "instructedAmount", Semantics: oauthdomain.DetailFieldAtMost, Required: true},
 		}},
 		DisplayTemplate: "最大 {instructedAmount} まで", CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	})

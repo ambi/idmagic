@@ -14,8 +14,8 @@ import (
 
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 // VerifyWorkloadAttestationDeps holds the collaborators VerifyWorkloadAttestation
@@ -24,11 +24,11 @@ import (
 // is the adapters-layer port that checks signature/claims and applies the
 // last-known-good JWKS fallback.
 type VerifyWorkloadAttestationDeps struct {
-	TrustBundleRepo ports.WorkloadTrustBundleRepository
-	BindingRepo     ports.AgentWorkloadBindingRepository
+	TrustBundleRepo workloadports.WorkloadTrustBundleRepository
+	BindingRepo     workloadports.AgentWorkloadBindingRepository
 	AgentRepo       agentports.AgentRepository
-	SVIDVerifier    ports.WorkloadSVIDVerifier
-	FetchJWKS       func(ctx context.Context, bundle *domain.WorkloadTrustBundle) ([]map[string]any, error)
+	SVIDVerifier    workloadports.WorkloadSVIDVerifier
+	FetchJWKS       func(ctx context.Context, bundle *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error)
 	Emit            func(spec.DomainEvent)
 }
 
@@ -49,9 +49,9 @@ func VerifyWorkloadAttestation(
 	tenantID string,
 	in VerifyWorkloadAttestationInput,
 	now time.Time,
-) (*domain.WorkloadIdentityGrant, error) {
-	reject := func(reason, trustBundleID string) (*domain.WorkloadIdentityGrant, error) {
-		emitRejected(deps, tenantID, reason, trustBundleID, domain.AttestationUsageTokenExchange, now)
+) (*workloaddomain.WorkloadIdentityGrant, error) {
+	reject := func(reason, trustBundleID string) (*workloaddomain.WorkloadIdentityGrant, error) {
+		emitRejected(deps, tenantID, reason, trustBundleID, workloaddomain.AttestationUsageTokenExchange, now)
 		return nil, errWorkloadAttestationRejected(reason)
 	}
 
@@ -71,7 +71,7 @@ func VerifyWorkloadAttestation(
 		return reject(workloadSVIDRejectReason(err), bundle.ID)
 	}
 	if bundle.IsSPIFFE() {
-		id, err := domain.ParseSpiffeID(claims.Subject)
+		id, err := workloaddomain.ParseSpiffeID(claims.Subject)
 		if err != nil {
 			return reject("invalid_spiffe_id", bundle.ID)
 		}
@@ -105,7 +105,7 @@ func VerifyWorkloadAttestation(
 		return reject("client_not_bound", bundle.ID)
 	}
 
-	return &domain.WorkloadIdentityGrant{
+	return &workloaddomain.WorkloadIdentityGrant{
 		AgentID:       agentID,
 		ClientID:      in.ClientID,
 		TrustBundleID: bundle.ID,
@@ -118,14 +118,14 @@ func VerifyWorkloadAttestation(
 // (REQ-WORKLOADIDENTITY-018)。保存に失敗しても取得の結果は変えない。保存は取得元に届かない
 // 間の備えであり、その失敗で今の検証を拒否すると、可用性のための仕組みが可用性を下げる。
 func fetchAndStoreJWKS(
-	deps VerifyWorkloadAttestationDeps, bundle *domain.WorkloadTrustBundle, now time.Time,
+	deps VerifyWorkloadAttestationDeps, bundle *workloaddomain.WorkloadTrustBundle, now time.Time,
 ) func(ctx context.Context) ([]map[string]any, error) {
 	return func(ctx context.Context) ([]map[string]any, error) {
 		keys, err := deps.FetchJWKS(ctx, bundle)
 		if err != nil || !bundle.FetchesJWKSURI() {
 			return keys, err
 		}
-		fetched := domain.JWKSSnapshot{Keys: keys, FetchedAt: now}
+		fetched := workloaddomain.JWKSSnapshot{Keys: keys, FetchedAt: now}
 		if bundle.NeedsJWKSStore(fetched) {
 			_ = deps.TrustBundleRepo.RecordJWKSFetched(ctx, bundle.TenantID, bundle.ID, bundle.JWKSURI, fetched)
 		}
@@ -140,10 +140,10 @@ func fetchAndStoreJWKS(
 // 使い、主体の特定とトラストドメインの一致の判定は署名の検証の後に行う。トークンとして
 // 読めなければ nil を返し、呼び出し側が unregistered_issuer で拒否する。
 func findTrustBundle(
-	ctx context.Context, repo ports.WorkloadTrustBundleRepository, tenantID, token string,
-) (*domain.WorkloadTrustBundle, error) {
+	ctx context.Context, repo workloadports.WorkloadTrustBundleRepository, tenantID, token string,
+) (*workloaddomain.WorkloadTrustBundle, error) {
 	keys := trustBundleLookupKeys(token)
-	var bundle *domain.WorkloadTrustBundle
+	var bundle *workloaddomain.WorkloadTrustBundle
 	var err error
 	if keys.issuer != "" {
 		bundle, err = repo.FindByIssuer(ctx, tenantID, keys.issuer)
@@ -167,7 +167,7 @@ func trustBundleLookupKeys(token string) lookupKeys {
 		return lookupKeys{}
 	}
 	keys := lookupKeys{issuer: unverified.Issuer}
-	if id, err := domain.ParseSpiffeID(unverified.Subject); err == nil {
+	if id, err := workloaddomain.ParseSpiffeID(unverified.Subject); err == nil {
 		keys.trustDomain = id.TrustDomain()
 	}
 	return keys
@@ -197,17 +197,17 @@ func peekClaims(token string) (unverifiedClaims, bool) {
 
 func workloadSVIDRejectReason(err error) string {
 	switch {
-	case errors.Is(err, domain.ErrSVIDKeysUnavailable):
+	case errors.Is(err, workloaddomain.ErrSVIDKeysUnavailable):
 		return "jwks_unavailable"
-	case errors.Is(err, domain.ErrSVIDInvalidSignature):
+	case errors.Is(err, workloaddomain.ErrSVIDInvalidSignature):
 		return "invalid_signature"
-	case errors.Is(err, domain.ErrSVIDIssuerMismatch):
+	case errors.Is(err, workloaddomain.ErrSVIDIssuerMismatch):
 		return "unregistered_issuer"
-	case errors.Is(err, domain.ErrSVIDAudienceMismatch):
+	case errors.Is(err, workloaddomain.ErrSVIDAudienceMismatch):
 		return "audience_mismatch"
-	case errors.Is(err, domain.ErrSVIDExpired):
+	case errors.Is(err, workloaddomain.ErrSVIDExpired):
 		return "expired"
-	case errors.Is(err, domain.ErrSVIDTTLExceeded):
+	case errors.Is(err, workloaddomain.ErrSVIDTTLExceeded):
 		return "ttl_exceeded"
 	default:
 		return "invalid_signature"

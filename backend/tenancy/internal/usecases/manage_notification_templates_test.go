@@ -10,39 +10,39 @@ import (
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	"github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
-	tenantusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
+	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/internal/usecases"
 )
 
 const notificationTenantID = "tenant-a"
 
 func newNotificationTemplateDeps(
 	ctx context.Context, t *testing.T,
-) (tenantusecases.NotificationTemplateDeps, *email_memory.NoopEmailSender) {
+) (tenancyusecases.NotificationTemplateDeps, *email_memory.NoopEmailSender) {
 	t.Helper()
 	now := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
 	tenants := db_memory.NewTenantRepository()
-	if err := tenants.Save(ctx, &domain.Tenant{
+	if err := tenants.Save(ctx, &tenancydomain.Tenant{
 		ID: notificationTenantID, Realm: "acme", DisplayName: "Acme Inc.",
-		Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	templates := db_memory.NewNotificationTemplateRepository()
-	source := tenantusecases.TenantNotificationSource{
+	source := tenancyusecases.TenantNotificationSource{
 		TenantRepo: tenants, BrandingRepo: db_memory.NewTenantBrandingRepository(), TemplateRepo: templates,
 	}
 	sender := &email_memory.NoopEmailSender{}
-	return tenantusecases.NotificationTemplateDeps{
+	return tenancyusecases.NotificationTemplateDeps{
 		Repo:     templates,
 		Tenant:   source,
 		Notifier: &template.Notifier{Sender: sender, Tenant: source, SystemDefaultLocale: "en"},
 	}, sender
 }
 
-func validTemplateInput() tenantusecases.NotificationTemplateInput {
-	return tenantusecases.NotificationTemplateInput{
+func validTemplateInput() tenancyusecases.NotificationTemplateInput {
+	return tenancyusecases.NotificationTemplateInput{
 		Subject:         "【Acme】パスワード再設定のご案内",
 		BodyText:        "{{user_display_name}} さん\n{{reset_url}}",
 		BodyHTML:        "<p>{{user_display_name}} さん</p><p><a href=\"{{reset_url}}\">再設定</a></p>",
@@ -57,7 +57,7 @@ func TestListNotificationTemplatesCoversTheWholeCatalog(t *testing.T) {
 	ctx := context.Background()
 	deps, _ := newNotificationTemplateDeps(ctx, t)
 
-	summaries, err := tenantusecases.ListNotificationTemplates(ctx, deps, notificationTenantID)
+	summaries, err := tenancyusecases.ListNotificationTemplates(ctx, deps, notificationTenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestUpdateThenResetNotificationTemplate(t *testing.T) {
 	deps, _ := newNotificationTemplateDeps(ctx, t)
 	now := time.Date(2026, 7, 25, 9, 0, 0, 0, time.UTC)
 
-	updated, err := tenantusecases.UpdateNotificationTemplate(ctx, deps, notificationTenantID,
+	updated, err := tenancyusecases.UpdateNotificationTemplate(ctx, deps, notificationTenantID,
 		notificationports.TemplateKeyPasswordReset, "ja", validTemplateInput(), now)
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestUpdateThenResetNotificationTemplate(t *testing.T) {
 		t.Error("the allowed placeholder set should be reported to the editor")
 	}
 
-	fetched, err := tenantusecases.GetNotificationTemplate(ctx, deps, notificationTenantID,
+	fetched, err := tenancyusecases.GetNotificationTemplate(ctx, deps, notificationTenantID,
 		notificationports.TemplateKeyPasswordReset, "ja")
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestUpdateThenResetNotificationTemplate(t *testing.T) {
 	}
 
 	// 上書きしていない locale は影響を受けない。
-	other, err := tenantusecases.GetNotificationTemplate(ctx, deps, notificationTenantID,
+	other, err := tenancyusecases.GetNotificationTemplate(ctx, deps, notificationTenantID,
 		notificationports.TemplateKeyPasswordReset, "en")
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +120,7 @@ func TestUpdateThenResetNotificationTemplate(t *testing.T) {
 		t.Error("the ja override leaked into en")
 	}
 
-	reset, err := tenantusecases.ResetNotificationTemplate(ctx, deps, notificationTenantID,
+	reset, err := tenancyusecases.ResetNotificationTemplate(ctx, deps, notificationTenantID,
 		notificationports.TemplateKeyPasswordReset, "ja")
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +130,7 @@ func TestUpdateThenResetNotificationTemplate(t *testing.T) {
 	}
 
 	// 上書きが無い状態での reset も冪等に成功する。
-	if _, err := tenantusecases.ResetNotificationTemplate(ctx, deps, notificationTenantID,
+	if _, err := tenancyusecases.ResetNotificationTemplate(ctx, deps, notificationTenantID,
 		notificationports.TemplateKeyPasswordReset, "ja"); err != nil {
 		t.Fatalf("reset is not idempotent: %v", err)
 	}
@@ -143,36 +143,36 @@ func TestUpdateNotificationTemplateRejectsInvalidInput(t *testing.T) {
 		name  string
 		key   notificationports.TemplateKey
 		local string
-		input tenantusecases.NotificationTemplateInput
+		input tenancyusecases.NotificationTemplateInput
 		want  error
 	}{
 		{
 			name: "unknown placeholder", key: notificationports.TemplateKeyPasswordReset, local: "ja",
-			input: tenantusecases.NotificationTemplateInput{
+			input: tenancyusecases.NotificationTemplateInput{
 				Subject: "件名", BodyText: "{{password}}", BodyHTML: "<p>本文</p>",
 			},
-			want: tenantusecases.ErrInvalidNotificationTemplate,
+			want: tenancyusecases.ErrInvalidNotificationTemplate,
 		},
 		{
 			name: "html body only", key: notificationports.TemplateKeyPasswordReset, local: "ja",
-			input: tenantusecases.NotificationTemplateInput{
+			input: tenancyusecases.NotificationTemplateInput{
 				Subject: "件名", BodyText: "", BodyHTML: "<p>本文</p>",
 			},
-			want: tenantusecases.ErrInvalidNotificationTemplate,
+			want: tenancyusecases.ErrInvalidNotificationTemplate,
 		},
 		{
 			name: "unsupported locale", key: notificationports.TemplateKeyPasswordReset, local: "fr",
-			input: validTemplateInput(), want: tenantusecases.ErrUnknownNotificationTemplate,
+			input: validTemplateInput(), want: tenancyusecases.ErrUnknownNotificationTemplate,
 		},
 		{
 			name: "unknown template key", key: notificationports.TemplateKey("made_up"), local: "ja",
-			input: validTemplateInput(), want: tenantusecases.ErrUnknownNotificationTemplate,
+			input: validTemplateInput(), want: tenancyusecases.ErrUnknownNotificationTemplate,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			deps, _ := newNotificationTemplateDeps(ctx, t)
-			_, err := tenantusecases.UpdateNotificationTemplate(ctx, deps, notificationTenantID,
+			_, err := tenancyusecases.UpdateNotificationTemplate(ctx, deps, notificationTenantID,
 				tc.key, tc.local, tc.input, time.Now().UTC())
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("error = %v, want %v", err, tc.want)
@@ -195,8 +195,8 @@ func TestPreviewNotificationTemplateDoesNotSendOrSave(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)
 
-	preview, err := tenantusecases.PreviewNotificationTemplate(ctx, deps, notificationTenantID,
-		notificationports.TemplateKeyPasswordReset, "ja", tenantusecases.NotificationTemplateInput{
+	preview, err := tenancyusecases.PreviewNotificationTemplate(ctx, deps, notificationTenantID,
+		notificationports.TemplateKeyPasswordReset, "ja", tenancyusecases.NotificationTemplateInput{
 			Subject:  "編集中の件名",
 			BodyText: "{{user_display_name}} さん {{reset_url}}",
 			BodyHTML: "<p>{{user_display_name}}</p>",
@@ -235,8 +235,8 @@ func TestPreviewNotificationTemplateFallsBackToTheEffectiveTemplate(t *testing.T
 	ctx := context.Background()
 	deps, _ := newNotificationTemplateDeps(ctx, t)
 
-	preview, err := tenantusecases.PreviewNotificationTemplate(ctx, deps, notificationTenantID,
-		notificationports.TemplateKeyPasswordReset, "ja", tenantusecases.NotificationTemplateInput{})
+	preview, err := tenancyusecases.PreviewNotificationTemplate(ctx, deps, notificationTenantID,
+		notificationports.TemplateKeyPasswordReset, "ja", tenancyusecases.NotificationTemplateInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,8 +253,8 @@ func TestSendTestNotificationGoesToTheActorOnly(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)
 
-	result, err := tenantusecases.SendTestNotification(ctx, deps, notificationTenantID,
-		notificationports.TemplateKeyPasswordReset, "ja", tenantusecases.TestNotificationActor{
+	result, err := tenancyusecases.SendTestNotification(ctx, deps, notificationTenantID,
+		notificationports.TemplateKeyPasswordReset, "ja", tenancyusecases.TestNotificationActor{
 			Email: "operator@example.test", DisplayName: "operator",
 		})
 	if err != nil {
@@ -280,9 +280,9 @@ func TestSendTestNotificationRequiresAnActorAddress(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)
 
-	_, err := tenantusecases.SendTestNotification(ctx, deps, notificationTenantID,
-		notificationports.TemplateKeyPasswordReset, "ja", tenantusecases.TestNotificationActor{DisplayName: "operator"})
-	if !errors.Is(err, tenantusecases.ErrTestNotificationRecipient) {
+	_, err := tenancyusecases.SendTestNotification(ctx, deps, notificationTenantID,
+		notificationports.TemplateKeyPasswordReset, "ja", tenancyusecases.TestNotificationActor{DisplayName: "operator"})
+	if !errors.Is(err, tenancyusecases.ErrTestNotificationRecipient) {
 		t.Fatalf("error = %v, want ErrTestNotificationRecipient", err)
 	}
 	if len(sender.Sent) != 0 {
@@ -295,13 +295,13 @@ func TestSendTestNotificationUsesTheStoredOverride(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)
 	now := time.Date(2026, 7, 25, 9, 0, 0, 0, time.UTC)
-	if _, err := tenantusecases.UpdateNotificationTemplate(ctx, deps, notificationTenantID,
+	if _, err := tenancyusecases.UpdateNotificationTemplate(ctx, deps, notificationTenantID,
 		notificationports.TemplateKeyPasswordReset, "ja", validTemplateInput(), now); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := tenantusecases.SendTestNotification(ctx, deps, notificationTenantID,
-		notificationports.TemplateKeyPasswordReset, "ja", tenantusecases.TestNotificationActor{
+	if _, err := tenancyusecases.SendTestNotification(ctx, deps, notificationTenantID,
+		notificationports.TemplateKeyPasswordReset, "ja", tenancyusecases.TestNotificationActor{
 			Email: "operator@example.test", DisplayName: "operator",
 		}); err != nil {
 		t.Fatal(err)
@@ -324,19 +324,19 @@ func TestTenantNotificationSourceResolvesTenantSettings(t *testing.T) {
 	now := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
 	tenants := db_memory.NewTenantRepository()
 	locale := "ja"
-	if err := tenants.Save(ctx, &domain.Tenant{
+	if err := tenants.Save(ctx, &tenancydomain.Tenant{
 		ID: notificationTenantID, Realm: "acme", DisplayName: "Acme Inc.", DefaultLocale: &locale,
-		Status: domain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
+		Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
 	branding := db_memory.NewTenantBrandingRepository()
-	if err := branding.Save(ctx, &domain.TenantBranding{
+	if err := branding.Save(ctx, &tenancydomain.TenantBranding{
 		TenantID: notificationTenantID, ProductName: "Acme ID", CreatedAt: now, UpdatedAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	source := tenantusecases.TenantNotificationSource{
+	source := tenancyusecases.TenantNotificationSource{
 		TenantRepo: tenants, BrandingRepo: branding, TemplateRepo: db_memory.NewNotificationTemplateRepository(),
 	}
 

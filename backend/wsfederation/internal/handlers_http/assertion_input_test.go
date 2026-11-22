@@ -6,14 +6,14 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 func TestAuthnContextMarksOnlyPasswordAuthentication(t *testing.T) {
-	if got := authnContext(feddomain.AuthnPassword); got != samltoken.AuthnContextPassword {
+	if got := authnContext(wsfeddomain.AuthnPassword); got != samltoken.AuthnContextPassword {
 		t.Fatalf("authnContext(password) = %v, want password", got)
 	}
-	for _, method := range []feddomain.AuthnMethodClass{feddomain.AuthnUnspecified, ""} {
+	for _, method := range []wsfeddomain.AuthnMethodClass{wsfeddomain.AuthnUnspecified, ""} {
 		if got := authnContext(method); got != samltoken.AuthnContextUnspecified {
 			t.Fatalf("authnContext(%q) = %v, want unspecified", method, got)
 		}

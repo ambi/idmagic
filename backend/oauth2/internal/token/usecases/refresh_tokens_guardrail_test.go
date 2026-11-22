@@ -5,17 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
 type refusingGuard struct {
-	ports.TokenIssuer
+	oauthports.TokenIssuer
 	refuse bool
 }
 
-func (g *refusingGuard) Precheck(context.Context, ports.AccessTokenInput) error {
+func (g *refusingGuard) Precheck(context.Context, oauthports.AccessTokenInput) error {
 	if g.refuse {
 		return NewOAuthError("access_denied", "The token request was denied.")
 	}
@@ -26,7 +26,7 @@ func (g *refusingGuard) Confirm(string) {}
 //spec:covers REQ-OAUTH2-075, EX-OAUTH2-075-01: 拒否はローテーションせず、回復後に同じトークンで発行できる
 func TestRefreshDeniedByGuardrailDoesNotRotate(t *testing.T) {
 	now := time.Now().UTC()
-	f := newRefreshFixture(t, (*domain.SenderConstraint)(nil), now, time.Hour)
+	f := newRefreshFixture(t, (*oauthdomain.SenderConstraint)(nil), now, time.Hour)
 	guard := &refusingGuard{TokenIssuer: f.deps.TokenIssuer, refuse: true}
 	f.deps.TokenIssuer = guard
 	ctx := testing_tenant.Default(context.Background())

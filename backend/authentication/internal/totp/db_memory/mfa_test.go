@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -17,7 +17,7 @@ func TestMfaFactorRepository(t *testing.T) {
 		secret := "JBSWY3DPEHPK3PXP"
 		label := "My Phone TOTP"
 		now := time.Now()
-		factor := &domain.MfaFactor{
+		factor := &totpdomain.MfaFactor{
 			UserID:     "user-1",
 			Type:       spec.MfaFactorTOTP,
 			Secret:     &secret,
@@ -60,12 +60,12 @@ func TestMfaFactorRepository(t *testing.T) {
 
 	t.Run("ListBySub", func(t *testing.T) {
 		// すでに user-1 / totp がある。さらに WebAuthn も追加する。
-		factorWeb := &domain.MfaFactor{
+		factorWeb := &totpdomain.MfaFactor{
 			UserID:    "user-1",
 			Type:      spec.MfaFactorWebAuthn,
 			CreatedAt: time.Now(),
 		}
-		factorOther := &domain.MfaFactor{
+		factorOther := &totpdomain.MfaFactor{
 			UserID:    "user-other",
 			Type:      spec.MfaFactorTOTP,
 			CreatedAt: time.Now(),

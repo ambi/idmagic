@@ -17,7 +17,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -32,15 +32,15 @@ const (
 
 func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.Echo {
 	clientRepo := oauth2memory.NewClientRepository()
-	secretHash := domain.HashClientSecret(introSecret)
-	clientRepo.Seed(&domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(introSecret)
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: introClientID, ClientSecretHash: &secretHash,
 		ClientType:   spec.ClientConfidential,
 		RedirectURIs: []string{"https://rs.example/cb"}, GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic, Scope: "api",
-		FapiProfile: domain.FapiNone, CreatedAt: time.Now().UTC(),
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic, Scope: "api",
+		FapiProfile: oauthdomain.FapiNone, CreatedAt: time.Now().UTC(),
 	})
 	e := echo.New()
 	deps := httpadapter.Deps{

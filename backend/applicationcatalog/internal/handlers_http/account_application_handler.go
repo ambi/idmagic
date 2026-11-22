@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -18,12 +18,12 @@ import (
 )
 
 type myApplicationResponse struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Kind        domain.ApplicationKind `json:"kind"`
-	IconURL     string                 `json:"icon_url,omitempty"`
-	LaunchURL   string                 `json:"launch_url,omitempty"`
-	CategoryIDs []string               `json:"category_ids"`
+	ID          string                    `json:"id"`
+	Name        string                    `json:"name"`
+	Kind        appdomain.ApplicationKind `json:"kind"`
+	IconURL     string                    `json:"icon_url,omitempty"`
+	LaunchURL   string                    `json:"launch_url,omitempty"`
+	CategoryIDs []string                  `json:"category_ids"`
 }
 
 type portalCategoryResponse struct {
@@ -90,7 +90,7 @@ func (d Deps) portalCategories(ctx context.Context) ([]portalCategoryResponse, e
 
 // subjectsForUser は割当解決に使う subject 群 (本人 + 所属グループ) を組み立てる (wi-69)。
 func (d Deps) subjectsForUser(ctx context.Context, user *userdomain.User) []appports.SubjectRef {
-	subjects := []appports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: user.ID}}
+	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: user.ID}}
 	if d.GroupRepo == nil {
 		return subjects
 	}
@@ -99,7 +99,7 @@ func (d Deps) subjectsForUser(ctx context.Context, user *userdomain.User) []appp
 		return subjects
 	}
 	for _, g := range groups {
-		subjects = append(subjects, appports.SubjectRef{Type: domain.AssignmentSubjectGroup, ID: g.ID})
+		subjects = append(subjects, appports.SubjectRef{Type: appdomain.AssignmentSubjectGroup, ID: g.ID})
 	}
 	return subjects
 }

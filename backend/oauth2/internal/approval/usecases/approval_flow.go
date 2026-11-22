@@ -17,7 +17,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	approvaldomain "github.com/ambi/idmagic/backend/oauth2/internal/approval/domain"
 	approvalports "github.com/ambi/idmagic/backend/oauth2/internal/approval/ports"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -61,18 +61,18 @@ func ValidateStartApprovalInput(in StartApprovalInput) error {
 		hints++
 	}
 	if hints != 1 {
-		return sharedusecases.NewOAuthError("invalid_request", "exactly one user hint is required")
+		return oauthusecases.NewOAuthError("invalid_request", "exactly one user hint is required")
 	}
 	scopes := strings.Fields(in.Scope)
 	if len(scopes) == 0 || !slices.Contains(scopes, "openid") {
-		return sharedusecases.NewOAuthError("invalid_scope", "scope must contain openid")
+		return oauthusecases.NewOAuthError("invalid_scope", "scope must contain openid")
 	}
 	if utf8.RuneCountInString(in.BindingMessage) > approvaldomain.MaxBindingMessageLength ||
 		strings.IndexFunc(in.BindingMessage, unicode.IsControl) >= 0 {
-		return sharedusecases.NewOAuthError("invalid_binding_message", "binding_message is not suitable for display")
+		return oauthusecases.NewOAuthError("invalid_binding_message", "binding_message is not suitable for display")
 	}
 	if in.RequestedExpiry != nil && (*in.RequestedExpiry <= 0 || *in.RequestedExpiry > int(approvaldomain.MaxTTL.Seconds())) {
-		return sharedusecases.NewOAuthError("invalid_request", "requested_expiry must be between 1 and 600 seconds")
+		return oauthusecases.NewOAuthError("invalid_request", "requested_expiry must be between 1 and 600 seconds")
 	}
 	return nil
 }
@@ -90,30 +90,30 @@ func StartApproval(ctx context.Context, deps StartApprovalDeps, in StartApproval
 		return nil, err
 	}
 	if client == nil {
-		return nil, sharedusecases.NewOAuthError("invalid_client", "unknown client")
+		return nil, oauthusecases.NewOAuthError("invalid_client", "unknown client")
 	}
 	if client.ClientType != spec.ClientConfidential || !slices.Contains(client.GrantTypes, spec.GrantCiba) {
-		return nil, sharedusecases.NewOAuthError("unauthorized_client", "ciba grant is not allowed")
+		return nil, oauthusecases.NewOAuthError("unauthorized_client", "ciba grant is not allowed")
 	}
 	scopes := strings.Fields(in.Scope)
 	allowed := strings.Fields(client.Scope)
 	for _, scope := range scopes {
 		if !slices.Contains(allowed, scope) {
-			return nil, sharedusecases.NewOAuthError("invalid_scope", "scope is not declared by the client")
+			return nil, oauthusecases.NewOAuthError("invalid_scope", "scope is not declared by the client")
 		}
 	}
-	details, err := sharedusecases.ParseAuthorizationDetails(in.AuthorizationDetailsRaw)
+	details, err := oauthusecases.ParseAuthorizationDetails(in.AuthorizationDetailsRaw)
 	if err != nil {
 		return nil, err
 	}
-	if err := sharedusecases.ValidateAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, details); err != nil {
+	if err := oauthusecases.ValidateAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, details); err != nil {
 		return nil, err
 	}
 	user, err := resolveApprovalUser(ctx, deps, in, client.ClientID, now)
 	if err != nil {
 		return nil, err
 	}
-	agent, err := sharedusecases.ResolveIssuableAgent(ctx, sharedusecases.AgentIssuanceDeps{
+	agent, err := oauthusecases.ResolveIssuableAgent(ctx, oauthusecases.AgentIssuanceDeps{
 		AgentRepo: deps.AgentRepo, UserRepo: deps.UserRepo,
 	}, client.ClientID)
 	if err != nil {
@@ -161,7 +161,7 @@ func resolveApprovalUser(ctx context.Context, deps StartApprovalDeps, in StartAp
 	var err error
 	if in.IDTokenHint != "" {
 		if deps.HintVerifier == nil {
-			return nil, sharedusecases.NewOAuthError("unknown_user_id", "user could not be resolved")
+			return nil, oauthusecases.NewOAuthError("unknown_user_id", "user could not be resolved")
 		}
 		claims, verifyErr := deps.HintVerifier.VerifyIDTokenHint(ctx, in.IDTokenHint)
 		if verifyErr == nil && claims != nil && hintAudienceContains(claims, clientID) &&
@@ -179,7 +179,7 @@ func resolveApprovalUser(ctx context.Context, deps StartApprovalDeps, in StartAp
 		return nil, err
 	}
 	if user == nil || user.TenantID != tenantports.TenantID(ctx) || !user.IsActive() {
-		return nil, sharedusecases.NewOAuthError("unknown_user_id", "user could not be resolved")
+		return nil, oauthusecases.NewOAuthError("unknown_user_id", "user could not be resolved")
 	}
 	return user, nil
 }
@@ -219,7 +219,7 @@ type ExchangeApprovalResult struct {
 
 func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in ExchangeApprovalInput, now time.Time) (*ExchangeApprovalResult, error) {
 	if strings.TrimSpace(in.AuthReqID) == "" {
-		return nil, sharedusecases.NewOAuthError("invalid_request", "auth_req_id is required")
+		return nil, oauthusecases.NewOAuthError("invalid_request", "auth_req_id is required")
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -230,7 +230,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		return nil, err
 	}
 	if rec == nil || rec.ClientID != in.ClientID {
-		return nil, sharedusecases.NewOAuthError("invalid_grant", "unknown auth_req_id")
+		return nil, oauthusecases.NewOAuthError("invalid_grant", "unknown auth_req_id")
 	}
 	if approvaldomain.IsExpired(rec, now) {
 		if expired, expireErr := deps.Store.Expire(ctx, hash, now); expireErr != nil {
@@ -238,7 +238,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		} else if expired != nil {
 			emit(deps.Emit, &oauthdomain.BackchannelAuthExpired{At: now, TenantID: rec.TenantID, ApprovalRequestID: rec.ID, ClientID: rec.ClientID, UserID: rec.UserID})
 		}
-		return nil, sharedusecases.NewOAuthError("expired_token", "auth_req_id has expired")
+		return nil, oauthusecases.NewOAuthError("expired_token", "auth_req_id has expired")
 	}
 	switch rec.State {
 	case spec.ApprovalPending:
@@ -247,33 +247,33 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 			return nil, pollErr
 		}
 		if polled == nil {
-			return nil, sharedusecases.NewOAuthError("invalid_grant", "unknown auth_req_id")
+			return nil, oauthusecases.NewOAuthError("invalid_grant", "unknown auth_req_id")
 		}
 		if polled.State != spec.ApprovalPending {
 			rec = polled
 			break
 		}
 		if tooFast {
-			return nil, sharedusecases.NewOAuthError("slow_down", "polling interval is too short")
+			return nil, oauthusecases.NewOAuthError("slow_down", "polling interval is too short")
 		}
-		return nil, sharedusecases.NewOAuthError("authorization_pending", "authorization is pending")
+		return nil, oauthusecases.NewOAuthError("authorization_pending", "authorization is pending")
 	case spec.ApprovalDenied:
-		return nil, sharedusecases.NewOAuthError("access_denied", "the user denied the request")
+		return nil, oauthusecases.NewOAuthError("access_denied", "the user denied the request")
 	case spec.ApprovalConsumed:
-		return nil, sharedusecases.NewOAuthError("invalid_grant", "auth_req_id has already been consumed")
+		return nil, oauthusecases.NewOAuthError("invalid_grant", "auth_req_id has already been consumed")
 	case spec.ApprovalExpired:
-		return nil, sharedusecases.NewOAuthError("expired_token", "auth_req_id has expired")
+		return nil, oauthusecases.NewOAuthError("expired_token", "auth_req_id has expired")
 	}
 	if rec.State != spec.ApprovalApproved {
 		switch rec.State {
 		case spec.ApprovalDenied:
-			return nil, sharedusecases.NewOAuthError("access_denied", "the user denied the request")
+			return nil, oauthusecases.NewOAuthError("access_denied", "the user denied the request")
 		case spec.ApprovalConsumed:
-			return nil, sharedusecases.NewOAuthError("invalid_grant", "auth_req_id has already been consumed")
+			return nil, oauthusecases.NewOAuthError("invalid_grant", "auth_req_id has already been consumed")
 		case spec.ApprovalExpired:
-			return nil, sharedusecases.NewOAuthError("expired_token", "auth_req_id has expired")
+			return nil, oauthusecases.NewOAuthError("expired_token", "auth_req_id has expired")
 		default:
-			return nil, sharedusecases.NewOAuthError("invalid_grant", "approval request is not approved")
+			return nil, oauthusecases.NewOAuthError("invalid_grant", "approval request is not approved")
 		}
 	}
 	client, err := deps.ClientRepo.FindByID(ctx, tenantports.TenantID(ctx), in.ClientID)
@@ -281,32 +281,32 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		if err != nil {
 			return nil, err
 		}
-		return nil, sharedusecases.NewOAuthError("invalid_grant", "client is unavailable")
+		return nil, oauthusecases.NewOAuthError("invalid_grant", "client is unavailable")
 	}
 	user, err := deps.UserRepo.FindBySub(ctx, rec.UserID)
 	if err != nil || user == nil || !user.IsActive() || user.TenantID != tenantports.TenantID(ctx) {
 		if err != nil {
 			return nil, err
 		}
-		return nil, sharedusecases.NewOAuthError("invalid_grant", "user is unavailable")
+		return nil, oauthusecases.NewOAuthError("invalid_grant", "user is unavailable")
 	}
 	if rec.AgentID != nil {
 		if deps.AgentRepo == nil {
-			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent status cannot be verified")
+			return nil, oauthusecases.NewOAuthError("invalid_grant", "agent status cannot be verified")
 		}
 		agent, findErr := deps.AgentRepo.FindByID(ctx, tenantports.TenantID(ctx), *rec.AgentID)
 		if findErr != nil {
 			return nil, findErr
 		}
 		if agent == nil || !agent.IsActive() {
-			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent is disabled or killed")
+			return nil, oauthusecases.NewOAuthError("invalid_grant", "agent is disabled or killed")
 		}
-		ownerActive, ownerErr := sharedusecases.AgentOwnerIsActive(ctx, deps.UserRepo, agent)
+		ownerActive, ownerErr := oauthusecases.AgentOwnerIsActive(ctx, deps.UserRepo, agent)
 		if ownerErr != nil {
 			return nil, ownerErr
 		}
 		if !ownerActive {
-			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent owner is offboarded")
+			return nil, oauthusecases.NewOAuthError("invalid_grant", "agent owner is offboarded")
 		}
 	}
 	audiences, err := approvedAudiences(ctx, deps.ResourceServers, rec)
@@ -318,7 +318,7 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		return nil, err
 	}
 	if consumed == nil {
-		return nil, sharedusecases.NewOAuthError("invalid_grant", "auth_req_id was consumed concurrently")
+		return nil, oauthusecases.NewOAuthError("invalid_grant", "auth_req_id was consumed concurrently")
 	}
 	var constraint *oauthdomain.SenderConstraint
 	if in.ProofJKT != "" {
@@ -385,10 +385,10 @@ func DecideApproval(ctx context.Context, store approvalports.ApprovalRequestStor
 		return err
 	}
 	if rec == nil || rec.UserID != userID {
-		return sharedusecases.NewOAuthError("access_denied", "approval request is not owned by the user")
+		return oauthusecases.NewOAuthError("access_denied", "approval request is not owned by the user")
 	}
 	if approvaldomain.IsExpired(rec, now) || rec.State != spec.ApprovalPending {
-		return sharedusecases.NewOAuthError("invalid_request", "approval request is no longer pending")
+		return oauthusecases.NewOAuthError("invalid_request", "approval request is no longer pending")
 	}
 	event := spec.ApprovalEventDeny
 	if approve {
@@ -399,7 +399,7 @@ func DecideApproval(ctx context.Context, store approvalports.ApprovalRequestStor
 		return err
 	}
 	if decided == nil {
-		return sharedusecases.NewOAuthError("invalid_request", "approval request was already decided")
+		return oauthusecases.NewOAuthError("invalid_request", "approval request was already decided")
 	}
 	if approve {
 		// AgentID を載せるのは、Supervised な Agent が得たトークンを、それを許可した

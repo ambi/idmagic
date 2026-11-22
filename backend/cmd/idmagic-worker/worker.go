@@ -16,8 +16,8 @@ import (
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -94,7 +94,7 @@ func RunWorker() error {
 	}()
 
 	handlers := jobs.NewHandlerRegistry()
-	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
+	handlers.Register(jobsdomain.KindNoopEcho, jobs.NoopEchoHandler)
 	deps.Audit.RegisterExportHandler(handlers, audit.ExportJobDeps{Jobs: deps.Jobs.Repo, Emit: deps.NewEmitFunc(logger)})
 	oauth2.RegisterJobHandlers(handlers, oauth2.JobHandlerDeps{
 		Notifications: deps.OAuth2.LogoutNotificationStore, TokenSigner: oauth2.NewJWTSigner("", deps.SigningKeys.KeyStore),
@@ -113,7 +113,7 @@ func RunWorker() error {
 			return nil
 		},
 	})
-	handlers.Register(domain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
+	handlers.Register(jobsdomain.KindDataKeyReencryption, deps.DataKeys.ReencryptionHandler(jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logger))))
 	handlers.Register(idgovernance.LifecycleWorkflowRunJobKind, deps.IdGovernance.Executor(lifecycleWorkflowExecutorDeps(deps, logger)))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 	go accessReviewLoop(ctx, deps, logger)
@@ -201,7 +201,7 @@ func metricsMux(appMetrics *jobs.Metrics) http.Handler {
 // since depth is a queue-wide fact (every lane, every worker process) and
 // must self-correct after a worker crash the same way lease-expiry reclaim
 // does — an event-sourced counter would drift in that case.
-func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, appMetrics *jobs.Metrics) {
+func jobsQueueDepthSamplingLoop(ctx context.Context, repo jobsports.JobRepository, appMetrics *jobs.Metrics) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -306,7 +306,7 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies,
 }
 
 // テストでは下流への通信だけを差し替え、本番と同じ登録・起動処理を通す。
-func startProvisioningWorker(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger, handlers ports.HandlerRegistrar, newClient provisioning.TargetClientFactory, reconcileInterval time.Duration) {
+func startProvisioningWorker(ctx context.Context, deps *bootstrap.Dependencies, logger logging.Logger, handlers jobsports.HandlerRegistrar, newClient provisioning.TargetClientFactory, reconcileInterval time.Duration) {
 	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // 監査の記録は要求と独立した期限を使う。
 	handlers.Register(provisioning.KindProvisioningTask, deps.Provisioning.TaskHandler(deps.IdManagement.UserRepo, deps.IdManagement.GroupRepo, newClient, emit, deps.Notification.Notifier))
 	go provisioningDispatchLoop(ctx, deps, logger)

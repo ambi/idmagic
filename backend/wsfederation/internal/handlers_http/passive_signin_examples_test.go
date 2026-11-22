@@ -24,7 +24,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 )
 
 const (
@@ -245,7 +245,7 @@ func TestWsFedPassiveSignIn_FailsClosedOnEveryUntrustedDimension(t *testing.T) {
 			assertNoPassiveTokenIssued(t, rec, events)
 			var reasons []string
 			for _, event := range events {
-				if rejected, ok := event.(*feddomain.WsFedSignInRejected); ok {
+				if rejected, ok := event.(*wsfeddomain.WsFedSignInRejected); ok {
 					reasons = append(reasons, rejected.Reason)
 				}
 			}

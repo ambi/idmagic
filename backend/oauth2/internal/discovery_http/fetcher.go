@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/security/safehttp"
 )
 
@@ -16,9 +16,9 @@ import (
 const RequestTimeout = 10 * time.Second
 
 // ErrResponseTooLarge は本文が呼び出し元の上限を超えたことを表す。接続の失敗とは区別する。
-var ErrResponseTooLarge = ports.ErrMcpResponseTooLarge
+var ErrResponseTooLarge = oauthports.ErrMcpResponseTooLarge
 
-var _ ports.McpServerFetcher = (*Fetcher)(nil)
+var _ oauthports.McpServerFetcher = (*Fetcher)(nil)
 
 // Fetcher は一つの要求を送り、状態コードと上限までの本文を返す。
 type Fetcher struct {
@@ -31,7 +31,7 @@ func NewFetcher(client *http.Client) *Fetcher {
 	if client == nil {
 		client = safehttp.NewClient(safehttp.Config{
 			DialTimeout: 5 * time.Second, TLSTimeout: 5 * time.Second, RequestTimeout: RequestTimeout,
-			ValidateURL: domain.ValidateMcpUpstreamURL,
+			ValidateURL: oauthdomain.ValidateMcpUpstreamURL,
 		})
 	}
 	cloned := *client

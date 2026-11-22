@@ -13,7 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/entropy"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -27,14 +27,14 @@ func newRefreshFixtureWithResource(t *testing.T, resource *string) refreshFixtur
 	issuer := &fakeTokenIssuer{}
 	now := time.Now().UTC()
 
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientConfidential,
 		RedirectURIs:            []string{"https://client.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                   "openid offline_access",
-		FapiProfile:             domain.FapiNone,
+		FapiProfile:             oauthdomain.FapiNone,
 		CreatedAt:               now,
 	})
 	_ = userRepo.Save(context.Background(), &userdomain.User{
@@ -42,7 +42,7 @@ func newRefreshFixtureWithResource(t *testing.T, resource *string) refreshFixtur
 		CreatedAt: now, UpdatedAt: now,
 	})
 
-	gen, err := domain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, nil, nil, resource, now, entropy.Crypto())
+	gen, err := oauthdomain.GenerateInitialRefreshToken("client", "user", []string{"openid", "offline_access"}, nil, nil, resource, now, entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestRefreshTokens_preservesResourceBindingAcrossRotation(t *testing.T) {
 	}
 
 	// ローテーション後の RefreshTokenRecord も resource を保持しているはず。
-	hash := domain.HashRefreshToken(res.RefreshToken)
+	hash := oauthdomain.HashRefreshToken(res.RefreshToken)
 	rotatedRec, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), hash)
 	if err != nil || rotatedRec == nil {
 		t.Fatalf("expected rotated refresh token record to be findable: %v", err)

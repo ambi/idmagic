@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
+	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 )
 
 // 判断があると読めるのは decision を持つ 200 だけである。
@@ -62,7 +62,7 @@ func TestEvaluatePermitsOnlyOnAnExplicitDecision(t *testing.T) {
 			}
 			result, err := client.Evaluate(t.Context(), Request{
 				Token: "t", CorrelationID: "c", DPoPProof: "p", HTU: "https://mcp/",
-				Operation: domain.Operation{ResourceType: "document", Relation: "viewer", ResourceID: "d1"},
+				Operation: mcpgatewaydomain.Operation{ResourceType: "document", Relation: "viewer", ResourceID: "d1"},
 			})
 			if result.Available != tc.available || result.Permitted != tc.permitted || result.RetryAfter != tc.retry || result.RequestID != "server-id" {
 				t.Fatalf("result = %+v err=%v", result, err)

@@ -11,9 +11,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	postgres "github.com/ambi/idmagic/backend/jobs/internal/db_postgres"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
@@ -30,14 +30,14 @@ func resetJobsTable(t *testing.T, pool *pgxpool.Pool) {
 	}
 }
 
-func newTestJob(t *testing.T, r *postgres.JobRepository, tenantID string, now time.Time) *domain.Job {
+func newTestJob(t *testing.T, r *postgres.JobRepository, tenantID string, now time.Time) *jobsdomain.Job {
 	t.Helper()
-	job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+	job, _, err := r.Enqueue(context.Background(), jobsports.EnqueueInput{
 		TenantID:    tenantID,
-		Kind:        domain.KindNoopEcho,
-		Lane:        domain.LaneDefault,
+		Kind:        jobsdomain.KindNoopEcho,
+		Lane:        jobsdomain.LaneDefault,
 		Params:      json.RawMessage(`{}`),
-		MaxAttempts: domain.DefaultMaxAttempts,
+		MaxAttempts: jobsdomain.DefaultMaxAttempts,
 		Now:         now,
 		RunAt:       now,
 	})
@@ -54,9 +54,9 @@ func TestEnqueue_DedupReturnsExistingNonTerminalJob(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	dedup := "import-2026-01"
-	input := ports.EnqueueInput{
-		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
-		DedupKey: &dedup, MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
+	input := jobsports.EnqueueInput{
+		TenantID: tenant.ID, Kind: jobsdomain.KindNoopEcho, Lane: jobsdomain.LaneDefault, Params: json.RawMessage(`{}`),
+		DedupKey: &dedup, MaxAttempts: jobsdomain.DefaultMaxAttempts, Now: now, RunAt: now,
 	}
 	first, created, err := r.Enqueue(context.Background(), input)
 	if err != nil {
@@ -84,15 +84,15 @@ func TestEnqueue_DedupIgnoresTerminalJobs(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	dedup := "import-2026-01"
-	input := ports.EnqueueInput{
-		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
-		DedupKey: &dedup, MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
+	input := jobsports.EnqueueInput{
+		TenantID: tenant.ID, Kind: jobsdomain.KindNoopEcho, Lane: jobsdomain.LaneDefault, Params: json.RawMessage(`{}`),
+		DedupKey: &dedup, MaxAttempts: jobsdomain.DefaultMaxAttempts, Now: now, RunAt: now,
 	}
 	first, _, err := r.Enqueue(context.Background(), input)
 	if err != nil {
 		t.Fatalf("first Enqueue() error = %v", err)
 	}
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("ClaimBatch() = %v, %v", claimed, err)
 	}
@@ -121,13 +121,13 @@ func TestClaimBatch_ExcludesOtherLanes(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
-	if _, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
-		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
-		MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
+	if _, _, err := r.Enqueue(context.Background(), jobsports.EnqueueInput{
+		TenantID: tenant.ID, Kind: jobsdomain.KindNoopEcho, Lane: jobsdomain.LaneDefault, Params: json.RawMessage(`{}`),
+		MaxAttempts: jobsdomain.DefaultMaxAttempts, Now: now, RunAt: now,
 	}); err != nil {
 		t.Fatalf("Enqueue() error = %v", err)
 	}
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneBulk, 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneBulk, 10, time.Minute, now)
 	if err != nil {
 		t.Fatalf("ClaimBatch() error = %v", err)
 	}
@@ -142,13 +142,13 @@ func TestClaimBatch_ExcludesFutureRunAt(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
-	if _, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
-		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
-		MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now.Add(time.Hour),
+	if _, _, err := r.Enqueue(context.Background(), jobsports.EnqueueInput{
+		TenantID: tenant.ID, Kind: jobsdomain.KindNoopEcho, Lane: jobsdomain.LaneDefault, Params: json.RawMessage(`{}`),
+		MaxAttempts: jobsdomain.DefaultMaxAttempts, Now: now, RunAt: now.Add(time.Hour),
 	}); err != nil {
 		t.Fatalf("Enqueue() error = %v", err)
 	}
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	if err != nil {
 		t.Fatalf("ClaimBatch() error = %v", err)
 	}
@@ -165,7 +165,7 @@ func TestClaimBatch_IncrementsAttemptsAndSetsLease(t *testing.T) {
 	now := pgtest.Now()
 	job := newTestJob(t, r, tenant.ID, now)
 
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("ClaimBatch() = %v, %v", claimed, err)
 	}
@@ -173,8 +173,8 @@ func TestClaimBatch_IncrementsAttemptsAndSetsLease(t *testing.T) {
 	if got.ID != job.ID {
 		t.Fatalf("claimed job ID = %q, want %q", got.ID, job.ID)
 	}
-	if got.Status != domain.StatusRunning {
-		t.Errorf("Status = %q, want %q", got.Status, domain.StatusRunning)
+	if got.Status != jobsdomain.StatusRunning {
+		t.Errorf("Status = %q, want %q", got.Status, jobsdomain.StatusRunning)
 	}
 	if got.Attempts != 1 {
 		t.Errorf("Attempts = %d, want 1", got.Attempts)
@@ -196,12 +196,12 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 
-	first, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	first, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	if err != nil || len(first) != 1 {
 		t.Fatalf("first ClaimBatch() = %v, %v", first, err)
 	}
 
-	stillLocked, err := r.ClaimBatch(context.Background(), "worker-2", domain.LaneDefault, 10, time.Minute, now.Add(30*time.Second))
+	stillLocked, err := r.ClaimBatch(context.Background(), "worker-2", jobsdomain.LaneDefault, 10, time.Minute, now.Add(30*time.Second))
 	if err != nil {
 		t.Fatalf("ClaimBatch() before expiry error = %v", err)
 	}
@@ -210,13 +210,13 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	}
 
 	afterExpiry := now.Add(2 * time.Minute)
-	reclaimed, err := r.ClaimBatch(context.Background(), "worker-2", domain.LaneDefault, 10, time.Minute, afterExpiry)
+	reclaimed, err := r.ClaimBatch(context.Background(), "worker-2", jobsdomain.LaneDefault, 10, time.Minute, afterExpiry)
 	if err != nil || len(reclaimed) != 1 {
 		t.Fatalf("ClaimBatch() after expiry = %v, %v", reclaimed, err)
 	}
 	got := reclaimed[0]
-	if got.Status != domain.StatusRunning {
-		t.Errorf("Status = %q, want %q (unchanged across reclaim)", got.Status, domain.StatusRunning)
+	if got.Status != jobsdomain.StatusRunning {
+		t.Errorf("Status = %q, want %q (unchanged across reclaim)", got.Status, jobsdomain.StatusRunning)
 	}
 	if got.Attempts != 2 {
 		t.Errorf("Attempts = %d, want 2 (second worker's attempt)", got.Attempts)
@@ -245,10 +245,10 @@ func TestClaimBatch_ClaimsARowWhoseLaneWasOmitted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Lane != domain.LaneDefault {
-		t.Fatalf("Lane = %q, want %q from the column default", stored.Lane, domain.LaneDefault)
+	if stored.Lane != jobsdomain.LaneDefault {
+		t.Fatalf("Lane = %q, want %q from the column default", stored.Lane, jobsdomain.LaneDefault)
 	}
-	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	if err != nil {
 		t.Fatalf("ClaimBatch() error = %v", err)
 	}
@@ -282,7 +282,7 @@ func TestClaimBatch_ConcurrentClaimIsExclusive(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range numJobs {
-				claimed, err := r.ClaimBatch(context.Background(), workerID, domain.LaneDefault, 1, time.Minute, now)
+				claimed, err := r.ClaimBatch(context.Background(), workerID, jobsdomain.LaneDefault, 1, time.Minute, now)
 				if err != nil {
 					t.Errorf("ClaimBatch() error = %v", err)
 					return
@@ -312,7 +312,7 @@ func TestHeartbeat_ExtendsLease(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	newExpiry, err := r.Heartbeat(context.Background(), job.ID, "worker-1", time.Minute, now.Add(30*time.Second))
@@ -332,11 +332,11 @@ func TestHeartbeat_WrongWorkerReturnsErrJobLeaseLost(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	_, err := r.Heartbeat(context.Background(), job.ID, "worker-2", time.Minute, now)
-	if !errors.Is(err, ports.ErrJobLeaseLost) {
+	if !errors.Is(err, jobsports.ErrJobLeaseLost) {
 		t.Errorf("Heartbeat() error = %v, want ErrJobLeaseLost", err)
 	}
 }
@@ -348,7 +348,7 @@ func TestComplete_Success(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	result := json.RawMessage(`{"ok":true}`)
@@ -356,8 +356,8 @@ func TestComplete_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Complete() error = %v", err)
 	}
-	if got.Status != domain.StatusSucceeded {
-		t.Errorf("Status = %q, want %q", got.Status, domain.StatusSucceeded)
+	if got.Status != jobsdomain.StatusSucceeded {
+		t.Errorf("Status = %q, want %q", got.Status, jobsdomain.StatusSucceeded)
 	}
 	// Compare decoded values, not raw bytes: JSONB re-serializes on storage
 	// (e.g. `{"ok":true}` round-trips as `{"ok": true}`).
@@ -380,11 +380,11 @@ func TestComplete_WrongWorkerReturnsErrJobLeaseLost(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	_, err := r.Complete(context.Background(), job.ID, "worker-2", nil, now)
-	if !errors.Is(err, ports.ErrJobLeaseLost) {
+	if !errors.Is(err, jobsports.ErrJobLeaseLost) {
 		t.Errorf("Complete() error = %v, want ErrJobLeaseLost", err)
 	}
 }
@@ -396,18 +396,18 @@ func TestFail_RetrySetsQueuedAndRunAt(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
 	nextRunAt := now.Add(30 * time.Second)
-	got, err := r.Fail(context.Background(), job.ID, "worker-1", ports.FailOutcome{
-		NextStatus: domain.StatusQueued, RunAt: nextRunAt, Error: "temporary failure",
+	got, err := r.Fail(context.Background(), job.ID, "worker-1", jobsports.FailOutcome{
+		NextStatus: jobsdomain.StatusQueued, RunAt: nextRunAt, Error: "temporary failure",
 	}, now)
 	if err != nil {
 		t.Fatalf("Fail() error = %v", err)
 	}
-	if got.Status != domain.StatusQueued {
-		t.Errorf("Status = %q, want %q", got.Status, domain.StatusQueued)
+	if got.Status != jobsdomain.StatusQueued {
+		t.Errorf("Status = %q, want %q", got.Status, jobsdomain.StatusQueued)
 	}
 	if !got.RunAt.Equal(nextRunAt) {
 		t.Errorf("RunAt = %v, want %v", got.RunAt, nextRunAt)
@@ -424,23 +424,23 @@ func TestFail_DeadLetterSetsFailedTerminal(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
 
-	got, err := r.Fail(context.Background(), job.ID, "worker-1", ports.FailOutcome{
-		NextStatus: domain.StatusFailed, Error: "permanent failure",
+	got, err := r.Fail(context.Background(), job.ID, "worker-1", jobsports.FailOutcome{
+		NextStatus: jobsdomain.StatusFailed, Error: "permanent failure",
 	}, now)
 	if err != nil {
 		t.Fatalf("Fail() error = %v", err)
 	}
-	if got.Status != domain.StatusFailed {
-		t.Errorf("Status = %q, want %q", got.Status, domain.StatusFailed)
+	if got.Status != jobsdomain.StatusFailed {
+		t.Errorf("Status = %q, want %q", got.Status, jobsdomain.StatusFailed)
 	}
-	if !domain.IsJobLifecycleTerminal(got.Status) {
+	if !jobsdomain.IsJobLifecycleTerminal(got.Status) {
 		t.Error("dead-lettered Job should be terminal")
 	}
 
-	if _, err := r.Complete(context.Background(), job.ID, "worker-1", nil, now); !errors.Is(err, ports.ErrJobLeaseLost) {
+	if _, err := r.Complete(context.Background(), job.ID, "worker-1", nil, now); !errors.Is(err, jobsports.ErrJobLeaseLost) {
 		t.Errorf("Complete() on terminal Job error = %v, want ErrJobLeaseLost", err)
 	}
 }
@@ -452,13 +452,13 @@ func TestCancel_TerminalReturnsErrJobAlreadyTerminal(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
 	job := newTestJob(t, r, tenant.ID, now)
-	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
+	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now)
 	if _, err := r.Complete(context.Background(), claimed[0].ID, "worker-1", nil, now); err != nil {
 		t.Fatalf("Complete() error = %v", err)
 	}
 
 	_, err := r.Cancel(context.Background(), job.ID, now)
-	if !errors.Is(err, ports.ErrJobAlreadyTerminal) {
+	if !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
 		t.Errorf("Cancel() error = %v, want ErrJobAlreadyTerminal", err)
 	}
 }
@@ -475,8 +475,8 @@ func TestCancel_FromQueuedSucceeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cancel() error = %v", err)
 	}
-	if got.Status != domain.StatusCanceled {
-		t.Errorf("Status = %q, want %q", got.Status, domain.StatusCanceled)
+	if got.Status != jobsdomain.StatusCanceled {
+		t.Errorf("Status = %q, want %q", got.Status, jobsdomain.StatusCanceled)
 	}
 }
 
@@ -488,20 +488,20 @@ func TestLaneDepths_CountsQueuedAndRunningPerLane(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
 	now := pgtest.Now()
-	enqueueLane := func(lane domain.ExecutionLane) *domain.Job {
-		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
-			TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: lane, Params: json.RawMessage(`{}`),
-			MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
+	enqueueLane := func(lane jobsdomain.ExecutionLane) *jobsdomain.Job {
+		job, _, err := r.Enqueue(context.Background(), jobsports.EnqueueInput{
+			TenantID: tenant.ID, Kind: jobsdomain.KindNoopEcho, Lane: lane, Params: json.RawMessage(`{}`),
+			MaxAttempts: jobsdomain.DefaultMaxAttempts, Now: now, RunAt: now,
 		})
 		if err != nil {
 			t.Fatalf("Enqueue() error = %v", err)
 		}
 		return job
 	}
-	enqueueLane(domain.LaneDefault)
-	enqueueLane(domain.LaneDefault)
-	enqueueLane(domain.LaneBulk)
-	if _, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneBulk, 10, time.Minute, now); err != nil {
+	enqueueLane(jobsdomain.LaneDefault)
+	enqueueLane(jobsdomain.LaneDefault)
+	enqueueLane(jobsdomain.LaneBulk)
+	if _, err := r.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneBulk, 10, time.Minute, now); err != nil {
 		t.Fatalf("ClaimBatch() error = %v", err)
 	}
 
@@ -509,17 +509,17 @@ func TestLaneDepths_CountsQueuedAndRunningPerLane(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LaneDepths() error = %v", err)
 	}
-	byLane := map[domain.ExecutionLane]ports.LaneDepth{}
+	byLane := map[jobsdomain.ExecutionLane]jobsports.LaneDepth{}
 	for _, d := range depths {
 		byLane[d.Lane] = d
 	}
-	if got := byLane[domain.LaneDefault]; got.Queued != 2 || got.Running != 0 {
+	if got := byLane[jobsdomain.LaneDefault]; got.Queued != 2 || got.Running != 0 {
 		t.Errorf("default lane depth = %+v, want Queued=2 Running=0", got)
 	}
-	if got := byLane[domain.LaneBulk]; got.Queued != 0 || got.Running != 1 {
+	if got := byLane[jobsdomain.LaneBulk]; got.Queued != 0 || got.Running != 1 {
 		t.Errorf("bulk lane depth = %+v, want Queued=0 Running=1", got)
 	}
-	if _, ok := byLane[domain.LaneLatencySensitive]; ok {
+	if _, ok := byLane[jobsdomain.LaneLatencySensitive]; ok {
 		t.Error("latency_sensitive lane has no rows, want it absent from LaneDepths()")
 	}
 }
@@ -528,7 +528,7 @@ func TestGet_NotFound(t *testing.T) {
 	pool := pgtest.Require(t)
 	resetJobsTable(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	if _, err := r.Get(context.Background(), "00000000-0000-0000-0000-000000000000"); !errors.Is(err, ports.ErrJobNotFound) {
+	if _, err := r.Get(context.Background(), "00000000-0000-0000-0000-000000000000"); !errors.Is(err, jobsports.ErrJobNotFound) {
 		t.Errorf("Get() error = %v, want ErrJobNotFound", err)
 	}
 }
@@ -540,8 +540,8 @@ func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
 	tenantB := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
 	base := pgtest.Now()
-	enqueue := func(tenantID string, kind domain.JobKind, lane domain.ExecutionLane, at time.Time) *domain.Job {
-		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+	enqueue := func(tenantID string, kind jobsdomain.JobKind, lane jobsdomain.ExecutionLane, at time.Time) *jobsdomain.Job {
+		job, _, err := r.Enqueue(context.Background(), jobsports.EnqueueInput{
 			TenantID: tenantID, Kind: kind, Lane: lane, Params: json.RawMessage(`{}`),
 			MaxAttempts: 1, Now: at, RunAt: at,
 		})
@@ -550,12 +550,12 @@ func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
 		}
 		return job
 	}
-	older := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, base.Add(-time.Minute))
-	newer := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, base)
-	enqueue(tenantA.ID, domain.KindUserImportApply, domain.LaneBulk, base) // other kind, excluded
-	enqueue(tenantB.ID, domain.KindNoopEcho, domain.LaneDefault, base)     // other tenant, excluded
+	older := enqueue(tenantA.ID, jobsdomain.KindNoopEcho, jobsdomain.LaneDefault, base.Add(-time.Minute))
+	newer := enqueue(tenantA.ID, jobsdomain.KindNoopEcho, jobsdomain.LaneDefault, base)
+	enqueue(tenantA.ID, jobsdomain.KindUserImportApply, jobsdomain.LaneBulk, base) // other kind, excluded
+	enqueue(tenantB.ID, jobsdomain.KindNoopEcho, jobsdomain.LaneDefault, base)     // other tenant, excluded
 
-	got, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, []domain.JobKind{domain.KindNoopEcho}, 0)
+	got, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, []jobsdomain.JobKind{jobsdomain.KindNoopEcho}, 0)
 	if err != nil {
 		t.Fatalf("ListByTenantAndKinds: %v", err)
 	}
@@ -566,7 +566,7 @@ func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
 		t.Errorf("order = [%s %s], want newest-first [%s %s]", got[0].ID, got[1].ID, newer.ID, older.ID)
 	}
 
-	limited, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, []domain.JobKind{domain.KindNoopEcho}, 1)
+	limited, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, []jobsdomain.JobKind{jobsdomain.KindNoopEcho}, 1)
 	if err != nil {
 		t.Fatalf("ListByTenantAndKinds limit: %v", err)
 	}
@@ -595,24 +595,24 @@ func TestListForAdmin(t *testing.T) {
 	r := &postgres.JobRepository{Pool: pool}
 	base := pgtest.Now()
 
-	enqueue := func(tenantID string, kind domain.JobKind, lane domain.ExecutionLane, offset time.Duration) *domain.Job {
+	enqueue := func(tenantID string, kind jobsdomain.JobKind, lane jobsdomain.ExecutionLane, offset time.Duration) *jobsdomain.Job {
 		t.Helper()
-		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+		job, _, err := r.Enqueue(context.Background(), jobsports.EnqueueInput{
 			TenantID: tenantID, Kind: kind, Lane: lane, Params: json.RawMessage(`{}`),
-			MaxAttempts: domain.DefaultMaxAttempts, Now: base.Add(offset), RunAt: base.Add(offset),
+			MaxAttempts: jobsdomain.DefaultMaxAttempts, Now: base.Add(offset), RunAt: base.Add(offset),
 		})
 		if err != nil {
 			t.Fatalf("Enqueue() error = %v", err)
 		}
 		return job
 	}
-	oldest := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, 0)
-	middle := enqueue(tenantA.ID, domain.KindUserImportApply, domain.LaneBulk, time.Minute)
-	newest := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, 2*time.Minute)
-	foreign := enqueue(tenantB.ID, domain.KindNoopEcho, domain.LaneDefault, 3*time.Minute)
+	oldest := enqueue(tenantA.ID, jobsdomain.KindNoopEcho, jobsdomain.LaneDefault, 0)
+	middle := enqueue(tenantA.ID, jobsdomain.KindUserImportApply, jobsdomain.LaneBulk, time.Minute)
+	newest := enqueue(tenantA.ID, jobsdomain.KindNoopEcho, jobsdomain.LaneDefault, 2*time.Minute)
+	foreign := enqueue(tenantB.ID, jobsdomain.KindNoopEcho, jobsdomain.LaneDefault, 3*time.Minute)
 
 	ctx := context.Background()
-	ids := func(jobs []*domain.Job) []string {
+	ids := func(jobs []*jobsdomain.Job) []string {
 		out := make([]string, len(jobs))
 		for i, j := range jobs {
 			out[i] = j.ID
@@ -621,7 +621,7 @@ func TestListForAdmin(t *testing.T) {
 	}
 
 	t.Run("tenant scoped and newest first", func(t *testing.T) {
-		jobs, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID})
+		jobs, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{TenantID: tenantA.ID})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
 		}
@@ -632,7 +632,7 @@ func TestListForAdmin(t *testing.T) {
 	})
 
 	t.Run("another tenant is absent", func(t *testing.T) {
-		jobs, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID})
+		jobs, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{TenantID: tenantA.ID})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
 		}
@@ -644,7 +644,7 @@ func TestListForAdmin(t *testing.T) {
 	})
 
 	t.Run("all tenants", func(t *testing.T) {
-		jobs, err := r.ListForAdmin(ctx, ports.AdminJobFilter{AllTenants: true})
+		jobs, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{AllTenants: true})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
 		}
@@ -654,8 +654,8 @@ func TestListForAdmin(t *testing.T) {
 	})
 
 	t.Run("kind, lane, and status narrow the page", func(t *testing.T) {
-		byKind, err := r.ListForAdmin(ctx, ports.AdminJobFilter{
-			TenantID: tenantA.ID, Kinds: []domain.JobKind{domain.KindUserImportApply},
+		byKind, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{
+			TenantID: tenantA.ID, Kinds: []jobsdomain.JobKind{jobsdomain.KindUserImportApply},
 		})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
@@ -663,15 +663,15 @@ func TestListForAdmin(t *testing.T) {
 		if len(byKind) != 1 || byKind[0].ID != middle.ID {
 			t.Fatalf("kind filter = %v, want [%s]", ids(byKind), middle.ID)
 		}
-		byLane, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID, Lane: domain.LaneBulk})
+		byLane, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{TenantID: tenantA.ID, Lane: jobsdomain.LaneBulk})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
 		}
 		if len(byLane) != 1 || byLane[0].ID != middle.ID {
 			t.Fatalf("lane filter = %v, want [%s]", ids(byLane), middle.ID)
 		}
-		byStatus, err := r.ListForAdmin(ctx, ports.AdminJobFilter{
-			TenantID: tenantA.ID, Statuses: []domain.JobStatus{domain.StatusFailed},
+		byStatus, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{
+			TenantID: tenantA.ID, Statuses: []jobsdomain.JobStatus{jobsdomain.StatusFailed},
 		})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
@@ -682,7 +682,7 @@ func TestListForAdmin(t *testing.T) {
 	})
 
 	t.Run("keyset continues without a gap or a repeat", func(t *testing.T) {
-		first, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID, Limit: 2})
+		first, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{TenantID: tenantA.ID, Limit: 2})
 		if err != nil {
 			t.Fatalf("ListForAdmin() error = %v", err)
 		}
@@ -690,7 +690,7 @@ func TestListForAdmin(t *testing.T) {
 			t.Fatalf("first page = %d jobs, want 2", len(first))
 		}
 		last := first[len(first)-1]
-		second, err := r.ListForAdmin(ctx, ports.AdminJobFilter{
+		second, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{
 			TenantID: tenantA.ID, Limit: 2, BeforeCreatedAt: last.CreatedAt, BeforeID: last.ID,
 		})
 		if err != nil {
@@ -702,7 +702,7 @@ func TestListForAdmin(t *testing.T) {
 	})
 
 	t.Run("an unscoped filter is refused", func(t *testing.T) {
-		if _, err := r.ListForAdmin(ctx, ports.AdminJobFilter{}); !errors.Is(err, ports.ErrAdminJobFilterUnscoped) {
+		if _, err := r.ListForAdmin(ctx, jobsports.AdminJobFilter{}); !errors.Is(err, jobsports.ErrAdminJobFilterUnscoped) {
 			t.Fatalf("err = %v, want ErrAdminJobFilterUnscoped", err)
 		}
 	})

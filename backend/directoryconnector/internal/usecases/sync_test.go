@@ -12,31 +12,33 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 )
 
 // fakeDirectory は検索の範囲のエントリを持ち、受けたフィルターを記録する。
 // byBase があれば起点ごとのエントリを、なければどの起点にも entries を返す。
 type fakeDirectory struct {
-	entries    []domain.Entry
-	byBase     map[string][]domain.Entry
-	root       domain.RootInfo
+	entries    []directoryconnectordomain.Entry
+	byBase     map[string][]directoryconnectordomain.Entry
+	root       directoryconnectordomain.RootInfo
 	connectErr error
 	filters    []string
 	bases      []string
 }
 
-func (d *fakeDirectory) Connect(context.Context) (ports.DirectorySession, error) {
+func (d *fakeDirectory) Connect(context.Context) (directoryconnectorports.DirectorySession, error) {
 	if d.connectErr != nil {
 		return nil, d.connectErr
 	}
 	return d, nil
 }
 
-func (d *fakeDirectory) RootInfo(context.Context) (domain.RootInfo, error) { return d.root, nil }
+func (d *fakeDirectory) RootInfo(context.Context) (directoryconnectordomain.RootInfo, error) {
+	return d.root, nil
+}
 
-func (d *fakeDirectory) Search(_ context.Context, baseDN, filter string, _ []string, page func([]domain.Entry) error) error {
+func (d *fakeDirectory) Search(_ context.Context, baseDN, filter string, _ []string, page func([]directoryconnectordomain.Entry) error) error {
 	d.filters = append(d.filters, filter)
 	d.bases = append(d.bases, baseDN)
 	entries := d.entries
@@ -56,7 +58,7 @@ func (d *fakeDirectory) Close() error { return nil }
 // recordingAPI は Connector API へ出した要求を順に記録し、予定した失敗を返す。
 type recordingAPI struct {
 	calls    []string
-	batches  map[string][]domain.Item
+	batches  map[string][]directoryconnectordomain.Item
 	failures map[string][]error // 要求の名前ごとに、先頭から一つずつ返す失敗
 	runs     int
 }
@@ -72,7 +74,7 @@ func (a *recordingAPI) fail(call string) error {
 
 func (a *recordingAPI) Heartbeat(context.Context) error { return a.fail("heartbeat") }
 
-func (a *recordingAPI) StartRun(_ context.Context, mode domain.Mode) (string, error) {
+func (a *recordingAPI) StartRun(_ context.Context, mode directoryconnectordomain.Mode) (string, error) {
 	if err := a.fail("start " + string(mode)); err != nil {
 		return "", err
 	}
@@ -80,12 +82,12 @@ func (a *recordingAPI) StartRun(_ context.Context, mode domain.Mode) (string, er
 	return fmt.Sprintf("run%d", a.runs), nil
 }
 
-func (a *recordingAPI) SendBatch(_ context.Context, runID, batchID string, items []domain.Item) error {
+func (a *recordingAPI) SendBatch(_ context.Context, runID, batchID string, items []directoryconnectordomain.Item) error {
 	if err := a.fail("batch " + batchID); err != nil {
 		return err
 	}
 	if a.batches == nil {
-		a.batches = map[string][]domain.Item{}
+		a.batches = map[string][]directoryconnectordomain.Item{}
 	}
 	a.batches[batchID] = items
 	return nil
@@ -95,22 +97,26 @@ func (a *recordingAPI) CompleteRun(_ context.Context, runID string, itemCount in
 	return a.fail(fmt.Sprintf("complete %s %d", runID, itemCount))
 }
 
-type memoryCursors struct{ cursor *domain.Cursor }
+type memoryCursors struct {
+	cursor *directoryconnectordomain.Cursor
+}
 
-func (m *memoryCursors) Load(context.Context) (*domain.Cursor, error) { return m.cursor, nil }
+func (m *memoryCursors) Load(context.Context) (*directoryconnectordomain.Cursor, error) {
+	return m.cursor, nil
+}
 
-func (m *memoryCursors) Save(_ context.Context, cursor domain.Cursor) error {
+func (m *memoryCursors) Save(_ context.Context, cursor directoryconnectordomain.Cursor) error {
 	m.cursor = &cursor
 	return nil
 }
 
-func people(n int) []domain.Entry { return peopleFrom(0, n) }
+func people(n int) []directoryconnectordomain.Entry { return peopleFrom(0, n) }
 
-func peopleFrom(start, n int) []domain.Entry {
-	entries := make([]domain.Entry, n)
+func peopleFrom(start, n int) []directoryconnectordomain.Entry {
+	entries := make([]directoryconnectordomain.Entry, n)
 	for j := range entries {
 		i := start + j
-		entries[j] = domain.Entry{DN: fmt.Sprintf("uid=u%d,ou=people", i), Attributes: []domain.Attribute{
+		entries[j] = directoryconnectordomain.Entry{DN: fmt.Sprintf("uid=u%d,ou=people", i), Attributes: []directoryconnectordomain.Attribute{
 			{Name: "entryUUID", Values: [][]byte{fmt.Appendf(nil, "uuid-%d", i)}},
 			{Name: "uid", Values: [][]byte{fmt.Appendf(nil, "u%d", i)}},
 			{Name: "mail", Values: [][]byte{fmt.Appendf(nil, "secret-mail-%d@example.test", i)}},
@@ -129,9 +135,9 @@ type harness struct {
 	now     time.Time
 }
 
-func newHarness(t *testing.T, entries []domain.Entry) *harness {
+func newHarness(t *testing.T, entries []directoryconnectordomain.Entry) *harness {
 	t.Helper()
-	mapping, err := domain.EffectiveMapping(domain.OpenLDAP, nil)
+	mapping, err := directoryconnectordomain.EffectiveMapping(directoryconnectordomain.OpenLDAP, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +147,7 @@ func newHarness(t *testing.T, entries []domain.Entry) *harness {
 	}
 	h.syncer = Syncer{
 		Directory: h.dir, API: h.api, Cursors: h.cursors,
-		Dialect: domain.OpenLDAP, Scope: domain.Scope{BaseDNs: []string{"ou=people"}, Filter: domain.DefaultUserFilter(domain.OpenLDAP)},
+		Dialect: directoryconnectordomain.OpenLDAP, Scope: directoryconnectordomain.Scope{BaseDNs: []string{"ou=people"}, Filter: directoryconnectordomain.DefaultUserFilter(directoryconnectordomain.OpenLDAP)},
 		Mapping: mapping, FullInterval: 24 * time.Hour,
 		Now: func() time.Time { return h.now },
 		Sleep: func(_ context.Context, d time.Duration) error {
@@ -156,7 +162,7 @@ func newHarness(t *testing.T, entries []domain.Entry) *harness {
 //spec:covers REQ-DIRECTORYCONNECTOR-003, REQ-DIRECTORYCONNECTOR-004: 接続を報告してから full の実行を始め、項目を読んだ順に 100 件ずつ連番のバッチで送り、送った数で完了し、欠けたエントリを属性値を出さずにログへ出して飛ばし、完了の後に位置を保存する。
 func TestSyncSendsAFullRunInBatchesOf100(t *testing.T) {
 	entries := people(250)
-	entries = slices.Insert(entries, 120, domain.Entry{DN: "uid=nouuid,ou=people", Attributes: []domain.Attribute{{Name: "uid", Values: [][]byte{[]byte("nouuid")}}}})
+	entries = slices.Insert(entries, 120, directoryconnectordomain.Entry{DN: "uid=nouuid,ou=people", Attributes: []directoryconnectordomain.Attribute{{Name: "uid", Values: [][]byte{[]byte("nouuid")}}}})
 	h := newHarness(t, entries)
 
 	result, err := h.syncer.SyncOnce(context.Background())
@@ -173,7 +179,7 @@ func TestSyncSendsAFullRunInBatchesOf100(t *testing.T) {
 	if first, last := h.api.batches["run1-1"][0], h.api.batches["run1-3"][49]; first.ExternalID != "uuid-0" || last.ExternalID != "uuid-249" || !first.Enabled {
 		t.Fatalf("first=%+v last=%+v, want the order read", first, last)
 	}
-	if result.Mode != domain.ModeFull || result.Items != 250 || result.Skipped != 1 {
+	if result.Mode != directoryconnectordomain.ModeFull || result.Items != 250 || result.Skipped != 1 {
 		t.Fatalf("result = %+v", result)
 	}
 	if h.cursors.cursor == nil || !h.cursors.cursor.LastFullAt.Equal(h.now) {
@@ -202,7 +208,7 @@ func TestSyncSendsAFullRunInBatchesOf100(t *testing.T) {
 //spec:covers REQ-DIRECTORYCONNECTOR-005: 一時的な失敗のバッチを同じバッチ ID で倍の間隔で送り直し、完了を受理されなければ位置を進めず、次の回が同じ位置から新しい実行を始める。
 func TestSyncRetriesAndResumesFromTheCommittedCursor(t *testing.T) {
 	h := newHarness(t, people(150))
-	unavailable := &ports.APIError{Status: 503, Type: "temporarily_unavailable"}
+	unavailable := &directoryconnectorports.APIError{Status: 503, Type: "temporarily_unavailable"}
 	h.api.failures["batch run1-2"] = []error{unavailable, errors.New("connection reset")}
 	if _, err := h.syncer.SyncOnce(context.Background()); err != nil {
 		t.Fatal(err)
@@ -243,7 +249,7 @@ func TestSyncRetriesAndResumesFromTheCommittedCursor(t *testing.T) {
 //spec:covers REQ-DIRECTORYCONNECTOR-005: 408 と 429 以外の 4xx は送り直さずに同期を中断し、位置を変えず、408、429、500 は送り直す。
 func TestSyncAbortsOnAClientError(t *testing.T) {
 	h := newHarness(t, people(10))
-	closed := &ports.APIError{Status: 409, Type: "ingestion_run_closed"}
+	closed := &directoryconnectorports.APIError{Status: 409, Type: "ingestion_run_closed"}
 	h.api.failures["batch run1-1"] = []error{closed}
 	if _, err := h.syncer.SyncOnce(context.Background()); !errors.Is(err, closed) {
 		t.Fatalf("error = %v, want the 409", err)
@@ -257,7 +263,7 @@ func TestSyncAbortsOnAClientError(t *testing.T) {
 
 	for _, status := range []int{408, 429, 500} {
 		h := newHarness(t, people(1))
-		h.api.failures["start full"] = []error{&ports.APIError{Status: status}}
+		h.api.failures["start full"] = []error{&directoryconnectorports.APIError{Status: status}}
 		if _, err := h.syncer.SyncOnce(context.Background()); err != nil {
 			t.Fatalf("status %d: %v, want a retry", status, err)
 		}
@@ -279,7 +285,7 @@ func TestSyncReportsTheHeartbeatBeforeReadingLDAP(t *testing.T) {
 //spec:covers REQ-DIRECTORYCONNECTOR-005: 常駐の間、失敗した回の後も間隔を待って次の回を始め、停止の合図で終わる。
 func TestRunRepeatsAfterAFailedSyncUntilStopped(t *testing.T) {
 	h := newHarness(t, people(1))
-	h.api.failures["heartbeat"] = []error{&ports.APIError{Status: 401, Type: "invalid_token"}}
+	h.api.failures["heartbeat"] = []error{&directoryconnectorports.APIError{Status: 401, Type: "invalid_token"}}
 	ctx, stop := context.WithCancel(context.Background())
 	waits := 0
 	h.syncer.Sleep = func(_ context.Context, d time.Duration) error {

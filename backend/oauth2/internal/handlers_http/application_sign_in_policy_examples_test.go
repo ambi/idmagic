@@ -19,7 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/application"
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	policyports "github.com/ambi/idmagic/backend/signinpolicy/ports"
@@ -60,10 +60,10 @@ func signInPolicyStack(t *testing.T) (
 	}); err != nil {
 		t.Fatalf("seed assignment: %v", err)
 	}
-	granted := &domain.Consent{
+	granted := &oauthdomain.Consent{
 		UserID: authn.UserID, ClientID: authClientID,
 		Scopes:    []string{"openid", "profile"},
-		State:     domain.ConsentGranted,
+		State:     oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
 	e, emitted := newAuthorizeTestServer(t, authn, granted, func(deps *httpadapter.Deps) {

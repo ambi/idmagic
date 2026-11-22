@@ -9,7 +9,7 @@ import (
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -312,7 +312,7 @@ func (d Deps) recordLoginAndRequiredAction(c *echo.Context, user *userdomain.Use
 	expired := false
 	updated, err := d.UserRepo.Update(ctx, user.ID, func(latest *userdomain.User) (bool, error) {
 		latest.Lifecycle.LastLoginAt = &now
-		expired = authusecases.EnforcePasswordExpiry(latest, authusecases.ResolveTenantPolicy(ctx), now)
+		expired = passwordusecases.EnforcePasswordExpiry(latest, passwordusecases.ResolveTenantPolicy(ctx), now)
 		return true, nil
 	})
 	if err != nil {

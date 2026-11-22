@@ -7,7 +7,7 @@ import (
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/jackc/pgx/v5"
 )
@@ -137,11 +137,11 @@ func (d memoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID, cl
 }
 
 func releaseStandaloneClientQuota(ctx context.Context, quota tenantports.QuotaRepository, tenantID string, consents int) error {
-	if err := quota.Decrement(ctx, tenantID, tenantdomain.ResourceOAuth2Clients, 1); err != nil {
+	if err := quota.Decrement(ctx, tenantID, tenancydomain.ResourceOAuth2Clients, 1); err != nil {
 		return err
 	}
 	if consents == 0 {
 		return nil
 	}
-	return quota.Decrement(ctx, tenantID, tenantdomain.ResourceConsents, consents)
+	return quota.Decrement(ctx, tenantID, tenancydomain.ResourceConsents, consents)
 }

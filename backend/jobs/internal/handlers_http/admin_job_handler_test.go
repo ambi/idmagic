@@ -16,9 +16,9 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/jobs"
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/internal/db_memory"
-	jobports "github.com/ambi/idmagic/backend/jobs/ports"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -89,11 +89,11 @@ type jobsTestServer struct {
 	e       *echo.Echo
 	repo    *jobsmemory.JobRepository
 	emitted []spec.DomainEvent
-	acmeJob *domain.Job
+	acmeJob *jobsdomain.Job
 	// acmeImport は "acme" の bulk レーンの Job。acmeJob より古い。
-	acmeImport *domain.Job
+	acmeImport *jobsdomain.Job
 	// otherJob は制御面テナントの Job。"acme" の管理者から見て他テナントに当たる。
-	otherJob *domain.Job
+	otherJob *jobsdomain.Job
 	// actorRealm は実行者の所属テナントの realm。経路を組み立てるのに使う。
 	actorRealm string
 	// authn はセッションが解決する認証の文脈。認証の保証を変えるテストが書き換える。
@@ -106,12 +106,12 @@ type jobsTestServer struct {
 // newJobsAdminServer は "acme" に 2 件、制御面テナントに 1 件の Job を持つサーバーを作る。
 func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 	t.Helper()
-	return newJobsAdminServerServing(t, actor, func(repo jobports.JobRepository) jobports.JobRepository { return repo })
+	return newJobsAdminServerServing(t, actor, func(repo jobsports.JobRepository) jobsports.JobRepository { return repo })
 }
 
 // newJobsAdminServerServing は、管理 API が読む保存先を serve で包んだサーバーを作る。
 // 状態を作る操作は包む前の保存先へ直接行う。
-func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(jobports.JobRepository) jobports.JobRepository) *jobsTestServer {
+func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(jobsports.JobRepository) jobsports.JobRepository) *jobsTestServer {
 	t.Helper()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	if actor != nil {
@@ -119,14 +119,14 @@ func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(
 	}
 	repo := jobsmemory.NewJobRepository()
 	base := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	enqueue := func(tenantID string, kind domain.JobKind, offset time.Duration) *domain.Job {
+	enqueue := func(tenantID string, kind jobsdomain.JobKind, offset time.Duration) *jobsdomain.Job {
 		t.Helper()
-		lane, ok := domain.LaneFor(kind)
+		lane, ok := jobsdomain.LaneFor(kind)
 		if !ok {
 			t.Fatalf("no lane registered for %q", kind)
 		}
 		dedup := "seed:" + tenantID + ":" + string(kind)
-		job, _, err := repo.Enqueue(context.Background(), jobports.EnqueueInput{
+		job, _, err := repo.Enqueue(context.Background(), jobsports.EnqueueInput{
 			TenantID: tenantID, Kind: kind, Lane: lane, DedupKey: &dedup,
 			Params:      json.RawMessage(`{"email":"alice@example.test"}`),
 			MaxAttempts: 3, RunAt: base.Add(offset), Now: base.Add(offset),
@@ -140,9 +140,9 @@ func newJobsAdminServerServing(t *testing.T, actor *userdomain.User, serve func(
 	if actor != nil && actor.TenantID == tenancydomain.DefaultTenantID {
 		srv.actorRealm = tenancydomain.DefaultRealm
 	}
-	srv.acmeImport = enqueue("acme", domain.KindUserImportApply, 0)
-	srv.acmeJob = enqueue("acme", domain.KindNoopEcho, time.Minute)
-	srv.otherJob = enqueue(tenancydomain.DefaultTenantID, domain.KindNoopEcho, 2*time.Minute)
+	srv.acmeImport = enqueue("acme", jobsdomain.KindUserImportApply, 0)
+	srv.acmeJob = enqueue("acme", jobsdomain.KindNoopEcho, time.Minute)
+	srv.otherJob = enqueue(tenancydomain.DefaultTenantID, jobsdomain.KindNoopEcho, 2*time.Minute)
 
 	resolver := &fakeAuthnResolver{}
 	if actor != nil {
@@ -407,8 +407,8 @@ func TestSystemJobHandlersSpanEveryTenant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != domain.StatusCanceled {
-		t.Fatalf("cross-tenant job status=%q, want %q", got.Status, domain.StatusCanceled)
+	if got.Status != jobsdomain.StatusCanceled {
+		t.Fatalf("cross-tenant job status=%q, want %q", got.Status, jobsdomain.StatusCanceled)
 	}
 }
 
@@ -501,7 +501,7 @@ func TestSystemJobRoutesRefuseNonControlPlaneActor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Status == domain.StatusCanceled {
+		if got.Status == jobsdomain.StatusCanceled {
 			t.Errorf("%s: refused cancel still canceled job %q", name, foreign.ID)
 		}
 	}
@@ -539,12 +539,12 @@ func TestCancelJob(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Status != string(domain.StatusCanceled) {
+	if body.Status != string(jobsdomain.StatusCanceled) {
 		t.Fatalf("status = %q, want canceled", body.Status)
 	}
 	var canceled int
 	for _, e := range srv.emitted {
-		if _, ok := e.(*domain.JobCanceled); ok {
+		if _, ok := e.(*jobsdomain.JobCanceled); ok {
 			canceled++
 		}
 	}
@@ -611,7 +611,7 @@ func TestCancelJobHidesAnotherTenant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != domain.StatusQueued {
+	if got.Status != jobsdomain.StatusQueued {
 		t.Fatalf("a refused cross-tenant cancel changed the job to %q", got.Status)
 	}
 }
@@ -629,7 +629,7 @@ func TestCancelJobRequiresBrowserVerification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != domain.StatusQueued {
+	if got.Status != jobsdomain.StatusQueued {
 		t.Fatalf("the job changed to %q despite a refused request", got.Status)
 	}
 }
@@ -704,22 +704,22 @@ func TestListJobsFiltersByStatusKindAndLane(t *testing.T) {
 //verify:operation CancelJob: 各終端状態の取り消し要求は 409 job_not_cancelable の本文を返し、状態と更新時刻を維持する。
 func TestCancelJobRefusesEveryTerminalState(t *testing.T) {
 	now := time.Now().UTC()
-	for state, finish := range map[domain.JobStatus]func(*testing.T, *jobsTestServer){
-		domain.StatusSucceeded: func(t *testing.T, srv *jobsTestServer) {
+	for state, finish := range map[jobsdomain.JobStatus]func(*testing.T, *jobsTestServer){
+		jobsdomain.StatusSucceeded: func(t *testing.T, srv *jobsTestServer) {
 			t.Helper()
 			claimJobs(t, srv, now)
 			if _, err := srv.repo.Complete(context.Background(), srv.acmeJob.ID, "worker-1", json.RawMessage(`{}`), now); err != nil {
 				t.Fatal(err)
 			}
 		},
-		domain.StatusFailed: func(t *testing.T, srv *jobsTestServer) {
+		jobsdomain.StatusFailed: func(t *testing.T, srv *jobsTestServer) {
 			t.Helper()
 			claimJobs(t, srv, now)
-			if _, err := srv.repo.Fail(context.Background(), srv.acmeJob.ID, "worker-1", jobports.FailOutcome{NextStatus: domain.StatusFailed, Error: "permanent"}, now); err != nil {
+			if _, err := srv.repo.Fail(context.Background(), srv.acmeJob.ID, "worker-1", jobsports.FailOutcome{NextStatus: jobsdomain.StatusFailed, Error: "permanent"}, now); err != nil {
 				t.Fatal(err)
 			}
 		},
-		domain.StatusCanceled: func(t *testing.T, srv *jobsTestServer) {
+		jobsdomain.StatusCanceled: func(t *testing.T, srv *jobsTestServer) {
 			t.Helper()
 			if _, err := srv.repo.Cancel(context.Background(), srv.acmeJob.ID, now); err != nil {
 				t.Fatal(err)
@@ -755,7 +755,7 @@ func TestCancelJobRefusesEveryTerminalState(t *testing.T) {
 // claimJobs は既定レーンの Job を worker-1 で取得する。acmeJob はここで running になる。
 func claimJobs(t *testing.T, srv *jobsTestServer, now time.Time) {
 	t.Helper()
-	if _, err := srv.repo.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now); err != nil {
+	if _, err := srv.repo.ClaimBatch(context.Background(), "worker-1", jobsdomain.LaneDefault, 10, time.Minute, now); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -763,11 +763,11 @@ func claimJobs(t *testing.T, srv *jobsTestServer, now time.Time) {
 // progressReportingRepo は進捗を報告済みの Job を返す保存先である。進捗を書く経路は
 // まだ無いので、読み出しの側で差し込む。
 type progressReportingRepo struct {
-	jobports.JobRepository
-	progress *domain.JobProgress
+	jobsports.JobRepository
+	progress *jobsdomain.JobProgress
 }
 
-func (r progressReportingRepo) Get(ctx context.Context, id string) (*domain.Job, error) {
+func (r progressReportingRepo) Get(ctx context.Context, id string) (*jobsdomain.Job, error) {
 	job, err := r.JobRepository.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -780,14 +780,14 @@ func (r progressReportingRepo) Get(ctx context.Context, id string) (*domain.Job,
 //verify:operation GetJob: 実際の GET の 200 本文から進捗、試行回数、リース、失敗理由と時刻を照合し、ハンドラーの入出力を含まないことを検査する。
 func TestGetJobReturnsOperationalDetailWithoutHandlerInputOrOutput(t *testing.T) {
 	percent, message := 40, "4 of 10 rows"
-	progress := &domain.JobProgress{Percent: &percent, Message: &message, UpdatedAt: time.Date(2026, 3, 1, 0, 5, 0, 0, time.UTC)}
-	srv := newJobsAdminServerServing(t, jobsAdminUser("admin", "acme", []string{"admin"}), func(repo jobports.JobRepository) jobports.JobRepository {
+	progress := &jobsdomain.JobProgress{Percent: &percent, Message: &message, UpdatedAt: time.Date(2026, 3, 1, 0, 5, 0, 0, time.UTC)}
+	srv := newJobsAdminServerServing(t, jobsAdminUser("admin", "acme", []string{"admin"}), func(repo jobsports.JobRepository) jobsports.JobRepository {
 		return progressReportingRepo{JobRepository: repo, progress: progress}
 	})
 	// 1 回目は失敗して再試行へ戻り、2 回目の取得で running になる。失敗理由は残る。
 	now := time.Date(2026, 3, 1, 0, 10, 0, 0, time.UTC)
 	claimJobs(t, srv, now)
-	if _, err := srv.repo.Fail(context.Background(), srv.acmeJob.ID, "worker-1", jobports.FailOutcome{NextStatus: domain.StatusQueued, RunAt: now, Error: "smtp timeout"}, now); err != nil {
+	if _, err := srv.repo.Fail(context.Background(), srv.acmeJob.ID, "worker-1", jobsports.FailOutcome{NextStatus: jobsdomain.StatusQueued, RunAt: now, Error: "smtp timeout"}, now); err != nil {
 		t.Fatal(err)
 	}
 	claimJobs(t, srv, now)

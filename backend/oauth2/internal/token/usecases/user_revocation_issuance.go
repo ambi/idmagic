@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -39,7 +39,7 @@ func SystemIssuanceClock() IssuanceClock {
 // 判定の側で見分けられない。失効の後の発行を次の秒へずらせば、失効の前のトークンを止めたまま、
 // 資格情報の変更の直後に正常な流れで起きる再認証のトークンを通せる。グラントごとではなく
 // 発行器で行うのは、ガードレールと同じく、グラントを足すたびに書き写さずに済ませるためである。
-func IssuerAfterUserRevocation(issuer ports.TokenIssuer, epochs ssports.UserRevocationEpochRepository, clock IssuanceClock) ports.TokenIssuer {
+func IssuerAfterUserRevocation(issuer oauthports.TokenIssuer, epochs ssports.UserRevocationEpochRepository, clock IssuanceClock) oauthports.TokenIssuer {
 	if epochs == nil {
 		return issuer
 	}
@@ -47,12 +47,12 @@ func IssuerAfterUserRevocation(issuer ports.TokenIssuer, epochs ssports.UserRevo
 }
 
 type userRevocationIssuer struct {
-	ports.TokenIssuer
+	oauthports.TokenIssuer
 	epochs ssports.UserRevocationEpochRepository
 	clock  IssuanceClock
 }
 
-func (i userRevocationIssuer) SignAccessToken(ctx context.Context, in ports.AccessTokenInput) (string, string, error) {
+func (i userRevocationIssuer) SignAccessToken(ctx context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	if in.Sub != "" {
 		// クライアントがサブジェクトの発行（クライアント認証情報）はエポックの行を持たない。
 		epoch, err := i.epochs.FindByUser(ctx, tenantports.TenantID(ctx), in.Sub)

@@ -9,7 +9,7 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	signinports "github.com/ambi/idmagic/backend/authentication/signin/ports"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -40,8 +40,8 @@ func (s SignInContinuation) Find(c *echo.Context) (signinports.Authorization, er
 // 同じ要求の ContinueAfterPassword でも使う。
 type pendingAuthorization struct {
 	d      Deps
-	req    *domain.AuthorizationRequest
-	client *domain.OAuth2Client
+	req    *oauthdomain.AuthorizationRequest
+	client *oauthdomain.OAuth2Client
 }
 
 func (p *pendingAuthorization) ClientID() string { return p.req.ClientID }
@@ -96,7 +96,7 @@ func (p *pendingAuthorization) ContinueAfterSecondFactor(c *echo.Context, comple
 	return p.continueAuthorization(c, client, completed)
 }
 
-func (p *pendingAuthorization) continueAuthorization(c *echo.Context, client *domain.OAuth2Client, authn *authdomain.AuthenticationContext) error {
+func (p *pendingAuthorization) continueAuthorization(c *echo.Context, client *oauthdomain.OAuth2Client, authn *authdomain.AuthenticationContext) error {
 	next, err := p.d.completeAfterAuthn(c, p.req, client, authn)
 	if err != nil {
 		return err

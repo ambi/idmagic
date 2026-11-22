@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
-	tenancyports "github.com/ambi/idmagic/backend/tenancy/ports"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // ListTenantDataKeyHealthDeps are the dependencies for
 // ListTenantDataKeyHealth (wi-97 T007).
 type ListTenantDataKeyHealthDeps struct {
-	TenantRepo tenancyports.TenantRepository
-	Repository ports.DataKeyRepository
+	TenantRepo tenantports.TenantRepository
+	Repository datakeysports.DataKeyRepository
 	Crypto     envelope_crypto.EnvelopeCrypto
 }
 
@@ -24,7 +24,7 @@ type ListTenantDataKeyHealthDeps struct {
 // returns key material. A tenant with no DataEncryptionKey bootstrapped yet
 // (FieldCipher.Encrypt has never run for it) is simply omitted rather than
 // reported as unhealthy.
-func ListTenantDataKeyHealth(ctx context.Context, deps ListTenantDataKeyHealthDeps) ([]domain.TenantDataKeyHealth, error) {
+func ListTenantDataKeyHealth(ctx context.Context, deps ListTenantDataKeyHealthDeps) ([]datakeysdomain.TenantDataKeyHealth, error) {
 	tenants, err := deps.TenantRepo.FindAll(ctx)
 	if err != nil {
 		return nil, err
@@ -32,16 +32,16 @@ func ListTenantDataKeyHealth(ctx context.Context, deps ListTenantDataKeyHealthDe
 	reachable := deps.Crypto.Healthy(ctx)
 	provider := deps.Crypto.Provider()
 
-	out := make([]domain.TenantDataKeyHealth, 0, len(tenants))
+	out := make([]datakeysdomain.TenantDataKeyHealth, 0, len(tenants))
 	for _, tenant := range tenants {
 		active, err := deps.Repository.FindActive(ctx, tenant.ID)
-		if errors.Is(err, domain.ErrNoActiveDataKey) {
+		if errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, domain.TenantDataKeyHealth{
+		out = append(out, datakeysdomain.TenantDataKeyHealth{
 			TenantID:          tenant.ID,
 			ActiveVersion:     active.Version,
 			Status:            active.Status,

@@ -14,8 +14,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
-	"github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
+	directoryconnectordomain "github.com/ambi/idmagic/backend/directoryconnector/internal/domain"
+	directoryconnectorports "github.com/ambi/idmagic/backend/directoryconnector/internal/ports"
 )
 
 const (
@@ -31,7 +31,7 @@ type Store struct{ dir string }
 
 func New(dir string) *Store { return &Store{dir: dir} }
 
-func (s *Store) SaveCredentials(_ context.Context, key *ecdsa.PrivateKey, enrollment ports.Enrollment) error {
+func (s *Store) SaveCredentials(_ context.Context, key *ecdsa.PrivateKey, enrollment directoryconnectorports.Enrollment) error {
 	der, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
 		return err
@@ -46,38 +46,38 @@ func (s *Store) SaveCredentials(_ context.Context, key *ecdsa.PrivateKey, enroll
 	return s.replace(enrollmentFile, encoded)
 }
 
-func (s *Store) LoadCredentials() (*ecdsa.PrivateKey, ports.Enrollment, error) {
+func (s *Store) LoadCredentials() (*ecdsa.PrivateKey, directoryconnectorports.Enrollment, error) {
 	raw, err := os.ReadFile(filepath.Join(s.dir, keyFile))
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, ports.Enrollment{}, ErrNotEnrolled
+		return nil, directoryconnectorports.Enrollment{}, ErrNotEnrolled
 	}
 	if err != nil {
-		return nil, ports.Enrollment{}, err
+		return nil, directoryconnectorports.Enrollment{}, err
 	}
 	block, _ := pem.Decode(raw)
 	if block == nil {
-		return nil, ports.Enrollment{}, fmt.Errorf("%s is not PEM", keyFile)
+		return nil, directoryconnectorports.Enrollment{}, fmt.Errorf("%s is not PEM", keyFile)
 	}
 	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, ports.Enrollment{}, fmt.Errorf("%s: %w", keyFile, err)
+		return nil, directoryconnectorports.Enrollment{}, fmt.Errorf("%s: %w", keyFile, err)
 	}
 	key, ok := parsed.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, ports.Enrollment{}, fmt.Errorf("%s is not an EC key", keyFile)
+		return nil, directoryconnectorports.Enrollment{}, fmt.Errorf("%s is not an EC key", keyFile)
 	}
-	var enrollment ports.Enrollment
+	var enrollment directoryconnectorports.Enrollment
 	if err := s.readJSON(enrollmentFile, &enrollment); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, ports.Enrollment{}, ErrNotEnrolled
+			return nil, directoryconnectorports.Enrollment{}, ErrNotEnrolled
 		}
-		return nil, ports.Enrollment{}, err
+		return nil, directoryconnectorports.Enrollment{}, err
 	}
 	return key, enrollment, nil
 }
 
-func (s *Store) Load(context.Context) (*domain.Cursor, error) {
-	var cursor domain.Cursor
+func (s *Store) Load(context.Context) (*directoryconnectordomain.Cursor, error) {
+	var cursor directoryconnectordomain.Cursor
 	if err := s.readJSON(cursorFile, &cursor); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil //nolint:nilnil // 位置がないことは完全な再同期の合図である。
@@ -87,7 +87,7 @@ func (s *Store) Load(context.Context) (*domain.Cursor, error) {
 	return &cursor, nil
 }
 
-func (s *Store) Save(_ context.Context, cursor domain.Cursor) error {
+func (s *Store) Save(_ context.Context, cursor directoryconnectordomain.Cursor) error {
 	encoded, err := json.Marshal(cursor)
 	if err != nil {
 		return err

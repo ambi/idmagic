@@ -10,7 +10,7 @@ import (
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/usecases"
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -42,7 +42,7 @@ func currentSelector(c *echo.Context) string {
 	if value == "" {
 		return ""
 	}
-	selector, _, ok := domain.ParseCookie(value)
+	selector, _, ok := trusteddevicedomain.ParseCookie(value)
 	if !ok {
 		return ""
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/testing_contract"
 )
 
@@ -38,7 +38,7 @@ func TestIngestionPersistenceContract(t *testing.T) {
 			t.Helper()
 			id := uuid.NewV4().String()
 			digest := sha256.Sum256([]byte(id))
-			connector, err := domain.NewConnector(tenantID, id, "AD", hex.EncodeToString(digest[:]), time.Now())
+			connector, err := directorydomain.NewConnector(tenantID, id, "AD", hex.EncodeToString(digest[:]), time.Now())
 			if err != nil {
 				t.Fatal(err)
 			}

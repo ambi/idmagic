@@ -13,21 +13,21 @@ import (
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/domain"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/ports"
-	"github.com/ambi/idmagic/backend/tokenvault/internal/usecases"
+	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
+	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
+	tokenvaultusecases "github.com/ambi/idmagic/backend/tokenvault/internal/usecases"
 
 	"github.com/labstack/echo/v5"
 )
 
 // base64 の膨張と JSON の項目を見込んだ、復号の前の要求本文の上限である。
-const maxExecuteEnvelopeBytes = domain.MaxRequestBodyBytes/3*4 + 64<<10
+const maxExecuteEnvelopeBytes = tokenvaultdomain.MaxRequestBodyBytes/3*4 + 64<<10
 
 // Deps は TokenVault の HTTP の依存である。
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	UseCases usecases.Deps
+	UseCases tokenvaultusecases.Deps
 }
 
 // RegisterRoutes は TokenVault の経路を登録する。
@@ -45,23 +45,23 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 }
 
 type connectorResponse struct {
-	ID                      string                         `json:"id"`
-	TenantID                string                         `json:"tenant_id"`
-	Name                    string                         `json:"name"`
-	Status                  domain.ConnectorStatus         `json:"status"`
-	AuthorizationEndpoint   string                         `json:"authorization_endpoint"`
-	TokenEndpoint           string                         `json:"token_endpoint"`
-	RevocationEndpoint      string                         `json:"revocation_endpoint,omitempty"`
-	ClientID                string                         `json:"client_id"`
-	TokenEndpointAuthMethod domain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	ClientSecretConfigured  bool                           `json:"client_secret_configured"`
-	AllowedScopes           []string                       `json:"allowed_scopes"`
-	Rules                   []domain.ExecutionRule         `json:"rules"`
-	CreatedAt               time.Time                      `json:"created_at"`
-	UpdatedAt               time.Time                      `json:"updated_at"`
+	ID                      string                                   `json:"id"`
+	TenantID                string                                   `json:"tenant_id"`
+	Name                    string                                   `json:"name"`
+	Status                  tokenvaultdomain.ConnectorStatus         `json:"status"`
+	AuthorizationEndpoint   string                                   `json:"authorization_endpoint"`
+	TokenEndpoint           string                                   `json:"token_endpoint"`
+	RevocationEndpoint      string                                   `json:"revocation_endpoint,omitempty"`
+	ClientID                string                                   `json:"client_id"`
+	TokenEndpointAuthMethod tokenvaultdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
+	ClientSecretConfigured  bool                                     `json:"client_secret_configured"`
+	AllowedScopes           []string                                 `json:"allowed_scopes"`
+	Rules                   []tokenvaultdomain.ExecutionRule         `json:"rules"`
+	CreatedAt               time.Time                                `json:"created_at"`
+	UpdatedAt               time.Time                                `json:"updated_at"`
 }
 
-func toConnectorResponse(c *domain.Connector) connectorResponse {
+func toConnectorResponse(c *tokenvaultdomain.Connector) connectorResponse {
 	return connectorResponse{
 		ID: c.ID, TenantID: c.TenantID, Name: c.Name, Status: c.Status, AuthorizationEndpoint: c.AuthorizationEndpoint,
 		TokenEndpoint: c.TokenEndpoint, RevocationEndpoint: c.RevocationEndpoint, ClientID: c.ClientID,
@@ -71,24 +71,24 @@ func toConnectorResponse(c *domain.Connector) connectorResponse {
 }
 
 type connectorCreateRequest struct {
-	Name                    string                         `json:"name"`
-	AuthorizationEndpoint   string                         `json:"authorization_endpoint"`
-	TokenEndpoint           string                         `json:"token_endpoint"`
-	RevocationEndpoint      string                         `json:"revocation_endpoint"`
-	ClientID                string                         `json:"client_id"`
-	TokenEndpointAuthMethod domain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	ClientSecret            string                         `json:"client_secret"`
-	AllowedScopes           []string                       `json:"allowed_scopes"`
-	Rules                   []domain.ExecutionRule         `json:"rules"`
+	Name                    string                                   `json:"name"`
+	AuthorizationEndpoint   string                                   `json:"authorization_endpoint"`
+	TokenEndpoint           string                                   `json:"token_endpoint"`
+	RevocationEndpoint      string                                   `json:"revocation_endpoint"`
+	ClientID                string                                   `json:"client_id"`
+	TokenEndpointAuthMethod tokenvaultdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
+	ClientSecret            string                                   `json:"client_secret"`
+	AllowedScopes           []string                                 `json:"allowed_scopes"`
+	Rules                   []tokenvaultdomain.ExecutionRule         `json:"rules"`
 }
 
 func (d Deps) writeConnectorError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, domain.ErrInvalidConnector):
+	case errors.Is(err, tokenvaultdomain.ErrInvalidConnector):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The connector definition is invalid.")
-	case errors.Is(err, ports.ErrConnectorConflict):
+	case errors.Is(err, tokenvaultports.ErrConnectorConflict):
 		return support.WriteProblem(c, http.StatusConflict, "connector_conflict", "The connector conflicts with an existing one.")
-	case errors.Is(err, usecases.ErrConnectorNotFound):
+	case errors.Is(err, tokenvaultusecases.ErrConnectorNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "connector_not_found", "The connector does not exist.")
 	default:
 		return err
@@ -106,7 +106,7 @@ func (d Deps) handleCreateConnector(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	connector, err := usecases.CreateConnector(c.Request().Context(), d.UseCases, domain.Connector{
+	connector, err := tokenvaultusecases.CreateConnector(c.Request().Context(), d.UseCases, tokenvaultdomain.Connector{
 		TenantID: support.RequestTenantID(c), Name: req.Name, AuthorizationEndpoint: req.AuthorizationEndpoint,
 		TokenEndpoint: req.TokenEndpoint, RevocationEndpoint: req.RevocationEndpoint, ClientID: req.ClientID,
 		TokenEndpointAuthMethod: req.TokenEndpointAuthMethod, ClientSecret: req.ClientSecret,
@@ -137,7 +137,7 @@ func (d Deps) handleGetConnector(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	connector, err := usecases.GetConnector(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("id"))
+	connector, err := tokenvaultusecases.GetConnector(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("id"))
 	if err != nil {
 		return d.writeConnectorError(c, err)
 	}
@@ -145,16 +145,16 @@ func (d Deps) handleGetConnector(c *echo.Context) error {
 }
 
 type connectorUpdateRequest struct {
-	Name                    *string                         `json:"name"`
-	Status                  *domain.ConnectorStatus         `json:"status"`
-	AuthorizationEndpoint   *string                         `json:"authorization_endpoint"`
-	TokenEndpoint           *string                         `json:"token_endpoint"`
-	RevocationEndpoint      *string                         `json:"revocation_endpoint"`
-	ClientID                *string                         `json:"client_id"`
-	TokenEndpointAuthMethod *domain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
-	ClientSecret            *string                         `json:"client_secret"`
-	AllowedScopes           *[]string                       `json:"allowed_scopes"`
-	Rules                   *[]domain.ExecutionRule         `json:"rules"`
+	Name                    *string                                   `json:"name"`
+	Status                  *tokenvaultdomain.ConnectorStatus         `json:"status"`
+	AuthorizationEndpoint   *string                                   `json:"authorization_endpoint"`
+	TokenEndpoint           *string                                   `json:"token_endpoint"`
+	RevocationEndpoint      *string                                   `json:"revocation_endpoint"`
+	ClientID                *string                                   `json:"client_id"`
+	TokenEndpointAuthMethod *tokenvaultdomain.TokenEndpointAuthMethod `json:"token_endpoint_auth_method"`
+	ClientSecret            *string                                   `json:"client_secret"`
+	AllowedScopes           *[]string                                 `json:"allowed_scopes"`
+	Rules                   *[]tokenvaultdomain.ExecutionRule         `json:"rules"`
 }
 
 func (d Deps) handleUpdateConnector(c *echo.Context) error {
@@ -168,7 +168,7 @@ func (d Deps) handleUpdateConnector(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	connector, err := usecases.UpdateConnector(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("id"), usecases.ConnectorChanges{
+	connector, err := tokenvaultusecases.UpdateConnector(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("id"), tokenvaultusecases.ConnectorChanges{
 		Name: req.Name, Status: req.Status, AuthorizationEndpoint: req.AuthorizationEndpoint, TokenEndpoint: req.TokenEndpoint,
 		RevocationEndpoint: req.RevocationEndpoint, ClientID: req.ClientID, TokenEndpointAuthMethod: req.TokenEndpointAuthMethod,
 		ClientSecret: req.ClientSecret, AllowedScopes: req.AllowedScopes, Rules: req.Rules,
@@ -186,7 +186,7 @@ func (d Deps) handleDeleteConnector(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := usecases.DeleteConnector(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("id")); err != nil {
+	if err := tokenvaultusecases.DeleteConnector(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("id")); err != nil {
 		return d.writeConnectorError(c, err)
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -214,12 +214,12 @@ func writeAccountSubError(c *echo.Context, err error) error {
 }
 
 type myConnectionResponse struct {
-	ConnectorID     string                  `json:"connector_id"`
-	ConnectorName   string                  `json:"connector_name"`
-	ConnectorStatus domain.ConnectorStatus  `json:"connector_status"`
-	Status          domain.ConnectionStatus `json:"status,omitempty"`
-	GrantedScopes   []string                `json:"granted_scopes"`
-	LastUsedAt      *time.Time              `json:"last_used_at,omitempty"`
+	ConnectorID     string                            `json:"connector_id"`
+	ConnectorName   string                            `json:"connector_name"`
+	ConnectorStatus tokenvaultdomain.ConnectorStatus  `json:"connector_status"`
+	Status          tokenvaultdomain.ConnectionStatus `json:"status,omitempty"`
+	GrantedScopes   []string                          `json:"granted_scopes"`
+	LastUsedAt      *time.Time                        `json:"last_used_at,omitempty"`
 }
 
 func (d Deps) handleListMyConnections(c *echo.Context) error {
@@ -227,7 +227,7 @@ func (d Deps) handleListMyConnections(c *echo.Context) error {
 	if err != nil {
 		return writeAccountSubError(c, err)
 	}
-	mine, err := usecases.ListMyConnections(c.Request().Context(), d.UseCases, support.RequestTenantID(c), sub)
+	mine, err := tokenvaultusecases.ListMyConnections(c.Request().Context(), d.UseCases, support.RequestTenantID(c), sub)
 	if err != nil {
 		return err
 	}
@@ -276,14 +276,14 @@ func (d Deps) handleStartLink(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	connectorID := c.Param("connector_id")
-	authorizationURL, err := usecases.StartLink(c.Request().Context(), d.UseCases, usecases.StartLinkInput{
+	authorizationURL, err := tokenvaultusecases.StartLink(c.Request().Context(), d.UseCases, tokenvaultusecases.StartLinkInput{
 		TenantID: support.RequestTenantID(c), ConnectorID: connectorID, UserID: sub,
 		RedirectURI: d.callbackURI(c, connectorID), Scopes: req.Scopes,
 	})
 	switch {
-	case errors.Is(err, usecases.ErrInvalidScope):
+	case errors.Is(err, tokenvaultusecases.ErrInvalidScope):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_scope", "The connector does not allow the requested scope.")
-	case errors.Is(err, usecases.ErrConnectorNotFound):
+	case errors.Is(err, tokenvaultusecases.ErrConnectorNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "connector_not_found", "The connector does not exist.")
 	case err != nil:
 		return err
@@ -302,8 +302,8 @@ func (d Deps) handleUnlink(c *echo.Context) error {
 	if err != nil {
 		return writeAccountSubError(c, err)
 	}
-	err = usecases.Unlink(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("connector_id"), sub)
-	if errors.Is(err, usecases.ErrConnectionNotFound) {
+	err = tokenvaultusecases.Unlink(c.Request().Context(), d.UseCases, support.RequestTenantID(c), c.Param("connector_id"), sub)
+	if errors.Is(err, tokenvaultusecases.ErrConnectionNotFound) {
 		return support.WriteProblem(c, http.StatusNotFound, "connection_not_found", "The connection does not exist.")
 	}
 	if err != nil {
@@ -322,7 +322,7 @@ func (d Deps) handleCallback(c *echo.Context) error {
 			userID = sub
 		}
 	}
-	result, err := usecases.CompleteLink(c.Request().Context(), d.UseCases, usecases.CompleteLinkInput{
+	result, err := tokenvaultusecases.CompleteLink(c.Request().Context(), d.UseCases, tokenvaultusecases.CompleteLinkInput{
 		TenantID: support.RequestTenantID(c), ConnectorID: connectorID, UserID: userID,
 		State: c.QueryParam("state"), Code: c.QueryParam("code"), UpstreamError: c.QueryParam("error"),
 		RedirectURI: d.callbackURI(c, connectorID),
@@ -358,10 +358,10 @@ func (d Deps) handleExecute(c *echo.Context) error {
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "body_base64 is invalid.")
 	}
-	response, err := usecases.Execute(c.Request().Context(), d.UseCases, usecases.ExecuteInput{
+	response, err := tokenvaultusecases.Execute(c.Request().Context(), d.UseCases, tokenvaultusecases.ExecuteInput{
 		TenantID: support.RequestTenantID(c), ConnectorID: c.Param("connector_id"),
 		Method: req.Method, URL: req.URL, Headers: req.Headers, Body: decoded,
-		Credential: ports.CallerCredential{
+		Credential: tokenvaultports.CallerCredential{
 			Token: raw, Scheme: scheme, DPoPProof: c.Request().Header.Get("DPoP"),
 			Method: c.Request().Method, HTU: support.RequestHTU(c, d.Issuer),
 			Resource: support.TenantURL(c, "/api/token-vault/v1", d.Issuer),
@@ -394,23 +394,23 @@ func writeInvalidToken(c *echo.Context) error {
 
 func writeExecuteError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, usecases.ErrInvalidToken):
+	case errors.Is(err, tokenvaultusecases.ErrInvalidToken):
 		return writeInvalidToken(c)
-	case errors.Is(err, domain.ErrInvalidExecutionRequest):
+	case errors.Is(err, tokenvaultdomain.ErrInvalidExecutionRequest):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The request is invalid.")
-	case errors.Is(err, usecases.ErrRequestTooLarge):
+	case errors.Is(err, tokenvaultusecases.ErrRequestTooLarge):
 		return support.WriteProblem(c, http.StatusRequestEntityTooLarge, "request_too_large", "The request body is too large.")
-	case errors.Is(err, usecases.ErrAccessDenied):
+	case errors.Is(err, tokenvaultusecases.ErrAccessDenied):
 		return support.WriteProblem(c, http.StatusForbidden, "connector_access_denied", "The request is not permitted.")
-	case errors.Is(err, usecases.ErrConnectorNotFound):
+	case errors.Is(err, tokenvaultusecases.ErrConnectorNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "connector_not_found", "The connector does not exist.")
-	case errors.Is(err, usecases.ErrConnectionNotFound):
+	case errors.Is(err, tokenvaultusecases.ErrConnectionNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "connection_not_found", "The connection does not exist.")
-	case errors.Is(err, usecases.ErrReauthorizationRequired):
+	case errors.Is(err, tokenvaultusecases.ErrReauthorizationRequired):
 		return support.WriteProblem(c, http.StatusConflict, "connection_reauthorization_required", "The connection must be linked again.")
-	case errors.Is(err, ports.ErrUpstreamUnreachable):
+	case errors.Is(err, tokenvaultports.ErrUpstreamUnreachable):
 		return support.WriteProblem(c, http.StatusBadGateway, "upstream_unreachable", "The upstream could not be reached.")
-	case errors.Is(err, ports.ErrUpstreamResponseTooLarge):
+	case errors.Is(err, tokenvaultports.ErrUpstreamResponseTooLarge):
 		return support.WriteProblem(c, http.StatusBadGateway, "upstream_response_too_large", "The upstream response is too large.")
 	default:
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "temporarily_unavailable", "The request cannot be processed now.")

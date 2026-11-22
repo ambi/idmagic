@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	memoryjobs "github.com/ambi/idmagic/backend/jobs/internal/db_memory"
-	"github.com/ambi/idmagic/backend/jobs/internal/usecases"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsusecases "github.com/ambi/idmagic/backend/jobs/internal/usecases"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -24,16 +24,16 @@ func seedAdminJobs(t *testing.T) (*memoryjobs.JobRepository, time.Time) {
 	base := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 	seed := []struct {
 		tenant string
-		kind   domain.JobKind
+		kind   jobsdomain.JobKind
 		offset time.Duration
 	}{
-		{"tenant-a", domain.KindNoopEcho, 0},
-		{"tenant-a", domain.KindUserImportApply, time.Minute},
-		{"tenant-a", domain.KindNoopEcho, 2 * time.Minute},
-		{"tenant-b", domain.KindNoopEcho, 3 * time.Minute},
+		{"tenant-a", jobsdomain.KindNoopEcho, 0},
+		{"tenant-a", jobsdomain.KindUserImportApply, time.Minute},
+		{"tenant-a", jobsdomain.KindNoopEcho, 2 * time.Minute},
+		{"tenant-b", jobsdomain.KindNoopEcho, 3 * time.Minute},
 	}
 	for _, s := range seed {
-		if _, _, err := repo.Enqueue(context.Background(), ports.EnqueueInput{
+		if _, _, err := repo.Enqueue(context.Background(), jobsports.EnqueueInput{
 			TenantID: s.tenant, Kind: s.kind, Lane: mustLane(t, s.kind),
 			Params: json.RawMessage(`{"secret":"do-not-surface"}`), MaxAttempts: 3,
 			RunAt: base.Add(s.offset), Now: base.Add(s.offset),
@@ -44,9 +44,9 @@ func seedAdminJobs(t *testing.T) (*memoryjobs.JobRepository, time.Time) {
 	return repo, base
 }
 
-func mustLane(t *testing.T, kind domain.JobKind) domain.ExecutionLane {
+func mustLane(t *testing.T, kind jobsdomain.JobKind) jobsdomain.ExecutionLane {
 	t.Helper()
-	lane, ok := domain.LaneFor(kind)
+	lane, ok := jobsdomain.LaneFor(kind)
 	if !ok {
 		t.Fatalf("no lane registered for %q", kind)
 	}
@@ -57,8 +57,8 @@ func mustLane(t *testing.T, kind domain.JobKind) domain.ExecutionLane {
 func TestListJobsForAdmin_StaysInsideTheTenant(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 
-	page, err := usecases.ListJobsForAdmin(context.Background(), usecases.AdminJobDeps{Repo: repo},
-		usecases.ListJobsInput{Scope: usecases.TenantScope{TenantID: "tenant-a"}})
+	page, err := jobsusecases.ListJobsForAdmin(context.Background(), jobsusecases.AdminJobDeps{Repo: repo},
+		jobsusecases.ListJobsInput{Scope: jobsusecases.TenantScope{TenantID: "tenant-a"}})
 	if err != nil {
 		t.Fatalf("ListJobsForAdmin() error = %v", err)
 	}
@@ -82,8 +82,8 @@ func TestListJobsForAdmin_StaysInsideTheTenant(t *testing.T) {
 func TestListJobsForAdmin_AllTenantsRequiresAnAuthorizedScope(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 
-	page, err := usecases.ListJobsForAdmin(context.Background(), usecases.AdminJobDeps{Repo: repo},
-		usecases.ListJobsInput{Scope: usecases.TenantScope{AllTenants: true}})
+	page, err := jobsusecases.ListJobsForAdmin(context.Background(), jobsusecases.AdminJobDeps{Repo: repo},
+		jobsusecases.ListJobsInput{Scope: jobsusecases.TenantScope{AllTenants: true}})
 	if err != nil {
 		t.Fatalf("ListJobsForAdmin() error = %v", err)
 	}
@@ -92,8 +92,8 @@ func TestListJobsForAdmin_AllTenantsRequiresAnAuthorizedScope(t *testing.T) {
 	}
 
 	// テナントも横断も指定しない範囲は、既定で全件を返さずに拒否する。
-	if _, err := usecases.ListJobsForAdmin(context.Background(), usecases.AdminJobDeps{Repo: repo},
-		usecases.ListJobsInput{}); err == nil {
+	if _, err := jobsusecases.ListJobsForAdmin(context.Background(), jobsusecases.AdminJobDeps{Repo: repo},
+		jobsusecases.ListJobsInput{}); err == nil {
 		t.Fatal("an unscoped listing must be refused, not defaulted to every tenant")
 	}
 }
@@ -102,22 +102,22 @@ func TestListJobsForAdmin_AllTenantsRequiresAnAuthorizedScope(t *testing.T) {
 func TestListJobsForAdmin_Filters(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 	ctx := context.Background()
-	deps := usecases.AdminJobDeps{Repo: repo}
+	deps := jobsusecases.AdminJobDeps{Repo: repo}
 
-	byKind, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{
-		Scope: usecases.TenantScope{TenantID: "tenant-a"},
-		Kinds: []domain.JobKind{domain.KindUserImportApply},
+	byKind, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{
+		Scope: jobsusecases.TenantScope{TenantID: "tenant-a"},
+		Kinds: []jobsdomain.JobKind{jobsdomain.KindUserImportApply},
 	})
 	if err != nil {
 		t.Fatalf("ListJobsForAdmin() error = %v", err)
 	}
-	if len(byKind.Jobs) != 1 || byKind.Jobs[0].Kind != domain.KindUserImportApply {
+	if len(byKind.Jobs) != 1 || byKind.Jobs[0].Kind != jobsdomain.KindUserImportApply {
 		t.Fatalf("kind filter returned %#v", byKind.Jobs)
 	}
 
-	byStatus, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{
-		Scope:    usecases.TenantScope{TenantID: "tenant-a"},
-		Statuses: []domain.JobStatus{domain.StatusSucceeded},
+	byStatus, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{
+		Scope:    jobsusecases.TenantScope{TenantID: "tenant-a"},
+		Statuses: []jobsdomain.JobStatus{jobsdomain.StatusSucceeded},
 	})
 	if err != nil {
 		t.Fatalf("ListJobsForAdmin() error = %v", err)
@@ -126,14 +126,14 @@ func TestListJobsForAdmin_Filters(t *testing.T) {
 		t.Fatalf("status filter returned %d jobs, want 0", len(byStatus.Jobs))
 	}
 
-	byLane, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{
-		Scope: usecases.TenantScope{TenantID: "tenant-a"},
-		Lane:  domain.LaneBulk,
+	byLane, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{
+		Scope: jobsusecases.TenantScope{TenantID: "tenant-a"},
+		Lane:  jobsdomain.LaneBulk,
 	})
 	if err != nil {
 		t.Fatalf("ListJobsForAdmin() error = %v", err)
 	}
-	if len(byLane.Jobs) != 1 || byLane.Jobs[0].Lane != domain.LaneBulk {
+	if len(byLane.Jobs) != 1 || byLane.Jobs[0].Lane != jobsdomain.LaneBulk {
 		t.Fatalf("lane filter returned %#v", byLane.Jobs)
 	}
 }
@@ -142,10 +142,10 @@ func TestListJobsForAdmin_Filters(t *testing.T) {
 func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 	ctx := context.Background()
-	deps := usecases.AdminJobDeps{Repo: repo}
-	scope := usecases.TenantScope{TenantID: "tenant-a"}
+	deps := jobsusecases.AdminJobDeps{Repo: repo}
+	scope := jobsusecases.TenantScope{TenantID: "tenant-a"}
 
-	first, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: scope, Limit: 2})
+	first, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{Scope: scope, Limit: 2})
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 		t.Fatalf("first page = %d jobs, cursor %q", len(first.Jobs), first.NextCursor)
 	}
 
-	second, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: scope, Limit: 2, Cursor: first.NextCursor})
+	second, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{Scope: scope, Limit: 2, Cursor: first.NextCursor})
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 		t.Fatalf("last page must not offer a cursor, got %q", second.NextCursor)
 	}
 	seen := map[string]bool{}
-	for _, j := range append(append([]*domain.Job{}, first.Jobs...), second.Jobs...) {
+	for _, j := range append(append([]*jobsdomain.Job{}, first.Jobs...), second.Jobs...) {
 		if seen[j.ID] {
 			t.Fatalf("job %s appeared on both pages", j.ID)
 		}
@@ -172,16 +172,16 @@ func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 	}
 
 	// 絞り込みを変えたカーソルは、黙って別の位置に読み替えず拒否する。
-	if _, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{
-		Scope: scope, Limit: 2, Cursor: first.NextCursor, Lane: domain.LaneBulk,
-	}); !errors.Is(err, usecases.ErrJobCursorMismatch) {
+	if _, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{
+		Scope: scope, Limit: 2, Cursor: first.NextCursor, Lane: jobsdomain.LaneBulk,
+	}); !errors.Is(err, jobsusecases.ErrJobCursorMismatch) {
 		t.Fatalf("changed filter with an old cursor: err = %v, want ErrJobCursorMismatch", err)
 	}
 
 	// 別テナントで発行されたカーソルも同じ理由で拒否する。
-	if _, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{
-		Scope: usecases.TenantScope{TenantID: "tenant-b"}, Limit: 2, Cursor: first.NextCursor,
-	}); !errors.Is(err, usecases.ErrJobCursorMismatch) {
+	if _, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{
+		Scope: jobsusecases.TenantScope{TenantID: "tenant-b"}, Limit: 2, Cursor: first.NextCursor,
+	}); !errors.Is(err, jobsusecases.ErrJobCursorMismatch) {
 		t.Fatalf("cursor from another tenant: err = %v, want ErrJobCursorMismatch", err)
 	}
 }
@@ -190,13 +190,13 @@ func TestListJobsForAdmin_CursorContinuesAndBindsTheFilter(t *testing.T) {
 func TestGetJobForAdmin_HidesOtherTenants(t *testing.T) {
 	repo, _ := seedAdminJobs(t)
 	ctx := context.Background()
-	deps := usecases.AdminJobDeps{Repo: repo}
+	deps := jobsusecases.AdminJobDeps{Repo: repo}
 
-	all, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: usecases.TenantScope{AllTenants: true}})
+	all, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{Scope: jobsusecases.TenantScope{AllTenants: true}})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	var foreign *domain.Job
+	var foreign *jobsdomain.Job
 	for _, j := range all.Jobs {
 		if j.TenantID == "tenant-b" {
 			foreign = j
@@ -206,10 +206,10 @@ func TestGetJobForAdmin_HidesOtherTenants(t *testing.T) {
 		t.Fatal("seed did not create a tenant-b job")
 	}
 
-	if _, err := usecases.GetJobForAdmin(ctx, deps, foreign.ID, usecases.TenantScope{TenantID: "tenant-a"}); !errors.Is(err, ports.ErrJobNotFound) {
+	if _, err := jobsusecases.GetJobForAdmin(ctx, deps, foreign.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}); !errors.Is(err, jobsports.ErrJobNotFound) {
 		t.Fatalf("cross-tenant read: err = %v, want ErrJobNotFound", err)
 	}
-	if _, err := usecases.GetJobForAdmin(ctx, deps, foreign.ID, usecases.TenantScope{AllTenants: true}); err != nil {
+	if _, err := jobsusecases.GetJobForAdmin(ctx, deps, foreign.ID, jobsusecases.TenantScope{AllTenants: true}); err != nil {
 		t.Fatalf("cross-tenant read as system_admin: %v", err)
 	}
 }
@@ -221,44 +221,44 @@ func TestCancelJobForAdmin(t *testing.T) {
 	var emitted []spec.DomainEvent
 	deps := adminCancelDeps(repo, func(e spec.DomainEvent) { emitted = append(emitted, e) })
 
-	page, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: usecases.TenantScope{TenantID: "tenant-a"}})
+	page, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{Scope: jobsusecases.TenantScope{TenantID: "tenant-a"}})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
 	target := page.Jobs[0]
 
-	canceled, err := usecases.CancelJobForAdmin(ctx, deps, target.ID, usecases.TenantScope{TenantID: "tenant-a"}, base)
+	canceled, err := jobsusecases.CancelJobForAdmin(ctx, deps, target.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, base)
 	if err != nil {
 		t.Fatalf("CancelJobForAdmin() error = %v", err)
 	}
-	if canceled.Status != domain.StatusCanceled {
+	if canceled.Status != jobsdomain.StatusCanceled {
 		t.Fatalf("status = %q, want canceled", canceled.Status)
 	}
 	if len(emitted) != 1 {
 		t.Fatalf("emitted %d events, want 1", len(emitted))
 	}
-	if _, ok := emitted[0].(*domain.JobCanceled); !ok {
+	if _, ok := emitted[0].(*jobsdomain.JobCanceled); !ok {
 		t.Fatalf("emitted %T, want *domain.JobCanceled", emitted[0])
 	}
 
 	// 終端に達した Job の取り消しは、成功として黙認せず拒否する。
-	if _, err := usecases.CancelJobForAdmin(ctx, deps, target.ID, usecases.TenantScope{TenantID: "tenant-a"}, base); !errors.Is(err, ports.ErrJobAlreadyTerminal) {
+	if _, err := jobsusecases.CancelJobForAdmin(ctx, deps, target.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, base); !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
 		t.Fatalf("cancelling a terminal job: err = %v, want ErrJobAlreadyTerminal", err)
 	}
 }
 
 // adminCancelDeps は取り消しまで行える管理の依存を作る。emit が nil なら発行を捨てる。
-func adminCancelDeps(repo ports.JobRepository, emit func(spec.DomainEvent)) usecases.AdminJobDeps {
+func adminCancelDeps(repo jobsports.JobRepository, emit func(spec.DomainEvent)) jobsusecases.AdminJobDeps {
 	deps, _ := adminCancelDepsWithQuotas(repo, emit)
 	return deps
 }
 
-func adminCancelDepsWithQuotas(repo ports.JobRepository, emit func(spec.DomainEvent)) (usecases.AdminJobDeps, tenantports.QuotaRepository) {
+func adminCancelDepsWithQuotas(repo jobsports.JobRepository, emit func(spec.DomainEvent)) (jobsusecases.AdminJobDeps, tenantports.QuotaRepository) {
 	if emit == nil {
 		emit = func(spec.DomainEvent) {}
 	}
 	quotas := tenancy.NewMemoryModule().QuotaRepo
-	return usecases.AdminJobDeps{Repo: repo, Canceler: usecases.NewCanceler(repo, quotas, emit)}, quotas
+	return jobsusecases.AdminJobDeps{Repo: repo, Canceler: jobsusecases.NewCanceler(repo, quotas, emit)}, quotas
 }
 
 // 取り消しが減算を飛ばすと、取り消した Job の枠が戻らず、テナントは上限に達した後で
@@ -269,12 +269,12 @@ func TestCancelJobForAdmin_ReleasesTheActiveJobsQuota(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
 	var emitted []spec.DomainEvent
 	deps, quotas := adminCancelDepsWithQuotas(repo, func(e spec.DomainEvent) { emitted = append(emitted, e) })
-	enqueuer := usecases.NewEnqueuer(repo, quotas, func(spec.DomainEvent) {})
+	enqueuer := jobsusecases.NewEnqueuer(repo, quotas, func(spec.DomainEvent) {})
 	ctx := context.Background()
 	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	enqueue := func() *domain.Job {
+	enqueue := func() *jobsdomain.Job {
 		t.Helper()
-		job, err := enqueuer.Enqueue(ctx, ports.EnqueueInput{TenantID: "tenant-a", Kind: domain.KindNoopEcho, Params: json.RawMessage(`{}`)}, now)
+		job, err := enqueuer.Enqueue(ctx, jobsports.EnqueueInput{TenantID: "tenant-a", Kind: jobsdomain.KindNoopEcho, Params: json.RawMessage(`{}`)}, now)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -295,7 +295,7 @@ func TestCancelJobForAdmin_ReleasesTheActiveJobsQuota(t *testing.T) {
 	}
 	assertActiveJobs(2)
 
-	if _, err := usecases.CancelJobForAdmin(ctx, deps, target.ID, usecases.TenantScope{TenantID: "tenant-a"}, now); err != nil {
+	if _, err := jobsusecases.CancelJobForAdmin(ctx, deps, target.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, now); err != nil {
 		t.Fatal(err)
 	}
 	assertActiveJobs(1)
@@ -303,7 +303,7 @@ func TestCancelJobForAdmin_ReleasesTheActiveJobsQuota(t *testing.T) {
 		t.Fatalf("emitted %d events, want exactly JobCanceled", len(emitted))
 	}
 
-	if _, err := usecases.CancelJobForAdmin(ctx, deps, target.ID, usecases.TenantScope{TenantID: "tenant-a"}, now); !errors.Is(err, ports.ErrJobAlreadyTerminal) {
+	if _, err := jobsusecases.CancelJobForAdmin(ctx, deps, target.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, now); !errors.Is(err, jobsports.ErrJobAlreadyTerminal) {
 		t.Fatalf("second cancel err = %v, want ErrJobAlreadyTerminal", err)
 	}
 	assertActiveJobs(1)
@@ -318,9 +318,9 @@ func TestNewCancelerRejectsAMissingDependency(t *testing.T) {
 	quotas := tenancy.NewMemoryModule().QuotaRepo
 	emit := func(spec.DomainEvent) {}
 	for name, build := range map[string]func(){
-		"保存先がない":   func() { usecases.NewCanceler(nil, quotas, emit) },
-		"クォータがない":  func() { usecases.NewCanceler(repo, nil, emit) },
-		"発行の関数がない": func() { usecases.NewCanceler(repo, quotas, nil) },
+		"保存先がない":   func() { jobsusecases.NewCanceler(nil, quotas, emit) },
+		"クォータがない":  func() { jobsusecases.NewCanceler(repo, nil, emit) },
+		"発行の関数がない": func() { jobsusecases.NewCanceler(repo, quotas, nil) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {
@@ -334,11 +334,11 @@ func TestNewCancelerRejectsAMissingDependency(t *testing.T) {
 }
 
 // runLaneDefault は既定レーンの Runner を起動し、止める関数を返す。
-func runLaneDefault(t *testing.T, repo *memoryjobs.JobRepository, handlers *usecases.HandlerRegistry, emit func(spec.DomainEvent), lease time.Duration) func() {
+func runLaneDefault(t *testing.T, repo *memoryjobs.JobRepository, handlers *jobsusecases.HandlerRegistry, emit func(spec.DomainEvent), lease time.Duration) func() {
 	t.Helper()
-	runner := usecases.NewRunner(
-		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: lease},
-		usecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: emit},
+	runner := jobsusecases.NewRunner(
+		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: lease},
+		jobsusecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: emit},
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -349,22 +349,22 @@ func runLaneDefault(t *testing.T, repo *memoryjobs.JobRepository, handlers *usec
 //spec:covers EX-JOBS-013-01: queued の Job を取り消すと canceled になって JobCanceled が発行され、その後 `worker` が取得を繰り返してもハンドラーは呼ばれず running にも再試行にも戻らない。
 func TestCancelJobForAdmin_AQueuedJobNeverRuns(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
-	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
+	job := enqueueTestJob(t, repo, jobsdomain.DefaultMaxAttempts)
 	var emitted []spec.DomainEvent
 	deps := adminCancelDeps(repo, func(e spec.DomainEvent) { emitted = append(emitted, e) })
-	if _, err := usecases.CancelJobForAdmin(context.Background(), deps, job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC()); err != nil {
+	if _, err := jobsusecases.CancelJobForAdmin(context.Background(), deps, job.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC()); err != nil {
 		t.Fatalf("CancelJobForAdmin() error = %v", err)
 	}
 	if len(emitted) != 1 {
 		t.Fatalf("emitted %d events, want exactly JobCanceled", len(emitted))
 	}
-	if _, ok := emitted[0].(*domain.JobCanceled); !ok {
+	if _, ok := emitted[0].(*jobsdomain.JobCanceled); !ok {
 		t.Fatalf("emitted %T, want *domain.JobCanceled", emitted[0])
 	}
 
-	handlers := usecases.NewHandlerRegistry()
+	handlers := jobsusecases.NewHandlerRegistry()
 	invoked := make(chan struct{}, 1)
-	handlers.Register(domain.KindNoopEcho, func(context.Context, *domain.Job) (json.RawMessage, error) {
+	handlers.Register(jobsdomain.KindNoopEcho, func(context.Context, *jobsdomain.Job) (json.RawMessage, error) {
 		invoked <- struct{}{}
 		return json.RawMessage(`{}`), nil
 	})
@@ -385,7 +385,7 @@ func TestCancelJobForAdmin_AQueuedJobNeverRuns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != domain.StatusCanceled || got.Attempts != 0 {
+	if got.Status != jobsdomain.StatusCanceled || got.Attempts != 0 {
 		t.Fatalf("Status = %q Attempts = %d, want canceled and never attempted", got.Status, got.Attempts)
 	}
 }
@@ -396,11 +396,11 @@ func TestCancelJobForAdmin_AQueuedJobNeverRuns(t *testing.T) {
 //spec:covers EX-JOBS-013-02: running の Job の取り消しは受理され、リースを失ったハンドラーは次のハートビートで実行コンテキストを取り消されて中断し、Job は canceled のまま残る。
 func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T) {
 	repo := memoryjobs.NewJobRepository()
-	job := enqueueTestJob(t, repo, domain.DefaultMaxAttempts)
-	handlers := usecases.NewHandlerRegistry()
+	job := enqueueTestJob(t, repo, jobsdomain.DefaultMaxAttempts)
+	handlers := jobsusecases.NewHandlerRegistry()
 	started := make(chan struct{})
 	interrupted := make(chan struct{})
-	handlers.Register(domain.KindNoopEcho, func(ctx context.Context, _ *domain.Job) (json.RawMessage, error) {
+	handlers.Register(jobsdomain.KindNoopEcho, func(ctx context.Context, _ *jobsdomain.Job) (json.RawMessage, error) {
 		close(started)
 		select {
 		case <-ctx.Done():
@@ -413,9 +413,9 @@ func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T)
 	rec := &eventRecorder{}
 	metrics := &fakeJobsMetrics{}
 	// ハートビートはリース期間の 3 分の 1 ごとに送られる。
-	runner := usecases.NewRunner(
-		usecases.RunnerConfig{WorkerID: "worker-1", Lane: domain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: 30 * time.Millisecond},
-		usecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: rec.record, Metrics: metrics},
+	runner := jobsusecases.NewRunner(
+		jobsusecases.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 5 * time.Millisecond, LeaseDuration: 30 * time.Millisecond},
+		jobsusecases.RunnerDeps{Repo: repo, Handlers: handlers, Emit: rec.record, Metrics: metrics},
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -426,11 +426,11 @@ func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T)
 		t.Fatal("handler never started")
 	}
 
-	canceled, err := usecases.CancelJobForAdmin(context.Background(), adminCancelDeps(repo, nil), job.ID, usecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC())
+	canceled, err := jobsusecases.CancelJobForAdmin(context.Background(), adminCancelDeps(repo, nil), job.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("CancelJobForAdmin() on a running job error = %v", err)
 	}
-	if canceled.Status != domain.StatusCanceled {
+	if canceled.Status != jobsdomain.StatusCanceled {
 		t.Fatalf("Status = %q, want canceled", canceled.Status)
 	}
 	select {
@@ -448,7 +448,7 @@ func TestCancelJobForAdmin_ARunningJobsHandlerStopsAtItsNextReport(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Status != domain.StatusCanceled {
+	if got.Status != jobsdomain.StatusCanceled {
 		t.Fatalf("Status after the handler stopped = %q, want canceled", got.Status)
 	}
 	if counts := rec.typeCounts(); counts["JobSucceeded"] != 0 || counts["JobFailed"] != 0 {
@@ -462,25 +462,25 @@ func TestCancelJobForAdmin_HidesOtherTenants(t *testing.T) {
 	ctx := context.Background()
 	deps := adminCancelDeps(repo, nil)
 
-	all, err := usecases.ListJobsForAdmin(ctx, deps, usecases.ListJobsInput{Scope: usecases.TenantScope{AllTenants: true}})
+	all, err := jobsusecases.ListJobsForAdmin(ctx, deps, jobsusecases.ListJobsInput{Scope: jobsusecases.TenantScope{AllTenants: true}})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	var foreign *domain.Job
+	var foreign *jobsdomain.Job
 	for _, j := range all.Jobs {
 		if j.TenantID == "tenant-b" {
 			foreign = j
 		}
 	}
 
-	if _, err := usecases.CancelJobForAdmin(ctx, deps, foreign.ID, usecases.TenantScope{TenantID: "tenant-a"}, base); !errors.Is(err, ports.ErrJobNotFound) {
+	if _, err := jobsusecases.CancelJobForAdmin(ctx, deps, foreign.ID, jobsusecases.TenantScope{TenantID: "tenant-a"}, base); !errors.Is(err, jobsports.ErrJobNotFound) {
 		t.Fatalf("cross-tenant cancel: err = %v, want ErrJobNotFound", err)
 	}
 	got, err := repo.Get(ctx, foreign.ID)
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if got.Status != domain.StatusQueued {
+	if got.Status != jobsdomain.StatusQueued {
 		t.Fatalf("a refused cross-tenant cancel changed the job to %q", got.Status)
 	}
 }

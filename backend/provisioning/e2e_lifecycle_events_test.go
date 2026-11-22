@@ -21,10 +21,10 @@ import (
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/provisioning"
 	scim "github.com/ambi/idmagic/backend/provisioning/internal/client_scim"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	identitysource "github.com/ambi/idmagic/backend/provisioning/internal/source_idmanagement"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
@@ -74,7 +74,7 @@ func (r *lifecycleRun) dispatch() {
 // dispatchAt は worker の周期処理を now の時点として 1 回実行する。
 func (r *lifecycleRun) dispatchAt(now time.Time) {
 	r.h.t.Helper()
-	if _, err := usecases.DispatchPendingTasks(testing_tenant.Default(context.Background()), r.module.DispatcherDeps(jobsmodule.NewEnqueuer(r.jobs, tenancy.NewMemoryModule().QuotaRepo, r.emit), r.emit), 100, now); err != nil {
+	if _, err := provisioningusecases.DispatchPendingTasks(testing_tenant.Default(context.Background()), r.module.DispatcherDeps(jobsmodule.NewEnqueuer(r.jobs, tenancy.NewMemoryModule().QuotaRepo, r.emit), r.emit), 100, now); err != nil {
 		r.h.t.Fatalf("DispatchPendingTasks() error = %v", err)
 	}
 }
@@ -117,7 +117,7 @@ func (r *lifecycleRun) handle(job *jobsdomain.Job) error {
 		User:  &identitysource.UserAttributeSource{UserRepo: r.h.userRepo},
 		Group: &identitysource.GroupAttributeSource{GroupRepo: r.h.groupRepo, UserRepo: r.h.userRepo},
 	}
-	newClient := func(_ *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
+	newClient := func(_ *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error) {
 		return scim.NewBearerTokenClient(http.DefaultClient, r.target, secret), nil
 	}
 	handler := provisioning.Handler(r.module.JobHandlerDeps(attrSource, nil, newClient, r.emit, nil))
@@ -125,7 +125,7 @@ func (r *lifecycleRun) handle(job *jobsdomain.Job) error {
 	return err
 }
 
-func (r *lifecycleRun) task(id string) *domain.ProvisioningTask {
+func (r *lifecycleRun) task(id string) *provisioningdomain.ProvisioningTask {
 	r.h.t.Helper()
 	d, err := r.h.taskRepo.Find(testing_tenant.Default(context.Background()), r.h.tenantID, id)
 	if err != nil || d == nil {
@@ -163,7 +163,7 @@ func TestQuarantinedTasksResumeWithoutLosingQueuedWork(t *testing.T) {
 	if err := run.handle(job); err != nil {
 		t.Fatalf("quarantined handler: %v", err)
 	}
-	if got := run.task(params.TaskID); got.Status != domain.TaskPending || got.JobID == nil || *got.JobID != job.ID || h.downstream.count() != 0 {
+	if got := run.task(params.TaskID); got.Status != provisioningdomain.TaskPending || got.JobID == nil || *got.JobID != job.ID || h.downstream.count() != 0 {
 		t.Fatalf("held=%+v downstream=%d; want pending with previous job and no send", got, h.downstream.count())
 	}
 	stored, err := h.connRepo.Find(ctx, h.tenantID, h.connectionID)
@@ -174,7 +174,7 @@ func TestQuarantinedTasksResumeWithoutLosingQueuedWork(t *testing.T) {
 	if err := run.handle(job); err != nil {
 		t.Fatalf("replayed held job: %v", err)
 	}
-	if _, err := usecases.ResumeConnection(ctx, usecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo}, h.tenantID, h.connectionID, time.Now()); err != nil {
+	if _, err := provisioningusecases.ResumeConnection(ctx, provisioningusecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo}, h.tenantID, h.connectionID, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	// 前のジョブを running のまま残しても、解除後の投入は新しいジョブへ関連付ける。
@@ -192,7 +192,7 @@ func TestQuarantinedTasksResumeWithoutLosingQueuedWork(t *testing.T) {
 	if err := run.handle(resumed); err != nil {
 		t.Fatal(err)
 	}
-	if got := run.task(params.TaskID); got.Status != domain.TaskSucceeded || h.downstream.count() != 1 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted", "ProvisioningTaskStarted", "UserProvisioned"}) {
+	if got := run.task(params.TaskID); got.Status != provisioningdomain.TaskSucceeded || h.downstream.count() != 1 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted", "ProvisioningTaskStarted", "UserProvisioned"}) {
 		t.Fatalf("resumed=%+v downstream=%d events=%v", got, h.downstream.count(), run.types())
 	}
 }
@@ -219,9 +219,9 @@ func TestDisabledTasksResumeWithoutLosingQueuedWork(t *testing.T) {
 	if err := h.connRepo.Update(ctx, conn, nil); err != nil {
 		t.Fatal(err)
 	}
-	admin := usecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo}
-	if _, err := usecases.UpdateConnection(ctx, admin, usecases.UpdateConnectionInput{
-		TenantID: h.tenantID, ApplicationID: h.connectionID, Status: new(domain.ConnectionDisabled), Now: time.Now(),
+	admin := provisioningusecases.AdminDeps{ConnectionRepo: h.connRepo, TaskRepo: h.taskRepo}
+	if _, err := provisioningusecases.UpdateConnection(ctx, admin, provisioningusecases.UpdateConnectionInput{
+		TenantID: h.tenantID, ApplicationID: h.connectionID, Status: new(provisioningdomain.ConnectionDisabled), Now: time.Now(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -229,19 +229,19 @@ func TestDisabledTasksResumeWithoutLosingQueuedWork(t *testing.T) {
 	if err := run.handle(job); err != nil {
 		t.Fatalf("disabled handler: %v", err)
 	}
-	if got := run.task(params.TaskID); got.Status != domain.TaskPending || got.JobID == nil || *got.JobID != job.ID || h.downstream.count() != 0 {
+	if got := run.task(params.TaskID); got.Status != provisioningdomain.TaskPending || got.JobID == nil || *got.JobID != job.ID || h.downstream.count() != 0 {
 		t.Fatalf("held=%+v downstream=%d; want pending with previous job and no send", got, h.downstream.count())
 	}
 	stored, err := h.connRepo.Find(ctx, h.tenantID, h.connectionID)
-	if err != nil || stored.Status != domain.ConnectionDisabled || stored.ConsecutiveFailureCount != 3 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted"}) {
+	if err != nil || stored.Status != provisioningdomain.ConnectionDisabled || stored.ConsecutiveFailureCount != 3 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted"}) {
 		t.Fatalf("connection=%+v events=%v error=%v; want no success/failure bookkeeping", stored, run.types(), err)
 	}
 	run.dispatch()
 	if err := run.handle(job); err != nil {
 		t.Fatalf("replayed held job: %v", err)
 	}
-	if _, err := usecases.UpdateConnection(ctx, admin, usecases.UpdateConnectionInput{
-		TenantID: h.tenantID, ApplicationID: h.connectionID, Status: new(domain.ConnectionActive), Now: time.Now(),
+	if _, err := provisioningusecases.UpdateConnection(ctx, admin, provisioningusecases.UpdateConnectionInput{
+		TenantID: h.tenantID, ApplicationID: h.connectionID, Status: new(provisioningdomain.ConnectionActive), Now: time.Now(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestDisabledTasksResumeWithoutLosingQueuedWork(t *testing.T) {
 	if err := run.handle(resumed); err != nil {
 		t.Fatal(err)
 	}
-	if got := run.task(params.TaskID); got.Status != domain.TaskSucceeded || h.downstream.count() != 1 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted", "ProvisioningTaskStarted", "UserProvisioned"}) {
+	if got := run.task(params.TaskID); got.Status != provisioningdomain.TaskSucceeded || h.downstream.count() != 1 || !slices.Equal(run.types(), []string{"ProvisioningTaskStarted", "ProvisioningTaskStarted", "UserProvisioned"}) {
 		t.Fatalf("resumed=%+v downstream=%d events=%v", got, h.downstream.count(), run.types())
 	}
 }
@@ -303,7 +303,7 @@ func TestE2E_DispatchAndTaskEmitStartedThenProvisioned(t *testing.T) {
 	if err := json.Unmarshal(job.Params, &params); err != nil {
 		t.Fatal(err)
 	}
-	if got := run.task(params.TaskID); got.Status != domain.TaskInFlight || got.JobID == nil || *got.JobID != job.ID {
+	if got := run.task(params.TaskID); got.Status != provisioningdomain.TaskInFlight || got.JobID == nil || *got.JobID != job.ID {
 		t.Fatalf("task after dispatch = %+v, want in_flight with job %s", got, job.ID)
 	}
 	if err := run.handle(job); err != nil {
@@ -317,7 +317,7 @@ func TestE2E_DispatchAndTaskEmitStartedThenProvisioned(t *testing.T) {
 	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserProvisioned"}) {
 		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserProvisioned]", got)
 	}
-	if got := run.task(params.TaskID); got.Status != domain.TaskSucceeded || h.downstream.count() != 1 {
+	if got := run.task(params.TaskID); got.Status != provisioningdomain.TaskSucceeded || h.downstream.count() != 1 {
 		t.Fatalf("status = %v, downstream requests = %d; want succeeded after one POST", got.Status, h.downstream.count())
 	}
 	started, provisioned := wire(t, run.events[0]), wire(t, run.events[1])
@@ -334,9 +334,9 @@ func TestE2E_UnassignmentSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	h := newE2EHarness(t)
 	// 登録時の既定マッピングと同じく、active を User の属性から送る。
 	conn := h.connection()
-	conn.AttributeMappings = []domain.AttributeMappingRule{
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
-		{TargetPath: "active", SourceKind: domain.SourceKindAttribute, SourceKey: "active", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
+	conn.AttributeMappings = []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
+		{TargetPath: "active", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "active", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
 	}
 	h.saveConnection(conn)
 	run := newLifecycleRun(h)
@@ -417,7 +417,7 @@ func TestE2E_ExhaustedTaskEmitsFailedAndQuarantined(t *testing.T) {
 	if got := run.types(); !slices.Equal(got, []string{"ProvisioningTaskStarted", "UserProvisioningFailed", "ConnectionQuarantined"}) {
 		t.Fatalf("events = %v, want [ProvisioningTaskStarted UserProvisioningFailed ConnectionQuarantined]", got)
 	}
-	if h.connection().Health != domain.HealthQuarantined {
+	if h.connection().Health != provisioningdomain.HealthQuarantined {
 		t.Errorf("connection health = %v, want quarantined", h.connection().Health)
 	}
 	if quarantined := wire(t, run.events[2]); quarantined["applicationId"] != h.connectionID || quarantined["consecutiveFailures"] != float64(1) {
@@ -429,9 +429,9 @@ func TestE2E_ExhaustedTaskEmitsFailedAndQuarantined(t *testing.T) {
 func TestE2E_MissingRequiredAttributeFailsClosedWithoutRetry(t *testing.T) {
 	h := newE2EHarness(t)
 	conn := h.connection()
-	conn.AttributeMappings = []domain.AttributeMappingRule{
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
-		{TargetPath: `emails[type eq "work"].value`, SourceKind: domain.SourceKindAttribute, SourceKey: "email", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
+	conn.AttributeMappings = []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
+		{TargetPath: `emails[type eq "work"].value`, SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "email", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
 	}
 	h.saveConnection(conn)
 	run := newLifecycleRun(h)
@@ -464,9 +464,9 @@ func TestE2E_MissingRequiredAttributeFailsClosedWithoutRetry(t *testing.T) {
 func TestE2E_DisablingAUserSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 	h := newE2EHarness(t)
 	conn := h.connection()
-	conn.AttributeMappings = []domain.AttributeMappingRule{
-		{TargetPath: "userName", SourceKind: domain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
-		{TargetPath: "active", SourceKind: domain.SourceKindAttribute, SourceKey: "active", ApplyOn: domain.ApplyCreateAndUpdate, Required: true},
+	conn.AttributeMappings = []provisioningdomain.AttributeMappingRule{
+		{TargetPath: "userName", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "preferred_username", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
+		{TargetPath: "active", SourceKind: provisioningdomain.SourceKindAttribute, SourceKey: "active", ApplyOn: provisioningdomain.ApplyCreateAndUpdate, Required: true},
 	}
 	h.saveConnection(conn)
 	run := newLifecycleRun(h)
@@ -499,7 +499,7 @@ func TestE2E_DisablingAUserSendsActiveFalseAndEmitsDeprovisioned(t *testing.T) {
 func (h *e2eHarness) useDeleteWithGracePeriod(days int) {
 	h.t.Helper()
 	conn := h.connection()
-	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn.DeprovisionPolicy.OnDelete = provisioningdomain.DeprovisionDelete
 	conn.DeprovisionPolicy.GracePeriodDays = days
 	h.saveConnection(conn)
 }

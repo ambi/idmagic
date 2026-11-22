@@ -3,7 +3,7 @@ package authentication
 import (
 	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/config_file"
 	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/protocol_kerberos"
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
+	negotiateusecases "github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
 	signinhttp "github.com/ambi/idmagic/backend/authentication/internal/signin/handlers_http"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/labstack/echo/v5"
@@ -19,7 +19,7 @@ func (m *Module) ConfigureNegotiate(path string, users userports.UserRepository)
 	if err != nil {
 		return "", err
 	}
-	service, err := usecases.New(config.Tenants, protocol_kerberos.Verifier{}, m.FederationReplayStore, users)
+	service, err := negotiateusecases.New(config.Tenants, protocol_kerberos.Verifier{}, m.FederationReplayStore, users)
 	if err != nil {
 		return "", err
 	}

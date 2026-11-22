@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 )
 
@@ -47,7 +47,7 @@ func TestUpdateMaxDelegationDepthOnlyTightens(t *testing.T) {
 	t.Run("a value above the system default is rejected", func(t *testing.T) {
 		repo, id := newDelegationDepthTenant(t)
 		_, err := Update(context.Background(), repo, id,
-			UpdateInput{MaxDelegationDepth: new(domain.DefaultMaxDelegationDepth + 1)}, floor, time.Now().UTC())
+			UpdateInput{MaxDelegationDepth: new(tenancydomain.DefaultMaxDelegationDepth + 1)}, floor, time.Now().UTC())
 		if !errors.Is(err, ErrPolicyOverrideWeaker) {
 			t.Fatalf("err = %v, want %v", err, ErrPolicyOverrideWeaker)
 		}
@@ -79,7 +79,7 @@ func TestUpdateMaxDelegationDepthOnlyTightens(t *testing.T) {
 		if updated.MaxDelegationDepth != nil {
 			t.Fatalf("MaxDelegationDepth = %v, want nil after clearing", updated.MaxDelegationDepth)
 		}
-		if updated.EffectiveMaxDelegationDepth() != domain.DefaultMaxDelegationDepth {
+		if updated.EffectiveMaxDelegationDepth() != tenancydomain.DefaultMaxDelegationDepth {
 			t.Fatalf("EffectiveMaxDelegationDepth() = %d, want the system default",
 				updated.EffectiveMaxDelegationDepth())
 		}

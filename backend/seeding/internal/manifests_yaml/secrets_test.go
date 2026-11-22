@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 )
 
 func TestSecretResolverResolvesEnvAndContainedFile(t *testing.T) {
@@ -19,11 +19,11 @@ func TestSecretResolverResolvesEnvAndContainedFile(t *testing.T) {
 		return ""
 	}}
 	for _, test := range []struct {
-		ref  domain.SecretReference
+		ref  seedingdomain.SecretReference
 		want string
 	}{
-		{domain.SecretReference{Provider: domain.SecretProviderEnv, Locator: "DEMO_SECRET", Version: "v1"}, "env-secret"},
-		{domain.SecretReference{Provider: domain.SecretProviderFile, Locator: "password", Version: "v1"}, "file-secret"},
+		{seedingdomain.SecretReference{Provider: seedingdomain.SecretProviderEnv, Locator: "DEMO_SECRET", Version: "v1"}, "env-secret"},
+		{seedingdomain.SecretReference{Provider: seedingdomain.SecretProviderFile, Locator: "password", Version: "v1"}, "file-secret"},
 	} {
 		got, err := resolver.Resolve(test.ref)
 		if err != nil || got != test.want {
@@ -41,11 +41,11 @@ func TestSecretResolverRejectsMissingUnsafeOrOversizedValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolver := SecretResolver{SecretRoot: root, Getenv: func(string) string { return "" }}
-	for _, ref := range []domain.SecretReference{
-		{Provider: domain.SecretProviderEnv, Locator: "MISSING", Version: "v1"},
-		{Provider: domain.SecretProviderFile, Locator: "../escape", Version: "v1"},
-		{Provider: domain.SecretProviderFile, Locator: "nul", Version: "v1"},
-		{Provider: domain.SecretProviderFile, Locator: "large", Version: "v1"},
+	for _, ref := range []seedingdomain.SecretReference{
+		{Provider: seedingdomain.SecretProviderEnv, Locator: "MISSING", Version: "v1"},
+		{Provider: seedingdomain.SecretProviderFile, Locator: "../escape", Version: "v1"},
+		{Provider: seedingdomain.SecretProviderFile, Locator: "nul", Version: "v1"},
+		{Provider: seedingdomain.SecretProviderFile, Locator: "large", Version: "v1"},
 	} {
 		if value, err := resolver.Resolve(ref); err == nil || value != "" {
 			t.Fatalf("Resolve(%+v) = %q, %v; want redacted error", ref, value, err)

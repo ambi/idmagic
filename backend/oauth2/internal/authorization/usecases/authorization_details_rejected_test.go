@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -20,10 +20,10 @@ func TestAuthorizationDetailsRefusalEmitsRejected(t *testing.T) {
 	seedPaymentType(types)
 	var emitted []spec.DomainEvent
 	record := func(event spec.DomainEvent) { emitted = append(emitted, event) }
-	rejections := func() []*domain.AuthorizationDetailsRejected {
-		var found []*domain.AuthorizationDetailsRejected
+	rejections := func() []*oauthdomain.AuthorizationDetailsRejected {
+		var found []*oauthdomain.AuthorizationDetailsRejected
 		for _, event := range emitted {
-			if rejected, ok := event.(*domain.AuthorizationDetailsRejected); ok {
+			if rejected, ok := event.(*oauthdomain.AuthorizationDetailsRejected); ok {
 				found = append(found, rejected)
 			}
 		}
@@ -73,7 +73,7 @@ func TestAuthorizationDetailsRefusalEmitsRejected(t *testing.T) {
 	})
 
 	clientRepo := oauth2memory.NewClientRepository()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "par-client",
 		RedirectURIs: []string{"https://example.com/cb"}, GrantTypes: []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes: []spec.ResponseType{spec.ResponseTypeCode},
@@ -109,9 +109,9 @@ var errDetailTypeStore = errors.New("detail type store unavailable")
 
 // failingDetailTypeRepository は種類の保管先の障害を再現する。
 type failingDetailTypeRepository struct {
-	ports.AuthorizationDetailTypeRepository
+	oauthports.AuthorizationDetailTypeRepository
 }
 
-func (failingDetailTypeRepository) FindByType(context.Context, string, string) (*domain.AuthorizationDetailType, error) {
+func (failingDetailTypeRepository) FindByType(context.Context, string, string) (*oauthdomain.AuthorizationDetailType, error) {
 	return nil, errDetailTypeStore
 }

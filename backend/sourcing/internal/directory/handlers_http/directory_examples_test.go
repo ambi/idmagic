@@ -28,9 +28,9 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sourcing/internal/directory/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
 	directoryhttp "github.com/ambi/idmagic/backend/sourcing/internal/directory/handlers_http"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
+	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -61,7 +61,7 @@ type server struct {
 	now            time.Time
 	mu             sync.Mutex
 	events         []string
-	delegation     *usecases.Delegation
+	delegation     *directoryusecases.Delegation
 	users          userports.UserRepository
 	correlations   *db_memory.CorrelationRepository
 	diagnosticGate *diagnosticGate
@@ -81,17 +81,17 @@ func newServer(t *testing.T) *server {
 			t.Fatal(err)
 		}
 	}
-	service := usecases.New(db_memory.NewConnectorRepository(), &replayStore{seen: map[string]bool{}},
+	service := directoryusecases.New(db_memory.NewConnectorRepository(), &replayStore{seen: map[string]bool{}},
 		func(event spec.DomainEvent) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.events = append(s.events, event.EventType())
 		},
-		usecases.WithClock(func() time.Time { return s.now }),
+		directoryusecases.WithClock(func() time.Time { return s.now }),
 	)
 	s.users = users
 	s.correlations = db_memory.NewCorrelationRepository()
-	s.delegation = &usecases.Delegation{Service: service, Correlations: s.correlations, Challenges: db_memory.NewPasswordChallengeStore(), Locks: db_memory.NewIngestionRunRepository(), Users: users, Now: time.Now}
+	s.delegation = &directoryusecases.Delegation{Service: service, Correlations: s.correlations, Challenges: db_memory.NewPasswordChallengeStore(), Locks: db_memory.NewIngestionRunRepository(), Users: users, Now: time.Now}
 	s.diagnosticGate = &diagnosticGate{}
 	deps := support.Deps{Issuer: issuer}
 	authenticator := &support.Authenticator{
@@ -493,9 +493,9 @@ func TestDirectoryConnector_AdminOperations(t *testing.T) {
 	if want := "DirectoryConnectorDisabled"; strings.Join(s.events, ",") != want {
 		t.Fatalf("events = %v, want %v", s.events, want)
 	}
-	if got := s.get(second.Connector.ID); got.Status != domainStatus(domain.StatusDisabled) {
+	if got := s.get(second.Connector.ID); got.Status != domainStatus(directorydomain.StatusDisabled) {
 		t.Fatalf("connector = %+v", got)
 	}
 }
 
-func domainStatus(status domain.ConnectorStatus) string { return string(status) }
+func domainStatus(status directorydomain.ConnectorStatus) string { return string(status) }

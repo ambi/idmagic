@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -30,32 +30,32 @@ type agentDelegationGrantRequest struct {
 }
 
 type accountAgentDelegationResponse struct {
-	AgentID    string              `json:"agent_id"`
-	AgentName  string              `json:"agent_name"`
-	OwnerName  string              `json:"owner_name,omitempty"`
-	Scopes     []string            `json:"scopes"`
-	State      domain.ConsentState `json:"state"`
-	GrantedAt  time.Time           `json:"granted_at"`
-	ExpiresAt  time.Time           `json:"expires_at"`
-	LastUsedAt *time.Time          `json:"last_used_at,omitempty"`
+	AgentID    string                   `json:"agent_id"`
+	AgentName  string                   `json:"agent_name"`
+	OwnerName  string                   `json:"owner_name,omitempty"`
+	Scopes     []string                 `json:"scopes"`
+	State      oauthdomain.ConsentState `json:"state"`
+	GrantedAt  time.Time                `json:"granted_at"`
+	ExpiresAt  time.Time                `json:"expires_at"`
+	LastUsedAt *time.Time               `json:"last_used_at,omitempty"`
 }
 
 type adminAgentDelegationResponse struct {
-	UserID            string              `json:"user_id"`
-	PreferredUsername string              `json:"preferred_username,omitempty"`
-	AgentID           string              `json:"agent_id"`
-	AgentName         string              `json:"agent_name"`
-	Scopes            []string            `json:"scopes"`
-	State             domain.ConsentState `json:"state"`
-	GrantedAt         time.Time           `json:"granted_at"`
-	ExpiresAt         time.Time           `json:"expires_at"`
-	RevokedAt         *time.Time          `json:"revoked_at,omitempty"`
-	LastUsedAt        *time.Time          `json:"last_used_at,omitempty"`
+	UserID            string                   `json:"user_id"`
+	PreferredUsername string                   `json:"preferred_username,omitempty"`
+	AgentID           string                   `json:"agent_id"`
+	AgentName         string                   `json:"agent_name"`
+	Scopes            []string                 `json:"scopes"`
+	State             oauthdomain.ConsentState `json:"state"`
+	GrantedAt         time.Time                `json:"granted_at"`
+	ExpiresAt         time.Time                `json:"expires_at"`
+	RevokedAt         *time.Time               `json:"revoked_at,omitempty"`
+	LastUsedAt        *time.Time               `json:"last_used_at,omitempty"`
 }
 
 const listAdminAgentDelegationsQuery = "ListAdminAgentDelegations"
 
-func (d Deps) toAccountAgentDelegation(ctx context.Context, tenantID string, grant *domain.Consent, usernames map[string]string) (accountAgentDelegationResponse, error) {
+func (d Deps) toAccountAgentDelegation(ctx context.Context, tenantID string, grant *oauthdomain.Consent, usernames map[string]string) (accountAgentDelegationResponse, error) {
 	response := accountAgentDelegationResponse{
 		AgentID: grant.AgentID, AgentName: grant.AgentID,
 		Scopes: slices.Clone(grant.Scopes), State: grant.State,
@@ -188,7 +188,7 @@ func (d Deps) handleListAdminAgentDelegations(c *echo.Context) error {
 	if err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	var grants []*domain.Consent
+	var grants []*oauthdomain.Consent
 	if page.Direction == support.PageBackward {
 		grants, err = d.ConsentRepo.ListAgentDelegationPageBefore(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
 	} else {

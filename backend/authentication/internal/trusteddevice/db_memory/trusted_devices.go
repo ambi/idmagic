@@ -6,24 +6,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // TrustedDeviceRepository は信頼済みデバイスの in-memory 実装 (wi-91)。
 type TrustedDeviceRepository struct {
 	mu      sync.Mutex
-	devices map[string]*domain.TrustedDevice // key: device id
+	devices map[string]*trusteddevicedomain.TrustedDevice // key: device id
 }
 
 func NewTrustedDeviceRepository() *TrustedDeviceRepository {
-	return &TrustedDeviceRepository{devices: map[string]*domain.TrustedDevice{}}
+	return &TrustedDeviceRepository{devices: map[string]*trusteddevicedomain.TrustedDevice{}}
 }
 
 func (r *TrustedDeviceRepository) FindBySelector(
 	_ context.Context,
 	tenantID, selector string,
-) (*domain.TrustedDevice, error) {
+) (*trusteddevicedomain.TrustedDevice, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, device := range r.devices {
@@ -37,7 +37,7 @@ func (r *TrustedDeviceRepository) FindBySelector(
 func (r *TrustedDeviceRepository) FindByID(
 	_ context.Context,
 	tenantID, userID, deviceID string,
-) (*domain.TrustedDevice, error) {
+) (*trusteddevicedomain.TrustedDevice, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	device := r.devices[deviceID]
@@ -51,10 +51,10 @@ func (r *TrustedDeviceRepository) ListActiveByUser(
 	_ context.Context,
 	tenantID, userID string,
 	now time.Time,
-) ([]*domain.TrustedDevice, error) {
+) ([]*trusteddevicedomain.TrustedDevice, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*domain.TrustedDevice{}
+	out := []*trusteddevicedomain.TrustedDevice{}
 	for _, device := range r.devices {
 		if device.TenantID != tenantID || device.UserID != userID {
 			continue
@@ -68,7 +68,7 @@ func (r *TrustedDeviceRepository) ListActiveByUser(
 	return out, nil
 }
 
-func (r *TrustedDeviceRepository) Save(_ context.Context, device *domain.TrustedDevice) error {
+func (r *TrustedDeviceRepository) Save(_ context.Context, device *trusteddevicedomain.TrustedDevice) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.devices[device.ID] = cloneTrustedDevice(device)
@@ -80,10 +80,10 @@ func (r *TrustedDeviceRepository) RevokeAllForUser(
 	tenantID, userID string,
 	reason spec.TrustedDeviceRevokeReason,
 	now time.Time,
-) ([]*domain.TrustedDevice, error) {
+) ([]*trusteddevicedomain.TrustedDevice, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	revoked := []*domain.TrustedDevice{}
+	revoked := []*trusteddevicedomain.TrustedDevice{}
 	for _, device := range r.devices {
 		if device.TenantID != tenantID || device.UserID != userID || device.RevokedAt != nil {
 			continue
@@ -106,7 +106,7 @@ func (r *TrustedDeviceRepository) DeleteAllForSub(_ context.Context, userID stri
 	return nil
 }
 
-func cloneTrustedDevice(device *domain.TrustedDevice) *domain.TrustedDevice {
+func cloneTrustedDevice(device *trusteddevicedomain.TrustedDevice) *trusteddevicedomain.TrustedDevice {
 	if device == nil {
 		return nil
 	}

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -17,8 +17,8 @@ type Enqueuer interface {
 
 // DispatcherDeps are DispatchPendingTasks's dependencies.
 type DispatcherDeps struct {
-	TaskRepo       ports.ProvisioningTaskRepository
-	ConnectionRepo ports.ProvisioningConnectionRepository
+	TaskRepo       provisioningports.ProvisioningTaskRepository
+	ConnectionRepo provisioningports.ProvisioningConnectionRepository
 	Enqueuer       Enqueuer
 	// Emit は関連付けに成功したプロビジョニングタスクの ProvisioningTaskStarted を発行する。
 	Emit func(spec.DomainEvent)
@@ -67,7 +67,7 @@ func DispatchPendingTasks(ctx context.Context, deps DispatcherDeps, limit int, n
 			}
 			if attached {
 				dispatched++
-				emit(deps.Emit, &domain.ProvisioningTaskStarted{
+				emit(deps.Emit, &provisioningdomain.ProvisioningTaskStarted{
 					At: now.UTC(), TenantID: d.TenantID, ConnectionID: d.ConnectionID, TaskID: d.ID, JobID: jobID,
 				})
 			}
@@ -78,7 +78,7 @@ func DispatchPendingTasks(ctx context.Context, deps DispatcherDeps, limit int, n
 
 // materializeDueDeprovisions は期限に達した予約をプロビジョニングタスクへ変える。取消と競合した予約は
 // MaterializeDeprovision が false を返すので、プロビジョニングタスクを作らずに読み飛ばす。
-func materializeDueDeprovisions(ctx context.Context, repo ports.ProvisioningTaskRepository, limit int, now time.Time) error {
+func materializeDueDeprovisions(ctx context.Context, repo provisioningports.ProvisioningTaskRepository, limit int, now time.Time) error {
 	due, err := repo.ListDueDeprovisions(ctx, now, limit)
 	if err != nil {
 		return err

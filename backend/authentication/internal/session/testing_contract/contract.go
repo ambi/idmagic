@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
-	"github.com/ambi/idmagic/backend/authentication/session/ports"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type Fixture struct {
-	Store   ports.SessionStore
+	Store   sessionports.SessionStore
 	Context func(context.Context) context.Context
 	Other   func(context.Context) context.Context
 	TenantA string
@@ -35,7 +35,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := f.Context(context.Background())
-	session := &domain.LoginSession{
+	session := &sessiondomain.LoginSession{
 		ID: newID(t), TenantID: f.TenantA, UserID: f.UserID, AuthTime: f.Now.Unix(), AMR: []string{"pwd"},
 		ACR: "urn:idmagic:acr:pwd", ExpiresAt: f.Now.Add(time.Hour),
 	}
@@ -86,12 +86,12 @@ func runCountActive(t *testing.T, f Fixture) {
 	}
 	save := func(ctx context.Context, tenantID string, expiresAt time.Time, pending bool) string {
 		t.Helper()
-		session := &domain.LoginSession{
+		session := &sessiondomain.LoginSession{
 			ID: newID(t), TenantID: tenantID, UserID: f.UserID, AuthTime: f.Now.Unix(), AMR: []string{"pwd"},
 			ACR: "urn:idmagic:acr:pwd", ExpiresAt: expiresAt, AuthenticationPending: pending,
 		}
 		if pending {
-			session.PendingPurpose = domain.LoginPendingChallenge
+			session.PendingPurpose = sessiondomain.LoginPendingChallenge
 		}
 		if err := f.Store.Save(ctx, session); err != nil {
 			t.Fatalf("Save: %v", err)

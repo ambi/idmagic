@@ -10,8 +10,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -36,7 +36,7 @@ func ParseAuthorizationDetails(raw string) ([]spec.AuthorizationDetail, error) {
 
 // ValidateAuthorizationDetails は各 detail を登録済み type に対し検証する (fail-closed)。
 // repo が nil・未登録 type・スキーマ不適合はすべて拒否する。
-func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationDetailTypeRepository, details []spec.AuthorizationDetail) error {
+func ValidateAuthorizationDetails(ctx context.Context, repo oauthports.AuthorizationDetailTypeRepository, details []spec.AuthorizationDetail) error {
 	if len(details) == 0 {
 		return nil
 	}
@@ -55,7 +55,7 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 		if t == nil {
 			return NewOAuthError(errInvalidAuthorizationDetails, "Unregistered authorization_details type: "+d.Type)
 		}
-		if err := domain.ValidateAgainstType(d, *t); err != nil {
+		if err := oauthdomain.ValidateAgainstType(d, *t); err != nil {
 			return NewOAuthError(errInvalidAuthorizationDetails, err.Error())
 		}
 	}
@@ -64,8 +64,8 @@ func ValidateAuthorizationDetails(ctx context.Context, repo ports.AuthorizationD
 
 // LoadAuthorizationDetailTypes は details に現れる type の登録定義を map で返す
 // (DetailsSubsetOf のダウンスコープ判定用)。未登録 type は map に現れない。
-func LoadAuthorizationDetailTypes(ctx context.Context, repo ports.AuthorizationDetailTypeRepository, details []spec.AuthorizationDetail) (map[string]domain.AuthorizationDetailType, error) {
-	out := map[string]domain.AuthorizationDetailType{}
+func LoadAuthorizationDetailTypes(ctx context.Context, repo oauthports.AuthorizationDetailTypeRepository, details []spec.AuthorizationDetail) (map[string]oauthdomain.AuthorizationDetailType, error) {
+	out := map[string]oauthdomain.AuthorizationDetailType{}
 	if repo == nil {
 		return out, nil
 	}

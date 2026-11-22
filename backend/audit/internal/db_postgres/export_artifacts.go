@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ambi/idmagic/backend/audit/ports"
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
@@ -19,56 +19,56 @@ import (
 
 type ExportArtifactStore struct{ Pool postgres.DB }
 
-func exportMetadata(row *AuditExportArtifact) ports.ExportArtifact {
-	return ports.ExportArtifact{Ref: row.ID, JobID: row.JobID, TenantID: row.TenantID, Events: int(row.Events), ByteSize: row.ByteSize, SHA256: row.Sha256, ExpiresAt: row.ExpiresAt}
+func exportMetadata(row *AuditExportArtifact) auditports.ExportArtifact {
+	return auditports.ExportArtifact{Ref: row.ID, JobID: row.JobID, TenantID: row.TenantID, Events: int(row.Events), ByteSize: row.ByteSize, SHA256: row.Sha256, ExpiresAt: row.ExpiresAt}
 }
 
-func (s *ExportArtifactStore) find(ctx context.Context, tenantID, jobID string) (ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) find(ctx context.Context, tenantID, jobID string) (auditports.ExportArtifact, error) {
 	row, err := New(s.Pool).FindAuditExportArtifact(ctx, FindAuditExportArtifactParams{TenantID: tenantID, JobID: jobID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ports.ExportArtifact{}, ports.ErrExportArtifactNotFound
+		return auditports.ExportArtifact{}, auditports.ErrExportArtifactNotFound
 	}
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	return exportMetadata(row), nil
 }
 
-func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string, write func(io.Writer) (ports.ExportCompletion, error)) (ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string, write func(io.Writer) (auditports.ExportCompletion, error)) (auditports.ExportArtifact, error) {
 	if existing, err := s.find(ctx, tenantID, jobID); err == nil {
 		return existing, nil
-	} else if !errors.Is(err, ports.ErrExportArtifactNotFound) {
-		return ports.ExportArtifact{}, err
+	} else if !errors.Is(err, auditports.ErrExportArtifactNotFound) {
+		return auditports.ExportArtifact{}, err
 	}
 	file, err := os.CreateTemp("", "idmagic-audit-export-*")
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	defer file.Close()           //nolint:errcheck // 一時ファイルは成否にかかわらず閉じる。
 	defer os.Remove(file.Name()) //nolint:errcheck // 失敗しても非公開の一時ファイルだけが残る。
 	digest := sha256.New()
 	completion, err := write(io.MultiWriter(file, digest))
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	stat, err := file.Stat()
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	ref, err := spec.NewUUIDv4()
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
-	m := ports.ExportArtifact{Ref: ref, JobID: jobID, TenantID: tenantID, Events: completion.Events, ByteSize: stat.Size(), SHA256: hex.EncodeToString(digest.Sum(nil)), ExpiresAt: completion.ExpiresAt.UTC().Truncate(time.Microsecond)}
+	m := auditports.ExportArtifact{Ref: ref, JobID: jobID, TenantID: tenantID, Events: completion.Events, ByteSize: stat.Size(), SHA256: hex.EncodeToString(digest.Sum(nil)), ExpiresAt: completion.ExpiresAt.UTC().Truncate(time.Microsecond)}
 	if m.Events < 0 || m.Events > math.MaxInt32 {
-		return ports.ExportArtifact{}, errors.New("audit export event count exceeds storage range")
+		return auditports.ExportArtifact{}, errors.New("audit export event count exceeds storage range")
 	}
 	err = New(s.Pool).CreateAuditExportArtifact(ctx, CreateAuditExportArtifactParams{ID: ref, JobID: jobID, TenantID: tenantID, Events: int32(m.Events), ByteSize: m.ByteSize, Sha256: m.SHA256, ExpiresAt: m.ExpiresAt})
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	// 公開前の失敗は独立した短い期限で掃除し、キャンセル済み ctx に後始末を依存させない。
 	defer func() {
@@ -81,19 +81,19 @@ func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string,
 		n, readErr := io.ReadFull(file, buffer)
 		if n > 0 {
 			if err := New(s.Pool).InsertAuditExportChunk(ctx, InsertAuditExportChunkParams{ArtifactID: ref, ChunkNumber: chunk, Payload: buffer[:n]}); err != nil {
-				return ports.ExportArtifact{}, err
+				return auditports.ExportArtifact{}, err
 			}
 		}
 		if errors.Is(readErr, io.EOF) || errors.Is(readErr, io.ErrUnexpectedEOF) {
 			break
 		}
 		if readErr != nil {
-			return ports.ExportArtifact{}, readErr
+			return auditports.ExportArtifact{}, readErr
 		}
 	}
 	if completion.BeforePublish != nil {
 		if err := completion.BeforePublish(); err != nil {
-			return ports.ExportArtifact{}, err
+			return auditports.ExportArtifact{}, err
 		}
 	}
 	err = New(s.Pool).PublishAuditExportArtifact(ctx, ref)
@@ -102,12 +102,12 @@ func (s *ExportArtifactStore) Write(ctx context.Context, tenantID, jobID string,
 		return s.find(ctx, tenantID, jobID)
 	}
 	if err != nil {
-		return ports.ExportArtifact{}, err
+		return auditports.ExportArtifact{}, err
 	}
 	return m, nil
 }
 
-func (s *ExportArtifactStore) Open(ctx context.Context, tenantID, jobID string) (io.ReadCloser, ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) Open(ctx context.Context, tenantID, jobID string) (io.ReadCloser, auditports.ExportArtifact, error) {
 	m, err := s.find(ctx, tenantID, jobID)
 	if err != nil {
 		return nil, m, err
@@ -115,12 +115,12 @@ func (s *ExportArtifactStore) Open(ctx context.Context, tenantID, jobID string) 
 	return &exportChunkReader{ctx: ctx, pool: s.Pool, ref: m.Ref, remaining: m.ByteSize}, m, nil
 }
 
-func (s *ExportArtifactStore) Expire(ctx context.Context, now time.Time) ([]ports.ExportArtifact, error) {
+func (s *ExportArtifactStore) Expire(ctx context.Context, now time.Time) ([]auditports.ExportArtifact, error) {
 	rows, err := New(s.Pool).ExpireAuditExportArtifacts(ctx, now)
 	if err != nil {
 		return nil, err
 	}
-	var expired []ports.ExportArtifact
+	var expired []auditports.ExportArtifact
 	for _, row := range rows {
 		expired = append(expired, exportMetadata(row))
 	}

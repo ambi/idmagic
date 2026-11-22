@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 )
 
 func TestImplementsCacheInvalidatorPort(t *testing.T) {
-	var _ ports.CacheInvalidator = (*DataKeyCache)(nil)
+	var _ datakeysports.CacheInvalidator = (*DataKeyCache)(nil)
 }
 
 // TestGetActiveReturnsUnwrappedDEK verifies the cache resolves the tenant's

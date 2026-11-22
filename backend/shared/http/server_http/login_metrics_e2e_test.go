@@ -27,7 +27,7 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
@@ -87,14 +87,14 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 	clientRepo := oauth2.NewMemoryModule().ClientRepo
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 
-	secretHash := domain.HashClientSecret(metricsTestClientSecret)
-	_ = clientRepo.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(metricsTestClientSecret)
+	_ = clientRepo.Save(context.Background(), &oauthdomain.OAuth2Client{
 		ClientID: metricsTestClientID, ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "idmagic.admin",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                time.Now().UTC(),
 	})
 

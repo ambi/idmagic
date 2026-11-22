@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -26,12 +26,12 @@ var (
 )
 
 type CategoryDeps struct {
-	Repo    ports.ApplicationCategoryRepository
-	AppRepo ports.ApplicationRepository
+	Repo    appports.ApplicationCategoryRepository
+	AppRepo appports.ApplicationRepository
 	Emit    func(spec.DomainEvent)
 }
 
-func ListCategories(ctx context.Context, deps CategoryDeps) ([]*domain.ApplicationCategory, error) {
+func ListCategories(ctx context.Context, deps CategoryDeps) ([]*appdomain.ApplicationCategory, error) {
 	return deps.Repo.ListAll(ctx, tenantports.TenantID(ctx))
 }
 
@@ -42,7 +42,7 @@ type CreateCategoryInput struct {
 	Now         time.Time
 }
 
-func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInput) (*domain.ApplicationCategory, error) {
+func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInput) (*appdomain.ApplicationCategory, error) {
 	tenantID := tenantports.TenantID(ctx)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -57,14 +57,14 @@ func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInp
 		return nil, err
 	}
 	now := adminNow(in.Now)
-	category := &domain.ApplicationCategory{
+	category := &appdomain.ApplicationCategory{
 		TenantID: tenantID, ID: id, Name: name, Position: position,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := deps.Repo.Save(ctx, category); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id})
+	emit(deps.Emit, &appdomain.ApplicationCategoryCreated{At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: id})
 	return category, nil
 }
 
@@ -88,7 +88,7 @@ type UpdateCategoryInput struct {
 	Now         time.Time
 }
 
-func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInput) (*domain.ApplicationCategory, error) {
+func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInput) (*appdomain.ApplicationCategory, error) {
 	tenantID := tenantports.TenantID(ctx)
 	category, err := deps.Repo.FindByID(ctx, tenantID, in.CategoryID)
 	if err != nil {
@@ -120,7 +120,7 @@ func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInp
 	if err := deps.Repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationCategoryUpdated{
+	emit(deps.Emit, &appdomain.ApplicationCategoryUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: category.ID,
 	})
 	return &updated, nil
@@ -141,7 +141,7 @@ func DeleteCategory(ctx context.Context, deps CategoryDeps, actorUserID, categor
 	if err := deps.AppRepo.RemoveCategory(ctx, tenantID, categoryID); err != nil {
 		return err
 	}
-	emit(deps.Emit, &domain.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID})
+	emit(deps.Emit, &appdomain.ApplicationCategoryDeleted{At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, CategoryID: categoryID})
 	return nil
 }
 
@@ -154,7 +154,7 @@ type SetApplicationCategoriesInput struct {
 
 // SetApplicationCategories は Application に付与するカテゴリ集合を置き換える。
 // category_ids は所属テナントの既存カテゴリのみを許し、重複は除去する。
-func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetApplicationCategoriesInput) (*domain.Application, error) {
+func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetApplicationCategoriesInput) (*appdomain.Application, error) {
 	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.AppRepo.FindByID(ctx, tenantID, in.ApplicationID)
 	if err != nil {
@@ -193,7 +193,7 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 	if err := deps.AppRepo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}
-	emit(deps.Emit, &domain.ApplicationUpdated{
+	emit(deps.Emit, &appdomain.ApplicationUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
 		ApplicationID: app.ID, ChangedFields: []string{"category_ids"},
 	})

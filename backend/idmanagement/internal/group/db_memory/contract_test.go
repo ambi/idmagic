@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	"github.com/ambi/idmagic/backend/idmanagement/internal/group/testing_contract"
 )
 
@@ -12,6 +12,6 @@ import (
 func TestPersistenceContract(t *testing.T) {
 	testing_contract.Run(t, func(*testing.T) testing_contract.Fixture {
 		now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-		return testing_contract.Fixture{Repository: NewGroupRepository(), TenantID: "tenant-contract", UserID: "user-contract", Group: &domain.Group{ID: "group-contract", TenantID: "tenant-contract", Name: "Contract Group", Roles: []string{}, CreatedAt: now, UpdatedAt: now}, Now: now}
+		return testing_contract.Fixture{Repository: NewGroupRepository(), TenantID: "tenant-contract", UserID: "user-contract", Group: &groupdomain.Group{ID: "group-contract", TenantID: "tenant-contract", Name: "Contract Group", Roles: []string{}, CreatedAt: now, UpdatedAt: now}, Now: now}
 	})
 }

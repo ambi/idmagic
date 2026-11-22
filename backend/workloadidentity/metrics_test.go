@@ -9,7 +9,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -24,21 +24,21 @@ func TestTokenVerifierCountsStoredKeyFallback(t *testing.T) {
 	m := NewMemoryModule()
 	uri := "https://issuer.example/jwks.json"
 	fetchedAt := now.Add(-time.Hour)
-	bundle := &domain.WorkloadTrustBundle{
-		ID: "bundle-1", TenantID: "tenant-a", Name: "prod", Profile: domain.WorkloadTrustBundleProfileOIDC,
+	bundle := &workloaddomain.WorkloadTrustBundle{
+		ID: "bundle-1", TenantID: "tenant-a", Name: "prod", Profile: workloaddomain.WorkloadTrustBundleProfileOIDC,
 		TrustDomain: "example.org", Issuer: "https://issuer.example", JWKSURI: &uri,
 		AcceptedAudiences: []string{"https://idmagic.example/token"}, MaxSubjectTokenTTLSeconds: 3600,
-		Status: domain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,
+		Status: workloaddomain.WorkloadTrustBundleStatusEnabled, CreatedAt: now,
 	}
 	if err := m.TrustBundleRepo.Save(ctx, bundle); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.TrustBundleRepo.RecordJWKSFetched(ctx, "tenant-a", "bundle-1", &uri, domain.JWKSSnapshot{
+	if err := m.TrustBundleRepo.RecordJWKSFetched(ctx, "tenant-a", "bundle-1", &uri, workloaddomain.JWKSSnapshot{
 		Keys: []map[string]any{{"kty": "RSA", "kid": "k1", "n": "AQAB", "e": "AQAB"}}, FetchedAt: fetchedAt,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	down := func(context.Context, *domain.WorkloadTrustBundle) ([]map[string]any, error) {
+	down := func(context.Context, *workloaddomain.WorkloadTrustBundle) ([]map[string]any, error) {
 		return nil, errors.New("jwks endpoint unreachable")
 	}
 	verifier := m.TokenVerifier(idmanagement.NewMemoryModule().AgentRepo, down, func(spec.DomainEvent) {})

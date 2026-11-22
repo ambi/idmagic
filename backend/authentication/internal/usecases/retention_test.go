@@ -12,7 +12,7 @@ import (
 	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/db_memory"
 	securitynotificationports "github.com/ambi/idmagic/backend/authentication/internal/securitynotification/ports"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/usecases"
+	authusecases "github.com/ambi/idmagic/backend/authentication/internal/usecases"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 )
 
@@ -31,7 +31,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "fresh-key", now); err != nil {
 		t.Fatal(err)
 	}
-	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Buckets: store}, usecases.DefaultRetentionPolicy(), now)
+	res, err := authusecases.RunRetentionSweep(ctx, authusecases.RetentionStores{Buckets: store}, authusecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
 	mustSave("expired-91", daysAgo(now, 91))
 	mustSave("active", now.Add(time.Hour))
 
-	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Sessions: store}, usecases.DefaultRetentionPolicy(), now)
+	res, err := authusecases.RunRetentionSweep(ctx, authusecases.RetentionStores{Sessions: store}, authusecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
 	observe("recent", daysAgo(now, 364))
 	observe("idle", daysAgo(now, 366))
 
-	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{KnownDevices: store}, usecases.DefaultRetentionPolicy(), now)
+	res, err := authusecases.RunRetentionSweep(ctx, authusecases.RetentionStores{KnownDevices: store}, authusecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}

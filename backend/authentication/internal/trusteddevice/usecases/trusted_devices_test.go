@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/authentication/internal/trusteddevice/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
+	trusteddevicedomain "github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -126,8 +126,8 @@ func TestEvaluateFailsClosedOnEveryMismatch(t *testing.T) {
 		{"other tenant", otherTenant, testUser, nil, now.Add(time.Hour)},
 		{"other user", testTenant, otherUser, nil, now.Add(time.Hour)},
 		{"tampered verifier", testTenant, testUser, func(cookie string) string {
-			selector, _, _ := domain.ParseCookie(cookie)
-			return domain.FormatCookie(selector, "forged-verifier")
+			selector, _, _ := trusteddevicedomain.ParseCookie(cookie)
+			return trusteddevicedomain.FormatCookie(selector, "forged-verifier")
 		}, now.Add(time.Hour)},
 		{"malformed cookie", testTenant, testUser, func(string) string { return "not-a-cookie" }, now.Add(time.Hour)},
 	}
@@ -312,7 +312,7 @@ func TestUserDeviceRevokerReturnsOneRevokedEventPerDevice(t *testing.T) {
 		t.Fatalf("revoked events = %d, want 2", len(revoked))
 	}
 	for _, event := range revoked {
-		got, ok := event.(*domain.TrustedDeviceRevoked)
+		got, ok := event.(*trusteddevicedomain.TrustedDeviceRevoked)
 		if !ok || got.UserID != testUser || got.Reason != spec.TrustedDeviceAccountDisabled || !got.At.Equal(now.Add(time.Hour)) {
 			t.Fatalf("event = %+v, want TrustedDeviceRevoked for %s with account_disabled", event, testUser)
 		}

@@ -5,7 +5,7 @@ package usecases
 import (
 	"context"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
 type ProtectedResourceMetadata struct {
@@ -41,7 +41,7 @@ func BuiltinProtectedResourceMetadata(builtin BuiltinResource, issuer string) *P
 // fail-closed で invalid_target を返す。
 func BuildProtectedResourceMetadata(
 	ctx context.Context,
-	repo ports.McpResourceServerRepository,
+	repo oauthports.McpResourceServerRepository,
 	tenantID, resource, issuer string,
 ) (*ProtectedResourceMetadata, error) {
 	if repo == nil {

@@ -12,25 +12,25 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func newAuthorizeDeps(requirePAR bool) AuthorizeDeps {
 	repo := oauth2memory.NewClientRepository()
-	repo.Seed(&domain.OAuth2Client{
+	repo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientPublic,
 		RedirectURIs: []string{"https://client.example/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
-		TokenEndpointAuthMethod:            domain.AuthMethodNone,
+		TokenEndpointAuthMethod:            oauthdomain.AuthMethodNone,
 		Scope:                              "openid profile",
 		IDTokenSignedResponseAlg:           signingdomain.SigAlgPS256,
 		RequirePushedAuthorizationRequests: requirePAR,
-		FapiProfile:                        domain.FapiNone,
+		FapiProfile:                        oauthdomain.FapiNone,
 		CreatedAt:                          time.Now(),
 	})
 	return AuthorizeDeps{
@@ -51,7 +51,7 @@ func TestAuthorizePKCEPolicy(t *testing.T) {
 	for _, tt := range []struct {
 		name              string
 		clientType        spec.ClientType
-		fapi              domain.FapiProfile
+		fapi              oauthdomain.FapiProfile
 		required          bool
 		unauthenticated   bool
 		challenge, method string
@@ -63,8 +63,8 @@ func TestAuthorizePKCEPolicy(t *testing.T) {
 		{name: "public cannot opt out", clientType: spec.ClientPublic, wantError: true},
 		{name: "unauthenticated cannot opt out", clientType: spec.ClientConfidential, unauthenticated: true, wantError: true},
 		{name: "public S256", clientType: spec.ClientPublic, challenge: "challenge", method: "S256"},
-		{name: "FAPI cannot opt out", clientType: spec.ClientConfidential, fapi: domain.FapiSecurityProfileV2, wantError: true},
-		{name: "FAPI S256", clientType: spec.ClientConfidential, fapi: domain.FapiSecurityProfileV2, challenge: "challenge", method: "S256"},
+		{name: "FAPI cannot opt out", clientType: spec.ClientConfidential, fapi: oauthdomain.FapiSecurityProfileV2, wantError: true},
+		{name: "FAPI S256", clientType: spec.ClientConfidential, fapi: oauthdomain.FapiSecurityProfileV2, challenge: "challenge", method: "S256"},
 		{name: "optional S256", clientType: spec.ClientConfidential, challenge: "challenge", method: "S256"},
 		{name: "optional plain rejected", clientType: spec.ClientConfidential, challenge: "challenge", method: "plain", wantError: true},
 		{name: "optional missing method", clientType: spec.ClientConfidential, challenge: "challenge", wantError: true},
@@ -79,7 +79,7 @@ func TestAuthorizePKCEPolicy(t *testing.T) {
 			}
 			client.ClientType, client.FapiProfile, client.RequirePKCE = tt.clientType, tt.fapi, tt.required
 			if tt.clientType == spec.ClientConfidential && !tt.unauthenticated {
-				client.TokenEndpointAuthMethod = domain.AuthMethodClientSecretBasic
+				client.TokenEndpointAuthMethod = oauthdomain.AuthMethodClientSecretBasic
 			}
 			if err := deps.ClientRepo.Save(ctx, client); err != nil {
 				t.Fatal(err)
@@ -143,14 +143,14 @@ func TestAuthorizePersistsPromptAndMaxAge(t *testing.T) {
 // newFapi2AuthorizeDeps は プロファイルの選択だけが違うクライアントを 1 件置く。
 // RequirePushedAuthorizationRequests は false のままなので、PAR が必須になった
 // 場合その理由はプロファイルの選択しかない。
-func newFapi2AuthorizeDeps(profile domain.FapiProfile) AuthorizeDeps {
+func newFapi2AuthorizeDeps(profile oauthdomain.FapiProfile) AuthorizeDeps {
 	repo := oauth2memory.NewClientRepository()
-	repo.Seed(&domain.OAuth2Client{
+	repo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientConfidential,
 		RedirectURIs:                       []string{"https://client.example/cb"},
 		GrantTypes:                         []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:                      []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:            domain.AuthMethodPrivateKeyJwt,
+		TokenEndpointAuthMethod:            oauthdomain.AuthMethodPrivateKeyJwt,
 		Scope:                              "openid profile",
 		IDTokenSignedResponseAlg:           signingdomain.SigAlgPS256,
 		RequirePushedAuthorizationRequests: false,
@@ -168,7 +168,7 @@ func newFapi2AuthorizeDeps(profile domain.FapiProfile) AuthorizeDeps {
 //spec:covers FAPI2-PAR-PKCE: プロファイルを選択しただけのクライアントが、PAR を経由しない
 func TestAuthorizeRequiresPARFromFapi2Clients(t *testing.T) {
 	in := validAuthorizeInput()
-	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err == nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(oauthdomain.FapiSecurityProfileV2), in); err == nil {
 		t.Fatal("プロファイルを選んだクライアントの PAR 無しリクエストが通った")
 	}
 
@@ -176,14 +176,14 @@ func TestAuthorizeRequiresPARFromFapi2Clients(t *testing.T) {
 	// ごと通さない実装と区別できない。
 	in.ParUsed = true
 	in.ParRequestURI = "urn:ietf:params:oauth:request_uri:test"
-	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(domain.FapiSecurityProfileV2), in); err != nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(oauthdomain.FapiSecurityProfileV2), in); err != nil {
 		t.Fatalf("PAR 経由の FAPI クライアントが拒否された: %v", err)
 	}
 
 	// 対照: プロファイル以外がすべて同じクライアントは PAR 無しで通る。ここが落ちる
 	// なら、制約は FAPI ではなく全クライアントに掛かっている (FAPI2-PROFILE-SELECTION)。
 	control := validAuthorizeInput()
-	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(domain.FapiNone), control); err != nil {
+	if _, err := Authorize(testing_tenant.Default(context.Background()), newFapi2AuthorizeDeps(oauthdomain.FapiNone), control); err != nil {
 		t.Fatalf("プロファイルを選んでいないクライアントまで PAR を求められた: %v", err)
 	}
 }

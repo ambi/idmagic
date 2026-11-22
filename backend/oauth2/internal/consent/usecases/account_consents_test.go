@@ -9,9 +9,9 @@ import (
 
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
+	consentusecases "github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -24,10 +24,10 @@ func accountConsentCtx() context.Context {
 	)
 }
 
-func saveConsent(t *testing.T, repo *oauth2memory.ConsentRepository, sub, client string, state domain.ConsentState) {
+func saveConsent(t *testing.T, repo *oauth2memory.ConsentRepository, sub, client string, state oauthdomain.ConsentState) {
 	t.Helper()
 	now := time.Now().UTC()
-	if err := repo.Save(accountConsentCtx(), tenancydomain.DefaultTenantID, &domain.Consent{
+	if err := repo.Save(accountConsentCtx(), tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: sub, ClientID: client, Scopes: []string{"openid"},
 		State: state, GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}); err != nil {
@@ -38,11 +38,11 @@ func saveConsent(t *testing.T, repo *oauth2memory.ConsentRepository, sub, client
 func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 	ctx := accountConsentCtx()
 	repo := oauth2memory.NewConsentRepository()
-	saveConsent(t, repo, "user-alice", "app-1", domain.ConsentGranted)
-	saveConsent(t, repo, "user-alice", "app-2", domain.ConsentRevoked)
-	saveConsent(t, repo, "user-bob", "app-3", domain.ConsentGranted)
+	saveConsent(t, repo, "user-alice", "app-1", oauthdomain.ConsentGranted)
+	saveConsent(t, repo, "user-alice", "app-2", oauthdomain.ConsentRevoked)
+	saveConsent(t, repo, "user-bob", "app-3", oauthdomain.ConsentGranted)
 
-	got, err := usecases.ListConsentsForSub(ctx, usecases.ConsentDeps{ConsentRepo: repo}, "user-alice")
+	got, err := consentusecases.ListConsentsForSub(ctx, consentusecases.ConsentDeps{ConsentRepo: repo}, "user-alice")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,14 +54,14 @@ func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 func TestRevokeConsentSelfMarksRevokedAndEmits(t *testing.T) {
 	ctx := accountConsentCtx()
 	repo := oauth2memory.NewConsentRepository()
-	saveConsent(t, repo, "user-alice", "app-1", domain.ConsentGranted)
+	saveConsent(t, repo, "user-alice", "app-1", oauthdomain.ConsentGranted)
 
 	var events []spec.DomainEvent
-	deps := usecases.ConsentDeps{ConsentRepo: repo, Emit: func(e spec.DomainEvent) { events = append(events, e) }}
-	if err := usecases.RevokeConsent(ctx, deps, "user-alice", "user-alice", "app-1", time.Now().UTC()); err != nil {
+	deps := consentusecases.ConsentDeps{ConsentRepo: repo, Emit: func(e spec.DomainEvent) { events = append(events, e) }}
+	if err := consentusecases.RevokeConsent(ctx, deps, "user-alice", "user-alice", "app-1", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := usecases.ListConsentsForSub(ctx, deps, "user-alice")
+	got, _ := consentusecases.ListConsentsForSub(ctx, deps, "user-alice")
 	if len(got) != 0 {
 		t.Fatalf("revoked consent must not appear in active list: %#v", got)
 	}

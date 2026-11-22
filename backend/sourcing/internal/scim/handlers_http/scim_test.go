@@ -36,8 +36,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
 	scimhttp "github.com/ambi/idmagic/backend/sourcing/internal/scim/handlers_http"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 )
 
 type scimTokenCodec struct {
@@ -84,7 +84,7 @@ func newScopedScimHarness() (*echo.Echo, *apitoken.Service) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	scimUsecases := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
+	scimUsecases := scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService()
 
 	e := echo.New()
@@ -167,7 +167,7 @@ func TestScimRoutesRequireOperationScope(t *testing.T) {
 // 読めるよう、リポジトリを公開する。
 type scimHarness struct {
 	echo          *echo.Echo
-	usecases      *usecases.Usecases
+	usecases      *scimusecases.Usecases
 	apiTokens     *apitoken.Service
 	userRepo      userports.UserRepository
 	groupRepo     groupports.GroupRepository
@@ -181,7 +181,7 @@ func newScimHarness(tokenOptions ...apitoken.Option) scimHarness {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
+	usecasesInst := scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService(tokenOptions...)
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
@@ -199,7 +199,7 @@ func newScimHarness(tokenOptions ...apitoken.Option) scimHarness {
 // newScimTestHarness wires the SCIM HTTP handler against in-memory
 // repositories, matching the setup TestScimInboundProvisioning /
 // TestScimGroupSync use, for tests that only need list/filter behavior.
-func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitoken.Service) {
+func newScimTestHarness() (*echo.Echo, *scimusecases.Usecases, *apitoken.Service) {
 	h := newScimHarness()
 	return h.echo, h.usecases, h.apiTokens
 }
@@ -494,7 +494,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
+	usecasesInst := scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), Emit: func(spec.DomainEvent) {}}
@@ -671,7 +671,7 @@ func TestScimGroupSync(t *testing.T) {
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
 
-	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
+	usecasesInst := scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 	apiTokens := newTestApiTokenService()
 
 	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
@@ -695,8 +695,8 @@ func TestScimGroupSync(t *testing.T) {
 	user2Sub := "user_2"
 	_ = userRepo.Save(ctx, &userdomain.User{ID: user1Sub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user1"})
 	_ = userRepo.Save(ctx, &userdomain.User{ID: user2Sub, TenantID: tenancydomain.DefaultTenantID, PreferredUsername: "user2"})
-	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim_u1", UserID: user1Sub})
-	_ = scimRepo.SaveUserRef(ctx, &ports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim_u2", UserID: user2Sub})
+	_ = scimRepo.SaveUserRef(ctx, &scimports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim_u1", UserID: user1Sub})
+	_ = scimRepo.SaveUserRef(ctx, &scimports.ScimUserRef{TenantID: tenancydomain.DefaultTenantID, ScimID: "scim_u2", UserID: user2Sub})
 
 	// 2. グループ同期 (Create Group)
 	var scimGroupID string

@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 )
 
 func TestImplementsDataKeyRepositoryPort(t *testing.T) {
-	var _ ports.DataKeyRepository = (*DataKeyRepository)(nil)
+	var _ datakeysports.DataKeyRepository = (*DataKeyRepository)(nil)
 }
 
 // TestBootstrapCreatesActiveVersionOne covers scenario
@@ -27,7 +27,7 @@ func TestBootstrapCreatesActiveVersionOne(t *testing.T) {
 	if key.Version != 1 {
 		t.Fatalf("expected version 1, got %d", key.Version)
 	}
-	if key.Status != domain.DataKeyStatusActive {
+	if key.Status != datakeysdomain.DataKeyStatusActive {
 		t.Fatalf("expected status active, got %s", key.Status)
 	}
 	if key.ActivatedAt == nil {
@@ -43,7 +43,7 @@ func TestBootstrapRejectsSecondCallForSameTenant(t *testing.T) {
 	}
 	if _, err := repo.Bootstrap(context.Background(), "tenant-a", []byte("wrapped-2"), "master-1", now); err == nil {
 		t.Fatal("expected second Bootstrap to fail")
-	} else if !errors.Is(err, domain.ErrDataKeyAlreadyBootstrapped) {
+	} else if !errors.Is(err, datakeysdomain.ErrDataKeyAlreadyBootstrapped) {
 		t.Fatalf("expected ErrDataKeyAlreadyBootstrapped, got %v", err)
 	}
 }
@@ -62,10 +62,10 @@ func TestRotateDemotesPreviousActiveToRetiring(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Rotate failed: %v", err)
 	}
-	if next.Version != 2 || next.Status != domain.DataKeyStatusActive {
+	if next.Version != 2 || next.Status != datakeysdomain.DataKeyStatusActive {
 		t.Fatalf("expected new version 2 active, got version=%d status=%s", next.Version, next.Status)
 	}
-	if previous.Version != 1 || previous.Status != domain.DataKeyStatusRetiring {
+	if previous.Version != 1 || previous.Status != datakeysdomain.DataKeyStatusRetiring {
 		t.Fatalf("expected previous version 1 retiring, got version=%d status=%s", previous.Version, previous.Status)
 	}
 
@@ -81,7 +81,7 @@ func TestRotateDemotesPreviousActiveToRetiring(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindByVersion(1) failed: %v", err)
 	}
-	if retiringStillReadable.Status != domain.DataKeyStatusRetiring {
+	if retiringStillReadable.Status != datakeysdomain.DataKeyStatusRetiring {
 		t.Fatalf("expected version 1 still retiring (readable), got %s", retiringStillReadable.Status)
 	}
 }
@@ -90,7 +90,7 @@ func TestRotateRejectsWhenNoActiveKeyExists(t *testing.T) {
 	repo := NewDataKeyRepository()
 	if _, _, err := repo.Rotate(context.Background(), "tenant-a", []byte("wrapped"), "master-1", time.Now().UTC()); err == nil {
 		t.Fatal("expected Rotate to fail when tenant has no active key")
-	} else if !errors.Is(err, domain.ErrNoActiveDataKey) {
+	} else if !errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		t.Fatalf("expected ErrNoActiveDataKey, got %v", err)
 	}
 }
@@ -107,7 +107,7 @@ func TestDisableRequiresRetiringVersion(t *testing.T) {
 
 	if _, err := repo.Disable(ctx, "tenant-a", 1, now); err == nil {
 		t.Fatal("expected Disable to reject the active version")
-	} else if !errors.Is(err, domain.ErrDataKeyIsActive) {
+	} else if !errors.Is(err, datakeysdomain.ErrDataKeyIsActive) {
 		t.Fatalf("expected ErrDataKeyIsActive, got %v", err)
 	}
 
@@ -118,7 +118,7 @@ func TestDisableRequiresRetiringVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Disable of retiring version failed: %v", err)
 	}
-	if disabled.Status != domain.DataKeyStatusDisabled {
+	if disabled.Status != datakeysdomain.DataKeyStatusDisabled {
 		t.Fatalf("expected status disabled, got %s", disabled.Status)
 	}
 	if disabled.DisabledAt == nil {
@@ -137,7 +137,7 @@ func TestDestroyRequiresRetiringOrDisabled(t *testing.T) {
 	}
 	if _, err := repo.Destroy(ctx, "tenant-a", 1, now); err == nil {
 		t.Fatal("expected Destroy to reject the active version")
-	} else if !errors.Is(err, domain.ErrDataKeyIsActive) {
+	} else if !errors.Is(err, datakeysdomain.ErrDataKeyIsActive) {
 		t.Fatalf("expected ErrDataKeyIsActive, got %v", err)
 	}
 
@@ -148,7 +148,7 @@ func TestDestroyRequiresRetiringOrDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Destroy of retiring version failed: %v", err)
 	}
-	if destroyed.Status != domain.DataKeyStatusDestroyed {
+	if destroyed.Status != datakeysdomain.DataKeyStatusDestroyed {
 		t.Fatalf("expected status destroyed, got %s", destroyed.Status)
 	}
 	if destroyed.WrappedDEK != nil {
@@ -157,21 +157,21 @@ func TestDestroyRequiresRetiringOrDisabled(t *testing.T) {
 
 	if _, err := repo.Destroy(ctx, "tenant-a", 1, now.Add(3*time.Hour)); err == nil {
 		t.Fatal("expected re-destroy of an already-destroyed version to fail")
-	} else if !errors.Is(err, domain.ErrDataKeyNotDestroyable) {
+	} else if !errors.Is(err, datakeysdomain.ErrDataKeyNotDestroyable) {
 		t.Fatalf("expected ErrDataKeyNotDestroyable, got %v", err)
 	}
 }
 
 func TestFindActiveReturnsErrNoActiveDataKeyWhenNoneExist(t *testing.T) {
 	repo := NewDataKeyRepository()
-	if _, err := repo.FindActive(context.Background(), "tenant-a"); !errors.Is(err, domain.ErrNoActiveDataKey) {
+	if _, err := repo.FindActive(context.Background(), "tenant-a"); !errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		t.Fatalf("expected ErrNoActiveDataKey, got %v", err)
 	}
 }
 
 func TestFindByVersionReturnsErrDataKeyNotFound(t *testing.T) {
 	repo := NewDataKeyRepository()
-	if _, err := repo.FindByVersion(context.Background(), "tenant-a", 99); !errors.Is(err, domain.ErrDataKeyNotFound) {
+	if _, err := repo.FindByVersion(context.Background(), "tenant-a", 99); !errors.Is(err, datakeysdomain.ErrDataKeyNotFound) {
 		t.Fatalf("expected ErrDataKeyNotFound, got %v", err)
 	}
 }
@@ -205,7 +205,7 @@ func TestTenantsAreIsolated(t *testing.T) {
 	if _, err := repo.Bootstrap(ctx, "tenant-a", []byte("wrapped-a"), "master-1", now); err != nil {
 		t.Fatalf("Bootstrap tenant-a failed: %v", err)
 	}
-	if _, err := repo.FindActive(ctx, "tenant-b"); !errors.Is(err, domain.ErrNoActiveDataKey) {
+	if _, err := repo.FindActive(ctx, "tenant-b"); !errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		t.Fatalf("expected tenant-b to have no active key, got %v", err)
 	}
 }

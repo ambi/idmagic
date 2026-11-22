@@ -6,7 +6,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
+	mfausecases "github.com/ambi/idmagic/backend/authentication/internal/mfa/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -16,8 +16,8 @@ type issueMfaEnrollmentBypassRequest struct {
 	ExpiresInSeconds int `json:"expires_in_seconds"`
 }
 
-func mfaEnrollmentDeps(d httpdeps.Deps) authusecases.MfaEnrollmentDeps {
-	return authusecases.MfaEnrollmentDeps{
+func mfaEnrollmentDeps(d httpdeps.Deps) mfausecases.MfaEnrollmentDeps {
+	return mfausecases.MfaEnrollmentDeps{
 		UserRepo: d.UserRepo, MfaFactorRepo: d.MfaFactorRepo,
 		WebAuthnCredentialRepo: d.WebAuthnCredentialRepo,
 		BypassRepo:             d.MfaEnrollmentBypassRepo, Emit: d.Emit,
@@ -39,7 +39,7 @@ func HandleIssueMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {
 	if input.ExpiresInSeconds == 0 {
 		input.ExpiresInSeconds = 900
 	}
-	bypass, err := authusecases.IssueMfaEnrollmentBypass(
+	bypass, err := mfausecases.IssueMfaEnrollmentBypass(
 		c.Request().Context(), mfaEnrollmentDeps(d), actor.ID, c.Param("sub"),
 		time.Duration(input.ExpiresInSeconds)*time.Second, time.Now().UTC(),
 	)
@@ -57,7 +57,7 @@ func HandleRevokeMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := authusecases.RevokeMfaEnrollmentBypass(c.Request().Context(), mfaEnrollmentDeps(d), actor.ID, c.Param("sub"), time.Now().UTC()); err != nil {
+	if err := mfausecases.RevokeMfaEnrollmentBypass(c.Request().Context(), mfaEnrollmentDeps(d), actor.ID, c.Param("sub"), time.Now().UTC()); err != nil {
 		return err
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -66,9 +66,9 @@ func HandleRevokeMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {
 
 func writeMfaEnrollmentAdminError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, authusecases.ErrMfaEnrollmentAlreadyComplete):
+	case errors.Is(err, mfausecases.ErrMfaEnrollmentAlreadyComplete):
 		return support.WriteProblem(c, http.StatusConflict, "mfa_already_enrolled", "The target user is already enrolled in MFA.")
-	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed):
+	case errors.Is(err, mfausecases.ErrMfaEnrollmentNotAllowed):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "mfa_enrollment_not_allowed", "An MFA enrollment bypass cannot be issued.")
 	default:
 		return err

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/datakeys/internal/db_memory"
-	"github.com/ambi/idmagic/backend/datakeys/internal/domain"
+	datakeysdomain "github.com/ambi/idmagic/backend/datakeys/internal/domain"
 	jobsmodule "github.com/ambi/idmagic/backend/jobs"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
@@ -64,7 +64,7 @@ func TestBootstrapTenantDataKeyPersistsOnlyTheWrappedVersionOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindActive failed: %v", err)
 	}
-	if stored.Version != 1 || stored.Status != domain.DataKeyStatusActive {
+	if stored.Version != 1 || stored.Status != datakeysdomain.DataKeyStatusActive {
 		t.Fatalf("stored key version=%d status=%s, want active version 1", stored.Version, stored.Status)
 	}
 	if len(recorder.generated) != 1 {
@@ -198,7 +198,7 @@ func TestRotateTenantDataKeyThenDecryptStillWorksForOldVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindByVersion(v1) failed: %v", err)
 	}
-	if retiring.Status != domain.DataKeyStatusRetiring {
+	if retiring.Status != datakeysdomain.DataKeyStatusRetiring {
 		t.Fatalf("v1 status = %v, want retiring", retiring.Status)
 	}
 	storedDEKv1, err := deps.Crypto.Unwrap(ctx, "tenant-a", retiring.WrappedDEK, retiring.MasterKeyID)
@@ -216,7 +216,7 @@ func TestRotateTenantDataKeyThenDecryptStillWorksForOldVersion(t *testing.T) {
 
 func TestRotateTenantDataKeyFailsWithoutBootstrap(t *testing.T) {
 	deps := newTestDeps(t)
-	if _, err := RotateTenantDataKey(context.Background(), deps, "tenant-a", time.Now().UTC()); !errors.Is(err, domain.ErrNoActiveDataKey) {
+	if _, err := RotateTenantDataKey(context.Background(), deps, "tenant-a", time.Now().UTC()); !errors.Is(err, datakeysdomain.ErrNoActiveDataKey) {
 		t.Fatalf("expected ErrNoActiveDataKey, got %v", err)
 	}
 }
@@ -237,14 +237,14 @@ func TestDisableTenantDataKeyRejectsActiveVersion(t *testing.T) {
 
 	var emitted []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
-	if err := DisableTenantDataKey(ctx, deps, "tenant-a", 2, now.Add(2*time.Hour)); !errors.Is(err, domain.ErrDataKeyIsActive) {
+	if err := DisableTenantDataKey(ctx, deps, "tenant-a", 2, now.Add(2*time.Hour)); !errors.Is(err, datakeysdomain.ErrDataKeyIsActive) {
 		t.Fatalf("expected ErrDataKeyIsActive, got %v", err)
 	}
 	key, err := deps.Repository.FindByVersion(ctx, "tenant-a", 2)
 	if err != nil {
 		t.Fatalf("FindByVersion(v2) failed: %v", err)
 	}
-	if key.Status != domain.DataKeyStatusActive || key.DisabledAt != nil {
+	if key.Status != datakeysdomain.DataKeyStatusActive || key.DisabledAt != nil {
 		t.Fatalf("v2 status=%s disabled_at=%v after a refused disable, want active", key.Status, key.DisabledAt)
 	}
 	if len(emitted) != 0 {
@@ -357,7 +357,7 @@ func TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords(t *testing
 	var emitted []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
 
-	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now.Add(2*time.Hour)); !errors.Is(err, domain.ErrDataKeyStillReferenced) {
+	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now.Add(2*time.Hour)); !errors.Is(err, datakeysdomain.ErrDataKeyStillReferenced) {
 		t.Fatalf("expected ErrDataKeyStillReferenced, got %v", err)
 	}
 
@@ -365,7 +365,7 @@ func TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords(t *testing
 	if err != nil {
 		t.Fatalf("FindByVersion failed: %v", err)
 	}
-	if key.Status != domain.DataKeyStatusRetiring {
+	if key.Status != datakeysdomain.DataKeyStatusRetiring {
 		t.Fatalf("v1 status = %s after a rejected destroy, want retiring", key.Status)
 	}
 	if key.WrappedDEK == nil {
@@ -420,14 +420,14 @@ func TestDestroyDisabledDataKeyRejectsPendingReferences(t *testing.T) {
 	deps.Migrators.Register("fixture", &fakeReencryptMigrator{pending: 1})
 	var emitted []spec.DomainEvent
 	deps.Emit = func(e spec.DomainEvent) { emitted = append(emitted, e) }
-	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now); !errors.Is(err, domain.ErrDataKeyStillReferenced) {
+	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now); !errors.Is(err, datakeysdomain.ErrDataKeyStillReferenced) {
 		t.Fatalf("destroy err=%v, want ErrDataKeyStillReferenced", err)
 	}
 	after, err := deps.Repository.FindByVersion(ctx, "tenant-a", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Status != domain.DataKeyStatusDisabled || !bytes.Equal(after.WrappedDEK, before.WrappedDEK) || len(emitted) != 0 {
+	if after.Status != datakeysdomain.DataKeyStatusDisabled || !bytes.Equal(after.WrappedDEK, before.WrappedDEK) || len(emitted) != 0 {
 		t.Fatalf("status=%s key preserved=%v events=%d", after.Status, bytes.Equal(after.WrappedDEK, before.WrappedDEK), len(emitted))
 	}
 }

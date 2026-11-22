@@ -16,7 +16,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/actiontoken"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -43,7 +43,7 @@ type RequestEmailChangeDeps struct {
 	TokenStore userports.EmailChangeTokenStore
 	// Notifier は文面 (件名 / テキスト / HTML) と locale を通知テンプレートカタログから
 	// 解決する。use case は文面を組み立てない。
-	Notifier sharednotification.Notifier
+	Notifier notificationports.Notifier
 	Emit     func(spec.DomainEvent)
 	Issuer   string
 	TokenTTL time.Duration
@@ -121,10 +121,10 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 	// 奪えないようにする。
 	verifyURL := strings.TrimRight(deps.Issuer, "/") + "/account/email/verify?token=" + url.QueryEscape(issued.RawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
-	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{
+	delivered := deps.Notifier.Notify(ctx, notificationports.Notification{
 		TenantID:        user.TenantID,
 		To:              newEmail,
-		Key:             sharednotification.TemplateKeyEmailChangeConfirmation,
+		Key:             notificationports.TemplateKeyEmailChangeConfirmation,
 		RecipientLocale: user.LocaleAttribute(),
 		Vars: map[string]string{
 			"user_display_name":  user.DisplayName(),

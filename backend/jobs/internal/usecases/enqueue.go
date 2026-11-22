@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/jobs/domain"
-	"github.com/ambi/idmagic/backend/jobs/ports"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -16,7 +16,7 @@ import (
 
 // EnqueueDeps are the dependencies for Enqueue.
 type EnqueueDeps struct {
-	Repo ports.JobRepository
+	Repo jobsports.JobRepository
 	Emit func(spec.DomainEvent)
 	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it.
@@ -29,14 +29,14 @@ type enqueuer struct{ deps EnqueueDeps }
 // NewEnqueuer は、repo へジョブを作り、quotas で active_jobs を確認し、emit で JobEnqueued を発行する投入器を返す。
 // 三つとも REQ-JOBS-002 と REQ-TENANCY-013 が投入のたびに求める作用なので、どれかが nil なら
 // 組み立ての誤りとして panic する。
-func NewEnqueuer(repo ports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) ports.Enqueuer {
+func NewEnqueuer(repo jobsports.JobRepository, quotas tenantports.QuotaRepository, emit func(spec.DomainEvent)) jobsports.Enqueuer {
 	if repo == nil || quotas == nil || emit == nil {
 		panic("jobs: NewEnqueuer requires a job repository, a quota repository, and an event sink")
 	}
 	return enqueuer{deps: EnqueueDeps{Repo: repo, QuotaRepo: quotas, Emit: emit}}
 }
 
-func (e enqueuer) Enqueue(ctx context.Context, input ports.EnqueueInput, now time.Time) (*domain.Job, error) {
+func (e enqueuer) Enqueue(ctx context.Context, input jobsports.EnqueueInput, now time.Time) (*jobsdomain.Job, error) {
 	return Enqueue(ctx, e.deps, input, now)
 }
 
@@ -45,8 +45,8 @@ func (e enqueuer) Enqueue(ctx context.Context, input ports.EnqueueInput, now tim
 // domain.DefaultMaxAttempts when input.MaxAttempts is unset, defaults RunAt to
 // now when unset, and emits JobEnqueued only when a new Job was actually
 // created (not on a JobHandlerIdempotency dedup hit).
-func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, now time.Time) (*domain.Job, error) {
-	lane, ok := domain.LaneFor(input.Kind)
+func Enqueue(ctx context.Context, deps EnqueueDeps, input jobsports.EnqueueInput, now time.Time) (*jobsdomain.Job, error) {
+	lane, ok := jobsdomain.LaneFor(input.Kind)
 	if !ok {
 		return nil, fmt.Errorf("jobs: invalid job kind %q", input.Kind)
 	}
@@ -55,7 +55,7 @@ func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, no
 		now = time.Now().UTC()
 	}
 	if input.MaxAttempts <= 0 {
-		input.MaxAttempts = domain.DefaultMaxAttempts
+		input.MaxAttempts = jobsdomain.DefaultMaxAttempts
 	}
 	if input.RunAt.IsZero() {
 		input.RunAt = now
@@ -87,6 +87,6 @@ func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, no
 			return nil, quotaErr
 		}
 	}
-	emit(deps.Emit, &domain.JobEnqueued{At: now, JobID: job.ID, TenantID: job.TenantID, Kind: job.Kind})
+	emit(deps.Emit, &jobsdomain.JobEnqueued{At: now, JobID: job.ID, TenantID: job.TenantID, Kind: job.Kind})
 	return job, nil
 }

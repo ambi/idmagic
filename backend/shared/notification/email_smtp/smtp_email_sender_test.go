@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
 func TestSMTPEmailSenderSendsPlaintextMessage(t *testing.T) {
@@ -25,7 +25,7 @@ func TestSMTPEmailSenderSendsPlaintextMessage(t *testing.T) {
 		Hello:   "test.local",
 		Timeout: time.Second,
 	})
-	ok := sender.SendEmail(context.Background(), sharednotification.EmailMessage{
+	ok := sender.SendEmail(context.Background(), notificationports.EmailMessage{
 		To:      "alice@example.com",
 		Subject: "パスワードリセット",
 		Text:    "リセットリンク: https://example.com/reset?token=abc",
@@ -59,7 +59,7 @@ func TestSMTPEmailSenderRejectsPLAINAuthOverPlaintext(t *testing.T) {
 		Username: "u", Password: "p",
 		From: "noreply@idmagic.test", TLSMode: SMTPTLSNone, Timeout: time.Second,
 	})
-	ok := sender.SendEmail(context.Background(), sharednotification.EmailMessage{
+	ok := sender.SendEmail(context.Background(), notificationports.EmailMessage{
 		To: "alice@example.com", Subject: "x", Text: "y",
 	})
 	if ok {
@@ -84,7 +84,7 @@ func TestSMTPEmailSenderReturnsFalseOnDialFailure(t *testing.T) {
 		Host: "127.0.0.1", Port: addr.Port,
 		From: "noreply@idmagic.test", TLSMode: SMTPTLSNone, Timeout: 200 * time.Millisecond,
 	})
-	if sender.SendEmail(context.Background(), sharednotification.EmailMessage{To: "x@y", Subject: "s", Text: "t"}) {
+	if sender.SendEmail(context.Background(), notificationports.EmailMessage{To: "x@y", Subject: "s", Text: "t"}) {
 		t.Fatal("SendEmail should return false when dial fails")
 	}
 }
@@ -92,7 +92,7 @@ func TestSMTPEmailSenderReturnsFalseOnDialFailure(t *testing.T) {
 func TestBuildRFC5322MessageMultipart(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+	body, err := buildRFC5322Message("noreply@idmagic.test", notificationports.EmailMessage{
 		To: "bob@example.com", Subject: "verify", Text: "plain body", HTML: "<p>html body</p>",
 	}, now)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestBuildRFC5322MessageMultipart(t *testing.T) {
 func TestBuildRFC5322MessageHTMLOnly(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+	body, err := buildRFC5322Message("noreply@idmagic.test", notificationports.EmailMessage{
 		To: "bob@example.com", Subject: "x", HTML: "<p>only html</p>",
 	}, now)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestBuildRFC5322MessageHTMLOnly(t *testing.T) {
 func TestBuildRFC5322MessageSanitizesUntrustedContent(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+	body, err := buildRFC5322Message("noreply@idmagic.test", notificationports.EmailMessage{
 		To:      "bob@example.com",
 		Subject: "reset\r\nBcc: attacker@example.com",
 		Text:    "line1\rline2\x00",
@@ -190,7 +190,7 @@ func TestBuildRFC5322MessageSanitizesUntrustedContent(t *testing.T) {
 func TestBuildRFC5322MessageAppliesFromDisplayName(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+	body, err := buildRFC5322Message("noreply@idmagic.test", notificationports.EmailMessage{
 		To: "bob@example.com", Subject: "x", Text: "y", HTML: "<p>y</p>",
 		FromDisplayName: "Acme サポート",
 	}, now)
@@ -212,7 +212,7 @@ func TestBuildRFC5322MessageAppliesFromDisplayName(t *testing.T) {
 func TestBuildRFC5322MessageSanitizesFromDisplayName(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	body, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+	body, err := buildRFC5322Message("noreply@idmagic.test", notificationports.EmailMessage{
 		To: "bob@example.com", Subject: "x", Text: "y",
 		FromDisplayName: "Acme\r\nBcc: attacker@example.test",
 	}, now)
@@ -230,7 +230,7 @@ func TestBuildRFC5322MessageSanitizesFromDisplayName(t *testing.T) {
 func TestBuildRFC5322MessageRejectsInvalidAddressHeader(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	_, err := buildRFC5322Message("noreply@idmagic.test", sharednotification.EmailMessage{
+	_, err := buildRFC5322Message("noreply@idmagic.test", notificationports.EmailMessage{
 		To: "bob@example.com\r\nBcc: attacker@example.com", Subject: "x", Text: "y",
 	}, now)
 	if err == nil {

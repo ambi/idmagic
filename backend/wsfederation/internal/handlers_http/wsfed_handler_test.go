@@ -34,7 +34,7 @@ import (
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/internal/db_memory"
 	wstrust "github.com/ambi/idmagic/backend/wsfederation/internal/requests_wstrust"
 
@@ -94,7 +94,7 @@ func newServerWithSigner(t *testing.T, authn *authdomain.AuthenticationContext, 
 	captured := &[]spec.DomainEvent{}
 
 	rpRepo := wsfedmemory.NewWsFedRelyingPartyRepository()
-	rpRepo.Seed(&feddomain.WsFedRelyingParty{
+	rpRepo.Seed(&wsfeddomain.WsFedRelyingParty{
 		Wtrealm: "urn:idmagic:demo-rp",
 		// 2 つ目の返信先は既定 (先頭) ではないので、wreply を指定した要求がその指定どおりに
 		// 届いたのか、単に先頭が使われただけなのかを区別できる。
@@ -874,7 +874,7 @@ func TestAdminRelyingParty_CRUD(t *testing.T) {
 		if rec.Code != status {
 			t.Fatalf("register status=%d body=%s, want %d", rec.Code, rec.Body.String(), status)
 		}
-		var rp feddomain.WsFedRelyingParty
+		var rp wsfeddomain.WsFedRelyingParty
 		if err := json.Unmarshal(rec.Body.Bytes(), &rp); err != nil {
 			t.Fatal(err)
 		}
@@ -961,16 +961,16 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 		t.Fatalf("replacement status=%d body=%s, want 200", updated.Code, updated.Body.String())
 	}
 	var updatedBody struct {
-		Profile      feddomain.EntraFederationProfile `json:"profile"`
-		RelyingParty feddomain.WsFedRelyingParty      `json:"relying_party"`
-		PowerShell   map[string]string                `json:"powershell"`
-		KnownLimits  []map[string]string              `json:"known_limitations"`
+		Profile      wsfeddomain.EntraFederationProfile `json:"profile"`
+		RelyingParty wsfeddomain.WsFedRelyingParty      `json:"relying_party"`
+		PowerShell   map[string]string                  `json:"powershell"`
+		KnownLimits  []map[string]string                `json:"known_limitations"`
 	}
 	if err := json.Unmarshal(updated.Body.Bytes(), &updatedBody); err != nil {
 		t.Fatal(err)
 	}
-	if len(updatedBody.Profile.Domains) != 1 || updatedBody.Profile.Domains[0] != (feddomain.EntraDomainFederation{Domain: "contoso.com", IssuerURI: "urn:idmagic:entra:contoso.com"}) ||
-		updatedBody.Profile.SourceAnchorAttribute != "object_guid" || updatedBody.RelyingParty.Wtrealm != feddomain.EntraRealm || updatedBody.PowerShell["IssuerUri"] != "urn:idmagic:entra:contoso.com" || len(updatedBody.KnownLimits) == 0 {
+	if len(updatedBody.Profile.Domains) != 1 || updatedBody.Profile.Domains[0] != (wsfeddomain.EntraDomainFederation{Domain: "contoso.com", IssuerURI: "urn:idmagic:entra:contoso.com"}) ||
+		updatedBody.Profile.SourceAnchorAttribute != "object_guid" || updatedBody.RelyingParty.Wtrealm != wsfeddomain.EntraRealm || updatedBody.PowerShell["IssuerUri"] != "urn:idmagic:entra:contoso.com" || len(updatedBody.KnownLimits) == 0 {
 		t.Fatalf("replacement=%+v, want stored Entra trust and configuration", updatedBody)
 	}
 }

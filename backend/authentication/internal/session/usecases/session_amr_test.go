@@ -8,7 +8,7 @@ import (
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	memory "github.com/ambi/idmagic/backend/authentication/internal/session/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
@@ -23,7 +23,7 @@ func TestSessionManagerRefusesAMROutsideTheVocabulary(t *testing.T) {
 
 	// 作成の側。
 	store := memory.NewSessionStore()
-	manager := usecases.NewSessionManager(store)
+	manager := sessionusecases.NewSessionManager(store)
 	authn, err := manager.Create(ctx, "user-alice", []string{"pwd", "mfa"}, time.Now().UTC())
 	if err == nil {
 		t.Fatalf("a session carrying an unknown amr was created: %+v", authn)

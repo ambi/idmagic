@@ -26,7 +26,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -40,7 +40,7 @@ func SeedDemoData(
 	groups groupports.GroupRepository,
 	authzDetailTypes oauthports.AuthorizationDetailTypeRepository,
 	hasher passwordports.PasswordHasher,
-	seed domain.DevelopmentDemoSeed,
+	seed seedingdomain.DevelopmentDemoSeed,
 	clientSecret string,
 	password string,
 	totpSecret string,
@@ -116,7 +116,7 @@ func sameDemoClient(actual, desired *oauthdomain.OAuth2Client, secret string) bo
 	}
 	left, right := *actual, *desired
 	left.ClientSecretHash, right.ClientSecretHash = nil, nil
-	return domain.SameFirstPartyClient(&left, &right)
+	return seedingdomain.SameFirstPartyClient(&left, &right)
 }
 
 func ensureDemoUser(ctx context.Context, users userports.UserRepository, history passwordports.PasswordHistoryRepository, hasher passwordports.PasswordHasher, desired *userdomain.User, password string, now time.Time, operations *resourceOperations, commands ResourceCommands) error {
@@ -176,7 +176,7 @@ func SeedDemoApplications(
 	ctx context.Context,
 	apps appports.ApplicationRepository,
 	assignments appports.AssignmentRepository,
-	seed domain.DevelopmentDemoSeed,
+	seed seedingdomain.DevelopmentDemoSeed,
 	now time.Time,
 	operations *resourceOperations,
 	commands ResourceCommands,
@@ -265,7 +265,7 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 }
 
 // seedDemoGroups は所属も独立した項目として比較し、途中失敗後は欠けた所属だけを補う。
-func seedDemoGroups(ctx context.Context, groups groupports.GroupRepository, seeds []domain.DemoGroupSeed, now time.Time, operations *resourceOperations, commands ResourceCommands) error {
+func seedDemoGroups(ctx context.Context, groups groupports.GroupRepository, seeds []seedingdomain.DemoGroupSeed, now time.Time, operations *resourceOperations, commands ResourceCommands) error {
 	for _, configured := range seeds {
 		description := configured.Description
 		group := &groupdomain.Group{ID: configured.ID, TenantID: tenancydomain.DefaultTenantID, Name: configured.Name, Description: &description, Roles: configured.Roles, MembershipType: groupdomain.GroupMembershipManual, CreatedAt: now}

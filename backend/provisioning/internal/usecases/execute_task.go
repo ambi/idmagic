@@ -6,24 +6,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ExecuteTaskDeps are ExecuteTask's dependencies.
 type ExecuteTaskDeps struct {
-	ConnectionRepo  ports.ProvisioningConnectionRepository
-	TaskRepo        ports.ProvisioningTaskRepository
-	LinkRepo        ports.RemoteResourceLinkRepository
-	AttributeSource ports.AttributeSource
+	ConnectionRepo  provisioningports.ProvisioningConnectionRepository
+	TaskRepo        provisioningports.ProvisioningTaskRepository
+	LinkRepo        provisioningports.RemoteResourceLinkRepository
+	AttributeSource provisioningports.AttributeSource
 	// GroupMemberSource reads a Group's direct members when push_groups is on.
 	// nil means membership is not pushed; the Group's own attributes still are.
-	GroupMemberSource ports.GroupMemberSource
+	GroupMemberSource provisioningports.GroupMemberSource
 	// NewTargetClient builds the protocol client for conn using its (already
 	// resolved) credential secret. Production wiring returns a *scim.Client;
 	// tests inject a fake.
-	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
+	NewTargetClient func(conn *provisioningdomain.ProvisioningConnection, secret string) (provisioningports.ProvisioningTargetClient, error)
 }
 
 var ErrTaskNotFound = errors.New("provisioning: task not found")
@@ -53,7 +53,7 @@ func ExecuteTask(ctx context.Context, deps ExecuteTaskDeps, tenantID, taskID str
 	if task == nil {
 		return nil, ErrTaskNotFound
 	}
-	if domain.IsProvisioningTaskTerminal(task.Status) {
+	if provisioningdomain.IsProvisioningTaskTerminal(task.Status) {
 		// Jobs が同じジョブを再実行しても、確定したプロビジョニングタスクを下流へ送り直さない。
 		return nil, nil //nolint:nilnil // 送らなかったプロビジョニングタスクに遷移イベントは無い
 	}
@@ -65,7 +65,7 @@ func ExecuteTask(ctx context.Context, deps ExecuteTaskDeps, tenantID, taskID str
 		return nil, ErrConnectionNotFound
 	}
 	if !conn.CanProvision() {
-		if conn.Health == domain.HealthQuarantined {
+		if conn.Health == provisioningdomain.HealthQuarantined {
 			return nil, ErrConnectionQuarantined
 		}
 		return nil, ErrConnectionDisabled
@@ -85,9 +85,9 @@ func ExecuteTask(ctx context.Context, deps ExecuteTaskDeps, tenantID, taskID str
 
 	var event spec.DomainEvent
 	switch task.SourceType {
-	case domain.SourceTypeUser:
+	case provisioningdomain.SourceTypeUser:
 		event, err = executeUserTask(ctx, deps, client, conn, task, link, now)
-	case domain.SourceTypeGroup:
+	case provisioningdomain.SourceTypeGroup:
 		event, err = executeGroupTask(ctx, deps, client, conn, task, link, now)
 	default:
 		err = fmt.Errorf("provisioning: unsupported source_type %q", task.SourceType)
@@ -95,24 +95,24 @@ func ExecuteTask(ctx context.Context, deps ExecuteTaskDeps, tenantID, taskID str
 	if err != nil {
 		return nil, err
 	}
-	if err := deps.TaskRepo.UpdateStatus(ctx, tenantID, taskID, domain.TaskSucceeded, nil); err != nil {
+	if err := deps.TaskRepo.UpdateStatus(ctx, tenantID, taskID, provisioningdomain.TaskSucceeded, nil); err != nil {
 		return nil, err
 	}
 	return event, nil
 }
 
-func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, task *domain.ProvisioningTask, link *domain.RemoteResourceLink, now time.Time) (spec.DomainEvent, error) {
+func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client provisioningports.ProvisioningTargetClient, conn *provisioningdomain.ProvisioningConnection, task *provisioningdomain.ProvisioningTask, link *provisioningdomain.RemoteResourceLink, now time.Time) (spec.DomainEvent, error) {
 	remoteID := ""
 	if link != nil {
 		remoteID = link.RemoteID
 	}
-	deprovisioned := func(action domain.ProvisioningDeprovisionAction) spec.DomainEvent {
-		return &domain.UserDeprovisioned{
+	deprovisioned := func(action provisioningdomain.ProvisioningDeprovisionAction) spec.DomainEvent {
+		return &provisioningdomain.UserDeprovisioned{
 			At: now, TenantID: task.TenantID, ConnectionID: task.ConnectionID, TaskID: task.ID,
 			UserID: task.SourceID, Action: action,
 		}
 	}
-	if task.Operation == domain.OperationDelete {
+	if task.Operation == provisioningdomain.OperationDelete {
 		if remoteID == "" {
 			return nil, nil //nolint:nilnil // 下流に既に無いので冪等に成功し、遷移イベントは無い
 		}
@@ -122,9 +122,9 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 		if err := deps.LinkRepo.Delete(ctx, conn.ApplicationID, task.SourceType, task.SourceID); err != nil {
 			return nil, err
 		}
-		return deprovisioned(domain.DeprovisionDelete), nil
+		return deprovisioned(provisioningdomain.DeprovisionDelete), nil
 	}
-	deactivating := task.Operation == domain.OperationDeactivate
+	deactivating := task.Operation == provisioningdomain.OperationDeactivate
 	if deactivating && remoteID == "" {
 		// 下流に無い User を無効化するために作成はしない。
 		return nil, nil //nolint:nilnil // 送らなかったプロビジョニングタスクに遷移イベントは無い
@@ -145,8 +145,8 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 
 	if remoteID == "" {
 		newID, _, err := client.CreateUser(ctx, conn.AttributeMappings, attrs)
-		var conflict *ports.ConflictError
-		if ports.AsConflictError(err, &conflict) {
+		var conflict *provisioningports.ConflictError
+		if provisioningports.AsConflictError(err, &conflict) {
 			newID, err = adoptExistingUser(ctx, client, conn.Matching, attrs)
 		}
 		if err != nil {
@@ -155,11 +155,11 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 		remoteID = newID
 	} else {
 		_, err := client.UpdateUser(ctx, remoteID, conn.AttributeMappings, attrs, conn.Capabilities != nil && conn.Capabilities.SupportsPatch)
-		var notFound *ports.NotFoundError
+		var notFound *provisioningports.NotFoundError
 		switch {
-		case ports.AsNotFoundError(err, &notFound) && deactivating:
+		case provisioningports.AsNotFoundError(err, &notFound) && deactivating:
 			return nil, nil //nolint:nilnil // 無効化する対象が下流から消えている
-		case ports.AsNotFoundError(err, &notFound):
+		case provisioningports.AsNotFoundError(err, &notFound):
 			newID, _, createErr := client.CreateUser(ctx, conn.AttributeMappings, attrs)
 			if createErr != nil {
 				return nil, createErr
@@ -170,12 +170,12 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 		}
 	}
 
-	var event spec.DomainEvent = &domain.UserProvisioned{
+	var event spec.DomainEvent = &provisioningdomain.UserProvisioned{
 		At: now, TenantID: task.TenantID, ConnectionID: task.ConnectionID, TaskID: task.ID,
 		UserID: task.SourceID, RemoteID: remoteID,
 	}
 	if deactivating {
-		event = deprovisioned(domain.DeprovisionDeactivate)
+		event = deprovisioned(provisioningdomain.DeprovisionDeactivate)
 	}
 	if err := upsertLink(ctx, deps, conn, task, link, remoteID, sentActive(attrs), now); err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func executeUserTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pro
 	return event, nil
 }
 
-func adoptExistingUser(ctx context.Context, client ports.ProvisioningTargetClient, matching domain.MatchingRule, attrs map[string]any) (string, error) {
+func adoptExistingUser(ctx context.Context, client provisioningports.ProvisioningTargetClient, matching provisioningdomain.MatchingRule, attrs map[string]any) (string, error) {
 	attribute := matching.ConflictMatchAttribute
 	if attribute == "" {
 		attribute = "userName"
@@ -199,14 +199,14 @@ func adoptExistingUser(ctx context.Context, client ports.ProvisioningTargetClien
 	return remoteID, nil
 }
 
-func executeGroupTask(ctx context.Context, deps ExecuteTaskDeps, client ports.ProvisioningTargetClient, conn *domain.ProvisioningConnection, task *domain.ProvisioningTask, link *domain.RemoteResourceLink, now time.Time) (spec.DomainEvent, error) {
+func executeGroupTask(ctx context.Context, deps ExecuteTaskDeps, client provisioningports.ProvisioningTargetClient, conn *provisioningdomain.ProvisioningConnection, task *provisioningdomain.ProvisioningTask, link *provisioningdomain.RemoteResourceLink, now time.Time) (spec.DomainEvent, error) {
 	pushed := func(remoteID string) spec.DomainEvent {
-		return &domain.GroupPushed{
+		return &provisioningdomain.GroupPushed{
 			At: now, TenantID: task.TenantID, ConnectionID: task.ConnectionID, TaskID: task.ID,
 			GroupID: task.SourceID, RemoteID: remoteID,
 		}
 	}
-	if task.Operation == domain.OperationDelete {
+	if task.Operation == provisioningdomain.OperationDelete {
 		if link == nil {
 			return nil, nil //nolint:nilnil // 送らなかったプロビジョニングタスクに遷移イベントは無い
 		}
@@ -249,13 +249,13 @@ func executeGroupTask(ctx context.Context, deps ExecuteTaskDeps, client ports.Pr
 // it was sent as active. A task
 // older than the one the link already reflects leaves it unchanged: the
 // downstream call has still happened, so the task settles as succeeded.
-func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *domain.ProvisioningConnection, task *domain.ProvisioningTask, link *domain.RemoteResourceLink, remoteID string, active bool, now time.Time) error {
-	newLink := domain.NewRemoteResourceLink(conn.ApplicationID, task.TenantID, task.SourceType, task.SourceID)
+func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *provisioningdomain.ProvisioningConnection, task *provisioningdomain.ProvisioningTask, link *provisioningdomain.RemoteResourceLink, remoteID string, active bool, now time.Time) error {
+	newLink := provisioningdomain.NewRemoteResourceLink(conn.ApplicationID, task.TenantID, task.SourceType, task.SourceID)
 	if link != nil {
 		*newLink = *link
 	}
 	if err := newLink.ApplySync(task.SourceVersion, remoteID, task.SourceID, nil, now); err != nil {
-		if errors.Is(err, domain.ErrOutOfOrderSync) {
+		if errors.Is(err, provisioningdomain.ErrOutOfOrderSync) {
 			return nil
 		}
 		return err
@@ -277,7 +277,7 @@ func upsertLink(ctx context.Context, deps ExecuteTaskDeps, conn *domain.Provisio
 // an empty displayName is not an option either — a downstream that validates its
 // Group representation refuses it, which would turn one mistyped setting into a
 // Group that never pushes.
-func groupDisplayName(attrs map[string]any, config *domain.GroupPushConfig) any {
+func groupDisplayName(attrs map[string]any, config *provisioningdomain.GroupPushConfig) any {
 	if value, ok := attrs[config.DisplayNameSourceKey()].(string); ok && value != "" {
 		return value
 	}
@@ -300,9 +300,9 @@ func groupDisplayName(attrs map[string]any, config *domain.GroupPushConfig) any 
 func pushGroupMembers(
 	ctx context.Context,
 	deps ExecuteTaskDeps,
-	client ports.ProvisioningTargetClient,
-	conn *domain.ProvisioningConnection,
-	task *domain.ProvisioningTask,
+	client provisioningports.ProvisioningTargetClient,
+	conn *provisioningdomain.ProvisioningConnection,
+	task *provisioningdomain.ProvisioningTask,
 	remoteGroupID string,
 ) error {
 	if deps.GroupMemberSource == nil || remoteGroupID == "" {
@@ -314,7 +314,7 @@ func pushGroupMembers(
 	}
 	remoteUserIDs := make([]string, 0, len(userIDs))
 	for _, userID := range userIDs {
-		memberLink, err := deps.LinkRepo.Find(ctx, conn.ApplicationID, domain.SourceTypeUser, userID)
+		memberLink, err := deps.LinkRepo.Find(ctx, conn.ApplicationID, provisioningdomain.SourceTypeUser, userID)
 		if err != nil {
 			return err
 		}

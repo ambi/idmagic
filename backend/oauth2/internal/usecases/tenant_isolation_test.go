@@ -19,10 +19,10 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/internal/device/usecases"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/internal/token/usecases"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -35,11 +35,11 @@ func tenantContext(id string) context.Context {
 
 type fakeTokenIssuer struct{}
 
-func (*fakeTokenIssuer) SignAccessToken(context.Context, ports.AccessTokenInput) (string, string, error) {
+func (*fakeTokenIssuer) SignAccessToken(context.Context, oauthports.AccessTokenInput) (string, string, error) {
 	return "access-token", "jti-1", nil
 }
 
-func (*fakeTokenIssuer) SignIDToken(context.Context, ports.IDTokenInput) (string, error) {
+func (*fakeTokenIssuer) SignIDToken(context.Context, oauthports.IDTokenInput) (string, error) {
 	return "id-token", nil
 }
 func (*fakeTokenIssuer) AccessTokenTTLSeconds() int { return 600 }
@@ -47,13 +47,13 @@ func (*fakeTokenIssuer) IDTokenTTLSeconds() int     { return 3600 }
 
 func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 	clients := oauth2memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "web-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/callback"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, Scope: "openid",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	_, err := authorizationusecases.Authorize(tenantContext("acme"), authorizationusecases.AuthorizeDeps{
@@ -68,7 +68,7 @@ func TestAuthorizeCannotResolveAnotherTenantClient(t *testing.T) {
 
 func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 	codes := oauth2memory.NewAuthorizationCodeStore()
-	if err := codes.Save(context.Background(), &domain.AuthorizationCodeRecord{
+	if err := codes.Save(context.Background(), &oauthdomain.AuthorizationCodeRecord{
 		Code: "AC1", TenantID: "acme", AuthorizationRequestID: "7856cb4e-7405-4d24-9c04-475cbb13f6f1",
 		ClientID: "web-app", UserID: "user", RedirectURI: "https://app.example/callback",
 		CodeChallenge: "challenge", CodeChallengeMethod: spec.CodeChallengeMethodS256,
@@ -88,13 +88,13 @@ func TestAuthorizationCodeCannotCrossTenantBoundary(t *testing.T) {
 
 func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 	clients := oauth2memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "web-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://app.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, Scope: "openid",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -104,7 +104,7 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 	})
 
 	store := oauth2memory.NewRefreshTokenStore()
-	gen, err := domain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, nil, nil, time.Now().UTC(), entropy.Crypto())
+	gen, err := oauthdomain.GenerateInitialRefreshToken("web-app", "user", []string{"openid"}, nil, nil, nil, time.Now().UTC(), entropy.Crypto())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,13 +121,13 @@ func TestRefreshTokenCannotCrossTenantBoundary(t *testing.T) {
 
 func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 	clients := oauth2memory.NewClientRepository()
-	clients.Seed(&domain.OAuth2Client{
+	clients.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID, ClientID: "tv-app", ClientType: spec.ClientPublic,
 		RedirectURIs:            []string{"https://tv.example/cb"},
 		GrantTypes:              []spec.GrantType{spec.GrantDeviceCode, spec.GrantRefreshToken},
 		ResponseTypes:           []spec.ResponseType{},
-		TokenEndpointAuthMethod: domain.AuthMethodNone, Scope: "openid",
-		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
+		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, Scope: "openid",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: oauthdomain.FapiNone,
 		CreatedAt: time.Now().UTC(),
 	})
 	users := idmanagement.NewMemoryModule().UserRepo
@@ -141,8 +141,8 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 	deviceCode := "DEVCODE-acme-1234567890"
 	sub := "user"
 	authTime := now.Unix()
-	rec := &domain.DeviceAuthorization{
-		DeviceCodeHash:  domain.HashDeviceCode(deviceCode),
+	rec := &oauthdomain.DeviceAuthorization{
+		DeviceCodeHash:  oauthdomain.HashDeviceCode(deviceCode),
 		TenantID:        "acme", // テナント "acme" 発行
 		UserCode:        "ABCD-EFGH",
 		ClientID:        "tv-app",
@@ -167,7 +167,7 @@ func TestDeviceCodeCannotCrossTenantBoundary(t *testing.T) {
 
 func assertOAuthErrorCode(t *testing.T, err error, code string) {
 	t.Helper()
-	oauthErr := &sharedusecases.OAuthError{}
+	oauthErr := &oauthusecases.OAuthError{}
 	ok := errors.As(err, &oauthErr)
 	if !ok || oauthErr.Code != code {
 		t.Fatalf("error = %#v, want OAuth code %s", err, code)

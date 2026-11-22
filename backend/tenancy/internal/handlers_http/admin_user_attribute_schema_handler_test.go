@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	userschemaports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	memory "github.com/ambi/idmagic/backend/tenancy/internal/db_memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -37,8 +37,8 @@ type userAttributeSchemaResponse struct {
 }
 
 func newUserAttributeSchemaServer(
-	t *testing.T, actor *userdomain.User, tenants ...*domain.Tenant,
-) (*echo.Echo, userschemaports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
+	t *testing.T, actor *userdomain.User, tenants ...*tenancydomain.Tenant,
+) (*echo.Echo, userports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	var seeds []*userdomain.User
 	if actor != nil {
@@ -50,8 +50,8 @@ func newUserAttributeSchemaServer(
 // newUserAttributeSchemaServerWithUsers は、組み立て地点と同じく User とスキーマの保存先を一つの
 // IdManagement のモジュールから作り、users を保存したサーバーを返す。
 func newUserAttributeSchemaServerWithUsers(
-	t *testing.T, actor *userdomain.User, users []*userdomain.User, tenants ...*domain.Tenant,
-) (*echo.Echo, userschemaports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
+	t *testing.T, actor *userdomain.User, users []*userdomain.User, tenants ...*tenancydomain.Tenant,
+) (*echo.Echo, userports.TenantUserAttributeSchemaRepository, *[]spec.DomainEvent) {
 	t.Helper()
 	identity := idmanagement.NewMemoryModule()
 	userRepo := identity.UserRepo

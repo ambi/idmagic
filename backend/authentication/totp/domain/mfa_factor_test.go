@@ -4,16 +4,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 func TestMfaFactorValidateHappyAndFailure(t *testing.T) {
 	now := time.Now().UTC()
 
-	validMfa := domain.MfaFactor{UserID: "user_1", Type: spec.MfaFactorWebAuthn, CreatedAt: now}
+	validMfa := totpdomain.MfaFactor{UserID: "user_1", Type: spec.MfaFactorWebAuthn, CreatedAt: now}
 	// TOTP は secret 必須なので secret 無しは失敗する。
-	badMfa := domain.MfaFactor{UserID: "user_1", Type: spec.MfaFactorTOTP, CreatedAt: now}
+	badMfa := totpdomain.MfaFactor{UserID: "user_1", Type: spec.MfaFactorTOTP, CreatedAt: now}
 
 	cases := []struct {
 		name    string

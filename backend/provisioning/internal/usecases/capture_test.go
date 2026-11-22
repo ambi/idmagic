@@ -11,36 +11,36 @@ import (
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appports "github.com/ambi/idmagic/backend/application/ports"
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 )
 
-func newCaptureDeps() (usecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, appports.AssignmentRepository) {
+func newCaptureDeps() (provisioningusecases.CaptureDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository, appports.AssignmentRepository) {
 	taskRepo := memory.NewProvisioningTaskRepository()
 	connRepo := memory.NewProvisioningConnectionRepository(taskRepo, memory.NewRemoteResourceLinkRepository())
 	assignmentRepo := application.NewMemoryModule().AssignmentRepo
-	return usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, AssignmentRepo: assignmentRepo}, connRepo, taskRepo, assignmentRepo
+	return provisioningusecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo, AssignmentRepo: assignmentRepo}, connRepo, taskRepo, assignmentRepo
 }
 
 const testTenantID = "tenant-a"
 
-func activeConnection(applicationID string, scope domain.ProvisioningScope) *domain.ProvisioningConnection {
+func activeConnection(applicationID string, scope provisioningdomain.ProvisioningScope) *provisioningdomain.ProvisioningConnection {
 	now := time.Now().UTC()
-	return &domain.ProvisioningConnection{
+	return &provisioningdomain.ProvisioningConnection{
 		ApplicationID: applicationID,
 		TenantID:      testTenantID,
-		Status:        domain.ConnectionActive,
+		Status:        provisioningdomain.ConnectionActive,
 		BaseURL:       "https://downstream.example.com/scim/v2",
-		Credential:    domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-1", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
-		FeatureFlags:  domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true, DeleteUsers: true},
+		Credential:    provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred-1", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
+		FeatureFlags:  provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true, DeleteUsers: true},
 		Scope:         scope,
-		Matching:      domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate,
-			OnDelete:   domain.DeprovisionDeactivate,
+		Matching:      provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate,
+			OnDelete:   provisioningdomain.DeprovisionDeactivate,
 		},
-		Health:    domain.HealthOK,
+		Health:    provisioningdomain.HealthOK,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -49,11 +49,11 @@ func activeConnection(applicationID string, scope domain.ProvisioningScope) *dom
 func TestCaptureLifecycleEvent_UserCreated_AllUsersScope(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	if err := connRepo.Register(ctx, conn, "secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
@@ -61,7 +61,7 @@ func TestCaptureLifecycleEvent_UserCreated_AllUsersScope(t *testing.T) {
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("ListByConnection() = %+v, err=%v, want 1 task", tasks, err)
 	}
-	if tasks[0].Operation != domain.OperationCreate {
+	if tasks[0].Operation != provisioningdomain.OperationCreate {
 		t.Errorf("task.Operation = %v, want create", tasks[0].Operation)
 	}
 }
@@ -70,9 +70,9 @@ func TestCaptureLifecycleEvent_UserCreated_AllUsersScope(t *testing.T) {
 func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeSkipsUnassignedUser(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAssignedOnly)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAssignedOnly)
 	_ = connRepo.Register(ctx, conn, "secret")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
@@ -85,10 +85,10 @@ func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeSkipsUnassignedUser(
 func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeIncludesAssignedUser(t *testing.T) {
 	deps, connRepo, taskRepo, assignmentRepo := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAssignedOnly)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAssignedOnly)
 	_ = connRepo.Register(ctx, conn, "secret")
 	_ = assignmentRepo.Save(ctx, &appdomain.ApplicationAssignment{TenantID: "tenant-a", ApplicationID: "app-1", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "user-1", Visibility: appdomain.AssignmentVisible})
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
@@ -101,14 +101,14 @@ func TestCaptureLifecycleEvent_UserCreated_AssignedOnlyScopeIncludesAssignedUser
 func TestCaptureLifecycleEvent_UserDisabled_TranslatesToFixedDeactivate(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserDisabled, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDisabled, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
 	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(tasks) != 1 || tasks[0].Operation != domain.OperationDeactivate {
+	if len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationDeactivate {
 		t.Fatalf("tasks = %+v, want 1 task with operation=deactivate", tasks)
 	}
 }
@@ -116,14 +116,14 @@ func TestCaptureLifecycleEvent_UserDisabled_TranslatesToFixedDeactivate(t *testi
 func TestCaptureLifecycleEvent_UserAttributesChanged_TranslatesToUpdate(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserAttributes, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserAttributes, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
 	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(tasks) != 1 || tasks[0].Operation != domain.OperationUpdate {
+	if len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationUpdate {
 		t.Fatalf("tasks = %+v, want 1 task with operation=update", tasks)
 	}
 }
@@ -131,14 +131,14 @@ func TestCaptureLifecycleEvent_UserAttributesChanged_TranslatesToUpdate(t *testi
 func TestCaptureLifecycleEvent_UserEnabled_TranslatesToUpdate(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserEnabled, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserEnabled, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
 	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(tasks) != 1 || tasks[0].Operation != domain.OperationUpdate {
+	if len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationUpdate {
 		t.Fatalf("tasks = %+v, want 1 task with operation=update", tasks)
 	}
 }
@@ -146,15 +146,15 @@ func TestCaptureLifecycleEvent_UserEnabled_TranslatesToUpdate(t *testing.T) {
 func TestCaptureLifecycleEvent_UserDeleted_UsesConnectionDeprovisionPolicy(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
-	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
+	conn.DeprovisionPolicy.OnDelete = provisioningdomain.DeprovisionDelete
 	_ = connRepo.Register(ctx, conn, "secret")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDeleted, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
 	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
-	if len(tasks) != 1 || tasks[0].Operation != domain.OperationDelete {
+	if len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationDelete {
 		t.Fatalf("tasks = %+v, want 1 task with operation=delete", tasks)
 	}
 }
@@ -162,10 +162,10 @@ func TestCaptureLifecycleEvent_UserDeleted_UsesConnectionDeprovisionPolicy(t *te
 func TestCaptureLifecycleEvent_UserDeleted_PolicyNoneSkipsTask(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
-	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionNone
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
+	conn.DeprovisionPolicy.OnDelete = provisioningdomain.DeprovisionNone
 	_ = connRepo.Register(ctx, conn, "secret")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDeleted, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
@@ -178,11 +178,11 @@ func TestCaptureLifecycleEvent_UserDeleted_PolicyNoneSkipsTask(t *testing.T) {
 func TestCaptureLifecycleEvent_AssignmentRemoved_OnlyTargetsAssignedApplication(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	connA := activeConnection("app-1", domain.ScopeAllUsers)
-	connB := activeConnection("app-2", domain.ScopeAllUsers)
+	connA := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
+	connB := activeConnection("app-2", provisioningdomain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, connA, "secret-a")
 	_ = connRepo.Register(ctx, connB, "secret-b")
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerAssignmentRemoved, "app-1", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerAssignmentRemoved, "app-1", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
@@ -199,15 +199,15 @@ func TestCaptureLifecycleEvent_AssignmentRemoved_OnlyTargetsAssignedApplication(
 func TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	disabled := activeConnection("app-1", domain.ScopeAllUsers)
-	disabled.Status = domain.ConnectionDisabled
+	disabled := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
+	disabled.Status = provisioningdomain.ConnectionDisabled
 	_ = connRepo.Register(ctx, disabled, "secret-1")
-	quarantined := activeConnection("app-2", domain.ScopeAllUsers)
+	quarantined := activeConnection("app-2", provisioningdomain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, quarantined, "secret-2")
 	_ = quarantined.Quarantine("too many failures", time.Now())
 	_ = connRepo.Update(ctx, quarantined, nil)
 
-	err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", time.Now())
+	err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", time.Now())
 	if err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
@@ -222,13 +222,13 @@ func TestCaptureLifecycleEvent_SkipsDisabledAndQuarantinedConnections(t *testing
 func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
 	deps, connRepo, taskRepo, _ := newCaptureDeps()
 	ctx := context.Background()
-	conn := activeConnection("app-1", domain.ScopeAllUsers)
+	conn := activeConnection("app-1", provisioningdomain.ScopeAllUsers)
 	_ = connRepo.Register(ctx, conn, "secret")
 	now := time.Now()
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", now); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", now); err != nil {
 		t.Fatalf("first CaptureLifecycleEvent() error = %v", err)
 	}
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", now); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", now); err != nil {
 		t.Fatalf("second CaptureLifecycleEvent() (same now) error = %v", err)
 	}
 	tasks, _ := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
@@ -237,9 +237,9 @@ func TestCaptureLifecycleEvent_IdempotentAcrossRepeatedCapture(t *testing.T) {
 	}
 }
 
-func deleteWithGracePeriodConnection(applicationID string, days int) *domain.ProvisioningConnection {
-	conn := activeConnection(applicationID, domain.ScopeAllUsers)
-	conn.DeprovisionPolicy.OnDelete = domain.DeprovisionDelete
+func deleteWithGracePeriodConnection(applicationID string, days int) *provisioningdomain.ProvisioningConnection {
+	conn := activeConnection(applicationID, provisioningdomain.ScopeAllUsers)
+	conn.DeprovisionPolicy.OnDelete = provisioningdomain.DeprovisionDelete
 	conn.DeprovisionPolicy.GracePeriodDays = days
 	return conn
 }
@@ -256,7 +256,7 @@ func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDe
 	deletedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	dueAt := deletedAt.Add(7 * 24 * time.Hour)
 
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", deletedAt); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDeleted, "", deletedAt); err != nil {
 		t.Fatalf("CaptureLifecycleEvent(user_deleted) error = %v", err)
 	}
 	for _, app := range []string{"app-1", "app-2"} {
@@ -268,7 +268,7 @@ func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDe
 		t.Fatalf("scheduled deprovisions due at %v = %+v, want one per connection", dueAt, due)
 	}
 
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerAssignmentAdded, "app-1", deletedAt.Add(24*time.Hour)); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerAssignmentAdded, "app-1", deletedAt.Add(24*time.Hour)); err != nil {
 		t.Fatalf("CaptureLifecycleEvent(assignment_added) error = %v", err)
 	}
 
@@ -280,7 +280,7 @@ func TestCaptureLifecycleEvent_ReassignmentCancelsOnlyThatConnectionsScheduledDe
 		t.Fatalf("scheduled deprovisions after reassignment to app-1 = %+v, want only app-2's", due)
 	}
 	// 取消の後も、割り当てによる create のプロビジョニングタスクは従来どおり作る。
-	if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10); len(tasks) != 1 || tasks[0].Operation != domain.OperationCreate {
+	if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10); len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationCreate {
 		t.Errorf("tasks on app-1 after reassignment = %+v, want one create", tasks)
 	}
 }
@@ -296,14 +296,14 @@ func TestCaptureLifecycleEvent_ReEnablingCancelsEveryConnectionsScheduledDeprovi
 	}
 	deletedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	dueAt := deletedAt.Add(7 * 24 * time.Hour)
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", deletedAt); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDeleted, "", deletedAt); err != nil {
 		t.Fatalf("CaptureLifecycleEvent(user_deleted) error = %v", err)
 	}
 	if due, _ := taskRepo.ListDueDeprovisions(ctx, dueAt, 10); len(due) != 2 {
 		t.Fatalf("scheduled deprovisions due at %v = %+v, want one per connection", dueAt, due)
 	}
 
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserEnabled, "", deletedAt.Add(24*time.Hour)); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserEnabled, "", deletedAt.Add(24*time.Hour)); err != nil {
 		t.Fatalf("CaptureLifecycleEvent(user_enabled) error = %v", err)
 	}
 
@@ -315,7 +315,7 @@ func TestCaptureLifecycleEvent_ReEnablingCancelsEveryConnectionsScheduledDeprovi
 		t.Fatalf("scheduled deprovisions after re-enabling = %+v, want none", due)
 	}
 	for _, app := range []string{"app-1", "app-2"} {
-		if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, app, nil, 10); len(tasks) != 1 || tasks[0].Operation != domain.OperationUpdate {
+		if tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, app, nil, 10); len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationUpdate {
 			t.Errorf("tasks on %s after re-enabling = %+v, want one update", app, tasks)
 		}
 	}
@@ -329,12 +329,12 @@ func TestCaptureLifecycleEvent_ReassignmentKeepsADeprovisionScheduledAfterIt(t *
 	}
 	assignedAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	deletedAt := assignedAt.Add(time.Hour)
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", deletedAt); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDeleted, "", deletedAt); err != nil {
 		t.Fatal(err)
 	}
 
 	// 削除より古い割り当ての通知が遅れて届いても、後の削除の予約は取り消さない。
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerAssignmentAdded, "app-1", assignedAt); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerAssignmentAdded, "app-1", assignedAt); err != nil {
 		t.Fatal(err)
 	}
 
@@ -351,12 +351,12 @@ func TestCaptureLifecycleEvent_UserDeletedWithoutGracePeriodCreatesTaskImmediate
 	}
 	now := time.Now().UTC()
 
-	if err := usecases.CaptureLifecycleEvent(ctx, deps, testTenantID, domain.SourceTypeUser, "user-1", ports.TriggerUserDeleted, "", now); err != nil {
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, deps, testTenantID, provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserDeleted, "", now); err != nil {
 		t.Fatal(err)
 	}
 
 	tasks, _ := taskRepo.ListByConnection(ctx, testTenantID, "app-1", nil, 10)
-	if len(tasks) != 1 || tasks[0].Operation != domain.OperationDelete {
+	if len(tasks) != 1 || tasks[0].Operation != provisioningdomain.OperationDelete {
 		t.Fatalf("tasks = %+v, want one immediate delete", tasks)
 	}
 	if due, _ := taskRepo.ListDueDeprovisions(ctx, now.Add(365*24*time.Hour), 10); len(due) != 0 {

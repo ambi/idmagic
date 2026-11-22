@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -24,7 +24,7 @@ func TestAuthorizationRequestStore(t *testing.T) {
 	store := &oauth2postgres.AuthorizationRequestStore{Pool: db}
 	now := pgtest.Now()
 
-	req := &domain.AuthorizationRequest{
+	req := &oauthdomain.AuthorizationRequest{
 		ID: "req-1", TenantID: tenant.ID, State: spec.AuthFlowReceived, ClientID: "client-1",
 		RedirectURI: "https://c/cb", ResponseType: spec.ResponseTypeCode, Scope: "openid",
 		ExpiresAt: now.Add(time.Minute),
@@ -64,7 +64,7 @@ func TestAuthorizationRequestStore(t *testing.T) {
 		t.Fatalf("cross-tenant find=%+v err=%v (want nil)", got, err)
 	}
 	// GC
-	expired := &domain.AuthorizationRequest{ID: "req-exp", TenantID: tenant.ID, State: spec.AuthFlowReceived, ClientID: "c", ExpiresAt: now.Add(-time.Second)}
+	expired := &oauthdomain.AuthorizationRequest{ID: "req-exp", TenantID: tenant.ID, State: spec.AuthFlowReceived, ClientID: "c", ExpiresAt: now.Add(-time.Second)}
 	if err := store.Save(ctx, expired); err != nil {
 		t.Fatalf("save expired: %v", err)
 	}

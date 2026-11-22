@@ -17,7 +17,7 @@ import (
 	approvalmemory "github.com/ambi/idmagic/backend/oauth2/internal/approval/db_memory"
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/internal/approval/usecases"
 	oauthmemory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -340,7 +340,7 @@ func TestApprovalExchangeConcurrentConsume(t *testing.T) {
 }
 
 func approvalOAuthErrorCode(err error) string {
-	if oauthErr, ok := errors.AsType[*sharedusecases.OAuthError](err); ok {
+	if oauthErr, ok := errors.AsType[*oauthusecases.OAuthError](err); ok {
 		return oauthErr.Code
 	}
 	return ""

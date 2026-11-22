@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ambi/idmagic/backend/seeding/domain"
+	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 )
 
 const MaximumSecretBytes = 64 * 1024
@@ -18,12 +18,12 @@ type SecretResolver struct {
 	Getenv     func(string) string
 }
 
-func (r SecretResolver) Resolve(reference domain.SecretReference) (string, error) {
+func (r SecretResolver) Resolve(reference seedingdomain.SecretReference) (string, error) {
 	if err := reference.Validate(); err != nil {
 		return "", err
 	}
 	switch reference.Provider {
-	case domain.SecretProviderEnv:
+	case seedingdomain.SecretProviderEnv:
 		if r.Getenv == nil {
 			return "", fmt.Errorf("seed env secret provider is not configured")
 		}
@@ -35,7 +35,7 @@ func (r SecretResolver) Resolve(reference domain.SecretReference) (string, error
 			return "", fmt.Errorf("seed env secret contains NUL")
 		}
 		return value, nil
-	case domain.SecretProviderFile:
+	case seedingdomain.SecretProviderFile:
 		return r.resolveFile(reference.Locator)
 	default:
 		return "", fmt.Errorf("unsupported seed secret provider")

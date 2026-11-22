@@ -10,23 +10,23 @@ import (
 	"time"
 
 	memory "github.com/ambi/idmagic/backend/provisioning/internal/db_memory"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
-	"github.com/ambi/idmagic/backend/provisioning/internal/usecases"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningusecases "github.com/ambi/idmagic/backend/provisioning/internal/usecases"
 )
 
-func newAdminDeps() (usecases.AdminDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
+func newAdminDeps() (provisioningusecases.AdminDeps, *memory.ProvisioningConnectionRepository, *memory.ProvisioningTaskRepository) {
 	taskRepo := memory.NewProvisioningTaskRepository()
 	connRepo := memory.NewProvisioningConnectionRepository(taskRepo, memory.NewRemoteResourceLinkRepository())
-	return usecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}, connRepo, taskRepo
+	return provisioningusecases.AdminDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}, connRepo, taskRepo
 }
 
 //spec:covers EX-PROVISIONING-002-02: https ではない base_url の接続登録を拒否し、接続を作らない。
 func TestRegisterConnection_SeedsDefaultsAndRejectsUnsafeURL(t *testing.T) {
 	deps, _, _ := newAdminDeps()
-	_, err := usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{
+	_, err := provisioningusecases.RegisterConnection(context.Background(), deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "http://insecure.example.com",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        time.Now(),
 	})
 	if err == nil {
@@ -38,9 +38,9 @@ func TestRegisterConnection_SeedsDefaultsAndRejectsUnsafeURL(t *testing.T) {
 func TestRegisterConnection_SeedsDefaultAttributeMappingAndRejectsDuplicate(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	now := time.Now()
-	conn, err := usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{
+	conn, err := provisioningusecases.RegisterConnection(context.Background(), deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
 	if err != nil {
@@ -49,15 +49,15 @@ func TestRegisterConnection_SeedsDefaultAttributeMappingAndRejectsDuplicate(t *t
 	if len(conn.AttributeMappings) == 0 {
 		t.Error("RegisterConnection() should seed default attribute mappings")
 	}
-	if conn.Scope != domain.ScopeAssignedOnly {
+	if conn.Scope != provisioningdomain.ScopeAssignedOnly {
 		t.Errorf("RegisterConnection() default scope = %v, want assigned_only", conn.Scope)
 	}
-	_, err = usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{
+	_, err = provisioningusecases.RegisterConnection(context.Background(), deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok2"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok2"},
 		Now:        now,
 	})
-	if !errors.Is(err, ports.ErrConnectionAlreadyExists) {
+	if !errors.Is(err, provisioningports.ErrConnectionAlreadyExists) {
 		t.Errorf("RegisterConnection() duplicate error = %v, want ErrConnectionAlreadyExists", err)
 	}
 }
@@ -66,16 +66,16 @@ func TestUpdateConnection_PartialUpdateOnlyChangesGivenFields(t *testing.T) {
 	deps, connRepo, _ := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
-	_, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	_, err := provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
 	if err != nil {
 		t.Fatalf("RegisterConnection() error = %v", err)
 	}
 	newURL := "https://downstream.example.com/scim/v2/updated"
-	updated, err := usecases.UpdateConnection(ctx, deps, usecases.UpdateConnectionInput{
+	updated, err := provisioningusecases.UpdateConnection(ctx, deps, provisioningusecases.UpdateConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: &newURL, Now: now,
 	})
 	if err != nil {
@@ -84,7 +84,7 @@ func TestUpdateConnection_PartialUpdateOnlyChangesGivenFields(t *testing.T) {
 	if updated.BaseURL != newURL {
 		t.Errorf("UpdateConnection() BaseURL = %q, want %q", updated.BaseURL, newURL)
 	}
-	if updated.Scope != domain.ScopeAssignedOnly {
+	if updated.Scope != provisioningdomain.ScopeAssignedOnly {
 		t.Errorf("UpdateConnection() unexpectedly changed Scope to %v", updated.Scope)
 	}
 	secret, err := connRepo.CredentialSecret(ctx, "tenant-a", "app-1")
@@ -97,13 +97,13 @@ func TestUpdateConnection_RotatesCredentialWhenProvided(t *testing.T) {
 	deps, connRepo, _ := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
-	_, _ = usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	_, _ = provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
-	newCred := domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok-rotated"}
-	if _, err := usecases.UpdateConnection(ctx, deps, usecases.UpdateConnectionInput{
+	newCred := provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok-rotated"}
+	if _, err := provisioningusecases.UpdateConnection(ctx, deps, provisioningusecases.UpdateConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", Credential: &newCred, Now: now,
 	}); err != nil {
 		t.Fatalf("UpdateConnection() error = %v", err)
@@ -119,12 +119,12 @@ func TestResumeConnection_RequiresQuarantined(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
-	_, _ = usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	_, _ = provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
-	if _, err := usecases.ResumeConnection(ctx, deps, "tenant-a", "app-1", now); !errors.Is(err, domain.ErrConnectionNotQuarantined) {
+	if _, err := provisioningusecases.ResumeConnection(ctx, deps, "tenant-a", "app-1", now); !errors.Is(err, provisioningdomain.ErrConnectionNotQuarantined) {
 		t.Errorf("ResumeConnection() on a non-quarantined connection error = %v, want ErrConnectionNotQuarantined", err)
 	}
 }
@@ -139,15 +139,15 @@ func TestResumeConnection_ClearsQuarantineAndAllowsNextTask(t *testing.T) {
 	deps, connRepo, taskRepo := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now().UTC()
-	conn, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	conn, err := provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
 	if err != nil {
 		t.Fatalf("RegisterConnection() error = %v", err)
 	}
-	conn.Scope = domain.ScopeAllUsers // avoid needing an AssignmentRepo just to prove capture resumes
+	conn.Scope = provisioningdomain.ScopeAllUsers // avoid needing an AssignmentRepo just to prove capture resumes
 	conn.ConsecutiveFailureCount = 7
 	if err := conn.Quarantine("too many failures", now); err != nil {
 		t.Fatalf("Quarantine() error = %v", err)
@@ -156,19 +156,19 @@ func TestResumeConnection_ClearsQuarantineAndAllowsNextTask(t *testing.T) {
 		t.Fatalf("Update() error = %v", err)
 	}
 
-	resumed, err := usecases.ResumeConnection(ctx, deps, "tenant-a", "app-1", now)
+	resumed, err := provisioningusecases.ResumeConnection(ctx, deps, "tenant-a", "app-1", now)
 	if err != nil {
 		t.Fatalf("ResumeConnection() error = %v", err)
 	}
-	if resumed.Health != domain.HealthOK {
+	if resumed.Health != provisioningdomain.HealthOK {
 		t.Errorf("resumed.Health = %v, want ok", resumed.Health)
 	}
 	if resumed.ConsecutiveFailureCount != 0 {
 		t.Errorf("resumed.ConsecutiveFailureCount = %d, want 0", resumed.ConsecutiveFailureCount)
 	}
 
-	captureDeps := usecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
-	if err := usecases.CaptureLifecycleEvent(ctx, captureDeps, "tenant-a", domain.SourceTypeUser, "user-1", ports.TriggerUserCreated, "", now); err != nil {
+	captureDeps := provisioningusecases.CaptureDeps{ConnectionRepo: connRepo, TaskRepo: taskRepo}
+	if err := provisioningusecases.CaptureLifecycleEvent(ctx, captureDeps, "tenant-a", provisioningdomain.SourceTypeUser, "user-1", provisioningports.TriggerUserCreated, "", now); err != nil {
 		t.Fatalf("CaptureLifecycleEvent() error = %v", err)
 	}
 	tasks, err := taskRepo.ListByConnection(ctx, "tenant-a", "app-1", nil, 10)
@@ -182,20 +182,20 @@ func TestRetryTask_RequiresDeadLetter(t *testing.T) {
 	deps, connRepo, taskRepo := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
-	_, _ = usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	_, _ = provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
 	_ = connRepo
-	d := &domain.ProvisioningTask{
-		ID: "task-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: domain.SourceTypeUser, SourceID: "user-1",
-		SourceVersion: 1, Operation: domain.OperationCreate, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+	d := &provisioningdomain.ProvisioningTask{
+		ID: "task-1", TenantID: "tenant-a", ConnectionID: "app-1", SourceType: provisioningdomain.SourceTypeUser, SourceID: "user-1",
+		SourceVersion: 1, Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.TaskPending, CreatedAt: now, UpdatedAt: now,
 	}
 	if _, err := taskRepo.Save(ctx, d); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
-	if _, err := usecases.RetryTask(ctx, deps, "tenant-a", "app-1", "task-1"); !errors.Is(err, usecases.ErrTaskNotRetryable) {
+	if _, err := provisioningusecases.RetryTask(ctx, deps, "tenant-a", "app-1", "task-1"); !errors.Is(err, provisioningusecases.ErrTaskNotRetryable) {
 		t.Errorf("RetryTask() on a pending task error = %v, want ErrTaskNotRetryable", err)
 	}
 }
@@ -205,13 +205,13 @@ func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	deps, _, _ := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
-	_, _ = usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	_, _ = provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
-	_, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
-	if !errors.Is(err, usecases.ErrSubjectNotInScope) {
+	_, err := provisioningusecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", provisioningdomain.SourceTypeUser, "user-1", now)
+	if !errors.Is(err, provisioningusecases.ErrSubjectNotInScope) {
 		t.Errorf("ProvisionOnDemand() for an unassigned user (scope=assigned_only) error = %v, want ErrSubjectNotInScope", err)
 	}
 }
@@ -221,28 +221,28 @@ func TestProvisionOnDemand_CreatesPendingTaskForSubjectInScope(t *testing.T) {
 	deps, _, taskRepo := newAdminDeps()
 	ctx := context.Background()
 	now := time.Now()
-	conn, err := usecases.RegisterConnection(ctx, deps, usecases.RegisterConnectionInput{
+	conn, err := provisioningusecases.RegisterConnection(ctx, deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        now,
 	})
 	if err != nil {
 		t.Fatalf("RegisterConnection() error = %v", err)
 	}
-	conn.Scope = domain.ScopeAllUsers
+	conn.Scope = provisioningdomain.ScopeAllUsers
 	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
 		t.Fatalf("ConnectionRepo.Update() error = %v", err)
 	}
 
-	task, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
+	task, err := provisioningusecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", provisioningdomain.SourceTypeUser, "user-1", now)
 	if err != nil {
 		t.Fatalf("ProvisionOnDemand() error = %v", err)
 	}
-	if task.Status != domain.TaskPending {
+	if task.Status != provisioningdomain.TaskPending {
 		t.Fatalf("task.Status = %q, want pending", task.Status)
 	}
 	stored, err := taskRepo.Find(ctx, "tenant-a", task.ID)
-	if err != nil || stored == nil || stored.Status != domain.TaskPending {
+	if err != nil || stored == nil || stored.Status != provisioningdomain.TaskPending {
 		t.Fatalf("stored task = (%+v, %v), want pending task", stored, err)
 	}
 }
@@ -253,16 +253,16 @@ func TestProvisionOnDemand_CreatesPendingTaskForSubjectInScope(t *testing.T) {
 //spec:covers RFC7643-OUT-SCHEMA-EXTENSIONS: 既定の対応付けは拡張スキーマの属性を 1 件も含まない。
 func TestRegisterConnection_DefaultMappingSendsExternalIdOnCreateOnly(t *testing.T) {
 	deps, _, _ := newAdminDeps()
-	conn, err := usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{
+	conn, err := provisioningusecases.RegisterConnection(context.Background(), deps, provisioningusecases.RegisterConnectionInput{
 		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
-		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Credential: provisioningdomain.ProvisioningCredentialInput{AuthMethod: provisioningdomain.AuthBearerToken, BearerToken: "tok"},
 		Now:        time.Now(),
 	})
 	if err != nil {
 		t.Fatalf("RegisterConnection() error = %v", err)
 	}
 
-	var externalID *domain.AttributeMappingRule
+	var externalID *provisioningdomain.AttributeMappingRule
 	for i, rule := range conn.AttributeMappings {
 		if rule.TargetPath == "externalId" {
 			externalID = &conn.AttributeMappings[i]
@@ -274,10 +274,10 @@ func TestRegisterConnection_DefaultMappingSendsExternalIdOnCreateOnly(t *testing
 	if externalID == nil {
 		t.Fatal("既定の対応付けに externalId が無い")
 	}
-	if externalID.SourceKind != domain.SourceKindAttribute || externalID.SourceKey != "id" {
+	if externalID.SourceKind != provisioningdomain.SourceKindAttribute || externalID.SourceKey != "id" {
 		t.Errorf("externalId の供給元 = %v/%q, want attribute/id", externalID.SourceKind, externalID.SourceKey)
 	}
-	if externalID.ApplyOn != domain.ApplyCreateOnly {
+	if externalID.ApplyOn != provisioningdomain.ApplyCreateOnly {
 		t.Errorf("externalId の apply_on = %v, want create_only", externalID.ApplyOn)
 	}
 	if !externalID.Required {
@@ -292,19 +292,19 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 	now := time.Now().UTC()
 
 	// 明示指定は一覧の引き当てを要さないので、GroupRepo が無くても再同期できる。
-	setup := func(t *testing.T, flags domain.ProvisioningFeatureFlags, push *domain.GroupPushConfig) (usecases.AdminDeps, *memory.ProvisioningTaskRepository) {
+	setup := func(t *testing.T, flags provisioningdomain.ProvisioningFeatureFlags, push *provisioningdomain.GroupPushConfig) (provisioningusecases.AdminDeps, *memory.ProvisioningTaskRepository) {
 		t.Helper()
 		deps, connRepo, taskRepo := newAdminDeps()
-		conn := &domain.ProvisioningConnection{
-			ApplicationID: "app-1", TenantID: "tenant-a", Status: domain.ConnectionActive,
+		conn := &provisioningdomain.ProvisioningConnection{
+			ApplicationID: "app-1", TenantID: "tenant-a", Status: provisioningdomain.ConnectionActive,
 			BaseURL:      "https://downstream.example.com/scim/v2",
-			Credential:   domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
+			Credential:   provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred", AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
 			FeatureFlags: flags, GroupPush: push,
-			Scope:              domain.ScopeAssignedOnly,
-			Matching:           domain.MatchingRule{ConflictMatchAttribute: "userName"},
-			DeprovisionPolicy:  domain.DeprovisionPolicy{OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate},
+			Scope:              provisioningdomain.ScopeAssignedOnly,
+			Matching:           provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+			DeprovisionPolicy:  provisioningdomain.DeprovisionPolicy{OnUnassign: provisioningdomain.DeprovisionDeactivate, OnDelete: provisioningdomain.DeprovisionDeactivate},
 			RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10,
-			Health: domain.HealthOK, CreatedAt: now, UpdatedAt: now,
+			Health: provisioningdomain.HealthOK, CreatedAt: now, UpdatedAt: now,
 		}
 		if err := connRepo.Register(ctx, conn, "tok"); err != nil {
 			t.Fatal(err)
@@ -320,7 +320,7 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 		}
 		var ids []string
 		for _, d := range tasks {
-			if d.SourceType == domain.SourceTypeGroup {
+			if d.SourceType == provisioningdomain.SourceTypeGroup {
 				ids = append(ids, d.SourceID)
 			}
 		}
@@ -328,9 +328,9 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 	}
 
 	t.Run("明示指定の Group を再同期する", func(t *testing.T) {
-		deps, taskRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true},
-			&domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1", "g2"}})
-		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
+		deps, taskRepo := setup(t, provisioningdomain.ProvisioningFeatureFlags{PushGroups: true},
+			&provisioningdomain.GroupPushConfig{Selection: provisioningdomain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1", "g2"}})
+		if _, err := provisioningusecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
 			t.Fatalf("StartFullResync() error = %v", err)
 		}
 		if got := groupTasks(t, taskRepo); len(got) != 2 {
@@ -340,9 +340,9 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 
 	t.Run("push_groups が無効なら Group は再同期しない", func(t *testing.T) {
 		// 対象の設定は残したまま機能フラグだけを落とす。2 つの番人を分ける。
-		deps, taskRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: false},
-			&domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1"}})
-		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
+		deps, taskRepo := setup(t, provisioningdomain.ProvisioningFeatureFlags{PushGroups: false},
+			&provisioningdomain.GroupPushConfig{Selection: provisioningdomain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1"}})
+		if _, err := provisioningusecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
 			t.Fatalf("StartFullResync() error = %v", err)
 		}
 		if got := groupTasks(t, taskRepo); len(got) != 0 {
@@ -352,8 +352,8 @@ func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
 
 	t.Run("対象の設定が無いなら Group は再同期しない", func(t *testing.T) {
 		// 機能フラグは有効のまま、対象の設定だけを落とす。fail-closed。
-		deps, taskRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true}, nil)
-		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
+		deps, taskRepo := setup(t, provisioningdomain.ProvisioningFeatureFlags{PushGroups: true}, nil)
+		if _, err := provisioningusecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
 			t.Fatalf("StartFullResync() error = %v", err)
 		}
 		if got := groupTasks(t, taskRepo); len(got) != 0 {

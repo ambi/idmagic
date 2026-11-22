@@ -8,7 +8,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/internal/scim/db_memory"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
+	scimusecases "github.com/ambi/idmagic/backend/sourcing/internal/scim/usecases"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -20,7 +20,7 @@ func TestListUsersTenantIsolation(t *testing.T) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
+	u := scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 
 	const tenantB = "tenant-b"
 	if _, err := u.CreateUser(ctx, tenancydomain.DefaultTenantID, map[string]any{"userName": "a-user@example.com"}); err != nil {
@@ -30,7 +30,7 @@ func TestListUsersTenantIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := u.ListUsers(ctx, tenancydomain.DefaultTenantID, usecases.ListQuery{})
+	result, err := u.ListUsers(ctx, tenancydomain.DefaultTenantID, scimusecases.ListQuery{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestListUsersTenantIsolation(t *testing.T) {
 	}
 
 	// tenant-b の token で他 tenant の userName を filter しても一致しない。
-	result, err = u.ListUsers(ctx, tenantB, usecases.ListQuery{Filter: `userName eq "a-user@example.com"`})
+	result, err = u.ListUsers(ctx, tenantB, scimusecases.ListQuery{Filter: `userName eq "a-user@example.com"`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestListGroupsTenantIsolation(t *testing.T) {
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	groupRepo := idmanagement.NewMemoryModule().GroupRepo
 	scimRepo := scimmemory.NewScimRepository()
-	u := usecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
+	u := scimusecases.NewUsecases(scimRepo, userRepo, groupRepo, scimUserLifecycle(userRepo), func(spec.DomainEvent) {}, scimIdentityWrites(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {}))
 
 	const tenantB = "tenant-b"
 	if _, err := u.CreateGroup(ctx, tenancydomain.DefaultTenantID, map[string]any{"displayName": "A-Team"}); err != nil {
@@ -66,7 +66,7 @@ func TestListGroupsTenantIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := u.ListGroups(ctx, tenancydomain.DefaultTenantID, usecases.ListQuery{})
+	result, err := u.ListGroups(ctx, tenancydomain.DefaultTenantID, scimusecases.ListQuery{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,11 +12,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 )
 
-var _ ports.ProvisioningTargetClient = (*Client)(nil)
+var _ provisioningports.ProvisioningTargetClient = (*Client)(nil)
 
 // Client is the outbound SCIM 2.0 wire client for one ProvisioningConnection.
 // It sends idempotent, mapping-driven resource documents built by BuildResource
@@ -41,10 +41,10 @@ type Client struct {
 // token, or the OAuth2 client secret).
 func NewClient(
 	baseURL string,
-	credential domain.ProvisioningConnectionCredentialMetadata,
+	credential provisioningdomain.ProvisioningConnectionCredentialMetadata,
 	secret string,
 ) (*Client, error) {
-	if err := domain.ValidateOutboundBaseURL(baseURL); err != nil {
+	if err := provisioningdomain.ValidateOutboundBaseURL(baseURL); err != nil {
 		return nil, err
 	}
 	httpClient := newSafeHTTPClient()
@@ -130,11 +130,11 @@ func (c *Client) send(ctx context.Context, method, path string, body any, refres
 func classify(resp *http.Response, data []byte) error {
 	switch {
 	case resp.StatusCode == http.StatusConflict:
-		return &ports.ConflictError{Detail: scimErrorDetail(data)}
+		return &provisioningports.ConflictError{Detail: scimErrorDetail(data)}
 	case resp.StatusCode == http.StatusNotFound:
-		return &ports.NotFoundError{}
+		return &provisioningports.NotFoundError{}
 	case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500:
-		return &ports.RetryableError{StatusCode: resp.StatusCode, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
+		return &provisioningports.RetryableError{StatusCode: resp.StatusCode, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
 	default:
 		return fmt.Errorf("provisioning/scim: unexpected status %d: %s", resp.StatusCode, scimErrorDetail(data))
 	}
@@ -166,13 +166,13 @@ func parseRetryAfter(header string) time.Duration {
 // Discover fetches /ServiceProviderConfig and caches nothing itself; callers
 // persist the result on ProvisioningConnection.Capabilities
 // (docs/modules/provisioning/ interfaces.TestProvisioningConnection).
-func (c *Client) Discover(ctx context.Context) (domain.ProvisioningCapabilities, error) {
+func (c *Client) Discover(ctx context.Context) (provisioningdomain.ProvisioningCapabilities, error) {
 	resp, data, err := c.do(ctx, http.MethodGet, "/ServiceProviderConfig", nil) //nolint:bodyclose // do() already reads and closes resp.Body before returning
 	if err != nil {
-		return domain.ProvisioningCapabilities{}, err
+		return provisioningdomain.ProvisioningCapabilities{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return domain.ProvisioningCapabilities{}, classify(resp, data)
+		return provisioningdomain.ProvisioningCapabilities{}, classify(resp, data)
 	}
 	var payload struct {
 		Patch  struct{ Supported bool } `json:"patch"`
@@ -182,9 +182,9 @@ func (c *Client) Discover(ctx context.Context) (domain.ProvisioningCapabilities,
 		Sort   struct{ Supported bool } `json:"sort"`
 	}
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return domain.ProvisioningCapabilities{}, fmt.Errorf("provisioning/scim: decode ServiceProviderConfig: %w", err)
+		return provisioningdomain.ProvisioningCapabilities{}, fmt.Errorf("provisioning/scim: decode ServiceProviderConfig: %w", err)
 	}
-	return domain.ProvisioningCapabilities{
+	return provisioningdomain.ProvisioningCapabilities{
 		SupportsPatch:  payload.Patch.Supported,
 		SupportsBulk:   payload.Bulk.Supported,
 		SupportsFilter: payload.Filter.Supported,
@@ -196,7 +196,7 @@ func (c *Client) Discover(ctx context.Context) (domain.ProvisioningCapabilities,
 // CreateUser applies rules against attrs (BuildResource) and POSTs the result to
 // /Users, returning the downstream id and etag (etag is nil when the response
 // has none, e.g. supports_etag=false). It satisfies ports.ProvisioningTargetClient.
-func (c *Client) CreateUser(ctx context.Context, rules []domain.AttributeMappingRule, attrs map[string]any) (remoteID string, etag *string, err error) {
+func (c *Client) CreateUser(ctx context.Context, rules []provisioningdomain.AttributeMappingRule, attrs map[string]any) (remoteID string, etag *string, err error) {
 	doc, err := BuildResource(rules, resolverFromMap(attrs), ApplyOnCreate)
 	if err != nil {
 		return "", nil, err
@@ -205,7 +205,7 @@ func (c *Client) CreateUser(ctx context.Context, rules []domain.AttributeMapping
 }
 
 // CreateGroup applies rules against attrs and POSTs the result to /Groups.
-func (c *Client) CreateGroup(ctx context.Context, rules []domain.AttributeMappingRule, attrs map[string]any) (remoteID string, etag *string, err error) {
+func (c *Client) CreateGroup(ctx context.Context, rules []provisioningdomain.AttributeMappingRule, attrs map[string]any) (remoteID string, etag *string, err error) {
 	doc, err := BuildResource(rules, resolverFromMap(attrs), ApplyOnCreate)
 	if err != nil {
 		return "", nil, err
@@ -271,7 +271,7 @@ func etagFromHeader(resp *http.Response) *string {
 // replace operation (RFC 7644 §3.5.2.1, an operation without "path" replaces
 // the listed top-level attributes); otherwise it falls back to PUT (full
 // resource replace), per wi-45's PATCH→PUT fallback requirement.
-func (c *Client) UpdateUser(ctx context.Context, remoteID string, rules []domain.AttributeMappingRule, attrs map[string]any, supportsPatch bool) (*string, error) {
+func (c *Client) UpdateUser(ctx context.Context, remoteID string, rules []provisioningdomain.AttributeMappingRule, attrs map[string]any, supportsPatch bool) (*string, error) {
 	doc, err := BuildResource(rules, resolverFromMap(attrs), ApplyOnUpdate)
 	if err != nil {
 		return nil, err
@@ -281,7 +281,7 @@ func (c *Client) UpdateUser(ctx context.Context, remoteID string, rules []domain
 
 // UpdateGroup applies rules against attrs as the desired-state document for a
 // Group (excluding members, which PatchGroupMembers manages incrementally).
-func (c *Client) UpdateGroup(ctx context.Context, remoteID string, rules []domain.AttributeMappingRule, attrs map[string]any, supportsPatch bool) (*string, error) {
+func (c *Client) UpdateGroup(ctx context.Context, remoteID string, rules []provisioningdomain.AttributeMappingRule, attrs map[string]any, supportsPatch bool) (*string, error) {
 	doc, err := BuildResource(rules, resolverFromMap(attrs), ApplyOnUpdate)
 	if err != nil {
 		return nil, err

@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
+	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
 	"github.com/otuschhoff/gokrb5/v8/client"
 	"github.com/otuschhoff/gokrb5/v8/config"
 	"github.com/otuschhoff/gokrb5/v8/gssapi"
@@ -30,7 +30,7 @@ import (
 )
 
 type Fixture struct {
-	Config      domain.Config
+	Config      negotiatedomain.Config
 	Certificate *x509.Certificate
 	Keytab      *keytab.Keytab
 	Directory   string
@@ -76,9 +76,9 @@ func New(tb testing.TB) *Fixture {
 	if err := os.WriteFile(keytabFile, encoded, 0o600); err != nil {
 		tb.Fatal(err)
 	}
-	return &Fixture{Certificate: cert, Keytab: kt, Directory: directory, KVNO: 1, GSSAPIFlags: []int{gssapi.ContextFlagMutual, gssapi.ContextFlagInteg, gssapi.ContextFlagConf}, Config: domain.Config{
+	return &Fixture{Certificate: cert, Keytab: kt, Directory: directory, KVNO: 1, GSSAPIFlags: []int{gssapi.ContextFlagMutual, gssapi.ContextFlagInteg, gssapi.ContextFlagConf}, Config: negotiatedomain.Config{
 		Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: keytabFile, CertificateFile: certificateFile,
-		IntranetCIDRs: []string{"203.0.113.0/24"}, Bindings: []domain.Binding{{Principal: "alice", UserID: "alice-id"}},
+		IntranetCIDRs: []string{"203.0.113.0/24"}, Bindings: []negotiatedomain.Binding{{Principal: "alice", UserID: "alice-id"}},
 	}}
 }
 
@@ -91,10 +91,10 @@ func (f *Fixture) WriteConfiguration(tb testing.TB, tenantID string, automatic b
 	}
 	//nolint:gosec // テスト用の一時ファイルへ、生成した試行 Cookie の鍵を明示的に書き込む。
 	encoded, err := json.Marshal(struct {
-		Secret    string          `json:"attempt_secret"`
-		Automatic bool            `json:"automatic"`
-		Tenants   []domain.Config `json:"tenants"`
-	}{base64.StdEncoding.EncodeToString(secret), automatic, []domain.Config{f.Config}})
+		Secret    string                   `json:"attempt_secret"`
+		Automatic bool                     `json:"automatic"`
+		Tenants   []negotiatedomain.Config `json:"tenants"`
+	}{base64.StdEncoding.EncodeToString(secret), automatic, []negotiatedomain.Config{f.Config}})
 	if err != nil {
 		tb.Fatal(err)
 	}

@@ -7,7 +7,7 @@ import (
 
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy/domain"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/labstack/echo/v5"
 )
@@ -24,16 +24,16 @@ func TestResolveRPForRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := echo.New()
-	contextFor := func(style domain.TenantEndpointStyle, issuer, prefix string) *echo.Context {
+	contextFor := func(style tenancydomain.TenantEndpointStyle, issuer, prefix string) *echo.Context {
 		req := httptest.NewRequest("GET", "/", http.NoBody)
-		req = req.WithContext(tenantports.WithTenant(req.Context(), &domain.Tenant{EndpointStyle: style}, issuer, prefix))
+		req = req.WithContext(tenantports.WithTenant(req.Context(), &tenancydomain.Tenant{EndpointStyle: style}, issuer, prefix))
 		return e.NewContext(req, httptest.NewRecorder())
 	}
 	deps := support.Deps{Issuer: "https://idp.example"}
-	if got := ResolveRPForRequest(contextFor(domain.TenantEndpointStylePath, "https://idp.example/realms/acme", "/realms/acme"), deps, fallback); got != fallback {
+	if got := ResolveRPForRequest(contextFor(tenancydomain.TenantEndpointStylePath, "https://idp.example/realms/acme", "/realms/acme"), deps, fallback); got != fallback {
 		t.Fatal("path tenant did not retain its configured RP")
 	}
-	if got := ResolveRPForRequest(contextFor(domain.TenantEndpointStyleSubdomain, "https://acme.idp.example", ""), deps, fallback); got == nil || got == fallback {
+	if got := ResolveRPForRequest(contextFor(tenancydomain.TenantEndpointStyleSubdomain, "https://acme.idp.example", ""), deps, fallback); got == nil || got == fallback {
 		t.Fatal("subdomain tenant did not receive a request-derived RP")
 	}
 }

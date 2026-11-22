@@ -3,7 +3,7 @@ package usecases
 import (
 	"errors"
 
-	"github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
+	workloadports "github.com/ambi/idmagic/backend/workloadidentity/internal/ports"
 )
 
 var (
@@ -21,6 +21,6 @@ var (
 	ErrBindingNotFound                = errors.New("agent workload binding not found")
 	ErrBindingTrustBundleNotFound     = errors.New("workload trust bundle not found")
 	ErrBindingAgentNotFound           = errors.New("agent not found in this tenant")
-	ErrBindingSubjectPatternExists    = ports.ErrBindingPatternConflict
+	ErrBindingSubjectPatternExists    = workloadports.ErrBindingPatternConflict
 	ErrBindingSubjectPatternEmpty     = errors.New("subject_pattern is required")
 )

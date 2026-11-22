@@ -8,8 +8,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
-	"github.com/ambi/idmagic/backend/authentication/session/domain"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/internal/session/usecases"
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -37,7 +37,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	// last_seen_at 等を read-back と厳密比較するため、DB 分解能に揃える pgtest.Now() を使う。
 	now := pgtest.Now()
 
-	sess := &domain.LoginSession{
+	sess := &sessiondomain.LoginSession{
 		ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: user.ID,
 		AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
 		ExpiresAt: now.Add(time.Hour),
@@ -108,7 +108,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 			t.Fatalf("touch within interval must not persist: got %v, want %v", got.LastSeenAt, t1)
 		}
 
-		t3 := t1.Add(domain.LoginSessionTouchInterval + time.Second)
+		t3 := t1.Add(sessiondomain.LoginSessionTouchInterval + time.Second)
 		if err := repo.Touch(ctx, sess.ID, t3); err != nil {
 			t.Fatalf("touch: %v", err)
 		}
@@ -119,12 +119,12 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	})
 
 	t.Run("ListBySub returns newest first and excludes pending", func(t *testing.T) {
-		older := &domain.LoginSession{
+		older := &sessiondomain.LoginSession{
 			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: user.ID,
 			AuthTime: now.Add(-time.Hour).Unix(), AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
 			ExpiresAt: now.Add(time.Hour),
 		}
-		pending := &domain.LoginSession{
+		pending := &sessiondomain.LoginSession{
 			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: user.ID,
 			AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
 			AuthenticationPending: true, ExpiresAt: now.Add(time.Hour),
@@ -189,7 +189,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 
 	t.Run("DeleteAllForSub physically erases rows", func(t *testing.T) {
 		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID) //nolint:contextcheck // fixture helper intentionally uses context.Background(); out of this WI's scope to thread ctx through pgfixtures
-		s := &domain.LoginSession{
+		s := &sessiondomain.LoginSession{
 			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: u.ID,
 			AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
 			ExpiresAt: now.Add(time.Hour),
@@ -213,7 +213,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		cutoff := now.Add(time.Minute)
 		var ids []string
 		for range 3 {
-			s := &domain.LoginSession{
+			s := &sessiondomain.LoginSession{
 				ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: u.ID,
 				AuthTime: now.Unix(), AMR: []string{"pwd"}, ACR: "urn:idmagic:acr:pwd",
 				ExpiresAt: now.Add(-time.Minute),
@@ -260,15 +260,15 @@ func TestSessionResolutionSurvivesProcessRestart(t *testing.T) {
 	ctx := withTenant(context.Background(), tenant)
 
 	// "process A": ログインしてセッションを作る。
-	managerA := authusecases.NewSessionManager(&SessionRepository{Pool: db})
+	managerA := sessionusecases.NewSessionManager(&SessionRepository{Pool: db})
 	authCtx, err := managerA.Create(ctx, user.ID, []string{"pwd"}, time.Time{})
 	if err != nil || authCtx == nil {
 		t.Fatalf("create: %v %+v", err, authCtx)
 	}
-	cookie := http.Header{"Cookie": []string{authusecases.SessionCookie + "=" + authCtx.SessionID}}
+	cookie := http.Header{"Cookie": []string{sessionusecases.SessionCookie + "=" + authCtx.SessionID}}
 
 	// "process B": 別インスタンスの SessionManager/SessionRepository が同じ Pool で解決する。
-	managerB := authusecases.NewSessionManager(&SessionRepository{Pool: db})
+	managerB := sessionusecases.NewSessionManager(&SessionRepository{Pool: db})
 	resolved, err := managerB.Resolve(ctx, cookie)
 	if err != nil || resolved == nil {
 		t.Fatalf("resolve after restart: %v %+v", err, resolved)
@@ -281,7 +281,7 @@ func TestSessionResolutionSurvivesProcessRestart(t *testing.T) {
 	if err := managerB.Revoke(ctx, cookie.Get("Cookie")); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
-	managerC := authusecases.NewSessionManager(&SessionRepository{Pool: db})
+	managerC := sessionusecases.NewSessionManager(&SessionRepository{Pool: db})
 	resolvedAfterRevoke, err := managerC.Resolve(ctx, cookie)
 	if err != nil {
 		t.Fatalf("resolve after revoke: %v", err)

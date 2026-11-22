@@ -6,14 +6,14 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	emailConsole "github.com/ambi/idmagic/backend/shared/notification/email_console"
 	emailSMTP "github.com/ambi/idmagic/backend/shared/notification/email_smtp"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
 // ResolveEmailSender builds the EmailSender adapter selected by
 // cfg.EmailSender. cfg is assumed already validated by LoadSharedConfig
 // (EMAIL_SENDER is a closed enum; SMTP_HOST/SMTP_FROM are required when
 // EMAIL_SENDER=smtp), so this function only constructs the adapter.
-func ResolveEmailSender(cfg SharedConfig) sharednotification.EmailSender {
+func ResolveEmailSender(cfg SharedConfig) notificationports.EmailSender {
 	switch cfg.EmailSender {
 	case "smtp":
 		smtpCfg := emailSMTP.SMTPEmailSenderConfig{

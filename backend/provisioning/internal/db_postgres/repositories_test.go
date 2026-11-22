@@ -12,11 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ambi/idmagic/backend/application"
-	applicationdomain "github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	postgres "github.com/ambi/idmagic/backend/provisioning/internal/db_postgres"
-	"github.com/ambi/idmagic/backend/provisioning/internal/domain"
-	"github.com/ambi/idmagic/backend/provisioning/internal/ports"
+	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
+	provisioningports "github.com/ambi/idmagic/backend/provisioning/internal/ports"
 	"github.com/ambi/idmagic/backend/saml"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
@@ -30,15 +30,15 @@ import (
 // (application/postgres -> pgfixtures -> application/postgres via its
 // internal _test.go). provisioning has no such back-edge, so importing
 // application's production packages directly here is safe.
-func seedApplication(tb testing.TB, pool *pgxpool.Pool, tenantID string) *applicationdomain.Application {
+func seedApplication(tb testing.TB, pool *pgxpool.Pool, tenantID string) *appdomain.Application {
 	tb.Helper()
 	now := pgfixtures.TestClock()
-	app := &applicationdomain.Application{
+	app := &appdomain.Application{
 		TenantID:    tenantID,
 		ID:          pgfixtures.NewUUID(tb),
 		Name:        pgfixtures.UniqueID("app"),
-		Kind:        applicationdomain.ApplicationWeblink,
-		Status:      applicationdomain.ApplicationActive,
+		Kind:        appdomain.ApplicationWeblink,
+		Status:      appdomain.ApplicationActive,
 		LaunchURL:   "https://example.com",
 		CategoryIDs: []string{},
 		CreatedAt:   now,
@@ -52,26 +52,26 @@ func seedApplication(tb testing.TB, pool *pgxpool.Pool, tenantID string) *applic
 	return app
 }
 
-func testConnection(tb testing.TB, applicationID, tenantID string) *domain.ProvisioningConnection {
+func testConnection(tb testing.TB, applicationID, tenantID string) *provisioningdomain.ProvisioningConnection {
 	tb.Helper()
 	now := pgtest.Now()
-	return &domain.ProvisioningConnection{
+	return &provisioningdomain.ProvisioningConnection{
 		ApplicationID: applicationID,
 		TenantID:      tenantID,
-		Status:        domain.ConnectionActive,
+		Status:        provisioningdomain.ConnectionActive,
 		BaseURL:       "https://downstream.example.com/scim/v2",
-		Credential:    domain.ProvisioningConnectionCredentialMetadata{CredentialID: pgfixtures.NewUUID(tb), AuthMethod: domain.AuthBearerToken, CreatedAt: now},
-		FeatureFlags:  domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
-		Scope:         domain.ScopeAssignedOnly,
-		Matching:      domain.MatchingRule{ConflictMatchAttribute: "userName"},
-		DeprovisionPolicy: domain.DeprovisionPolicy{
-			OnUnassign: domain.DeprovisionDeactivate,
-			OnDelete:   domain.DeprovisionDeactivate,
+		Credential:    provisioningdomain.ProvisioningConnectionCredentialMetadata{CredentialID: pgfixtures.NewUUID(tb), AuthMethod: provisioningdomain.AuthBearerToken, CreatedAt: now},
+		FeatureFlags:  provisioningdomain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
+		Scope:         provisioningdomain.ScopeAssignedOnly,
+		Matching:      provisioningdomain.MatchingRule{ConflictMatchAttribute: "userName"},
+		DeprovisionPolicy: provisioningdomain.DeprovisionPolicy{
+			OnUnassign: provisioningdomain.DeprovisionDeactivate,
+			OnDelete:   provisioningdomain.DeprovisionDeactivate,
 		},
 		RateLimitPerMinute:                60,
 		MaxAttempts:                       8,
 		QuarantineAfterConsecutiveFailure: 10,
-		Health:                            domain.HealthOK,
+		Health:                            provisioningdomain.HealthOK,
 		CreatedAt:                         now,
 		UpdatedAt:                         now,
 	}
@@ -87,7 +87,7 @@ func TestProvisioningConnectionRepository_Register_RejectsDuplicateApplication(t
 	if err := repo.Register(ctx, testConnection(t, app.ID, tenant.ID), "secret-1"); err != nil {
 		t.Fatalf("first Register() error = %v", err)
 	}
-	if err := repo.Register(ctx, testConnection(t, app.ID, tenant.ID), "secret-2"); !errors.Is(err, ports.ErrConnectionAlreadyExists) {
+	if err := repo.Register(ctx, testConnection(t, app.ID, tenant.ID), "secret-2"); !errors.Is(err, provisioningports.ErrConnectionAlreadyExists) {
 		t.Errorf("second Register() error = %v, want ErrConnectionAlreadyExists", err)
 	}
 }
@@ -107,7 +107,7 @@ func TestProvisioningConnectionRepository_RegisterFindDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
-	if found == nil || found.BaseURL != conn.BaseURL || found.Scope != domain.ScopeAssignedOnly {
+	if found == nil || found.BaseURL != conn.BaseURL || found.Scope != provisioningdomain.ScopeAssignedOnly {
 		t.Errorf("Find() = %+v, want a connection matching %+v", found, conn)
 	}
 	secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ID)
@@ -182,18 +182,18 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 	}
 }
 
-func testTask(tb testing.TB, tenantID, connectionID, sourceID string, version int64) *domain.ProvisioningTask {
+func testTask(tb testing.TB, tenantID, connectionID, sourceID string, version int64) *provisioningdomain.ProvisioningTask {
 	tb.Helper()
 	now := pgtest.Now()
-	return &domain.ProvisioningTask{
+	return &provisioningdomain.ProvisioningTask{
 		ID:            pgfixtures.NewUUID(tb),
 		TenantID:      tenantID,
 		ConnectionID:  connectionID,
-		SourceType:    domain.SourceTypeUser,
+		SourceType:    provisioningdomain.SourceTypeUser,
 		SourceID:      sourceID,
 		SourceVersion: version,
-		Operation:     domain.OperationCreate,
-		Status:        domain.TaskPending,
+		Operation:     provisioningdomain.OperationCreate,
+		Status:        provisioningdomain.TaskPending,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -270,7 +270,7 @@ func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
 		user := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(pool).UserRepo, tenant.ID)
 		d := testTask(t, tenant.ID, app.ID, user.ID, 1)
 		if i == 2 {
-			d.SourceType = domain.SourceTypeGroup
+			d.SourceType = provisioningdomain.SourceTypeGroup
 		}
 		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
 		if _, err := repo.Save(ctx, d); err != nil {
@@ -304,7 +304,7 @@ func TestProvisioningTaskRepository_ListPageByConnection(t *testing.T) {
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
 	}
-	group := domain.SourceTypeGroup
+	group := provisioningdomain.SourceTypeGroup
 	groups, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, &group, time.Time{}, "", 100)
 	if err != nil || len(groups) != 1 || groups[0].ID != ids[2] {
 		t.Fatalf("source_type filter=%+v err=%v", groups, err)
@@ -350,11 +350,11 @@ func TestProvisioningTaskRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
 	}
 
 	msg := "downstream 503"
-	if err := repo.UpdateStatus(ctx, tenant.ID, d.ID, domain.TaskDeadLetter, &msg); err != nil {
+	if err := repo.UpdateStatus(ctx, tenant.ID, d.ID, provisioningdomain.TaskDeadLetter, &msg); err != nil {
 		t.Fatalf("UpdateStatus() error = %v", err)
 	}
 	got, err := repo.Find(ctx, tenant.ID, d.ID)
-	if err != nil || got.Status != domain.TaskDeadLetter || got.LastError == nil || *got.LastError != msg {
+	if err != nil || got.Status != provisioningdomain.TaskDeadLetter || got.LastError == nil || *got.LastError != msg {
 		t.Fatalf("Find() after UpdateStatus() = %+v, err=%v", got, err)
 	}
 
@@ -363,7 +363,7 @@ func TestProvisioningTaskRepository_ListUnenqueuedAttachJobRetry(t *testing.T) {
 		t.Fatalf("RetryDeadLetter() = (%v, %v), want (true, nil)", retried, err)
 	}
 	got, err = repo.Find(ctx, tenant.ID, d.ID)
-	if err != nil || got.Status != domain.TaskPending || got.JobID != nil {
+	if err != nil || got.Status != provisioningdomain.TaskPending || got.JobID != nil {
 		t.Errorf("Find() after RetryDeadLetter() = %+v, err=%v, want status=pending job_id=nil", got, err)
 	}
 }
@@ -378,14 +378,14 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	repo := &postgres.RemoteResourceLinkRepository{Pool: pool}
 	ctx := context.Background()
 
-	link := domain.NewRemoteResourceLink(app.ID, tenant.ID, domain.SourceTypeUser, user.ID)
+	link := provisioningdomain.NewRemoteResourceLink(app.ID, tenant.ID, provisioningdomain.SourceTypeUser, user.ID)
 	if err := link.ApplySync(1, "remote-1", user.ID, nil, pgtest.Now()); err != nil {
 		t.Fatalf("ApplySync() error = %v", err)
 	}
 	if err := repo.Upsert(ctx, link); err != nil {
 		t.Fatalf("first Upsert() error = %v", err)
 	}
-	found, err := repo.Find(ctx, app.ID, domain.SourceTypeUser, user.ID)
+	found, err := repo.Find(ctx, app.ID, provisioningdomain.SourceTypeUser, user.ID)
 	if err != nil || found == nil || found.RemoteID != "remote-1" || found.LastSyncedVersion != 1 {
 		t.Fatalf("Find() = %+v, err=%v, want remote_id=remote-1 version=1", found, err)
 	}
@@ -396,7 +396,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	if err := repo.Upsert(ctx, link); err != nil {
 		t.Fatalf("second Upsert() error = %v", err)
 	}
-	found, err = repo.Find(ctx, app.ID, domain.SourceTypeUser, user.ID)
+	found, err = repo.Find(ctx, app.ID, provisioningdomain.SourceTypeUser, user.ID)
 	if err != nil || found.LastSyncedVersion != 2 {
 		t.Errorf("Find() after second Upsert() = %+v, err=%v, want version=2", found, err)
 	}
@@ -413,7 +413,7 @@ func TestProvisioningConnectionRepository_RoundTripsOAuth2CredentialMetadata(t *
 	ctx := context.Background()
 
 	conn := testConnection(t, app.ID, tenant.ID)
-	conn.Credential.AuthMethod = domain.AuthOAuth2ClientCredentials
+	conn.Credential.AuthMethod = provisioningdomain.AuthOAuth2ClientCredentials
 	conn.Credential.OAuth2TokenURL = "https://downstream.example.com/oauth2/token"
 	conn.Credential.OAuth2ClientID = "idmagic-provisioner"
 	conn.Credential.OAuth2Scope = "scim:write"
@@ -454,7 +454,7 @@ func TestProvisioningConnectionRepository_RejectsActiveOAuth2WithoutTokenURL(t *
 	ctx := context.Background()
 
 	conn := testConnection(t, app.ID, tenant.ID)
-	conn.Credential.AuthMethod = domain.AuthOAuth2ClientCredentials
+	conn.Credential.AuthMethod = provisioningdomain.AuthOAuth2ClientCredentials
 	// token URL と client_id を空のままにする。
 
 	if err := repo.Register(ctx, conn, "client-secret"); err == nil {
@@ -466,7 +466,7 @@ func TestProvisioningConnectionRepository_RejectsActiveOAuth2WithoutTokenURL(t *
 	}
 }
 
-func findReservation(due []*domain.ScheduledDeprovision, id string) *domain.ScheduledDeprovision {
+func findReservation(due []*provisioningdomain.ScheduledDeprovision, id string) *provisioningdomain.ScheduledDeprovision {
 	for _, s := range due {
 		if s.ID == id {
 			return s
@@ -488,12 +488,12 @@ func TestProvisioningTaskRepository_ScheduledDeprovisionLifecycle(t *testing.T) 
 	ctx := context.Background()
 	deletedAt := pgtest.Now()
 
-	first := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
+	first := provisioningdomain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
 	if created, err := repo.ScheduleDeprovision(ctx, first); err != nil || !created {
 		t.Fatalf("ScheduleDeprovision() = (%v, %v), want (true, nil)", created, err)
 	}
 	// 同じ接続と User への二度目の削除通知は、先の予約の期限を保つ。
-	second := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 20, deletedAt.Add(time.Hour), 7)
+	second := provisioningdomain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 20, deletedAt.Add(time.Hour), 7)
 	if created, err := repo.ScheduleDeprovision(ctx, second); err != nil || created {
 		t.Fatalf("second ScheduleDeprovision() = (%v, %v), want (false, nil)", created, err)
 	}
@@ -504,7 +504,7 @@ func TestProvisioningTaskRepository_ScheduledDeprovisionLifecycle(t *testing.T) 
 	}
 	due, err = repo.ListDueDeprovisions(ctx, first.DueAt, 1000)
 	got := findReservation(due, first.ID)
-	if err != nil || got == nil || got.SourceVersion != 10 || got.Status != domain.ScheduledDeprovisionScheduled {
+	if err != nil || got == nil || got.SourceVersion != 10 || got.Status != provisioningdomain.ScheduledDeprovisionScheduled {
 		t.Fatalf("ListDueDeprovisions(at due) = (%+v, %v), want %s scheduled at version 10", due, err, first.ID)
 	}
 
@@ -514,7 +514,7 @@ func TestProvisioningTaskRepository_ScheduledDeprovisionLifecycle(t *testing.T) 
 		t.Fatalf("MaterializeDeprovision() = (%v, %v), want (true, nil)", ok, err)
 	}
 	stored, err := repo.Find(ctx, tenant.ID, task.ID)
-	if err != nil || stored == nil || stored.Operation != domain.OperationDelete || stored.SourceID != user.ID || stored.SourceVersion != 10 || stored.Status != domain.TaskPending {
+	if err != nil || stored == nil || stored.Operation != provisioningdomain.OperationDelete || stored.SourceID != user.ID || stored.SourceVersion != 10 || stored.Status != provisioningdomain.TaskPending {
 		t.Fatalf("Find(materialized task) = (%+v, %v), want a pending delete of the user at version 10", stored, err)
 	}
 	if ok, err := repo.MaterializeDeprovision(ctx, got, got.Task(pgfixtures.NewUUID(t), now)); err != nil || ok {
@@ -537,7 +537,7 @@ func TestProvisioningTaskRepository_CancelledDeprovisionIsNeverMaterialized(t *t
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	deletedAt := pgtest.Now()
-	reservation := domain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
+	reservation := provisioningdomain.NewScheduledDeprovision(pgfixtures.NewUUID(t), tenant.ID, app.ID, user.ID, 10, deletedAt, 7)
 	if _, err := repo.ScheduleDeprovision(ctx, reservation); err != nil {
 		t.Fatal(err)
 	}
@@ -573,14 +573,14 @@ func TestRemoteResourceLinkRepository_ListByConnectionRoundTripsActiveAndDeleteR
 	ctx := context.Background()
 
 	for userID, isActive := range map[string]bool{active.ID: true, inactive.ID: false} {
-		link := domain.NewRemoteResourceLink(app.ID, tenant.ID, domain.SourceTypeUser, userID)
+		link := provisioningdomain.NewRemoteResourceLink(app.ID, tenant.ID, provisioningdomain.SourceTypeUser, userID)
 		_ = link.ApplySync(1, "remote-"+userID, userID, nil, pgtest.Now())
 		link.Active = isActive
 		if err := repo.Upsert(ctx, link); err != nil {
 			t.Fatalf("Upsert() error = %v", err)
 		}
 	}
-	links, err := repo.ListByConnection(ctx, tenant.ID, app.ID, domain.SourceTypeUser)
+	links, err := repo.ListByConnection(ctx, tenant.ID, app.ID, provisioningdomain.SourceTypeUser)
 	if err != nil || len(links) != 2 {
 		t.Fatalf("ListByConnection() = %+v, err=%v, want 2 links", links, err)
 	}
@@ -590,13 +590,13 @@ func TestRemoteResourceLinkRepository_ListByConnectionRoundTripsActiveAndDeleteR
 		}
 	}
 
-	if err := repo.Delete(ctx, app.ID, domain.SourceTypeUser, active.ID); err != nil {
+	if err := repo.Delete(ctx, app.ID, provisioningdomain.SourceTypeUser, active.ID); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
-	if found, err := repo.Find(ctx, app.ID, domain.SourceTypeUser, active.ID); err != nil || found != nil {
+	if found, err := repo.Find(ctx, app.ID, provisioningdomain.SourceTypeUser, active.ID); err != nil || found != nil {
 		t.Fatalf("Find() after Delete() = %+v, err=%v, want nil", found, err)
 	}
-	if links, _ := repo.ListByConnection(ctx, tenant.ID, app.ID, domain.SourceTypeUser); len(links) != 1 || links[0].SourceID != inactive.ID {
+	if links, _ := repo.ListByConnection(ctx, tenant.ID, app.ID, provisioningdomain.SourceTypeUser); len(links) != 1 || links[0].SourceID != inactive.ID {
 		t.Fatalf("ListByConnection() after Delete() = %+v, want only the inactive link", links)
 	}
 }
@@ -612,28 +612,28 @@ func TestProvisioningTaskRepository_ListUnsettledByConnectionExcludesSucceeded(t
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 
-	statuses := map[int64]domain.ProvisioningTaskStatus{1: domain.TaskPending, 2: domain.TaskSucceeded, 3: domain.TaskDeadLetter}
+	statuses := map[int64]provisioningdomain.ProvisioningTaskStatus{1: provisioningdomain.TaskPending, 2: provisioningdomain.TaskSucceeded, 3: provisioningdomain.TaskDeadLetter}
 	for version, status := range statuses {
 		task := testTask(t, tenant.ID, app.ID, user.ID, version)
 		if _, err := repo.Save(ctx, task); err != nil {
 			t.Fatalf("Save() error = %v", err)
 		}
-		if status != domain.TaskPending {
+		if status != provisioningdomain.TaskPending {
 			if err := repo.UpdateStatus(ctx, tenant.ID, task.ID, status, nil); err != nil {
 				t.Fatalf("UpdateStatus() error = %v", err)
 			}
 		}
 	}
 
-	got, err := repo.ListUnsettledByConnection(ctx, tenant.ID, app.ID, domain.SourceTypeUser)
+	got, err := repo.ListUnsettledByConnection(ctx, tenant.ID, app.ID, provisioningdomain.SourceTypeUser)
 	if err != nil {
 		t.Fatalf("ListUnsettledByConnection() error = %v", err)
 	}
-	versions := map[int64]domain.ProvisioningTaskStatus{}
+	versions := map[int64]provisioningdomain.ProvisioningTaskStatus{}
 	for _, task := range got {
 		versions[task.SourceVersion] = task.Status
 	}
-	want := map[int64]domain.ProvisioningTaskStatus{1: domain.TaskPending, 3: domain.TaskDeadLetter}
+	want := map[int64]provisioningdomain.ProvisioningTaskStatus{1: provisioningdomain.TaskPending, 3: provisioningdomain.TaskDeadLetter}
 	if len(versions) != len(want) || versions[1] != want[1] || versions[3] != want[3] {
 		t.Fatalf("ListUnsettledByConnection() statuses = %v, want %v", versions, want)
 	}
@@ -651,18 +651,18 @@ func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing
 	repo := &postgres.ProvisioningTaskRepository{Pool: pool}
 	ctx := context.Background()
 	now := pgtest.Now()
-	resync := domain.NewFullResync(pgfixtures.NewUUID(t), tenant.ID, app.ID, 2, now)
+	resync := provisioningdomain.NewFullResync(pgfixtures.NewUUID(t), tenant.ID, app.ID, 2, now)
 	if err := repo.SaveFullResync(ctx, resync); err != nil {
 		t.Fatalf("SaveFullResync() error = %v", err)
 	}
-	newTask := func(sourceID string) *domain.ProvisioningTask {
-		return &domain.ProvisioningTask{
-			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, ConnectionID: app.ID, SourceType: domain.SourceTypeUser, SourceID: sourceID,
-			SourceVersion: 7, Operation: domain.OperationUpdate, Status: domain.TaskPending, CreatedAt: now, UpdatedAt: now,
+	newTask := func(sourceID string) *provisioningdomain.ProvisioningTask {
+		return &provisioningdomain.ProvisioningTask{
+			ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, ConnectionID: app.ID, SourceType: provisioningdomain.SourceTypeUser, SourceID: sourceID,
+			SourceVersion: 7, Operation: provisioningdomain.OperationUpdate, Status: provisioningdomain.TaskPending, CreatedAt: now, UpdatedAt: now,
 		}
 	}
 	first, second := newTask(pgfixtures.NewUUID(t)), newTask(pgfixtures.NewUUID(t))
-	for _, task := range []*domain.ProvisioningTask{first, second} {
+	for _, task := range []*provisioningdomain.ProvisioningTask{first, second} {
 		if created, err := repo.SaveFullResyncTask(ctx, resync.ID, task); err != nil || !created {
 			t.Fatalf("SaveFullResyncTask() = (%v, %v), want (true, nil)", created, err)
 		}
@@ -671,12 +671,12 @@ func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing
 	if created, err := repo.SaveFullResyncTask(ctx, resync.ID, duplicate); err != nil || created {
 		t.Fatalf("SaveFullResyncTask(duplicate key) = (%v, %v), want (false, nil)", created, err)
 	}
-	if stored, err := repo.Find(ctx, tenant.ID, first.ID); err != nil || stored == nil || stored.Status != domain.TaskPending {
+	if stored, err := repo.Find(ctx, tenant.ID, first.ID); err != nil || stored == nil || stored.Status != provisioningdomain.TaskPending {
 		t.Fatalf("Find(resync task) = (%+v, %v), want the pending task", stored, err)
 	}
 
 	found, err := repo.FindFullResyncByTask(ctx, tenant.ID, second.ID)
-	if err != nil || found == nil || found.ID != resync.ID || found.Status != domain.FullResyncStatusRunning || found.TotalTasks != 2 {
+	if err != nil || found == nil || found.ID != resync.ID || found.Status != provisioningdomain.FullResyncStatusRunning || found.TotalTasks != 2 {
 		t.Fatalf("FindFullResyncByTask() = (%+v, %v), want running %s with 2 tasks", found, err, resync.ID)
 	}
 	other := pgfixtures.SeedTenant(t, pool)
@@ -687,18 +687,18 @@ func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing
 		t.Fatalf("FindFullResyncByTask(unrelated task) = (%+v, %v), want none", found, err)
 	}
 
-	if err := repo.UpdateStatus(ctx, tenant.ID, first.ID, domain.TaskDeadLetter, nil); err != nil {
+	if err := repo.UpdateStatus(ctx, tenant.ID, first.ID, provisioningdomain.TaskDeadLetter, nil); err != nil {
 		t.Fatal(err)
 	}
 	tally, err := repo.TallyFullResync(ctx, tenant.ID, resync.ID)
-	if err != nil || tally != (domain.FullResyncTally{Failed: 1}) {
+	if err != nil || tally != (provisioningdomain.FullResyncTally{Failed: 1}) {
 		t.Fatalf("TallyFullResync() = (%+v, %v), want 1 failed and the pending task uncounted", tally, err)
 	}
-	if err := repo.UpdateStatus(ctx, tenant.ID, second.ID, domain.TaskSucceeded, nil); err != nil {
+	if err := repo.UpdateStatus(ctx, tenant.ID, second.ID, provisioningdomain.TaskSucceeded, nil); err != nil {
 		t.Fatal(err)
 	}
 	tally, err = repo.TallyFullResync(ctx, tenant.ID, resync.ID)
-	if err != nil || tally != (domain.FullResyncTally{Succeeded: 1, Failed: 1}) {
+	if err != nil || tally != (provisioningdomain.FullResyncTally{Succeeded: 1, Failed: 1}) {
 		t.Fatalf("TallyFullResync() = (%+v, %v), want 1 succeeded and 1 failed", tally, err)
 	}
 
@@ -713,7 +713,7 @@ func TestProvisioningTaskRepository_FullResyncTalliesAndCompletesOnce(t *testing
 		t.Fatalf("second CompleteFullResync() = (%v, %v), want (false, nil)", won, err)
 	}
 	stored, err := repo.FindFullResyncByTask(ctx, tenant.ID, first.ID)
-	if err != nil || stored == nil || stored.Status != domain.FullResyncStatusCompleted ||
+	if err != nil || stored == nil || stored.Status != provisioningdomain.FullResyncStatusCompleted ||
 		stored.SucceededCount != 1 || stored.FailedCount != 1 || stored.CompletedAt == nil || !stored.CompletedAt.Equal(*completed.CompletedAt) {
 		t.Fatalf("FindFullResyncByTask(after complete) = (%+v, %v), want completed with 1 succeeded and 1 failed", stored, err)
 	}
@@ -728,7 +728,7 @@ func TestProvisioningConnectionRepository_ListTenantsWithActiveConnections(t *te
 	_ = repo.Register(ctx, testConnection(t, seedApplication(t, pool, withActive.ID).ID, withActive.ID), "secret")
 	withDisabled := pgfixtures.SeedTenant(t, pool)
 	disabled := testConnection(t, seedApplication(t, pool, withDisabled.ID).ID, withDisabled.ID)
-	disabled.Status = domain.ConnectionDisabled
+	disabled.Status = provisioningdomain.ConnectionDisabled
 	_ = repo.Register(ctx, disabled, "secret")
 
 	tenants, err := repo.ListTenantsWithActiveConnections(ctx)

@@ -3,7 +3,7 @@ package usecases
 import (
 	"sync"
 
-	"github.com/ambi/idmagic/backend/datakeys/internal/ports"
+	datakeysports "github.com/ambi/idmagic/backend/datakeys/internal/ports"
 )
 
 // MigratorRegistry maps a name to the ports.FieldMigrator an owning module
@@ -13,23 +13,23 @@ import (
 // PendingCount before erasing a wrapped_dek (wi-97 T006).
 type MigratorRegistry struct {
 	mu        sync.RWMutex
-	migrators map[string]ports.FieldMigrator
+	migrators map[string]datakeysports.FieldMigrator
 }
 
 func NewMigratorRegistry() *MigratorRegistry {
-	return &MigratorRegistry{migrators: map[string]ports.FieldMigrator{}}
+	return &MigratorRegistry{migrators: map[string]datakeysports.FieldMigrator{}}
 }
 
 // Register adds m as the FieldMigrator for name, overwriting any previous
 // registration under the same name.
-func (r *MigratorRegistry) Register(name string, m ports.FieldMigrator) {
+func (r *MigratorRegistry) Register(name string, m datakeysports.FieldMigrator) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.migrators[name] = m
 }
 
 // Lookup returns the FieldMigrator registered for name, or (nil, false).
-func (r *MigratorRegistry) Lookup(name string) (ports.FieldMigrator, bool) {
+func (r *MigratorRegistry) Lookup(name string) (datakeysports.FieldMigrator, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	m, ok := r.migrators[name]

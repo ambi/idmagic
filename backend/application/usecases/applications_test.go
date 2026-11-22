@@ -8,9 +8,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -34,13 +34,13 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	appDeps, assignDeps := newDeps()
 
 	app, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Payroll", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"},
+		ActorUserID: "admin", Name: "Payroll", Kind: appdomain.ApplicationFederated, Protocol: &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "test-client"},
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	userSubjects := []ports.SubjectRef{{Type: domain.AssignmentSubjectUser, ID: "alice"}}
+	userSubjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: "alice"}}
 
 	// 未割当はポータルに出ず、割当ゲートも閉じる。
 	mine, err := appusecases.ListMyApplications(ctx, assignDeps, userSubjects)
@@ -57,7 +57,7 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 
 	// 割当後はポータルに出て、ゲートが開く。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
@@ -72,8 +72,8 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 
 	// hidden 割当はポータルから消えるが、ゲートは開いたまま。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
-		Visibility: domain.AssignmentHidden,
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
+		Visibility: appdomain.AssignmentHidden,
 	}); err != nil {
 		t.Fatalf("assign hidden: %v", err)
 	}
@@ -92,15 +92,15 @@ func TestWeblinkRequiresLaunchURLAndRejectsProtocol(t *testing.T) {
 	appDeps, _ := newDeps()
 
 	if _, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Wiki", Kind: domain.ApplicationWeblink,
+		ActorUserID: "admin", Name: "Wiki", Kind: appdomain.ApplicationWeblink,
 	}); err == nil {
 		t.Fatal("weblink without launch_url must be rejected")
 	}
 
 	if _, err := appusecases.CreateApplication(ctx, appDeps, appusecases.CreateApplicationInput{
-		ActorUserID: "admin", Name: "Wiki", Kind: domain.ApplicationWeblink,
+		ActorUserID: "admin", Name: "Wiki", Kind: appdomain.ApplicationWeblink,
 		LaunchURL: "https://wiki.example",
-		Protocol:  &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "c1"},
+		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 	}); err == nil {
 		t.Fatal("weblink must not accept protocol")
 	}

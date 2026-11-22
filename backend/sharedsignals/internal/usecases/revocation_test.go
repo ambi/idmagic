@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 
-	agentmodel "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
@@ -99,7 +99,7 @@ func TestCheckRevocationEpoch_UnknownAgentReturnsNil(t *testing.T) {
 
 func seedAgent(ctx context.Context, t *testing.T, repo agentports.AgentRepository, id, tenantID, ownerUserID string) {
 	t.Helper()
-	agent := &agentmodel.Agent{
+	agent := &agentdomain.Agent{
 		ID: id, TenantID: tenantID, Name: id, Kind: idmdomain.AgentKindAutonomous,
 		OwnerUserID: ownerUserID, Status: idmdomain.AgentStatusActive,
 		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),

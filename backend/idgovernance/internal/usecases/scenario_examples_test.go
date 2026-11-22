@@ -24,7 +24,7 @@ import (
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/internal/db_memory"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
-	"github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
+	igusecases "github.com/ambi/idmagic/backend/idgovernance/internal/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -142,14 +142,14 @@ func newGovernanceFixture(t *testing.T) *governanceFixture {
 	}
 }
 
-func (f *governanceFixture) workflowDeps() usecases.LifecycleWorkflowDeps {
-	return usecases.LifecycleWorkflowDeps{Repo: f.workflows, RunRepo: f.runs, GroupRepo: f.groups, ApplicationRepo: f.apps, Emit: f.events.emit}
+func (f *governanceFixture) workflowDeps() igusecases.LifecycleWorkflowDeps {
+	return igusecases.LifecycleWorkflowDeps{Repo: f.workflows, RunRepo: f.runs, GroupRepo: f.groups, ApplicationRepo: f.apps, Emit: f.events.emit}
 }
 
 func (f *governanceFixture) adminUsers() idmanagement.AdminUsers {
 	return idmanagement.Module{
 		UserRepo: f.users,
-		UserMutationCommitter: usecases.UserMutationCommitter{
+		UserMutationCommitter: igusecases.UserMutationCommitter{
 			WorkflowRepo: f.workflows, RunRepo: f.runs, UserRepo: f.users,
 			Capture: &igmemory.UserWorkflowCapture{Users: f.users.UserRepository, Runs: f.runs},
 		},
@@ -159,8 +159,8 @@ func (f *governanceFixture) adminUsers() idmanagement.AdminUsers {
 }
 
 // executor は worker が組み立てるのと同じ依存を渡す。
-func (f *governanceFixture) executor() usecases.LifecycleWorkflowExecutorDeps {
-	return usecases.LifecycleWorkflowExecutorDeps{
+func (f *governanceFixture) executor() igusecases.LifecycleWorkflowExecutorDeps {
+	return igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: f.runs, WorkflowRepo: f.workflows, UserRepo: f.users, GroupRepo: f.groups,
 		ApplicationRepo: f.apps, AssignmentRepo: f.assignments,
 		ApplicationAssignments: desiredStateAssignments(f.apps, f.assignments, f.users, f.groups, f.events.emit),
@@ -214,11 +214,11 @@ func (f *governanceFixture) seedApplication(t *testing.T, id string) {
 
 func (f *governanceFixture) enabledWorkflow(t *testing.T, trigger igdomain.WorkflowTrigger, actions ...igdomain.WorkflowAction) *igdomain.LifecycleWorkflow {
 	t.Helper()
-	workflow, err := usecases.CreateLifecycleWorkflow(f.ctx, f.workflowDeps(), usecases.CreateLifecycleWorkflowInput{Name: "workflow-" + string(trigger.Kind), Trigger: trigger, Actions: actions, Now: f.now})
+	workflow, err := igusecases.CreateLifecycleWorkflow(f.ctx, f.workflowDeps(), igusecases.CreateLifecycleWorkflowInput{Name: "workflow-" + string(trigger.Kind), Trigger: trigger, Actions: actions, Now: f.now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if workflow, err = usecases.EnableLifecycleWorkflow(f.ctx, f.workflowDeps(), workflow.ID, workflow.CurrentRevision, "admin", f.now); err != nil {
+	if workflow, err = igusecases.EnableLifecycleWorkflow(f.ctx, f.workflowDeps(), workflow.ID, workflow.CurrentRevision, "admin", f.now); err != nil {
 		t.Fatal(err)
 	}
 	return workflow
@@ -267,7 +267,7 @@ func (f *governanceFixture) outcomes(t *testing.T, runID string) []igdomain.Work
 // 実行させる。バックオフは再試行を待たずに観測できるよう短くする。
 func (f *governanceFixture) runWorker(t *testing.T, run *igdomain.WorkflowRun) *jobsdomain.Job {
 	t.Helper()
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(f.jobs)}, 10, f.now); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(f.jobs)}, 10, f.now); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID)
@@ -275,7 +275,7 @@ func (f *governanceFixture) runWorker(t *testing.T, run *igdomain.WorkflowRun) *
 		t.Fatalf("run job attachment = %+v, %v", stored, err)
 	}
 	handlers := jobsmodule.NewHandlerRegistry()
-	handlers.Register(usecases.LifecycleWorkflowRunJobKind, usecases.LifecycleWorkflowRunHandler(f.executor()))
+	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(f.executor()))
 	runner := jobsmodule.NewRunner(
 		jobsmodule.RunnerConfig{WorkerID: "worker-1", Lane: jobsdomain.LaneDefault, PollInterval: 2 * time.Millisecond, LeaseDuration: time.Minute, BackoffBase: time.Millisecond, BackoffCap: time.Millisecond},
 		jobsmodule.RunnerDeps{Repo: f.jobs, Handlers: handlers},
@@ -315,7 +315,7 @@ func TestLifecycleWorkflowRequiredActionsUseOwnerCommands(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := usecases.LifecycleWorkflowRunHandler(deps)(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
+			if _, err := igusecases.LifecycleWorkflowRunHandler(deps)(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
 				t.Fatal(err)
 			}
 			want := []igdomain.WorkflowStepOutcome{igdomain.WorkflowStepFailed, igdomain.WorkflowStepFailed, igdomain.WorkflowStepNoop, igdomain.WorkflowStepNoop}
@@ -417,14 +417,14 @@ func TestUserMutationCapturesARunThatConvergesOnRedeliveryAndGetsAJob(t *testing
 		t.Fatalf("redelivered steps = %d, %v; want none", len(steps), err)
 	}
 
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(f.jobs)}, 10, f.now); err != nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(f.jobs)}, 10, f.now); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID)
 	if err != nil || stored.JobID == nil {
 		t.Fatalf("run after dispatch = %+v, %v", stored, err)
 	}
-	if job, err := f.jobs.Get(f.ctx, *stored.JobID); err != nil || job.Kind != usecases.LifecycleWorkflowRunJobKind {
+	if job, err := f.jobs.Get(f.ctx, *stored.JobID); err != nil || job.Kind != igusecases.LifecycleWorkflowRunJobKind {
 		t.Fatalf("attached job = %+v, %v", job, err)
 	}
 }
@@ -437,14 +437,14 @@ func TestTransientEnqueueFailureLeavesTheRunForTheDispatcher(t *testing.T) {
 	run := onlyRun(t, f.runsOf(t, workflow.ID))
 
 	failing := &failOnceJobRepository{JobRepository: f.jobs, fail: true}
-	if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(failing)}, 10, f.now); err == nil {
+	if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(failing)}, 10, f.now); err == nil {
 		t.Fatal("the failed enqueue must surface")
 	}
 	if stored, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID); err != nil || stored.Status != igdomain.WorkflowRunQueued || stored.JobID != nil {
 		t.Fatalf("run after the failed enqueue = %+v, %v; want queued without job_id", stored, err)
 	}
 	for range 2 {
-		if err := usecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, usecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(failing)}, 10, f.now); err != nil {
+		if err := igusecases.DispatchQueuedLifecycleWorkflowRuns(f.ctx, igusecases.LifecycleWorkflowDispatcherDeps{RunRepo: f.runs, Jobs: testJobEnqueuer(failing)}, 10, f.now); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -452,7 +452,7 @@ func TestTransientEnqueueFailureLeavesTheRunForTheDispatcher(t *testing.T) {
 	if err != nil || stored.JobID == nil {
 		t.Fatalf("run after the rescan = %+v, %v", stored, err)
 	}
-	jobs, err := f.jobs.ListByTenantAndKinds(f.ctx, "tenant-a", []jobsdomain.JobKind{usecases.LifecycleWorkflowRunJobKind}, 0)
+	jobs, err := f.jobs.ListByTenantAndKinds(f.ctx, "tenant-a", []jobsdomain.JobKind{igusecases.LifecycleWorkflowRunJobKind}, 0)
 	if err != nil || len(jobs) != 1 || jobs[0].ID != *stored.JobID {
 		t.Fatalf("jobs = %d, %v; want only the attached job", len(jobs), err)
 	}
@@ -530,7 +530,7 @@ func TestFailedStepKeepsTheRunRunningWhileAttemptsRemain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(f.executor())
+	handler := igusecases.LifecycleWorkflowRunHandler(f.executor())
 	if _, err := handler(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 3}); err == nil {
 		t.Fatal("a failed step on a non-final attempt must be returned to Jobs for retry")
 	}
@@ -563,7 +563,7 @@ func TestTransientTimeoutIsRetriedWithoutRepeatingCompletedSteps(t *testing.T) {
 	if saves := f.users.saveCount() - savesBefore; saves != 1 {
 		t.Fatalf("disable_user saved the user %d times, want once (the retry must skip the changed step)", saves)
 	}
-	view, err := usecases.GetLifecycleWorkflowRun(f.ctx, f.workflowDeps(), run.ID)
+	view, err := igusecases.GetLifecycleWorkflowRun(f.ctx, f.workflowDeps(), run.ID)
 	if err != nil || view.Run.Status != igdomain.WorkflowRunSucceeded {
 		t.Fatalf("run detail = %+v, %v; want succeeded", view, err)
 	}
@@ -604,7 +604,7 @@ func TestRunsOfOneUserAreSerializedAndRevalidatedBeforeEachAction(t *testing.T) 
 	// WorkflowRepo を渡さないのは、この 2 件がワークフローの定義を持たない保存済みの実行だからである。
 	executor := f.executor()
 	executor.WorkflowRepo = nil
-	handler := usecases.LifecycleWorkflowRunHandler(executor)
+	handler := igusecases.LifecycleWorkflowRunHandler(executor)
 	job := func(run *igdomain.WorkflowRun) *jobsdomain.Job {
 		params, err := json.Marshal(map[string]string{"run_id": run.ID})
 		if err != nil {
@@ -664,7 +664,7 @@ func TestDisablingStopsARunningRunAtTheNextStepBoundary(t *testing.T) {
 	}
 	// disable_user が alice を保存した直後、つまり 1 つ目のステップの実行中に管理者が無効化する。
 	f.users.onSave = func() {
-		if _, err := usecases.DisableLifecycleWorkflow(f.ctx, f.workflowDeps(), workflow.ID, workflow.CurrentRevision, "admin", f.now); err != nil {
+		if _, err := igusecases.DisableLifecycleWorkflow(f.ctx, f.workflowDeps(), workflow.ID, workflow.CurrentRevision, "admin", f.now); err != nil {
 			t.Errorf("disable: %v", err)
 		}
 	}
@@ -672,7 +672,7 @@ func TestDisablingStopsARunningRunAtTheNextStepBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.LifecycleWorkflowRunHandler(f.executor())(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 5}); err != nil {
+	if _, err := igusecases.LifecycleWorkflowRunHandler(f.executor())(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 5}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -709,11 +709,11 @@ func TestARetriedRunOfADisabledWorkflowStartsNoStep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := usecases.LifecycleWorkflowRunHandler(f.executor())
+	handler := igusecases.LifecycleWorkflowRunHandler(f.executor())
 	if _, err := handler(f.ctx, &jobsdomain.Job{TenantID: "tenant-a", Params: params, Attempts: 1, MaxAttempts: 1}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := usecases.RetryLifecycleWorkflowRun(f.ctx, f.workflowDeps(), run.ID); err != nil {
+	if _, err := igusecases.RetryLifecycleWorkflowRun(f.ctx, f.workflowDeps(), run.ID); err != nil {
 		t.Fatalf("retry while enabled: %v", err)
 	}
 	// 再試行の Job が取得された後に無効化が届いた状態を作る。queued の取り消しは既に過ぎている。
@@ -740,7 +740,7 @@ func TestARetriedRunOfADisabledWorkflowStartsNoStep(t *testing.T) {
 	if after, err := f.runs.FindRun(f.ctx, "tenant-a", run.ID); err != nil || after.Status != igdomain.WorkflowRunCanceled {
 		t.Fatalf("run = %+v, %v; want canceled", after, err)
 	}
-	if _, err := usecases.RetryLifecycleWorkflowRun(f.ctx, f.workflowDeps(), run.ID); err == nil {
+	if _, err := igusecases.RetryLifecycleWorkflowRun(f.ctx, f.workflowDeps(), run.ID); err == nil {
 		t.Fatal("retrying a run of a disabled workflow must be refused")
 	}
 }
@@ -771,14 +771,14 @@ func TestDryRunReadsTheCurrentStateAndChangesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := usecases.DryRunLifecycleWorkflow(f.ctx, usecases.DryRunLifecycleWorkflowDeps{
+	result, err := igusecases.DryRunLifecycleWorkflow(f.ctx, igusecases.DryRunLifecycleWorkflowDeps{
 		Repo: f.workflows, UserRepo: f.users, GroupRepo: f.groups, ApplicationRepo: f.apps, AssignmentRepo: f.assignments,
 		Notifier: &template.Notifier{Sender: f.sender, SystemDefaultLocale: "en"},
 	}, workflow.ID, alice.ID, f.now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []usecases.LifecycleWorkflowDryRunStepResult{
+	want := []igusecases.LifecycleWorkflowDryRunStepResult{
 		{ActionKind: igdomain.WorkflowActionAddGroupMember, Outcome: igdomain.WorkflowActionNoOp},
 		{ActionKind: igdomain.WorkflowActionAssignApplication, Outcome: igdomain.WorkflowActionWouldChange},
 		{ActionKind: igdomain.WorkflowActionSetRequiredAction, Outcome: igdomain.WorkflowActionWouldChange},
@@ -792,7 +792,7 @@ func TestDryRunReadsTheCurrentStateAndChangesNothing(t *testing.T) {
 	if runs := f.runsOf(t, workflow.ID); len(runs) != runsBefore {
 		t.Fatalf("runs = %d, want %d", len(runs), runsBefore)
 	}
-	if jobs, err := f.jobs.ListByTenantAndKinds(f.ctx, "tenant-a", []jobsdomain.JobKind{usecases.LifecycleWorkflowRunJobKind}, 0); err != nil || len(jobs) != 0 {
+	if jobs, err := f.jobs.ListByTenantAndKinds(f.ctx, "tenant-a", []jobsdomain.JobKind{igusecases.LifecycleWorkflowRunJobKind}, 0); err != nil || len(jobs) != 0 {
 		t.Fatalf("jobs = %d, %v; want none", len(jobs), err)
 	}
 	if members, err := f.groups.ListMembersByGroup(f.ctx, "tenant-a", "engineering"); err != nil || len(members) != 1 {
@@ -850,11 +850,11 @@ func TestSavingValidatesReferencesInTheWorkflowsTenant(t *testing.T) {
 		{"missing application", filter("email"), igdomain.WorkflowAction{Kind: igdomain.WorkflowActionAssignApplication, ApplicationID: "missing"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := usecases.CreateLifecycleWorkflow(f.ctx, deps, usecases.CreateLifecycleWorkflowInput{Name: tc.name, Trigger: tc.trigger, Actions: []igdomain.WorkflowAction{tc.action}, Now: f.now})
+			_, err := igusecases.CreateLifecycleWorkflow(f.ctx, deps, igusecases.CreateLifecycleWorkflowInput{Name: tc.name, Trigger: tc.trigger, Actions: []igdomain.WorkflowAction{tc.action}, Now: f.now})
 			if tc.valid && err != nil {
 				t.Fatalf("create = %v, want it accepted", err)
 			}
-			if !tc.valid && !errors.Is(err, usecases.ErrLifecycleWorkflowInvalidReference) {
+			if !tc.valid && !errors.Is(err, igusecases.ErrLifecycleWorkflowInvalidReference) {
 				t.Fatalf("create = %v, want ErrLifecycleWorkflowInvalidReference", err)
 			}
 		})
@@ -865,7 +865,7 @@ func TestSavingValidatesReferencesInTheWorkflowsTenant(t *testing.T) {
 		{Kind: igdomain.WorkflowActionAddGroupMember, GroupID: "manual"},
 		{Kind: igdomain.WorkflowActionAssignApplication, ApplicationID: "portal"},
 	} {
-		if _, err := usecases.CreateLifecycleWorkflow(f.ctx, unwired, usecases.CreateLifecycleWorkflowInput{Name: "unwired-" + string(action.Kind), Trigger: filter("email"), Actions: []igdomain.WorkflowAction{action}, Now: f.now}); !errors.Is(err, usecases.ErrLifecycleWorkflowInvalidReference) {
+		if _, err := igusecases.CreateLifecycleWorkflow(f.ctx, unwired, igusecases.CreateLifecycleWorkflowInput{Name: "unwired-" + string(action.Kind), Trigger: filter("email"), Actions: []igdomain.WorkflowAction{action}, Now: f.now}); !errors.Is(err, igusecases.ErrLifecycleWorkflowInvalidReference) {
 			t.Fatalf("create without a %s repository = %v, want it refused", action.Kind, err)
 		}
 	}

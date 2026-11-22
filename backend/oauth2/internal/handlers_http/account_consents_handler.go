@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/internal/consent/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -16,15 +16,15 @@ import (
 )
 
 type accountConsentResponse struct {
-	ClientID   string              `json:"client_id"`
-	ClientName string              `json:"client_name"`
-	Scopes     []string            `json:"scopes"`
-	State      domain.ConsentState `json:"state"`
-	GrantedAt  time.Time           `json:"granted_at"`
-	ExpiresAt  time.Time           `json:"expires_at"`
+	ClientID   string                   `json:"client_id"`
+	ClientName string                   `json:"client_name"`
+	Scopes     []string                 `json:"scopes"`
+	State      oauthdomain.ConsentState `json:"state"`
+	GrantedAt  time.Time                `json:"granted_at"`
+	ExpiresAt  time.Time                `json:"expires_at"`
 }
 
-func toAccountConsentResponse(consent *domain.Consent, clientName string) accountConsentResponse {
+func toAccountConsentResponse(consent *oauthdomain.Consent, clientName string) accountConsentResponse {
 	return accountConsentResponse{
 		ClientID: consent.ClientID, ClientName: clientName,
 		Scopes: slices.Clone(consent.Scopes), State: consent.State,

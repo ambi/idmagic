@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 )
 
-func authorizeDepsWithResourceServer(servers ...*domain.McpResourceServer) AuthorizeDeps {
+func authorizeDepsWithResourceServer(servers ...*oauthdomain.McpResourceServer) AuthorizeDeps {
 	deps := newAuthorizeDeps(false)
 	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(servers...)
 	return deps
@@ -27,10 +27,10 @@ func TestAuthorize_noResource_unaffected(t *testing.T) {
 }
 
 func TestAuthorize_registeredActiveResource_boundOnRequest(t *testing.T) {
-	rs := &domain.McpResourceServer{
+	rs := &oauthdomain.McpResourceServer{
 		TenantID: kernel.DefaultTenantID, ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
-		Scopes: []string{"openid"}, State: domain.McpResourceServerActive,
+		Scopes: []string{"openid"}, State: oauthdomain.McpResourceServerActive,
 	}
 	in := validAuthorizeInput()
 	in.Resource = []string{"https://mcp.example.com/tools"}

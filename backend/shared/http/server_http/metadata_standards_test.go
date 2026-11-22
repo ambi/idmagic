@@ -46,7 +46,7 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	testingpasswords "github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -99,8 +99,8 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 	now := time.Now().UTC()
 
 	clients := oauth2.NewMemoryModule().ClientRepo
-	secretHash := domain.HashClientSecret(mdClientSecret)
-	_ = clients.Save(context.Background(), &domain.OAuth2Client{
+	secretHash := oauthdomain.HashClientSecret(mdClientSecret)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: mdClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{mdRedirectURI},
@@ -108,28 +108,28 @@ func newMetadataFixture(t *testing.T) *mdFixture {
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken,
 		},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    mdScope,
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 
 	resourceServers := oauth2.NewMemoryModule().McpResourceServerRepo
-	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-tools",
 		Resource: mdResourceA, Name: "Tools", Scopes: mdScopesA,
-		State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now,
+		State: oauthdomain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now,
 	})
-	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-reports",
 		Resource: mdResourceB, Name: "Reports", Scopes: mdScopesB,
-		State: domain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now,
+		State: oauthdomain.McpResourceServerActive, CreatedAt: now, UpdatedAt: now,
 	})
-	_ = resourceServers.Save(context.Background(), &domain.McpResourceServer{
+	_ = resourceServers.Save(context.Background(), &oauthdomain.McpResourceServer{
 		TenantID: tenancydomain.DefaultTenantID, ID: "mcp-retired",
 		Resource: mdDisabledResource, Name: "Retired", Scopes: []string{"retired:read"},
-		State: domain.McpResourceServerDisabled, CreatedAt: now, UpdatedAt: now,
+		State: oauthdomain.McpResourceServerDisabled, CreatedAt: now, UpdatedAt: now,
 	})
 
 	hasher := testingpasswords.NewHasher()

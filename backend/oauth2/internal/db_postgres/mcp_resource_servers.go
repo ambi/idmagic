@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,14 +17,14 @@ import (
 // クエリは sqlc 生成 (wi-173)。
 type McpResourceServerRepository struct{ Pool sharedpg.DB }
 
-func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer, error) {
-	m := &domain.McpResourceServer{
+func mcpResourceServerFromRow(row *McpResourceServer) (*oauthdomain.McpResourceServer, error) {
+	m := &oauthdomain.McpResourceServer{
 		TenantID:  row.TenantID,
 		ID:        row.ID,
 		Resource:  row.Resource,
 		Name:      row.Name,
 		ClientID:  row.ClientID.String,
-		State:     domain.McpResourceServerState(row.State),
+		State:     oauthdomain.McpResourceServerState(row.State),
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
 	}
@@ -46,12 +46,12 @@ func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer
 	return m, m.Validate()
 }
 
-func (r *McpResourceServerRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) ListAll(ctx context.Context, tenantID string) ([]*oauthdomain.McpResourceServer, error) {
 	rows, err := New(r.Pool).ListMcpResourceServersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domain.McpResourceServer, 0, len(rows))
+	out := make([]*oauthdomain.McpResourceServer, 0, len(rows))
 	for _, row := range rows {
 		m, err := mcpResourceServerFromRow(row)
 		if err != nil {
@@ -62,7 +62,7 @@ func (r *McpResourceServerRepository) ListAll(ctx context.Context, tenantID stri
 	return out, nil
 }
 
-func (r *McpResourceServerRepository) FindByID(ctx context.Context, tenantID, resourceServerID string) (*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) FindByID(ctx context.Context, tenantID, resourceServerID string) (*oauthdomain.McpResourceServer, error) {
 	row, err := New(r.Pool).GetMcpResourceServer(ctx, GetMcpResourceServerParams{
 		TenantID: tenantID, ID: resourceServerID,
 	})
@@ -75,7 +75,7 @@ func (r *McpResourceServerRepository) FindByID(ctx context.Context, tenantID, re
 	return mcpResourceServerFromRow(row)
 }
 
-func (r *McpResourceServerRepository) FindByResource(ctx context.Context, tenantID, resource string) (*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) FindByResource(ctx context.Context, tenantID, resource string) (*oauthdomain.McpResourceServer, error) {
 	row, err := New(r.Pool).GetMcpResourceServerByResource(ctx, GetMcpResourceServerByResourceParams{
 		TenantID: tenantID, Resource: resource,
 	})
@@ -88,7 +88,7 @@ func (r *McpResourceServerRepository) FindByResource(ctx context.Context, tenant
 	return mcpResourceServerFromRow(row)
 }
 
-func (r *McpResourceServerRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) FindByClientID(ctx context.Context, tenantID, clientID string) (*oauthdomain.McpResourceServer, error) {
 	row, err := New(r.Pool).GetMcpResourceServerByClientID(ctx, GetMcpResourceServerByClientIDParams{
 		TenantID: tenantID, ClientID: pgtype.Text{String: clientID, Valid: clientID != ""},
 	})
@@ -101,7 +101,7 @@ func (r *McpResourceServerRepository) FindByClientID(ctx context.Context, tenant
 	return mcpResourceServerFromRow(row)
 }
 
-func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpResourceServer) error {
+func (r *McpResourceServerRepository) Save(ctx context.Context, m *oauthdomain.McpResourceServer) error {
 	hosting, err := json.Marshal(m.Hosting)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpRes
 	}
 	rules := m.AccessRules
 	if rules == nil {
-		rules = []domain.ResourceAccessRule{}
+		rules = []oauthdomain.ResourceAccessRule{}
 	}
 	accessRules, err := json.Marshal(rules)
 	if err != nil {
@@ -139,7 +139,7 @@ func (r *McpResourceServerRepository) Delete(ctx context.Context, tenantID, reso
 	})
 }
 
-func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *domain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
+func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *oauthdomain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
 	hosting, err := json.Marshal(m.Hosting)
 	if err != nil {
 		return false, err
@@ -150,7 +150,7 @@ func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *do
 	}
 	rules := m.AccessRules
 	if rules == nil {
-		rules = []domain.ResourceAccessRule{}
+		rules = []oauthdomain.ResourceAccessRule{}
 	}
 	accessRules, err := json.Marshal(rules)
 	if err != nil {

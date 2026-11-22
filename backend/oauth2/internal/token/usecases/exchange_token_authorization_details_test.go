@@ -8,11 +8,11 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
 
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-func exchangeDepsWithDetailTypes(t *testing.T, issuer *recordingIssuer, results map[string]*ports.IntrospectionResult) ExchangeTokenDeps {
+func exchangeDepsWithDetailTypes(t *testing.T, issuer *recordingIssuer, results map[string]*oauthports.IntrospectionResult) ExchangeTokenDeps {
 	t.Helper()
 	deps := newExchangeTokenDeps(t, issuer, results)
 	types := oauth2memory.NewAuthorizationDetailTypeRepository()
@@ -21,8 +21,8 @@ func exchangeDepsWithDetailTypes(t *testing.T, issuer *recordingIssuer, results 
 	return deps
 }
 
-func subjectWithDetails(amount float64, actions ...string) *ports.IntrospectionResult {
-	return &ports.IntrospectionResult{
+func subjectWithDetails(amount float64, actions ...string) *oauthports.IntrospectionResult {
+	return &oauthports.IntrospectionResult{
 		Active: true, Sub: "user-1", Scope: "read write",
 		AuthorizationDetails: []spec.AuthorizationDetail{paymentDetail(amount, actions...)},
 	}
@@ -30,7 +30,7 @@ func subjectWithDetails(amount float64, actions ...string) *ports.IntrospectionR
 
 func TestExchangeTokenPreservesSubjectDetailsByDefault(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": subjectWithDetails(100, "initiate", "status"),
 	})
 	res, err := ExchangeToken(testing_tenant.Default(context.Background()), deps, ExchangeTokenInput{
@@ -46,7 +46,7 @@ func TestExchangeTokenPreservesSubjectDetailsByDefault(t *testing.T) {
 
 func TestExchangeTokenDownscopesDetails(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": subjectWithDetails(100, "initiate", "status"),
 	})
 	// 金額を下げ操作を絞る → 部分集合、許容。
@@ -65,7 +65,7 @@ func TestExchangeTokenDownscopesDetails(t *testing.T) {
 
 func TestExchangeTokenRejectsDetailExpansion(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := exchangeDepsWithDetailTypes(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": subjectWithDetails(100, "initiate"),
 	})
 	// 金額を上げる要求は subject token の詳細を超える → 拒否 (fail-closed)。

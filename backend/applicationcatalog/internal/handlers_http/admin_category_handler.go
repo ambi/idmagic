@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
@@ -148,7 +148,7 @@ func (d Deps) writeCategoryError(c *echo.Context, err error) error {
 	}
 }
 
-func toCategoryResponse(category *domain.ApplicationCategory) categoryResponse {
+func toCategoryResponse(category *appdomain.ApplicationCategory) categoryResponse {
 	return categoryResponse{
 		ID: category.ID, Name: category.Name, Position: category.Position,
 		CreatedAt: category.CreatedAt, UpdatedAt: category.UpdatedAt,

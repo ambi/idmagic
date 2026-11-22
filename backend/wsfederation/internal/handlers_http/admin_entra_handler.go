@@ -12,7 +12,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	feddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
+	wsfeddomain "github.com/ambi/idmagic/backend/wsfederation/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -43,7 +43,7 @@ func (r configureEntraRequest) validate() error {
 			return errBadRequest("reply_url must be an absolute URL")
 		}
 	}
-	if _, err := feddomain.NormalizeEntraTenantID(r.EntraTenantID); err != nil {
+	if _, err := wsfeddomain.NormalizeEntraTenantID(r.EntraTenantID); err != nil {
 		return errBadRequest("entra_tenant_id must be a GUID")
 	}
 	return nil
@@ -73,19 +73,19 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if issuerURI == "" {
 		issuerURI = "urn:idmagic:entra:" + domain
 	}
-	entraTenantID, _ := feddomain.NormalizeEntraTenantID(req.EntraTenantID)
+	entraTenantID, _ := wsfeddomain.NormalizeEntraTenantID(req.EntraTenantID)
 	replyURL := strings.TrimSpace(req.ReplyURL)
 	if replyURL == "" {
 		replyURL = defaultEntraReplyURL
 	}
 
 	now := time.Now().UTC()
-	existing, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, feddomain.EntraRealm)
+	existing, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, wsfeddomain.EntraRealm)
 	if err != nil {
 		return err
 	}
-	domainPair := feddomain.EntraDomainFederation{Domain: domain, IssuerURI: issuerURI, EntraTenantID: entraTenantID}
-	var configured feddomain.EntraFederationProfile
+	domainPair := wsfeddomain.EntraDomainFederation{Domain: domain, IssuerURI: issuerURI, EntraTenantID: entraTenantID}
+	var configured wsfeddomain.EntraFederationProfile
 	if existing != nil && existing.EntraProfile != nil {
 		configured = *existing.EntraProfile
 	}
@@ -100,18 +100,18 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	profile.ImmutableIDAttribute = feddomain.EntraImmutableIDAttribute
+	profile.ImmutableIDAttribute = wsfeddomain.EntraImmutableIDAttribute
 	profile.PassiveLogOnURI = passive
 	profile.ActiveLogOnURI = active
 	profile.MetadataExchangeURI = mex
-	rp := &feddomain.WsFedRelyingParty{
+	rp := &wsfeddomain.WsFedRelyingParty{
 		TenantID:     tenantID,
-		Wtrealm:      feddomain.EntraRealm,
+		Wtrealm:      wsfeddomain.EntraRealm,
 		DisplayName:  "Microsoft Entra federation",
 		ReplyURLs:    []string{replyURL},
-		Audience:     feddomain.EntraRealm,
-		TokenType:    feddomain.TokenTypeSAML11,
-		ClaimPolicy:  feddomain.BuildEntraClaimPolicy(),
+		Audience:     wsfeddomain.EntraRealm,
+		TokenType:    wsfeddomain.TokenTypeSAML11,
+		ClaimPolicy:  wsfeddomain.BuildEntraClaimPolicy(),
 		EntraProfile: &profile,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -137,7 +137,7 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	settings := feddomain.ExpectedEntraSettings(profile, domainPair, signer.Certificate(), preparedCertificate).GraphParameters()
+	settings := wsfeddomain.ExpectedEntraSettings(profile, domainPair, signer.Certificate(), preparedCertificate).GraphParameters()
 	// 新しく加えたドメインに、RP を削除する前の観測を一致として示さない。RP の保存より先に消すので、
 	// 保存に失敗しても未確認へ倒れる。
 	if added {
@@ -148,7 +148,7 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	if err := d.relyingParties().SaveEntra(ctx, rp); err != nil {
 		return err
 	}
-	d.emit(&feddomain.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})
+	d.emit(&wsfeddomain.EntraFederationConfigured{At: now, TenantID: tenantID, Domain: domain, IssuerURI: issuerURI})
 
 	body := map[string]any{
 		"profile":           rp.EntraProfile,
@@ -171,7 +171,7 @@ type unfederatedSourceUsersBody struct {
 
 // unfederatedSourceUsers は、取り込み元の管理下の User のうち、構成した後の profile で UPN がどの
 // ドメインにも属さない User を数える。取り込み元が配線されていなければ 0 件を返す。
-func (d Deps) unfederatedSourceUsers(c *echo.Context, profile feddomain.EntraFederationProfile) (unfederatedSourceUsersBody, error) {
+func (d Deps) unfederatedSourceUsers(c *echo.Context, profile wsfeddomain.EntraFederationProfile) (unfederatedSourceUsersBody, error) {
 	if d.SourceOwnership == nil {
 		return unfederatedSourceUsersBody{}, nil
 	}
@@ -195,7 +195,7 @@ func (d Deps) unfederatedSourceUsers(c *echo.Context, profile feddomain.EntraFed
 			sourced = append(sourced, user)
 		}
 	}
-	count, sample := feddomain.UnfederatedUsers(profile, sourced)
+	count, sample := wsfeddomain.UnfederatedUsers(profile, sourced)
 	return unfederatedSourceUsersBody{UserCount: count, SampleUsernames: sample}, nil
 }
 
@@ -208,29 +208,29 @@ type sourceAnchorValueProblem struct {
 
 // refuseUnusableSourceAnchors は、構成した後の profile の sourceAnchor の属性の定義と、UPN が
 // フェデレーションするドメインの利用者の値を確かめ、使えなければ 422 を書いて handled を返す。
-func (d Deps) refuseUnusableSourceAnchors(c *echo.Context, profile feddomain.EntraFederationProfile) (bool, error) {
+func (d Deps) refuseUnusableSourceAnchors(c *echo.Context, profile wsfeddomain.EntraFederationProfile) (bool, error) {
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 	defs, err := claimports.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
 	if err != nil {
 		return true, err
 	}
-	switch err := feddomain.CheckEntraSourceAnchorAttribute(defs, &profile); {
-	case errors.Is(err, feddomain.ErrSourceAnchorNotUnique):
+	switch err := wsfeddomain.CheckEntraSourceAnchorAttribute(defs, &profile); {
+	case errors.Is(err, wsfeddomain.ErrSourceAnchorNotUnique):
 		return true, support.WriteProblem(c, http.StatusUnprocessableEntity, "source_anchor_not_unique", "The sourceAnchor attribute must be unique in the attribute schema.")
-	case errors.Is(err, feddomain.ErrSourceAnchorEditable):
+	case errors.Is(err, wsfeddomain.ErrSourceAnchorEditable):
 		return true, support.WriteProblem(c, http.StatusUnprocessableEntity, "source_anchor_editable", "The sourceAnchor attribute must not be editable by the user.")
 	}
 	users, err := d.UserRepo.FindAll(ctx, tenantID)
 	if err != nil {
 		return true, err
 	}
-	problem := feddomain.CheckEntraSourceAnchorValues(profile, users)
+	problem := wsfeddomain.CheckEntraSourceAnchorValues(profile, users)
 	if problem == nil {
 		return false, nil
 	}
 	code, detail := "source_anchor_invalid", "Some federated users have a sourceAnchor value that cannot be an ImmutableID."
-	if errors.Is(problem.Err, feddomain.ErrSourceAnchorMissing) {
+	if errors.Is(problem.Err, wsfeddomain.ErrSourceAnchorMissing) {
 		code, detail = "source_anchor_missing", "Some federated users have no sourceAnchor value."
 	}
 	return true, support.WriteProblemBody(c, http.StatusUnprocessableEntity, sourceAnchorValueProblem{

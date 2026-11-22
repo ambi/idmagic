@@ -21,7 +21,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -42,17 +42,17 @@ func newDeviceFixtureWithGrants(grants ...spec.GrantType) deviceFixture {
 	deviceStore := oauth2memory.NewDeviceCodeStore()
 	refreshStore := oauth2memory.NewRefreshTokenStore()
 	now := time.Now().UTC()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: "device-client", ClientType: spec.ClientPublic,
 		RedirectURIs: []string{"https://device.example/cb"},
 		GrantTypes:   grants,
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
-		TokenEndpointAuthMethod:  domain.AuthMethodNone,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodNone,
 		Scope:                    "openid profile offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	_ = userRepo.Save(context.Background(), &userdomain.User{
@@ -145,7 +145,7 @@ func TestDeviceFlowDeny(t *testing.T) {
 	}
 
 	// 状態が Denied であることの確認
-	rec, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(auth.UserCode))
+	rec, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(auth.UserCode))
 	if rec.State != spec.DeviceFlowDenied {
 		t.Errorf("expected state DeviceFlowDenied, got %v", rec.State)
 	}
@@ -222,7 +222,7 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 			for _, e := range emitted {
 				types = append(types, e.EventType())
 			}
-			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(testing_tenant.Default(context.Background()), domain.HashDeviceCode(deviceCode))
+			rec, _ := f.deps.DeviceCodeStore.FindByDeviceCodeHash(testing_tenant.Default(context.Background()), oauthdomain.HashDeviceCode(deviceCode))
 			if rec.State != spec.DeviceFlowExchanged {
 				t.Fatalf("state = %v", rec.State)
 			}
@@ -235,7 +235,7 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 				}
 				return
 			}
-			stored, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), domain.HashRefreshToken(out.RefreshToken))
+			stored, err := f.deps.RefreshStore.FindByHash(testing_tenant.Default(context.Background()), oauthdomain.HashRefreshToken(out.RefreshToken))
 			if err != nil || stored == nil {
 				t.Fatalf("refresh record: %v %v", stored, err)
 			}
@@ -245,7 +245,7 @@ func TestExchangeDeviceCodeIssuesARefreshTokenOnlyForOfflineAccess(t *testing.T)
 			if strings.Join(types, ",") != "AccessTokenIssued,RefreshTokenIssued" {
 				t.Fatalf("events = %v", types)
 			}
-			if issued := emitted[1].(*domain.RefreshTokenIssued); issued.FamilyID != stored.FamilyID || issued.TokenID != stored.ID {
+			if issued := emitted[1].(*oauthdomain.RefreshTokenIssued); issued.FamilyID != stored.FamilyID || issued.TokenID != stored.ID {
 				t.Fatalf("RefreshTokenIssued = %+v, record = %+v", issued, stored)
 			}
 			if rec.IssuedFamilyID == nil || *rec.IssuedFamilyID != stored.FamilyID {
@@ -265,7 +265,7 @@ func TestDenyUserCodeRefusesAnExpiredUserCode(t *testing.T) {
 		wantEvent int
 	}{
 		{"within the lifetime", time.Second, "", spec.DeviceFlowDenied, 1},
-		{"after the lifetime", domain.DeviceCodeTTL + time.Second, "expired_token", spec.DeviceFlowIssued, 0},
+		{"after the lifetime", oauthdomain.DeviceCodeTTL + time.Second, "expired_token", spec.DeviceFlowIssued, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -283,7 +283,7 @@ func TestDenyUserCodeRefusesAnExpiredUserCode(t *testing.T) {
 			if oauthErrorCode(err) != tc.wantError || (tc.wantError == "" && err != nil) {
 				t.Fatalf("err = %v, want %q", err, tc.wantError)
 			}
-			rec, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, domain.NormalizeUserCode(auth.UserCode))
+			rec, _ := f.verifyDeps.DeviceCodeStore.FindByUserCode(ctx, oauthdomain.NormalizeUserCode(auth.UserCode))
 			if rec.State != tc.wantState {
 				t.Fatalf("state = %v, want %v", rec.State, tc.wantState)
 			}

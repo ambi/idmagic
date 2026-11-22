@@ -16,9 +16,9 @@ import (
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -53,7 +53,7 @@ func assertApprovalRequired(t *testing.T, issuer *recordingIssuer, events []spec
 		t.Fatal("a token was issued for a supervised agent")
 	}
 	for _, e := range events {
-		if required, is := e.(*domain.AgentApprovalRequired); is && required.AgentID == agentID {
+		if required, is := e.(*oauthdomain.AgentApprovalRequired); is && required.AgentID == agentID {
 			return
 		}
 	}
@@ -64,7 +64,7 @@ func assertApprovalRequired(t *testing.T, issuer *recordingIssuer, events []spec
 func TestExchangeTokenRejectsSupervisedWorkloadAgent(t *testing.T) {
 	issuer := &recordingIssuer{}
 	deps := newExchangeTokenDeps(t, issuer, nil)
-	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&domain.OAuth2Client{
+	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&oauthdomain.OAuth2Client{
 		ClientID: "agent-bound-client", ClientType: spec.ClientConfidential,
 		GrantTypes: []spec.GrantType{spec.GrantClientCredentials}, Scope: "read",
 		CreatedAt: time.Now().UTC(),
@@ -91,7 +91,7 @@ func TestExchangeTokenRejectsSupervisedWorkloadAgent(t *testing.T) {
 //spec:covers EX-OAUTH2-050-06: 承認を経て発行済みのトークンであっても、そこからの派生は unauthorized_client で拒否される。
 func TestExchangeTokenRejectsSupervisedSubjectAgent(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"approved": {Active: true, Sub: "agent-bound-client", Scope: "read write", AgentID: "agent_1"},
 	})
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo
@@ -109,7 +109,7 @@ func TestExchangeTokenRejectsSupervisedSubjectAgent(t *testing.T) {
 //spec:covers EX-OAUTH2-050-01: 交換を行うクライアント自身が Supervised な Agent に束縛されているなら、利用者のトークンを代行する交換も unauthorized_client で拒否され、AgentApprovalRequired が残る。
 func TestExchangeTokenRejectsSupervisedActingClient(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo
@@ -127,7 +127,7 @@ func TestExchangeTokenRejectsSupervisedActingClient(t *testing.T) {
 //spec:covers EX-OAUTH2-050-07: 交換に関与するどの Agent も autonomous なら交換は成立する。
 func TestExchangeTokenAllowsAutonomousAgents(t *testing.T) {
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "client", Scope: "read write", AgentID: "agent_1"},
 	})
 	agentRepo := idmanagement.NewMemoryModule().AgentRepo

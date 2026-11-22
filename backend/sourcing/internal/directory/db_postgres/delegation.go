@@ -6,14 +6,14 @@ import (
 	"time"
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryinternalports "github.com/ambi/idmagic/backend/sourcing/internal/directory/ports"
 	"github.com/jackc/pgx/v5"
 )
 
 type PasswordChallengeStore struct{ Pool sharedpg.DB }
 
-func (s *PasswordChallengeStore) Enqueue(ctx context.Context, item domain.PasswordChallenge, now time.Time) error {
+func (s *PasswordChallengeStore) Enqueue(ctx context.Context, item directorydomain.PasswordChallenge, now time.Time) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		q := New(tx)
 		// Connector ごとの上限を複数 API プロセスで共有する。認証の待機中は保持しない。
@@ -24,14 +24,14 @@ func (s *PasswordChallengeStore) Enqueue(ctx context.Context, item domain.Passwo
 		if err != nil {
 			return err
 		}
-		if count >= domain.MaxPasswordChallenges {
-			return ports.ErrDelegationUnavailable
+		if count >= directorydomain.MaxPasswordChallenges {
+			return directoryinternalports.ErrDelegationUnavailable
 		}
 		return q.EnqueueDirectoryPasswordChallenge(ctx, EnqueueDirectoryPasswordChallengeParams{ID: item.ID, TenantID: item.TenantID, ConnectorID: item.ConnectorID, ConnectorRevision: item.Revision, KeyID: item.KeyID, ExpiresAt: item.ExpiresAt, EncryptedRequest: item.EncryptedRequest})
 	})
 }
 
-func (s *PasswordChallengeStore) Claim(ctx context.Context, tenantID, connectorID string, revision int64, now time.Time) (*domain.PasswordChallenge, error) {
+func (s *PasswordChallengeStore) Claim(ctx context.Context, tenantID, connectorID string, revision int64, now time.Time) (*directorydomain.PasswordChallenge, error) {
 	row, err := New(s.Pool).ClaimDirectoryPasswordChallenge(ctx, ClaimDirectoryPasswordChallengeParams{TenantID: tenantID, ConnectorID: connectorID, ConnectorRevision: revision, Now: now})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -39,24 +39,24 @@ func (s *PasswordChallengeStore) Claim(ctx context.Context, tenantID, connectorI
 	if err != nil {
 		return nil, err
 	}
-	return &domain.PasswordChallenge{ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, Revision: row.ConnectorRevision, KeyID: row.KeyID, ExpiresAt: row.ExpiresAt, EncryptedRequest: row.EncryptedRequest, Delivered: true}, nil
+	return &directorydomain.PasswordChallenge{ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, Revision: row.ConnectorRevision, KeyID: row.KeyID, ExpiresAt: row.ExpiresAt, EncryptedRequest: row.EncryptedRequest, Delivered: true}, nil
 }
 
-func (s *PasswordChallengeStore) Complete(ctx context.Context, tenantID, connectorID, id string, revision int64, result domain.PasswordResult, now time.Time) error {
+func (s *PasswordChallengeStore) Complete(ctx context.Context, tenantID, connectorID, id string, revision int64, result directorydomain.PasswordResult, now time.Time) error {
 	if !sharedpg.IsUUIDText(id) || !result.Valid() {
-		return ports.ErrDelegationUnavailable
+		return directoryinternalports.ErrDelegationUnavailable
 	}
 	updated, err := New(s.Pool).CompleteDirectoryPasswordChallenge(ctx, CompleteDirectoryPasswordChallengeParams{TenantID: tenantID, ConnectorID: connectorID, ID: id, ConnectorRevision: revision, Result: string(result), Now: now})
 	if err != nil {
 		return err
 	}
 	if updated == 0 {
-		return ports.ErrDelegationUnavailable
+		return directoryinternalports.ErrDelegationUnavailable
 	}
 	return nil
 }
 
-func (s *PasswordChallengeStore) Find(ctx context.Context, tenantID, id string) (*domain.PasswordChallenge, error) {
+func (s *PasswordChallengeStore) Find(ctx context.Context, tenantID, id string) (*directorydomain.PasswordChallenge, error) {
 	row, err := New(s.Pool).FindDirectoryPasswordChallenge(ctx, FindDirectoryPasswordChallengeParams{TenantID: tenantID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -64,7 +64,7 @@ func (s *PasswordChallengeStore) Find(ctx context.Context, tenantID, id string) 
 	if err != nil {
 		return nil, err
 	}
-	return &domain.PasswordChallenge{ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, Revision: row.ConnectorRevision, KeyID: row.KeyID, ExpiresAt: row.ExpiresAt, EncryptedRequest: row.EncryptedRequest, Delivered: row.Delivered, Result: domain.PasswordResult(row.Result)}, nil
+	return &directorydomain.PasswordChallenge{ID: row.ID, TenantID: row.TenantID, ConnectorID: row.ConnectorID, Revision: row.ConnectorRevision, KeyID: row.KeyID, ExpiresAt: row.ExpiresAt, EncryptedRequest: row.EncryptedRequest, Delivered: row.Delivered, Result: directorydomain.PasswordResult(row.Result)}, nil
 }
 
 func (s *PasswordChallengeStore) Delete(ctx context.Context, tenantID, id string) error {

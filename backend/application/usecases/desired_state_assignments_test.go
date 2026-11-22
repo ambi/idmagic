@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/application/domain"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
 	appmemory "github.com/ambi/idmagic/backend/application/internal/db_memory"
-	"github.com/ambi/idmagic/backend/application/ports"
+	appports "github.com/ambi/idmagic/backend/application/ports"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -21,24 +21,24 @@ type countingAssignments struct {
 	saves, deletes int
 }
 
-func (r *countingAssignments) Save(ctx context.Context, assignment *domain.ApplicationAssignment) error {
+func (r *countingAssignments) Save(ctx context.Context, assignment *appdomain.ApplicationAssignment) error {
 	r.saves++
 	return r.ApplicationAssignmentRepository.Save(ctx, assignment)
 }
 
-func (r *countingAssignments) Delete(ctx context.Context, tenantID, applicationID string, subjectType domain.AssignmentSubjectType, subjectID string) error {
+func (r *countingAssignments) Delete(ctx context.Context, tenantID, applicationID string, subjectType appdomain.AssignmentSubjectType, subjectID string) error {
 	r.deletes++
 	return r.ApplicationAssignmentRepository.Delete(ctx, tenantID, applicationID, subjectType, subjectID)
 }
 
 type provisioningCall struct {
 	userID  string
-	trigger ports.ProvisioningTrigger
+	trigger appports.ProvisioningTrigger
 }
 
 type recordingProvisioning struct{ calls []provisioningCall }
 
-func (r *recordingProvisioning) NotifyAssignmentMutation(_ context.Context, _, _, userID string, trigger ports.ProvisioningTrigger, _ time.Time) error {
+func (r *recordingProvisioning) NotifyAssignmentMutation(_ context.Context, _, _, userID string, trigger appports.ProvisioningTrigger, _ time.Time) error {
 	r.calls = append(r.calls, provisioningCall{userID: userID, trigger: trigger})
 	return nil
 }
@@ -63,15 +63,15 @@ func newDesiredStateFixture(t *testing.T) *desiredStateFixture {
 		provisioning: &recordingProvisioning{},
 	}
 	applications := appmemory.NewApplicationRepository()
-	if err := applications.Save(f.ctx, &domain.Application{TenantID: "acme", ID: "portal", Name: "Portal", Kind: domain.ApplicationWeblink, Status: domain.ApplicationActive}); err != nil {
+	if err := applications.Save(f.ctx, &appdomain.Application{TenantID: "acme", ID: "portal", Name: "Portal", Kind: appdomain.ApplicationWeblink, Status: appdomain.ApplicationActive}); err != nil {
 		t.Fatalf("seed application: %v", err)
 	}
 	f.operations = appusecases.DesiredStateAssignments{
 		Deps: appusecases.AssignmentDeps{
 			Repo: applications, AssignmentRepo: f.assignments,
-			SubjectDirectory: subjectDirectoryFake{existing: map[ports.SubjectRef]bool{
-				{Type: domain.AssignmentSubjectUser, ID: "alice"}:        true,
-				{Type: domain.AssignmentSubjectGroup, ID: "engineering"}: true,
+			SubjectDirectory: subjectDirectoryFake{existing: map[appports.SubjectRef]bool{
+				{Type: appdomain.AssignmentSubjectUser, ID: "alice"}:        true,
+				{Type: appdomain.AssignmentSubjectGroup, ID: "engineering"}: true,
 			}},
 			Emit:                 func(event spec.DomainEvent) { f.events = append(f.events, event.EventType()) },
 			ProvisioningNotifier: f.provisioning,
@@ -81,7 +81,7 @@ func newDesiredStateFixture(t *testing.T) *desiredStateFixture {
 	return f
 }
 
-func (f *desiredStateFixture) seed(t *testing.T, assignment domain.ApplicationAssignment) {
+func (f *desiredStateFixture) seed(t *testing.T, assignment appdomain.ApplicationAssignment) {
 	t.Helper()
 	if err := f.assignments.ApplicationAssignmentRepository.Save(f.ctx, &assignment); err != nil {
 		t.Fatalf("seed assignment: %v", err)
@@ -89,9 +89,9 @@ func (f *desiredStateFixture) seed(t *testing.T, assignment domain.ApplicationAs
 }
 
 // row は保存先から subject の割り当てを読み直す。無ければ nil。
-func (f *desiredStateFixture) row(t *testing.T, subjectType domain.AssignmentSubjectType, subjectID string) *domain.ApplicationAssignment {
+func (f *desiredStateFixture) row(t *testing.T, subjectType appdomain.AssignmentSubjectType, subjectID string) *appdomain.ApplicationAssignment {
 	t.Helper()
-	rows, err := f.assignments.ListBySubjects(f.ctx, "acme", []ports.SubjectRef{{Type: subjectType, ID: subjectID}})
+	rows, err := f.assignments.ListBySubjects(f.ctx, "acme", []appports.SubjectRef{{Type: subjectType, ID: subjectID}})
 	if err != nil {
 		t.Fatalf("read assignments: %v", err)
 	}
@@ -103,10 +103,10 @@ func (f *desiredStateFixture) row(t *testing.T, subjectType domain.AssignmentSub
 	return nil
 }
 
-func groupAssignment(at time.Time) domain.ApplicationAssignment {
-	return domain.ApplicationAssignment{
-		TenantID: "acme", ApplicationID: "portal", SubjectType: domain.AssignmentSubjectGroup, SubjectID: "engineering",
-		Visibility: domain.AssignmentVisible, CreatedAt: at, UpdatedAt: at,
+func groupAssignment(at time.Time) appdomain.ApplicationAssignment {
+	return appdomain.ApplicationAssignment{
+		TenantID: "acme", ApplicationID: "portal", SubjectType: appdomain.AssignmentSubjectGroup, SubjectID: "engineering",
+		Visibility: appdomain.AssignmentVisible, CreatedAt: at, UpdatedAt: at,
 	}
 }
 
@@ -114,18 +114,18 @@ func groupAssignment(at time.Time) domain.ApplicationAssignment {
 func TestDesiredStateAssignmentsLeaveTheGroupAssignmentUntouched(t *testing.T) {
 	f := newDesiredStateFixture(t)
 	f.seed(t, groupAssignment(f.t0))
-	before := *f.row(t, domain.AssignmentSubjectGroup, "engineering")
+	before := *f.row(t, appdomain.AssignmentSubjectGroup, "engineering")
 	t1 := f.t0.Add(time.Hour)
 
-	changed, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", domain.AssignmentVisible, t1)
+	changed, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", appdomain.AssignmentVisible, t1)
 	if err != nil || !changed {
 		t.Fatalf("AssignApplicationDesiredState() = %v, %v; want true, nil", changed, err)
 	}
-	direct := f.row(t, domain.AssignmentSubjectUser, "alice")
-	if direct == nil || direct.Visibility != domain.AssignmentVisible || !direct.CreatedAt.Equal(t1) {
+	direct := f.row(t, appdomain.AssignmentSubjectUser, "alice")
+	if direct == nil || direct.Visibility != appdomain.AssignmentVisible || !direct.CreatedAt.Equal(t1) {
 		t.Fatalf("direct assignment = %+v, want a visible user assignment created at %v", direct, t1)
 	}
-	if after := f.row(t, domain.AssignmentSubjectGroup, "engineering"); after == nil || *after != before {
+	if after := f.row(t, appdomain.AssignmentSubjectGroup, "engineering"); after == nil || *after != before {
 		t.Fatalf("group assignment after assign = %+v, want unchanged %+v", after, before)
 	}
 
@@ -133,14 +133,14 @@ func TestDesiredStateAssignmentsLeaveTheGroupAssignmentUntouched(t *testing.T) {
 	if err != nil || !changed {
 		t.Fatalf("UnassignApplicationDesiredState() = %v, %v; want true, nil", changed, err)
 	}
-	if direct := f.row(t, domain.AssignmentSubjectUser, "alice"); direct != nil {
+	if direct := f.row(t, appdomain.AssignmentSubjectUser, "alice"); direct != nil {
 		t.Fatalf("direct assignment after unassign = %+v, want none", direct)
 	}
-	if after := f.row(t, domain.AssignmentSubjectGroup, "engineering"); after == nil || *after != before {
+	if after := f.row(t, appdomain.AssignmentSubjectGroup, "engineering"); after == nil || *after != before {
 		t.Fatalf("group assignment after unassign = %+v, want unchanged %+v", after, before)
 	}
-	assigned, err := appusecases.IsSubjectAssigned(f.ctx, f.assignments, "acme", "portal", []ports.SubjectRef{
-		{Type: domain.AssignmentSubjectUser, ID: "alice"}, {Type: domain.AssignmentSubjectGroup, ID: "engineering"},
+	assigned, err := appusecases.IsSubjectAssigned(f.ctx, f.assignments, "acme", "portal", []appports.SubjectRef{
+		{Type: appdomain.AssignmentSubjectUser, ID: "alice"}, {Type: appdomain.AssignmentSubjectGroup, ID: "engineering"},
 	})
 	if err != nil || !assigned {
 		t.Fatalf("IsSubjectAssigned() = %v, %v; want the group assignment to keep alice assigned", assigned, err)
@@ -148,7 +148,7 @@ func TestDesiredStateAssignmentsLeaveTheGroupAssignmentUntouched(t *testing.T) {
 	if want := []string{"ApplicationAssigned", "ApplicationUnassigned"}; !slices.Equal(f.events, want) {
 		t.Fatalf("events = %v, want %v", f.events, want)
 	}
-	wantCalls := []provisioningCall{{"alice", ports.ProvisioningAssignmentAdded}, {"alice", ports.ProvisioningAssignmentRemoved}}
+	wantCalls := []provisioningCall{{"alice", appports.ProvisioningAssignmentAdded}, {"alice", appports.ProvisioningAssignmentRemoved}}
 	if !slices.Equal(f.provisioning.calls, wantCalls) {
 		t.Fatalf("provisioning calls = %v, want %v", f.provisioning.calls, wantCalls)
 	}
@@ -159,13 +159,13 @@ func TestAssignApplicationDesiredStateWithTheSameVisibilityChangesNothing(t *tes
 	f := newDesiredStateFixture(t)
 	f.seed(t, groupAssignment(f.t0))
 
-	first, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", domain.AssignmentHidden, f.t0)
+	first, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", appdomain.AssignmentHidden, f.t0)
 	if err != nil || !first {
 		t.Fatalf("first AssignApplicationDesiredState() = %v, %v; want true, nil", first, err)
 	}
-	stored := *f.row(t, domain.AssignmentSubjectUser, "alice")
+	stored := *f.row(t, appdomain.AssignmentSubjectUser, "alice")
 
-	second, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", domain.AssignmentHidden, f.t0.Add(time.Hour))
+	second, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", appdomain.AssignmentHidden, f.t0.Add(time.Hour))
 	if err != nil || second {
 		t.Fatalf("second AssignApplicationDesiredState() = %v, %v; want false, nil", second, err)
 	}
@@ -178,7 +178,7 @@ func TestAssignApplicationDesiredStateWithTheSameVisibilityChangesNothing(t *tes
 	if len(f.provisioning.calls) != 1 {
 		t.Fatalf("provisioning calls = %v, want exactly one", f.provisioning.calls)
 	}
-	if after := f.row(t, domain.AssignmentSubjectUser, "alice"); after == nil || *after != stored {
+	if after := f.row(t, appdomain.AssignmentSubjectUser, "alice"); after == nil || *after != stored {
 		t.Fatalf("direct assignment = %+v, want unchanged %+v", after, stored)
 	}
 }
@@ -187,18 +187,18 @@ func TestAssignApplicationDesiredStateWithTheSameVisibilityChangesNothing(t *tes
 // Provisioning が送る属性は visibility に依らないため、通知はしない。
 func TestAssignApplicationDesiredStateUpdatesADifferentVisibility(t *testing.T) {
 	f := newDesiredStateFixture(t)
-	f.seed(t, domain.ApplicationAssignment{
-		TenantID: "acme", ApplicationID: "portal", SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
-		Visibility: domain.AssignmentVisible, CreatedAt: f.t0, UpdatedAt: f.t0,
+	f.seed(t, appdomain.ApplicationAssignment{
+		TenantID: "acme", ApplicationID: "portal", SubjectType: appdomain.AssignmentSubjectUser, SubjectID: "alice",
+		Visibility: appdomain.AssignmentVisible, CreatedAt: f.t0, UpdatedAt: f.t0,
 	})
 	t1 := f.t0.Add(time.Hour)
 
-	changed, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", domain.AssignmentHidden, t1)
+	changed, err := f.operations.AssignApplicationDesiredState(f.ctx, "acme", "portal", "alice", appdomain.AssignmentHidden, t1)
 	if err != nil || !changed {
 		t.Fatalf("AssignApplicationDesiredState() = %v, %v; want true, nil", changed, err)
 	}
-	direct := f.row(t, domain.AssignmentSubjectUser, "alice")
-	if direct == nil || direct.Visibility != domain.AssignmentHidden || !direct.CreatedAt.Equal(f.t0) || !direct.UpdatedAt.Equal(t1) {
+	direct := f.row(t, appdomain.AssignmentSubjectUser, "alice")
+	if direct == nil || direct.Visibility != appdomain.AssignmentHidden || !direct.CreatedAt.Equal(f.t0) || !direct.UpdatedAt.Equal(t1) {
 		t.Fatalf("direct assignment = %+v, want hidden, created at %v, updated at %v", direct, f.t0, t1)
 	}
 	if want := []string{"ApplicationAssigned"}; !slices.Equal(f.events, want) {
@@ -213,7 +213,7 @@ func TestAssignApplicationDesiredStateUpdatesADifferentVisibility(t *testing.T) 
 func TestUnassignApplicationDesiredStateWithoutADirectAssignmentChangesNothing(t *testing.T) {
 	f := newDesiredStateFixture(t)
 	f.seed(t, groupAssignment(f.t0))
-	before := *f.row(t, domain.AssignmentSubjectGroup, "engineering")
+	before := *f.row(t, appdomain.AssignmentSubjectGroup, "engineering")
 
 	for _, applicationID := range []string{"portal", "missing"} {
 		changed, err := f.operations.UnassignApplicationDesiredState(f.ctx, "acme", applicationID, "alice", f.t0)
@@ -224,7 +224,7 @@ func TestUnassignApplicationDesiredStateWithoutADirectAssignmentChangesNothing(t
 	if f.assignments.deletes != 0 || len(f.events) != 0 || len(f.provisioning.calls) != 0 {
 		t.Fatalf("deletes=%d events=%v provisioning=%v, want no effect", f.assignments.deletes, f.events, f.provisioning.calls)
 	}
-	if after := f.row(t, domain.AssignmentSubjectGroup, "engineering"); after == nil || *after != before {
+	if after := f.row(t, appdomain.AssignmentSubjectGroup, "engineering"); after == nil || *after != before {
 		t.Fatalf("group assignment = %+v, want unchanged %+v", after, before)
 	}
 }
@@ -234,11 +234,11 @@ func TestAssignApplicationDesiredStateRefusesIdentifiersOutsideTheTenant(t *test
 	tests := []struct {
 		name                            string
 		tenantID, applicationID, userID string
-		visibility                      domain.AssignmentVisibility
+		visibility                      appdomain.AssignmentVisibility
 		wantErr                         error
 	}{
-		{name: "application of another tenant", tenantID: "globex", applicationID: "portal", userID: "alice", visibility: domain.AssignmentVisible, wantErr: appusecases.ErrApplicationNotFound},
-		{name: "user outside the tenant", tenantID: "acme", applicationID: "portal", userID: "mallory", visibility: domain.AssignmentVisible, wantErr: appusecases.ErrSubjectNotFound},
+		{name: "application of another tenant", tenantID: "globex", applicationID: "portal", userID: "alice", visibility: appdomain.AssignmentVisible, wantErr: appusecases.ErrApplicationNotFound},
+		{name: "user outside the tenant", tenantID: "acme", applicationID: "portal", userID: "mallory", visibility: appdomain.AssignmentVisible, wantErr: appusecases.ErrSubjectNotFound},
 		{name: "unknown visibility", tenantID: "acme", applicationID: "portal", userID: "alice", visibility: "shown", wantErr: appusecases.ErrInvalidVisibility},
 	}
 	for _, test := range tests {

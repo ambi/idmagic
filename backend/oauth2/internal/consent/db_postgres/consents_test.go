@@ -14,7 +14,7 @@ import (
 
 	clientpostgres "github.com/ambi/idmagic/backend/oauth2/internal/client/db_postgres"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
@@ -31,7 +31,7 @@ func TestConsentRepositoryListPageByTenant(t *testing.T) {
 	for range 5 {
 		u := pgfixtures.SeedUser(t, idmanagement.NewPostgresModule(db).UserRepo, tenant.ID)
 		userIDs = append(userIDs, u.ID)
-		if err := repo.Save(ctx, tenant.ID, &domain.Consent{
+		if err := repo.Save(ctx, tenant.ID, &oauthdomain.Consent{
 			UserID: u.ID, ClientID: client.ClientID, Scopes: []string{"read"},
 			GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
 		}); err != nil {
@@ -84,14 +84,14 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed agent: %v", err)
 	}
-	if err := repo.Save(ctx, tenant.ID, &domain.Consent{
+	if err := repo.Save(ctx, tenant.ID, &oauthdomain.Consent{
 		UserID: user.ID, ClientID: client.ClientID, Scopes: []string{"read"},
 		GrantedAt: now, ExpiresAt: now.Add(24 * time.Hour),
 	}); err != nil {
 		t.Fatalf("save consent: %v", err)
 	}
 	future := time.Now().UTC().Add(time.Hour)
-	grant := &domain.Consent{
+	grant := &oauthdomain.Consent{
 		UserID: user.ID, AgentID: agentID, Scopes: []string{"read", "write"},
 		GrantedAt: time.Now().UTC(), ExpiresAt: future,
 	}
@@ -113,7 +113,7 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 		t.Fatalf("touch: %v", err)
 	}
 	found, err := repo.FindAgentDelegation(ctx, tenant.ID, user.ID, agentID)
-	if err != nil || found == nil || found.State != domain.ConsentGranted || found.ClientID != "" ||
+	if err != nil || found == nil || found.State != oauthdomain.ConsentGranted || found.ClientID != "" ||
 		found.LastUsedAt == nil || !found.LastUsedAt.Equal(usedAt) {
 		t.Fatalf("FindAgentDelegation = (%+v, %v)", found, err)
 	}
@@ -129,7 +129,7 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 			if len(rows) != 0 {
 				t.Fatalf("foreign tenant received grants=%v", rows)
 			}
-		} else if len(rows) != 1 || rows[0].UserID != user.ID || rows[0].State != domain.ConsentRevoked {
+		} else if len(rows) != 1 || rows[0].UserID != user.ID || rows[0].State != oauthdomain.ConsentRevoked {
 			t.Fatalf("target grants=%v", rows)
 		}
 	}
@@ -138,14 +138,14 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 		t.Fatalf("other agent grants=%v error=%v", rows, err)
 	}
 	found, err = repo.FindAgentDelegation(ctx, tenant.ID, user.ID, agentID)
-	if err != nil || found == nil || found.State != domain.ConsentRevoked || found.RevokedAt == nil {
+	if err != nil || found == nil || found.State != oauthdomain.ConsentRevoked || found.RevokedAt == nil {
 		t.Fatalf("after revoke = (%+v, %v)", found, err)
 	}
 	if err := repo.SaveAgentDelegation(ctx, tenant.ID, grant); err != nil {
 		t.Fatalf("re-grant: %v", err)
 	}
 	listed, err := repo.ListAgentDelegations(ctx, tenant.ID, user.ID)
-	if err != nil || len(listed) != 1 || listed[0].State != domain.ConsentGranted || listed[0].LastUsedAt == nil {
+	if err != nil || len(listed) != 1 || listed[0].State != oauthdomain.ConsentGranted || listed[0].LastUsedAt == nil {
 		t.Fatalf("after re-grant = (%+v, %v)", listed, err)
 	}
 	tenantPage, err := repo.ListAgentDelegationPage(ctx, tenant.ID, "", "", 10)

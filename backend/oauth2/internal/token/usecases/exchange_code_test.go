@@ -20,23 +20,23 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 	logoutmemory "github.com/ambi/idmagic/backend/oauth2/internal/logout/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type fakeTokenIssuer struct {
 	idTokenCalls         int
-	lastIDTokenInput     ports.IDTokenInput
-	lastAccessTokenInput ports.AccessTokenInput
+	lastIDTokenInput     oauthports.IDTokenInput
+	lastAccessTokenInput oauthports.AccessTokenInput
 }
 
-func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in ports.AccessTokenInput) (string, string, error) {
+func (f *fakeTokenIssuer) SignAccessToken(_ context.Context, in oauthports.AccessTokenInput) (string, string, error) {
 	f.lastAccessTokenInput = in
 	return "access-token", "jti-1", nil
 }
 
-func (f *fakeTokenIssuer) SignIDToken(_ context.Context, in ports.IDTokenInput) (string, error) {
+func (f *fakeTokenIssuer) SignIDToken(_ context.Context, in oauthports.IDTokenInput) (string, error) {
 	f.idTokenCalls++
 	f.lastIDTokenInput = in
 	return "id-token", nil
@@ -49,7 +49,7 @@ type exchangeFixture struct {
 	deps         ExchangeCodeDeps
 	codeStore    *oauth2memory.AuthorizationCodeStore
 	refreshStore *oauth2memory.RefreshTokenStore
-	code         *domain.AuthorizationCodeRecord
+	code         *oauthdomain.AuthorizationCodeRecord
 	issuer       *fakeTokenIssuer
 	events       *[]spec.DomainEvent
 }
@@ -63,17 +63,17 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 	issuer := &fakeTokenIssuer{}
 
 	now := time.Now().UTC()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		ClientID: "client", ClientType: spec.ClientConfidential,
 		RedirectURIs: []string{"https://client.example/cb"},
 		GrantTypes:   []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
 		ResponseTypes: []spec.ResponseType{
 			spec.ResponseTypeCode,
 		},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile offline_access",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	_ = userRepo.Save(context.Background(), &userdomain.User{
@@ -83,7 +83,7 @@ func newExchangeFixture(t *testing.T, scopes []string) exchangeFixture {
 
 	verifier := "verifier-of-sufficient-length-ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	sum := sha256.Sum256([]byte(verifier))
-	code := &domain.AuthorizationCodeRecord{
+	code := &oauthdomain.AuthorizationCodeRecord{
 		Code:                   "authorization-code",
 		AuthorizationRequestID: "00000000-0000-4000-8000-000000000001",
 		ClientID:               "client",
@@ -248,7 +248,7 @@ func TestExchangeCodeReplayRevokesRefreshFamily(t *testing.T) {
 	if !errors.As(err, &oe) || oe.Code != "invalid_grant" {
 		t.Fatalf("再交換の拒否が invalid_grant ではない: %v", err)
 	}
-	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), domain.HashRefreshToken(out.RefreshToken))
+	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), oauthdomain.HashRefreshToken(out.RefreshToken))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
 	if f.issuer.lastIDTokenInput.Sid != sid {
 		t.Fatalf("sid not propagated to id_token: got %q", f.issuer.lastIDTokenInput.Sid)
 	}
-	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), domain.HashRefreshToken(out.RefreshToken))
+	rec, err := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), oauthdomain.HashRefreshToken(out.RefreshToken))
 	if err != nil {
 		t.Fatal(err)
 	}

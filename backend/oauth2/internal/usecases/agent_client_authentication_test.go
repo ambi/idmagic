@@ -10,8 +10,8 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	sharedusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
@@ -39,24 +39,24 @@ func TestRejectAgentClientWithoutKeyProof(t *testing.T) {
 	}
 
 	cases := []struct {
-		method   domain.TokenEndpointAuthMethod
+		method   oauthdomain.TokenEndpointAuthMethod
 		accepted bool
 	}{
-		{domain.AuthMethodPrivateKeyJwt, true},
-		{domain.AuthMethodTlsClientAuth, true},
-		{domain.AuthMethodClientSecretBasic, false},
-		{domain.AuthMethodClientSecretPost, false},
-		{domain.AuthMethodNone, false},
+		{oauthdomain.AuthMethodPrivateKeyJwt, true},
+		{oauthdomain.AuthMethodTlsClientAuth, true},
+		{oauthdomain.AuthMethodClientSecretBasic, false},
+		{oauthdomain.AuthMethodClientSecretPost, false},
+		{oauthdomain.AuthMethodNone, false},
 	}
 	for _, tc := range cases {
 		t.Run("bound/"+string(tc.method), func(t *testing.T) {
 			var events []spec.DomainEvent
-			deps := sharedusecases.AgentIssuanceDeps{
+			deps := oauthusecases.AgentIssuanceDeps{
 				AgentRepo: agentRepo, Emit: func(event spec.DomainEvent) { events = append(events, event) },
 			}
-			client := &domain.OAuth2Client{ClientID: "agent_client", TokenEndpointAuthMethod: tc.method}
+			client := &oauthdomain.OAuth2Client{ClientID: "agent_client", TokenEndpointAuthMethod: tc.method}
 
-			err := sharedusecases.RejectAgentClientWithoutKeyProof(ctx, deps, client, "client_credentials", now)
+			err := oauthusecases.RejectAgentClientWithoutKeyProof(ctx, deps, client, "client_credentials", now)
 
 			if tc.accepted {
 				if err != nil || len(events) != 0 {
@@ -68,11 +68,11 @@ func TestRejectAgentClientWithoutKeyProof(t *testing.T) {
 			if len(events) != 1 {
 				t.Fatalf("events=%v, want one AgentClientAuthenticationRejected", events)
 			}
-			rejected, ok := events[0].(*domain.AgentClientAuthenticationRejected)
+			rejected, ok := events[0].(*oauthdomain.AgentClientAuthenticationRejected)
 			if !ok {
 				t.Fatalf("event=%T, want *AgentClientAuthenticationRejected", events[0])
 			}
-			want := domain.AgentClientAuthenticationRejected{
+			want := oauthdomain.AgentClientAuthenticationRejected{
 				At: now, TenantID: tenancydomain.DefaultTenantID, AgentID: "agent_1", ClientID: "agent_client",
 				TokenEndpointAuthMethod: string(tc.method), GrantType: "client_credentials",
 			}
@@ -98,9 +98,9 @@ func TestRejectAgentClientWithoutKeyProof(t *testing.T) {
 			}
 		})
 		t.Run("unbound/"+string(tc.method), func(t *testing.T) {
-			deps := sharedusecases.AgentIssuanceDeps{AgentRepo: agentRepo}
-			client := &domain.OAuth2Client{ClientID: "plain_client", TokenEndpointAuthMethod: tc.method}
-			if err := sharedusecases.RejectAgentClientWithoutKeyProof(ctx, deps, client, "client_credentials", now); err != nil {
+			deps := oauthusecases.AgentIssuanceDeps{AgentRepo: agentRepo}
+			client := &oauthdomain.OAuth2Client{ClientID: "plain_client", TokenEndpointAuthMethod: tc.method}
+			if err := oauthusecases.RejectAgentClientWithoutKeyProof(ctx, deps, client, "client_credentials", now); err != nil {
 				t.Fatalf("unbound client with %s refused: %v", tc.method, err)
 			}
 		})

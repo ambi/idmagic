@@ -13,7 +13,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -37,7 +37,7 @@ type Deps struct {
 	GroupRepo       groupports.GroupRepository
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
-	Notifier        sharednotification.Notifier
+	Notifier        notificationports.Notifier
 	// AttrSchemaRepo は保存と有効化で、フィルターのフィールドをテナントの属性スキーマと照合する。
 	AttrSchemaRepo userports.TenantUserAttributeSchemaRepository
 }

@@ -12,16 +12,16 @@ import (
 	"github.com/labstack/echo/v5"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
+	directorydomain "github.com/ambi/idmagic/backend/sourcing/internal/directory/domain"
+	directoryusecases "github.com/ambi/idmagic/backend/sourcing/internal/directory/usecases"
 )
 
 type Deps struct {
 	support.Deps
 	*support.Authenticator
-	Service        *usecases.Service
-	Ingestion      *usecases.Ingestion
-	Delegation     *usecases.Delegation
+	Service        *directoryusecases.Service
+	Ingestion      *directoryusecases.Ingestion
+	Delegation     *directoryusecases.Delegation
 	DiagnosticGate directoryports.PasswordDiagnosticGate
 	Users          userports.UserRepository
 }
@@ -54,7 +54,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 type handler struct{ deps Deps }
 
 type connectorResponse struct {
-	domain.DisableThresholds
+	directorydomain.DisableThresholds
 	ID                      string     `json:"id"`
 	DisplayName             string     `json:"display_name"`
 	Status                  string     `json:"status"`
@@ -70,7 +70,7 @@ type connectorResponse struct {
 
 // connectorJSON は登録トークンのハッシュと公開鍵を含めずに Connector を写す。
 // 鍵の ID は Active の間だけ、登録トークンの有効期限は登録待ちの間だけ返す。
-func connectorJSON(c domain.Connector) connectorResponse {
+func connectorJSON(c directorydomain.Connector) connectorResponse {
 	response := connectorResponse{
 		DisableThresholds: c.Thresholds,
 		ID:                c.ID, DisplayName: c.DisplayName, Status: string(c.Status), CreatedAt: c.CreatedAt,
@@ -78,17 +78,17 @@ func connectorJSON(c domain.Connector) connectorResponse {
 		DelegatedAuthentication: c.DelegatedAuthentication,
 	}
 	switch c.Status {
-	case domain.StatusActive:
+	case directorydomain.StatusActive:
 		response.KeyID = c.KeyID
 		response.EncryptionKeyID = c.EncryptionKeyID
-	case domain.StatusAwaitingEnrollment:
+	case directorydomain.StatusAwaitingEnrollment:
 		expires := c.EnrollmentExpiresAt
 		response.EnrollmentExpiresAt = &expires
 	}
 	return response
 }
 
-func grantJSON(grant usecases.Grant) map[string]any {
+func grantJSON(grant directoryusecases.Grant) map[string]any {
 	return map[string]any{"connector": connectorJSON(grant.Connector), "enrollment_token": grant.Token}
 }
 
@@ -119,7 +119,7 @@ func (h handler) createConnector(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid directory connector request")
 	}
 	grant, err := h.deps.Service.Create(c.Request().Context(), support.RequestTenantID(c), request.DisplayName)
-	if errors.Is(err, domain.ErrDisplayNameRequired) {
+	if errors.Is(err, directorydomain.ErrDisplayNameRequired) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	if err != nil {
@@ -178,9 +178,9 @@ func (h handler) disableConnector(c *echo.Context) error {
 
 func writeAdminError(c *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, usecases.ErrNotFound):
+	case errors.Is(err, directoryusecases.ErrNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "directory_connector_not_found", "directory connector not found")
-	case errors.Is(err, domain.ErrConnectorDisabled):
+	case errors.Is(err, directorydomain.ErrConnectorDisabled):
 		return support.WriteProblem(c, http.StatusConflict, "directory_connector_disabled", err.Error())
 	default:
 		return err
@@ -197,9 +197,9 @@ func (h handler) enrollConnector(c *echo.Context) error {
 	}
 	connector, err := h.deps.Service.Enroll(c.Request().Context(), support.RequestTenantID(c), request.EnrollmentToken, request.JWK)
 	switch {
-	case errors.Is(err, usecases.ErrInvalidToken):
+	case errors.Is(err, directoryusecases.ErrInvalidToken):
 		return writeInvalidToken(c)
-	case errors.Is(err, usecases.ErrInvalidKey):
+	case errors.Is(err, directoryusecases.ErrInvalidKey):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "jwk must be a public P-256 or RSA (2048 bits or more) signing key")
 	case err != nil:
 		return err
@@ -217,7 +217,7 @@ func (h handler) reportHeartbeat(c *echo.Context) error {
 		return writeInvalidToken(c)
 	}
 	err := h.deps.Service.Heartbeat(c.Request().Context(), support.RequestTenantID(c), assertion, h.audience(c))
-	if errors.Is(err, usecases.ErrInvalidToken) {
+	if errors.Is(err, directoryusecases.ErrInvalidToken) {
 		return writeInvalidToken(c)
 	}
 	if err != nil {
@@ -232,21 +232,21 @@ func bearer(c *echo.Context) (string, bool) {
 }
 
 // authenticateConnector は Connector の JWT を検証し、拒否の応答を書いたかを返す。
-func (h handler) authenticateConnector(c *echo.Context) (domain.Connector, bool, error) {
+func (h handler) authenticateConnector(c *echo.Context) (directorydomain.Connector, bool, error) {
 	assertion, ok := bearer(c)
 	if !ok {
-		return domain.Connector{}, false, writeInvalidToken(c)
+		return directorydomain.Connector{}, false, writeInvalidToken(c)
 	}
 	connector, err := h.deps.Service.Authenticate(c.Request().Context(), support.RequestTenantID(c), assertion, h.audience(c))
-	if errors.Is(err, usecases.ErrInvalidToken) {
-		return domain.Connector{}, false, writeInvalidToken(c)
+	if errors.Is(err, directoryusecases.ErrInvalidToken) {
+		return directorydomain.Connector{}, false, writeInvalidToken(c)
 	}
 	return connector, err == nil, err
 }
 
 // audience は、要求したテナントの Connector の JWT が aud に持つべき値を返す。
 func (h handler) audience(c *echo.Context) string {
-	return support.TenantURL(c, usecases.AudiencePath, h.deps.Issuer)
+	return support.TenantURL(c, directoryusecases.AudiencePath, h.deps.Issuer)
 }
 
 func writeInvalidToken(c *echo.Context) error {

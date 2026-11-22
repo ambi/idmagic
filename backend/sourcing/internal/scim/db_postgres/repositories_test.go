@@ -14,7 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
-	"github.com/ambi/idmagic/backend/sourcing/scim/ports"
+	scimports "github.com/ambi/idmagic/backend/sourcing/scim/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -95,7 +95,7 @@ func TestScimRepositoryRefs(t *testing.T) {
 	repo := &ScimRepository{Pool: db}
 	ctx := context.Background()
 
-	userRef := &ports.ScimUserRef{TenantID: tenant.ID, ScimID: "scim-user-" + newUUID(t)[:8], UserID: user.ID}
+	userRef := &scimports.ScimUserRef{TenantID: tenant.ID, ScimID: "scim-user-" + newUUID(t)[:8], UserID: user.ID}
 	if err := repo.SaveUserRef(ctx, userRef); err != nil {
 		t.Fatalf("save user ref: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestScimRepositoryRefs(t *testing.T) {
 		t.Fatalf("find user ref by user id: %v %+v", err, byUser)
 	}
 
-	groupRef := &ports.ScimGroupRef{TenantID: tenant.ID, ScimID: "scim-group-" + newUUID(t)[:8], GroupID: group.ID}
+	groupRef := &scimports.ScimGroupRef{TenantID: tenant.ID, ScimID: "scim-group-" + newUUID(t)[:8], GroupID: group.ID}
 	if err := repo.SaveGroupRef(ctx, groupRef); err != nil {
 		t.Fatalf("save group ref: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestScimRepositoryResolvesRefsInBulkWithinTheTenant(t *testing.T) {
 	repo := &ScimRepository{Pool: db}
 	owned, unowned, foreign := seedUser(t, db, tenant.ID), seedUser(t, db, tenant.ID), seedUser(t, db, other.ID)
 	ownedGroup, foreignGroup := seedGroup(t, db, tenant.ID), seedGroup(t, db, other.ID)
-	for _, ref := range []*ports.ScimUserRef{
+	for _, ref := range []*scimports.ScimUserRef{
 		{TenantID: tenant.ID, ScimID: "scim-" + newUUID(t), UserID: owned.ID},
 		{TenantID: other.ID, ScimID: "scim-" + newUUID(t), UserID: foreign.ID},
 	} {
@@ -145,7 +145,7 @@ func TestScimRepositoryResolvesRefsInBulkWithinTheTenant(t *testing.T) {
 			t.Fatalf("save user ref: %v", err)
 		}
 	}
-	for _, ref := range []*ports.ScimGroupRef{
+	for _, ref := range []*scimports.ScimGroupRef{
 		{TenantID: tenant.ID, ScimID: "scim-" + newUUID(t), GroupID: ownedGroup.ID},
 		{TenantID: other.ID, ScimID: "scim-" + newUUID(t), GroupID: foreignGroup.ID},
 	} {

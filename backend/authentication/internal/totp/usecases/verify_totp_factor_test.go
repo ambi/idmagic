@@ -8,7 +8,7 @@ import (
 	"time"
 
 	authnmemory "github.com/ambi/idmagic/backend/authentication/internal/totp/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/totp/domain"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -28,7 +28,7 @@ func TestVerifyTOTPFactorUpdatesLastUsedAt(t *testing.T) {
 	secret := rfc6238SHA1SecretBase32
 	created := time.Unix(1, 0).UTC()
 	now := time.Unix(59, 0).UTC()
-	if err := repo.Save(context.Background(), &domain.MfaFactor{
+	if err := repo.Save(context.Background(), &totpdomain.MfaFactor{
 		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: created,
 	}); err != nil {
 		t.Fatalf("save factor: %v", err)
@@ -56,7 +56,7 @@ func TestVerifyTOTPFactorUpdatesLastUsedAt(t *testing.T) {
 func TestVerifyTOTPFactorRejectsInvalidCode(t *testing.T) {
 	repo := authnmemory.NewMfaFactorRepository()
 	secret := rfc6238SHA1SecretBase32
-	if err := repo.Save(context.Background(), &domain.MfaFactor{
+	if err := repo.Save(context.Background(), &totpdomain.MfaFactor{
 		UserID: "user-1", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: time.Unix(1, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("save factor: %v", err)

@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
+	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 )
 
 // tenantIDShape は tenancy が受け入れるテナント ID の形 (tenancy.tenantIDPattern と同じ)。
@@ -28,10 +28,10 @@ func FuzzConsistencyTokenRoundTrip(f *testing.F) {
 		if len(issuingTenant) > 4096 || len(readingTenant) > 4096 {
 			return
 		}
-		token := domain.EncodeConsistencyToken(issuingTenant, version)
+		token := accessdomain.EncodeConsistencyToken(issuingTenant, version)
 
 		if readingTenant != issuingTenant {
-			if _, err := domain.DecodeConsistencyToken(token, readingTenant); err == nil {
+			if _, err := accessdomain.DecodeConsistencyToken(token, readingTenant); err == nil {
 				t.Fatalf("a token issued for %q was accepted by tenant %q", issuingTenant, readingTenant)
 			}
 		}
@@ -39,7 +39,7 @@ func FuzzConsistencyTokenRoundTrip(f *testing.F) {
 		if !tenantIDShape.MatchString(issuingTenant) {
 			return
 		}
-		decoded, err := domain.DecodeConsistencyToken(token, issuingTenant)
+		decoded, err := accessdomain.DecodeConsistencyToken(token, issuingTenant)
 		if err != nil {
 			t.Fatalf("a token issued for %q was rejected by its own tenant: %v", issuingTenant, err)
 		}
@@ -63,7 +63,7 @@ func FuzzDecodeConsistencyToken(f *testing.F) {
 		if len(token) > 8192 || len(tenantID) > 4096 {
 			return
 		}
-		version, err := domain.DecodeConsistencyToken(token, tenantID)
+		version, err := accessdomain.DecodeConsistencyToken(token, tenantID)
 		if err != nil {
 			if version != 0 {
 				t.Fatalf("DecodeConsistencyToken returned version %d together with an error", version)
@@ -71,7 +71,7 @@ func FuzzDecodeConsistencyToken(f *testing.F) {
 			return
 		}
 		// 受理したなら、そのテナントで同じバージョンを符号化し直したものと一致しなければならない。
-		if reissued := domain.EncodeConsistencyToken(tenantID, version); reissued != token {
+		if reissued := accessdomain.EncodeConsistencyToken(tenantID, version); reissued != token {
 			t.Fatalf("accepted %q for tenant %q, but that tenant and version encode to %q",
 				token, tenantID, reissued)
 		}

@@ -9,11 +9,11 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
-	"github.com/ambi/idmagic/backend/signingkeys/ports"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 )
 
 type RotateSigningKeyDeps struct {
-	KeyStore ports.KeyStore
+	KeyStore signingports.KeyStore
 	Emit     func(spec.DomainEvent)
 	Grace    time.Duration
 }
@@ -61,7 +61,7 @@ func RotateSigningKeyIfDue(
 	if deps.Grace == 0 {
 		deps.Grace = 7 * 24 * time.Hour
 	}
-	if rotator, ok := deps.KeyStore.(ports.DueKeyRotator); ok {
+	if rotator, ok := deps.KeyStore.(signingports.DueKeyRotator); ok {
 		next, err := rotator.RotateIfDue(ctx, now, cadence, deps.Grace)
 		if err != nil || next == nil {
 			return next, err

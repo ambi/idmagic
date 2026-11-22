@@ -5,16 +5,16 @@ import (
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type AccessTokenInput struct {
-	Client           *domain.OAuth2Client
+	Client           *oauthdomain.OAuth2Client
 	Sub              string
 	Scopes           []string
-	SenderConstraint *domain.SenderConstraint
+	SenderConstraint *oauthdomain.SenderConstraint
 	AuthTime         int64
 	AMR              []string
 	ACR              string
@@ -52,7 +52,7 @@ type AccessTokenInput struct {
 }
 
 type IDTokenInput struct {
-	Client   *domain.OAuth2Client
+	Client   *oauthdomain.OAuth2Client
 	User     *userdomain.User
 	Scopes   []string
 	Nonce    *string

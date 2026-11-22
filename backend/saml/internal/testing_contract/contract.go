@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/saml/ports"
+	samlports "github.com/ambi/idmagic/backend/saml/ports"
 )
 
 type Fixture struct {
-	Replay  ports.AuthnRequestReplayStore
+	Replay  samlports.AuthnRequestReplayStore
 	TenantA string
 	TenantB string
 	Now     time.Time

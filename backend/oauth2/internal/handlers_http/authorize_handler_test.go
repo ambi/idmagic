@@ -35,7 +35,7 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -60,38 +60,38 @@ const (
 func newAuthorizeTestServer(
 	t *testing.T,
 	authn *authdomain.AuthenticationContext,
-	consent *domain.Consent,
+	consent *oauthdomain.Consent,
 	options ...func(*httpadapter.Deps),
 ) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := idmanagement.NewMemoryModule().UserRepo
 	consentRepo := oauth2memory.NewConsentRepository()
-	secretHash := domain.HashClientSecret(authClientSec)
+	secretHash := oauthdomain.HashClientSecret(authClientSec)
 	now := time.Now().UTC()
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: authClientID, ClientSecretHash: &secretHash,
 		ClientType: spec.ClientConfidential, RedirectURIs: []string{authRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    "openid profile",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
 	})
 	// first-party クライアント : consent をスキップする検証用。
-	clientRepo.Seed(&domain.OAuth2Client{
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: authFirstPartyClientID, ClientType: spec.ClientPublic,
 		RedirectURIs:             []string{authRedirectURI},
 		GrantTypes:               []spec.GrantType{spec.GrantAuthorizationCode},
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
-		TokenEndpointAuthMethod:  domain.AuthMethodNone,
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodNone,
 		Scope:                    "openid profile idmagic.admin",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
-		FapiProfile:              domain.FapiNone,
+		FapiProfile:              oauthdomain.FapiNone,
 		FirstParty:               true,
 		CreatedAt:                now,
 	})
@@ -190,10 +190,10 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
 	}
 	// 既存 Consent。prompt=consent が無ければ即 issueCode に進む。
-	consent := &domain.Consent{
+	consent := &oauthdomain.Consent{
 		UserID: "user_alice", ClientID: authClientID,
 		Scopes:    []string{"openid", "profile"},
-		State:     domain.ConsentGranted,
+		State:     oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
 	e, _ := newAuthorizeTestServer(t, authn, consent)
@@ -260,7 +260,7 @@ func TestAuthorizeDeniedBySignInPolicyReturnsProblemDetails403(t *testing.T) {
 	// 発行されていないことを確かめる。状態と文言の一方だけを見る試験は、拒否を
 	// 書いてから操作を続行する実装にも通ってしまう。
 	for _, event := range *emitted {
-		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := event.(*oauthdomain.AuthorizationCodeIssued); ok {
 			t.Fatalf("denied authorization issued an authorization code: %+v", event)
 		}
 	}
@@ -301,7 +301,7 @@ func TestAuthorizeMfaRequiredWithoutSecondFactorIssuesNoCode(t *testing.T) {
 		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
 	}
 	for _, event := range *emitted {
-		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := event.(*oauthdomain.AuthorizationCodeIssued); ok {
 			t.Fatalf("refused authorization issued an authorization code: %+v", event)
 		}
 	}
@@ -354,7 +354,7 @@ func TestAuthorizeStepUpWithExpiredSessionIssuesNoCode(t *testing.T) {
 		t.Fatalf("status=%d body=%s, want 401", rec.Code, rec.Body.String())
 	}
 	for _, event := range *emitted {
-		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := event.(*oauthdomain.AuthorizationCodeIssued); ok {
 			t.Fatalf("refused authorization issued an authorization code: %+v", event)
 		}
 	}
@@ -388,7 +388,7 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	}
 	found := false
 	for _, e := range *emitted {
-		if _, ok := e.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := e.(*oauthdomain.AuthorizationCodeIssued); ok {
 			found = true
 		}
 	}
@@ -416,10 +416,10 @@ func TestAuthorizeAllowsHiddenApplicationAssignment(t *testing.T) {
 	}
 	// 割当ゲートは同意の後、コード発行の直前で効く。同意を先に成立させて
 	// そこまで到達させる。first-party client はゲートを迂回するので通常の client を使う。
-	granted := &domain.Consent{
+	granted := &oauthdomain.Consent{
 		UserID: authn.UserID, ClientID: authClientID,
 		Scopes:    []string{"openid", "profile"},
-		State:     domain.ConsentGranted,
+		State:     oauthdomain.ConsentGranted,
 		GrantedAt: now, ExpiresAt: now.Add(time.Hour),
 	}
 	e, _ := newAuthorizeTestServer(t, authn, granted, func(deps *httpadapter.Deps) {
@@ -552,7 +552,7 @@ func TestAuthorizePromptNoneWithStepUpRequiredReturnsLoginRequired(t *testing.T)
 		t.Fatalf("prompt=none step-up issued an authorization code: Location=%q", rec.Header().Get("Location"))
 	}
 	for _, event := range *emitted {
-		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := event.(*oauthdomain.AuthorizationCodeIssued); ok {
 			t.Fatalf("prompt=none step-up issued an authorization code: %+v", event)
 		}
 	}
@@ -594,7 +594,7 @@ func TestAuthorizeResumeRequiresTheSecondFactorUnderTheTenantDefault(t *testing.
 		t.Fatalf("resume status=%d Location=%q, want 303 to /realms/default/totp", rec.Code, rec.Header().Get("Location"))
 	}
 	for _, event := range *emitted {
-		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+		if _, ok := event.(*oauthdomain.AuthorizationCodeIssued); ok {
 			t.Fatalf("resume issued an authorization code before the second factor: %+v", event)
 		}
 	}

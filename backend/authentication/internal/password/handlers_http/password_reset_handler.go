@@ -9,7 +9,7 @@ import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
+	passwordusecases "github.com/ambi/idmagic/backend/authentication/internal/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -46,15 +46,15 @@ func HandleForgotPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	} else if blocked {
 		return nil
 	}
-	ttl := time.Duration(authusecases.PasswordResetTokenTTLSeconds) * time.Second
-	if err := authusecases.RequestPasswordReset(
+	ttl := time.Duration(passwordusecases.PasswordResetTokenTTLSeconds) * time.Second
+	if err := passwordusecases.RequestPasswordReset(
 		c.Request().Context(),
-		authusecases.RequestPasswordResetDeps{
+		passwordusecases.RequestPasswordResetDeps{
 			UserRepo: d.UserRepo, TokenStore: d.PasswordResetTokenStore,
 			Notifier: d.Notifier, Emit: d.Emit,
 			Issuer: support.RequestIssuer(c, d.Issuer), TokenTTL: ttl,
 		},
-		authusecases.RequestPasswordResetInput{Email: input.Email, Now: time.Now().UTC()},
+		passwordusecases.RequestPasswordResetInput{Email: input.Email, Now: time.Now().UTC()},
 	); err != nil {
 		return err
 	}
@@ -73,10 +73,10 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	if strings.TrimSpace(input.Token) == "" || input.NewPassword == "" {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A token and a new password are required.")
 	}
-	snap := authusecases.ResolveTenantPolicy(c.Request().Context())
-	_, err := authusecases.ResetPasswordWithToken(
+	snap := passwordusecases.ResolveTenantPolicy(c.Request().Context())
+	_, err := passwordusecases.ResetPasswordWithToken(
 		c.Request().Context(),
-		authusecases.ResetPasswordWithTokenDeps{
+		passwordusecases.ResetPasswordWithTokenDeps{
 			UserRepo: d.UserRepo, TokenStore: d.PasswordResetTokenStore,
 			PasswordDelegation: d.PasswordDelegation,
 			PasswordHasher:     d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
@@ -84,7 +84,7 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 			TrustedDevices:          d.TrustedDeviceRevoker(),
 			Emit:                    d.Emit, Policy: snap,
 		},
-		authusecases.ResetPasswordWithTokenInput{
+		passwordusecases.ResetPasswordWithTokenInput{
 			Token: input.Token, NewPassword: input.NewPassword, Now: time.Now().UTC(),
 		},
 	)
@@ -93,12 +93,12 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Change the password in the source directory.")
 	case err == nil:
 		return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
-	case errors.Is(err, authusecases.ErrInvalidResetToken):
+	case errors.Is(err, passwordusecases.ErrInvalidResetToken):
 		return support.WriteProblem(c, http.StatusGone, "invalid_reset_token", "The reset link is invalid or expired.")
-	case errors.Is(err, authusecases.ErrPasswordReused):
+	case errors.Is(err, passwordusecases.ErrPasswordReused):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "password_reuse", "A recently used password cannot be reused.")
 	default:
-		if policyErr, ok := errors.AsType[*authusecases.PasswordPolicyError](err); ok {
+		if policyErr, ok := errors.AsType[*passwordusecases.PasswordPolicyError](err); ok {
 			return writePasswordPolicyProblem(c, policyErr)
 		}
 		return err

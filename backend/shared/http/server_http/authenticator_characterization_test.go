@@ -29,7 +29,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
-	consentdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -94,7 +94,7 @@ type faultyConsents struct {
 	findErr error
 }
 
-func (r *faultyConsents) Find(ctx context.Context, tenantID, sub, clientID string) (*consentdomain.Consent, error) {
+func (r *faultyConsents) Find(ctx context.Context, tenantID, sub, clientID string) (*oauthdomain.Consent, error) {
 	if r.findErr != nil {
 		return nil, r.findErr
 	}

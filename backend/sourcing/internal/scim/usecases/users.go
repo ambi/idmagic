@@ -11,12 +11,12 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	"github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
+	scimdomain "github.com/ambi/idmagic/backend/sourcing/internal/scim/domain"
 	"github.com/ambi/idmagic/backend/sourcing/internal/sourceuser"
 )
 
 func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
-	w, err := domain.ParseUserWrite(body)
+	w, err := scimdomain.ParseUserWrite(body)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	}
 	user = editableCopy(user)
 
-	w, err := domain.ParseUserWrite(body)
+	w, err := scimdomain.ParseUserWrite(body)
 	if err != nil {
 		return nil, err
 	}
@@ -128,14 +128,14 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	}
 	user = editableCopy(user)
 
-	ops, err := domain.ParseUserPatchOps(body)
+	ops, err := scimdomain.ParseUserPatchOps(body)
 	if err != nil {
 		return nil, err
 	}
 
 	active := user.Lifecycle.Status == idmdomain.UserStatusActive
 	for _, op := range ops {
-		if op.Attr == domain.UserAttrActive {
+		if op.Attr == scimdomain.UserAttrActive {
 			active = patchActiveValue(op)
 			continue
 		}
@@ -157,17 +157,17 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
-func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *userdomain.User, op domain.UserPatchOp) error {
+func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *userdomain.User, op scimdomain.UserPatchOp) error {
 	isRemoveOp := op.Op == "remove"
 
 	switch op.Attr {
-	case domain.UserAttrUserName:
+	case scimdomain.UserAttrUserName:
 		if isRemoveOp {
-			return domain.NewMutationError("invalidValue", "userName cannot be removed")
+			return scimdomain.NewMutationError("invalidValue", "userName cannot be removed")
 		}
 		userName, _ := op.Value.(string)
 		if userName == "" {
-			return domain.NewMutationError("invalidValue", "userName value must be a non-empty string")
+			return scimdomain.NewMutationError("invalidValue", "userName value must be a non-empty string")
 		}
 		if userName != user.PreferredUsername {
 			existing, err := u.UserRepo.FindByUsername(ctx, tenantID, userName)
@@ -179,7 +179,7 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 			}
 		}
 		user.PreferredUsername = userName
-	case domain.UserAttrName:
+	case scimdomain.UserAttrName:
 		if isRemoveOp {
 			empty := ""
 			user.GivenName, user.FamilyName, user.Name = &empty, &empty, &empty
@@ -187,19 +187,19 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 		}
 		nameMap, ok := op.Value.(map[string]any)
 		if !ok {
-			return domain.NewMutationError("invalidValue", "name value must be an object")
+			return scimdomain.NewMutationError("invalidValue", "name value must be an object")
 		}
 		givenName, _ := nameMap["givenName"].(string)
 		familyName, _ := nameMap["familyName"].(string)
 		formatted, _ := nameMap["formatted"].(string)
 		user.GivenName, user.FamilyName, user.Name = &givenName, &familyName, &formatted
-	case domain.UserAttrGivenName:
+	case scimdomain.UserAttrGivenName:
 		user.GivenName = patchStringField(op)
-	case domain.UserAttrFamilyName:
+	case scimdomain.UserAttrFamilyName:
 		user.FamilyName = patchStringField(op)
-	case domain.UserAttrFormatted:
+	case scimdomain.UserAttrFormatted:
 		user.Name = patchStringField(op)
-	case domain.UserAttrEmails:
+	case scimdomain.UserAttrEmails:
 		if isRemoveOp {
 			empty := ""
 			user.Email = &empty
@@ -207,11 +207,11 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 		}
 		email, _ := op.Value.(string)
 		user.Email = &email
-	case domain.UserAttrEmployeeNumber:
+	case scimdomain.UserAttrEmployeeNumber:
 		sourceuser.SetString(user, sourceuser.AttrEmployeeNumber, *patchStringField(op))
-	case domain.UserAttrDepartment:
+	case scimdomain.UserAttrDepartment:
 		sourceuser.SetString(user, sourceuser.AttrDepartment, *patchStringField(op))
-	case domain.UserAttrManager:
+	case scimdomain.UserAttrManager:
 		managerSub, err := u.resolveManagerSub(ctx, tenantID, *patchStringField(op))
 		if err != nil {
 			return err
@@ -246,7 +246,7 @@ func (u *Usecases) resolveManagerSub(ctx context.Context, tenantID, managerScimI
 
 // sourceAttributes は POST と PUT の属性を、manager を解決した取り込み元の属性へ写す。
 // w の空の値は属性を消すことを表す (PUT の完全な置換)。
-func (u *Usecases) sourceAttributes(ctx context.Context, tenantID string, w domain.UserWrite) (sourceuser.Attributes, error) {
+func (u *Usecases) sourceAttributes(ctx context.Context, tenantID string, w scimdomain.UserWrite) (sourceuser.Attributes, error) {
 	managerSub, err := u.resolveManagerSub(ctx, tenantID, w.ManagerValue)
 	if err != nil {
 		return sourceuser.Attributes{}, err
@@ -257,7 +257,7 @@ func (u *Usecases) sourceAttributes(ctx context.Context, tenantID string, w doma
 	}, nil
 }
 
-func patchStringField(op domain.UserPatchOp) *string {
+func patchStringField(op scimdomain.UserPatchOp) *string {
 	if op.Op == "remove" {
 		empty := ""
 		return &empty
@@ -267,7 +267,7 @@ func patchStringField(op domain.UserPatchOp) *string {
 }
 
 // patchActiveValue は active への PATCH の操作が求める値を返す。remove は既定値の true に戻す。
-func patchActiveValue(op domain.UserPatchOp) bool {
+func patchActiveValue(op scimdomain.UserPatchOp) bool {
 	if op.Op == "remove" {
 		return true
 	}
@@ -312,9 +312,9 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID string, query ListQue
 		return ListResult{}, err
 	}
 
-	var expr domain.FilterExpr
+	var expr scimdomain.FilterExpr
 	if query.Filter != "" {
-		expr, err = domain.ParseFilter(query.Filter, domain.UserFilterAttributes)
+		expr, err = scimdomain.ParseFilter(query.Filter, scimdomain.UserFilterAttributes)
 		if err != nil {
 			return ListResult{}, err
 		}
@@ -423,7 +423,7 @@ func (u *Usecases) toScimUser(ctx context.Context, tenantID string, user *userdo
 		}
 	}
 	if len(ext) > 0 {
-		schemas = append(schemas, domain.EnterpriseUserSchemaURN)
+		schemas = append(schemas, scimdomain.EnterpriseUserSchemaURN)
 	}
 
 	resource := map[string]any{
@@ -454,7 +454,7 @@ func (u *Usecases) toScimUser(ctx context.Context, tenantID string, user *userdo
 		}}
 	}
 	if len(ext) > 0 {
-		resource[domain.EnterpriseUserSchemaURN] = ext
+		resource[scimdomain.EnterpriseUserSchemaURN] = ext
 	}
 	return resource, nil
 }

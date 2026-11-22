@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/apitoken/domain"
-	"github.com/ambi/idmagic/backend/apitoken/ports"
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type Fixture struct {
-	Repository ports.Repository
+	Repository apitokenports.Repository
 	TenantA    string
 	TenantB    string
 	UserID     string
@@ -35,16 +35,16 @@ func Run(t *testing.T, newFixture NewFixture) {
 	f := newFixture(t)
 	ctx := context.Background()
 	expires := f.Now.Add(time.Hour)
-	token := &domain.ApiToken{
+	token := &apitokendomain.ApiToken{
 		ID: newID(t), TenantID: f.TenantA, UserID: f.UserID, JTI: "jti-" + newID(t),
-		ClientID: domain.BuiltinClientID, Scopes: domain.Scopes{domain.ScopeScimUsersRead, domain.ScopeScimUsersWrite},
+		ClientID: apitokendomain.BuiltinClientID, Scopes: apitokendomain.Scopes{apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite},
 		Audience: "https://api.example", Description: "SCIM", CreatedAt: f.Now, ExpiresAt: &expires,
 	}
 	if err := f.Repository.Save(ctx, token); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	found, err := f.Repository.FindByJTI(ctx, f.TenantA, token.JTI)
-	if err != nil || found == nil || found.ID != token.ID || !found.Scopes.Has(domain.ScopeScimUsersWrite) {
+	if err != nil || found == nil || found.ID != token.ID || !found.Scopes.Has(apitokendomain.ScopeScimUsersWrite) {
 		t.Fatalf("FindByJTI = (%+v, %v), want round trip", found, err)
 	}
 	if leaked, err := f.Repository.FindByJTI(ctx, f.TenantB, token.JTI); err != nil || leaked != nil {

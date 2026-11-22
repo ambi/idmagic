@@ -9,7 +9,7 @@ import (
 	"time"
 
 	httpdeps "github.com/ambi/idmagic/backend/authentication/internal/deps_http"
-	authusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
+	webauthnusecases "github.com/ambi/idmagic/backend/authentication/internal/webauthn/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -26,8 +26,8 @@ type webAuthnCredentialRemoveRequest struct {
 
 // WebAuthnAccountDeps は webauthn ceremony use case の依存を組み立てる。webauthn 自身の
 // handler に加え、mfa の step-up ハンドラからも package 境界を越えて呼ばれる。
-func WebAuthnAccountDeps(d httpdeps.Deps, c *echo.Context) authusecases.WebAuthnDeps {
-	return authusecases.WebAuthnDeps{
+func WebAuthnAccountDeps(d httpdeps.Deps, c *echo.Context) webauthnusecases.WebAuthnDeps {
+	return webauthnusecases.WebAuthnDeps{
 		RP:             ResolveRPForRequest(c, d.Deps, d.WebAuthnRP),
 		UserRepo:       d.UserRepo,
 		CredentialRepo: d.WebAuthnCredentialRepo,
@@ -46,7 +46,7 @@ func HandleStartWebAuthnRegistration(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	creation, err := authusecases.StartWebAuthnRegistration(c.Request().Context(), WebAuthnAccountDeps(d, c), sub)
+	creation, err := webauthnusecases.StartWebAuthnRegistration(c.Request().Context(), WebAuthnAccountDeps(d, c), sub)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -65,7 +65,7 @@ func HandleFinishWebAuthnRegistration(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if err := authusecases.FinishWebAuthnRegistration(
+	if err := webauthnusecases.FinishWebAuthnRegistration(
 		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, []byte(input.Attestation), input.Label, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
@@ -90,7 +90,7 @@ func HandleRemoveWebAuthnCredential(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if err := authusecases.RemoveWebAuthnCredential(
+	if err := webauthnusecases.RemoveWebAuthnCredential(
 		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, input.CredentialID, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)

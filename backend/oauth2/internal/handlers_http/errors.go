@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/ambi/idmagic/backend/oauth2/internal/usecases"
+	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
 
@@ -14,7 +14,7 @@ import (
 )
 
 func writeOAuthError(c *echo.Context, err error) error {
-	var oe *usecases.OAuthError
+	var oe *oauthusecases.OAuthError
 	if !errors.As(err, &oe) || oe.Code == "server_error" {
 		request := c.Request()
 		logging.Error(request.Context(), "OAuth request failed",
@@ -34,7 +34,7 @@ func writeOAuthError(c *echo.Context, err error) error {
 // 保護リソース用エラー写像を分ける。invalid_token と insufficient_scope は
 // Bearer challenge を伴う 401/403 であり、token endpoint の 400 規則へ流さない。
 func writeUserInfoError(c *echo.Context, err error) error {
-	var oe *usecases.OAuthError
+	var oe *oauthusecases.OAuthError
 	if !errors.As(err, &oe) {
 		return writeOAuthError(c, err)
 	}

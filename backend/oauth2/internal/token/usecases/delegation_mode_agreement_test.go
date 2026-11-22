@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	memory "github.com/ambi/idmagic/backend/oauth2/internal/db_memory"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -22,7 +22,7 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 
 	var events []spec.DomainEvent
 	issuer := &recordingIssuer{}
-	deps := newExchangeTokenDeps(t, issuer, map[string]*ports.IntrospectionResult{
+	deps := newExchangeTokenDeps(t, issuer, map[string]*oauthports.IntrospectionResult{
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
@@ -32,9 +32,9 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 		t.Fatalf("ExchangeToken: %v", err)
 	}
 
-	var exchanged *domain.TokenExchanged
+	var exchanged *oauthdomain.TokenExchanged
 	for _, event := range events {
-		if typed, ok := event.(*domain.TokenExchanged); ok {
+		if typed, ok := event.(*oauthdomain.TokenExchanged); ok {
 			exchanged = typed
 		}
 	}
@@ -45,7 +45,7 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 	// 発行トークンのクレームをそのまま introspection の材料にする。
 	issued := issuer.lastInput
 	introspectDeps := IntrospectDeps{
-		Introspector: &fakeIntrospector{result: &ports.IntrospectionResult{
+		Introspector: &fakeIntrospector{result: &oauthports.IntrospectionResult{
 			Active: true, Sub: issued.Sub, ClientID: issued.Client.ClientID, Act: issued.Act,
 		}},
 		RefreshStore: memory.NewRefreshTokenStore(),
@@ -59,8 +59,8 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 	if resp.DelegationMode != exchanged.DelegationMode {
 		t.Fatalf("introspection reports %q but the audit recorded %q", resp.DelegationMode, exchanged.DelegationMode)
 	}
-	if resp.DelegationMode != domain.DelegationModeOnBehalfOf {
-		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, domain.DelegationModeOnBehalfOf)
+	if resp.DelegationMode != oauthdomain.DelegationModeOnBehalfOf {
+		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, oauthdomain.DelegationModeOnBehalfOf)
 	}
 }
 
@@ -68,9 +68,9 @@ func TestDelegationModeAgreesBetweenAuditAndIntrospection(t *testing.T) {
 func TestIntrospectionReportsAutonomousForAgentTokens(t *testing.T) {
 	ctx := tenantContext()
 	deps := IntrospectDeps{
-		Introspector: &fakeIntrospector{result: &ports.IntrospectionResult{
+		Introspector: &fakeIntrospector{result: &oauthports.IntrospectionResult{
 			Active: true, Sub: "agent-client", ClientID: "agent-client",
-			PrincipalType: domain.PrincipalTypeAgent, AgentID: "agent-1",
+			PrincipalType: oauthdomain.PrincipalTypeAgent, AgentID: "agent-1",
 		}},
 		RefreshStore: memory.NewRefreshTokenStore(),
 	}
@@ -78,8 +78,8 @@ func TestIntrospectionReportsAutonomousForAgentTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IntrospectToken: %v", err)
 	}
-	if resp.DelegationMode != domain.DelegationModeAutonomous {
-		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, domain.DelegationModeAutonomous)
+	if resp.DelegationMode != oauthdomain.DelegationModeAutonomous {
+		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, oauthdomain.DelegationModeAutonomous)
 	}
 }
 
@@ -89,7 +89,7 @@ func TestIntrospectionReportsAutonomousForAgentTokens(t *testing.T) {
 func TestIntrospectionReportsDirectAccessForUserTokens(t *testing.T) {
 	ctx := tenantContext()
 	deps := IntrospectDeps{
-		Introspector: &fakeIntrospector{result: &ports.IntrospectionResult{
+		Introspector: &fakeIntrospector{result: &oauthports.IntrospectionResult{
 			Active: true, Sub: "user-alice", ClientID: "portal", Scope: "openid",
 		}},
 		RefreshStore: memory.NewRefreshTokenStore(),
@@ -98,8 +98,8 @@ func TestIntrospectionReportsDirectAccessForUserTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IntrospectToken: %v", err)
 	}
-	if resp.DelegationMode != domain.DelegationModeDirect {
-		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, domain.DelegationModeDirect)
+	if resp.DelegationMode != oauthdomain.DelegationModeDirect {
+		t.Fatalf("DelegationMode = %q, want %q", resp.DelegationMode, oauthdomain.DelegationModeDirect)
 	}
 }
 
@@ -108,7 +108,7 @@ func TestIntrospectionReportsDirectAccessForUserTokens(t *testing.T) {
 func TestIntrospectionOmitsDelegationModeForInactiveTokens(t *testing.T) {
 	ctx := tenantContext()
 	deps := IntrospectDeps{
-		Introspector: &fakeIntrospector{result: &ports.IntrospectionResult{Active: false}},
+		Introspector: &fakeIntrospector{result: &oauthports.IntrospectionResult{Active: false}},
 		RefreshStore: memory.NewRefreshTokenStore(),
 	}
 	resp, err := IntrospectToken(ctx, deps, IntrospectInput{Token: "t", TokenTypeHint: "access_token"}, time.Now().UTC())

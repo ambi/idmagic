@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
 )
 
@@ -14,14 +14,14 @@ func TestRepositoriesEnforceTenantAndLinkUniqueness(t *testing.T) {
 	ctx := context.Background()
 	repos := NewRepositories()
 	now := time.Now().UTC()
-	connection := &domain.IdentityProviderConnection{
+	connection := &federationdomain.IdentityProviderConnection{
 		ID: "provider", TenantID: "tenant-a", DisplayName: "Provider",
-		Protocol: domain.ProtocolOIDC, Status: domain.ConnectionActive,
+		Protocol: federationdomain.ProtocolOIDC, Status: federationdomain.ConnectionActive,
 		Issuer: "https://idp.example", ClientID: "client",
 		AuthorizationEndpoint: "https://idp.example/auth",
 		TokenEndpoint:         "https://idp.example/token", JWKSURI: "https://idp.example/jwks",
-		ClaimMapping:  domain.ClaimMapping{Subject: "sub", Username: "email"},
-		LinkingPolicy: domain.LinkingNone, CreatedAt: now, UpdatedAt: now,
+		ClaimMapping:  federationdomain.ClaimMapping{Subject: "sub", Username: "email"},
+		LinkingPolicy: federationdomain.LinkingNone, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := repos.Connections.Save(ctx, connection); err != nil {
 		t.Fatalf("Save connection: %v", err)
@@ -30,14 +30,14 @@ func TestRepositoriesEnforceTenantAndLinkUniqueness(t *testing.T) {
 		t.Fatal("connection must not cross tenant boundary")
 	}
 
-	first := &domain.FederatedIdentity{
+	first := &federationdomain.FederatedIdentity{
 		TenantID: "tenant-a", ProviderID: "provider", ExternalSubject: "external",
 		LocalUserID: "user-1", LinkedAt: now,
 	}
 	if err := repos.Identities.Create(ctx, first); err != nil {
 		t.Fatalf("Create first link: %v", err)
 	}
-	for _, conflict := range []*domain.FederatedIdentity{
+	for _, conflict := range []*federationdomain.FederatedIdentity{
 		{TenantID: "tenant-a", ProviderID: "provider", ExternalSubject: "external", LocalUserID: "user-2", LinkedAt: now},
 		{TenantID: "tenant-a", ProviderID: "provider", ExternalSubject: "other", LocalUserID: "user-1", LinkedAt: now},
 	} {
@@ -51,8 +51,8 @@ func TestAttemptStoreConsumesAtomically(t *testing.T) {
 	ctx := context.Background()
 	repos := NewRepositories()
 	now := time.Now().UTC()
-	attempt := &domain.FederatedLoginAttempt{
-		State: "state", TenantID: "tenant-a", ProviderID: "provider", Protocol: domain.ProtocolOIDC,
+	attempt := &federationdomain.FederatedLoginAttempt{
+		State: "state", TenantID: "tenant-a", ProviderID: "provider", Protocol: federationdomain.ProtocolOIDC,
 		CreatedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
 	if err := repos.Attempts.Save(ctx, attempt); err != nil {
@@ -75,8 +75,8 @@ func TestAttemptStoreRefusesAnExpiredAttemptAsConsumed(t *testing.T) {
 	ctx := context.Background()
 	repos := NewRepositories()
 	now := time.Now().UTC()
-	if err := repos.Attempts.Save(ctx, &domain.FederatedLoginAttempt{
-		State: "state", TenantID: "tenant-a", ProviderID: "provider", Protocol: domain.ProtocolOIDC,
+	if err := repos.Attempts.Save(ctx, &federationdomain.FederatedLoginAttempt{
+		State: "state", TenantID: "tenant-a", ProviderID: "provider", Protocol: federationdomain.ProtocolOIDC,
 		CreatedAt: now, ExpiresAt: now.Add(time.Minute),
 	}); err != nil {
 		t.Fatalf("Save: %v", err)

@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
-	"github.com/ambi/idmagic/backend/oauth2/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/protocol/mcp"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
@@ -47,11 +47,11 @@ func (e *DiscoveryRateLimitedError) Error() string { return "MCP tool discovery 
 
 // McpToolDiscoveryDeps は取得の作用である。Fetcher は宛先を制限した外向きの通信である。
 type McpToolDiscoveryDeps struct {
-	Servers  ports.McpResourceServerRepository
-	Catalogs ports.McpToolCatalogRepository
+	Servers  oauthports.McpResourceServerRepository
+	Catalogs oauthports.McpToolCatalogRepository
 	Limiter  rlports.RateLimiter
-	Fetcher  ports.McpServerFetcher
-	Tokens   ports.TokenIssuer
+	Fetcher  oauthports.McpServerFetcher
+	Tokens   oauthports.TokenIssuer
 	Emit     func(spec.DomainEvent)
 }
 
@@ -62,7 +62,7 @@ type McpToolDiscoveryRequest struct {
 
 // DiscoveredMetadata はメタデータの取得の結果である。値は found のときだけ持つ。
 type DiscoveredMetadata struct {
-	Status               domain.MetadataStatus
+	Status               oauthdomain.MetadataStatus
 	URL                  string
 	AuthorizationServers []string
 	ScopesSupported      []string
@@ -71,7 +71,7 @@ type DiscoveredMetadata struct {
 
 // DiscoveredTools は一覧の取得の結果である。件数と complete は fetched のときだけ意味を持つ。
 type DiscoveredTools struct {
-	Status   domain.ToolsStatus
+	Status   oauthdomain.ToolsStatus
 	Count    int
 	Complete bool
 }
@@ -92,7 +92,7 @@ func DiscoverMcpServerTools(ctx context.Context, deps McpToolDiscoveryDeps, in M
 	if server == nil {
 		return nil, ErrMcpServerNotFound
 	}
-	if !server.IsActive() || server.Hosting != nil || domain.ValidateMcpUpstreamURL(server.Resource) != nil {
+	if !server.IsActive() || server.Hosting != nil || oauthdomain.ValidateMcpUpstreamURL(server.Resource) != nil {
 		return nil, ErrMcpServerNotDiscoverable
 	}
 	if deps.Limiter == nil {
@@ -108,7 +108,7 @@ func DiscoverMcpServerTools(ctx context.Context, deps McpToolDiscoveryDeps, in M
 
 	ctx, cancel := context.WithTimeout(ctx, discoveryOverallTimeout)
 	defer cancel()
-	result := &McpToolDiscoveryResult{Tools: DiscoveredTools{Status: domain.ToolsSkipped}}
+	result := &McpToolDiscoveryResult{Tools: DiscoveredTools{Status: oauthdomain.ToolsSkipped}}
 	metadata := fetchMetadata(ctx, deps.Fetcher, server.Resource, &result.Metadata)
 	if metadata != nil {
 		result.Metadata.AuthorizationServers = metadata.AuthorizationServers
@@ -129,7 +129,7 @@ func DiscoverMcpServerTools(ctx context.Context, deps McpToolDiscoveryDeps, in M
 		}
 	}
 	if deps.Emit != nil {
-		deps.Emit(&domain.McpToolDiscoveryAttempted{
+		deps.Emit(&oauthdomain.McpToolDiscoveryAttempted{
 			At: now, TenantID: server.TenantID, ActorUserID: in.ActorUserID, ResourceServerID: server.ID,
 			Resource: server.Resource, MetadataStatus: string(result.Metadata.Status), ToolsStatus: string(result.Tools.Status),
 		})
@@ -138,36 +138,36 @@ func DiscoverMcpServerTools(ctx context.Context, deps McpToolDiscoveryDeps, in M
 }
 
 // fetchMetadata は path を継いだ URL から順に GET し、404 のときだけ次の URL を試す。
-func fetchMetadata(ctx context.Context, fetcher ports.McpServerFetcher, resource string, out *DiscoveredMetadata) *domain.ProtectedResourceMetadata {
-	urls, err := domain.ProtectedResourceMetadataURLs(resource)
+func fetchMetadata(ctx context.Context, fetcher oauthports.McpServerFetcher, resource string, out *DiscoveredMetadata) *oauthdomain.ProtectedResourceMetadata {
+	urls, err := oauthdomain.ProtectedResourceMetadataURLs(resource)
 	if err != nil {
-		out.Status = domain.MetadataInvalid
+		out.Status = oauthdomain.MetadataInvalid
 		return nil
 	}
-	out.Status = domain.MetadataNotFound
+	out.Status = oauthdomain.MetadataNotFound
 	for _, target := range urls {
 		out.URL = target
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, target, http.NoBody)
 		if err != nil {
-			out.Status = domain.MetadataInvalid
+			out.Status = oauthdomain.MetadataInvalid
 			return nil
 		}
 		request.Header.Set("Accept", "application/json")
 		status, body, err := fetcher.Do(request, discoveryMetadataLimit)
 		switch {
-		case errors.Is(err, ports.ErrMcpResponseTooLarge):
-			out.Status = domain.MetadataInvalid
+		case errors.Is(err, oauthports.ErrMcpResponseTooLarge):
+			out.Status = oauthdomain.MetadataInvalid
 			return nil
 		case err != nil:
-			out.Status = domain.MetadataUnreachable
+			out.Status = oauthdomain.MetadataUnreachable
 			return nil
 		case status == http.StatusNotFound:
 			continue
 		case status != http.StatusOK:
-			out.Status = domain.MetadataInvalid
+			out.Status = oauthdomain.MetadataInvalid
 			return nil
 		}
-		metadata, parsed := domain.ParseProtectedResourceMetadata(body, resource)
+		metadata, parsed := oauthdomain.ParseProtectedResourceMetadata(body, resource)
 		out.Status = parsed
 		return metadata
 	}
@@ -176,7 +176,7 @@ func fetchMetadata(ctx context.Context, fetcher ports.McpServerFetcher, resource
 
 // fetchTools は一覧取得用のトークンで nextCursor をたどる。一ページ目の失敗だけを状態として返し、
 // 二ページ目以降の失敗と上限は REQ-MCPGATEWAY-011 と同じく取得できた分を不完全にする。
-func fetchTools(ctx context.Context, deps McpToolDiscoveryDeps, server *domain.McpResourceServer, useDPoP bool, now time.Time) (*domain.McpToolCatalog, domain.ToolsStatus, error) {
+func fetchTools(ctx context.Context, deps McpToolDiscoveryDeps, server *oauthdomain.McpResourceServer, useDPoP bool, now time.Time) (*oauthdomain.McpToolCatalog, oauthdomain.ToolsStatus, error) {
 	presenter, err := newDiscoveryPresenter(ctx, deps.Tokens, server, useDPoP, now)
 	if err != nil {
 		return nil, "", err
@@ -198,47 +198,47 @@ func fetchTools(ctx context.Context, deps McpToolDiscoveryDeps, server *domain.M
 		}
 		cursor = next
 	}
-	tools, withinLimit, err := domain.CatalogToolsFromListed(listed)
+	tools, withinLimit, err := oauthdomain.CatalogToolsFromListed(listed)
 	if err != nil {
-		return nil, domain.ToolsInvalidResponse, nil //nolint:nilerr // 上限を満たさない一覧は取得の結果の状態であり、操作の失敗ではない (REQ-OAUTH2-095)
+		return nil, oauthdomain.ToolsInvalidResponse, nil //nolint:nilerr // 上限を満たさない一覧は取得の結果の状態であり、操作の失敗ではない (REQ-OAUTH2-095)
 	}
-	return &domain.McpToolCatalog{
+	return &oauthdomain.McpToolCatalog{
 		TenantID: server.TenantID, ResourceServerID: server.ID, Tools: tools, Complete: complete && withinLimit, ReceivedAt: now,
-	}, domain.ToolsFetched, nil
+	}, oauthdomain.ToolsFetched, nil
 }
 
-func fetchToolsPage(ctx context.Context, fetcher ports.McpServerFetcher, presenter *discoveryPresenter, resource, cursor string) ([]mcp.ListedTool, string, domain.ToolsStatus) {
+func fetchToolsPage(ctx context.Context, fetcher oauthports.McpServerFetcher, presenter *discoveryPresenter, resource, cursor string) ([]mcp.ListedTool, string, oauthdomain.ToolsStatus) {
 	body, err := mcp.ToolsListRequest(cursor)
 	if err != nil {
-		return nil, "", domain.ToolsInvalidResponse
+		return nil, "", oauthdomain.ToolsInvalidResponse
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, resource, bytes.NewReader(body))
 	if err != nil {
-		return nil, "", domain.ToolsInvalidResponse
+		return nil, "", oauthdomain.ToolsInvalidResponse
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
 	request.Header.Set("Mcp-Protocol-Version", mcp.ProtocolVersion)
 	request.Header.Set("Mcp-Method", mcp.MethodToolsList)
 	if err := presenter.present(request); err != nil {
-		return nil, "", domain.ToolsInvalidResponse
+		return nil, "", oauthdomain.ToolsInvalidResponse
 	}
 	status, raw, err := fetcher.Do(request, discoveryPageLimit)
 	switch {
-	case errors.Is(err, ports.ErrMcpResponseTooLarge):
-		return nil, "", domain.ToolsInvalidResponse
+	case errors.Is(err, oauthports.ErrMcpResponseTooLarge):
+		return nil, "", oauthdomain.ToolsInvalidResponse
 	case err != nil:
-		return nil, "", domain.ToolsUnreachable
+		return nil, "", oauthdomain.ToolsUnreachable
 	case status == http.StatusUnauthorized:
-		return nil, "", domain.ToolsUnauthorized
+		return nil, "", oauthdomain.ToolsUnauthorized
 	case status == http.StatusForbidden:
-		return nil, "", domain.ToolsForbidden
+		return nil, "", oauthdomain.ToolsForbidden
 	case status != http.StatusOK:
-		return nil, "", domain.ToolsInvalidResponse
+		return nil, "", oauthdomain.ToolsInvalidResponse
 	}
 	tools, next, err := mcp.ParseToolsListPage(raw)
 	if err != nil {
-		return nil, "", domain.ToolsInvalidResponse
+		return nil, "", oauthdomain.ToolsInvalidResponse
 	}
 	return tools, next, ""
 }
@@ -252,11 +252,11 @@ type discoveryPresenter struct {
 	htu   string
 }
 
-func newDiscoveryPresenter(ctx context.Context, tokens ports.TokenIssuer, server *domain.McpResourceServer, useDPoP bool, now time.Time) (*discoveryPresenter, error) {
+func newDiscoveryPresenter(ctx context.Context, tokens oauthports.TokenIssuer, server *oauthdomain.McpResourceServer, useDPoP bool, now time.Time) (*discoveryPresenter, error) {
 	presenter := &discoveryPresenter{htu: server.Resource}
-	input := ports.AccessTokenInput{
-		Client: &domain.OAuth2Client{TenantID: server.TenantID, ClientID: domain.McpToolDiscoveryClientID},
-		Sub:    domain.McpToolDiscoveryClientID, Audiences: []string{server.Resource},
+	input := oauthports.AccessTokenInput{
+		Client: &oauthdomain.OAuth2Client{TenantID: server.TenantID, ClientID: oauthdomain.McpToolDiscoveryClientID},
+		Sub:    oauthdomain.McpToolDiscoveryClientID, Audiences: []string{server.Resource},
 		ExpiresAt: now.Add(discoveryTokenLifetime).Unix(), ToolDiscovery: true,
 	}
 	if useDPoP {
@@ -270,7 +270,7 @@ func newDiscoveryPresenter(ctx context.Context, tokens ports.TokenIssuer, server
 		if err != nil {
 			return nil, err
 		}
-		input.SenderConstraint = &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt}
+		input.SenderConstraint = &oauthdomain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt}
 	}
 	token, _, err := tokens.SignAccessToken(ctx, input)
 	if err != nil {

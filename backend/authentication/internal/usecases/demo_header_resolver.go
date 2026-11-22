@@ -6,17 +6,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/ambi/idmagic/backend/authentication/domain"
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 )
 
 type DemoHeaderResolver struct{}
 
-func (DemoHeaderResolver) Resolve(_ context.Context, h domain.Headers) (*domain.AuthenticationContext, error) {
+func (DemoHeaderResolver) Resolve(_ context.Context, h authdomain.Headers) (*authdomain.AuthenticationContext, error) {
 	sub := h.Get("X-Demo-Sub")
 	if sub == "" {
 		return nil, nil
 	}
-	return &domain.AuthenticationContext{
+	return &authdomain.AuthenticationContext{
 		UserID:   sub,
 		AuthTime: time.Now().Unix(),
 		AMR:      []string{"pwd"},

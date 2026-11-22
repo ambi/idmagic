@@ -10,30 +10,30 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 
-	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
 // McpResourceServerRepository
 
 type McpResourceServerRepository struct {
 	mu    sync.RWMutex
-	byID  map[string]*domain.McpResourceServer // key: sharedmem.TenantKey(tenant_id, resource_server_id)
-	byRes map[string]*domain.McpResourceServer // key: sharedmem.TenantKey(tenant_id, resource)
+	byID  map[string]*oauthdomain.McpResourceServer // key: sharedmem.TenantKey(tenant_id, resource_server_id)
+	byRes map[string]*oauthdomain.McpResourceServer // key: sharedmem.TenantKey(tenant_id, resource)
 }
 
 func NewMcpResourceServerRepository() *McpResourceServerRepository {
 	return &McpResourceServerRepository{
-		byID:  map[string]*domain.McpResourceServer{},
-		byRes: map[string]*domain.McpResourceServer{},
+		byID:  map[string]*oauthdomain.McpResourceServer{},
+		byRes: map[string]*oauthdomain.McpResourceServer{},
 	}
 }
 
 // Seed は起動時のサンプル登録投入に使う (テスト・デモ用)。
-func (r *McpResourceServerRepository) Seed(m *domain.McpResourceServer) {
+func (r *McpResourceServerRepository) Seed(m *oauthdomain.McpResourceServer) {
 	_ = r.Save(context.Background(), m)
 }
 
-func cloneMcpResourceServer(m *domain.McpResourceServer) *domain.McpResourceServer {
+func cloneMcpResourceServer(m *oauthdomain.McpResourceServer) *oauthdomain.McpResourceServer {
 	cloned := *m
 	cloned.Scopes = slices.Clone(m.Scopes)
 	if m.Hosting != nil {
@@ -62,20 +62,20 @@ func cloneMcpResourceServer(m *domain.McpResourceServer) *domain.McpResourceServ
 	return &cloned
 }
 
-func (r *McpResourceServerRepository) ListAll(_ context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) ListAll(_ context.Context, tenantID string) ([]*oauthdomain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	out := make([]*domain.McpResourceServer, 0)
+	out := make([]*oauthdomain.McpResourceServer, 0)
 	for _, m := range r.byID {
 		if m.TenantID == tenantID {
 			out = append(out, cloneMcpResourceServer(m))
 		}
 	}
-	slices.SortFunc(out, func(a, b *domain.McpResourceServer) int { return strings.Compare(a.Resource, b.Resource) })
+	slices.SortFunc(out, func(a, b *oauthdomain.McpResourceServer) int { return strings.Compare(a.Resource, b.Resource) })
 	return out, nil
 }
 
-func (r *McpResourceServerRepository) FindByID(_ context.Context, tenantID, resourceServerID string) (*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) FindByID(_ context.Context, tenantID, resourceServerID string) (*oauthdomain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	m := r.byID[sharedmem.ScopedKey(tenantID, resourceServerID, kernel.DefaultTenantID)]
@@ -85,7 +85,7 @@ func (r *McpResourceServerRepository) FindByID(_ context.Context, tenantID, reso
 	return cloneMcpResourceServer(m), nil
 }
 
-func (r *McpResourceServerRepository) FindByResource(_ context.Context, tenantID, resource string) (*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) FindByResource(_ context.Context, tenantID, resource string) (*oauthdomain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	m := r.byRes[sharedmem.ScopedKey(tenantID, resource, kernel.DefaultTenantID)]
@@ -95,7 +95,7 @@ func (r *McpResourceServerRepository) FindByResource(_ context.Context, tenantID
 	return cloneMcpResourceServer(m), nil
 }
 
-func (r *McpResourceServerRepository) FindByClientID(_ context.Context, tenantID, clientID string) (*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) FindByClientID(_ context.Context, tenantID, clientID string) (*oauthdomain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, m := range r.byID {
@@ -106,7 +106,7 @@ func (r *McpResourceServerRepository) FindByClientID(_ context.Context, tenantID
 	return nil, nil
 }
 
-func (r *McpResourceServerRepository) Save(_ context.Context, m *domain.McpResourceServer) error {
+func (r *McpResourceServerRepository) Save(_ context.Context, m *oauthdomain.McpResourceServer) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	sharedmem.DefaultScope(&m.TenantID, kernel.DefaultTenantID)
@@ -116,7 +116,7 @@ func (r *McpResourceServerRepository) Save(_ context.Context, m *domain.McpResou
 	return nil
 }
 
-func (r *McpResourceServerRepository) SaveIfUnchanged(_ context.Context, m *domain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
+func (r *McpResourceServerRepository) SaveIfUnchanged(_ context.Context, m *oauthdomain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := sharedmem.ScopedKey(m.TenantID, m.ID, kernel.DefaultTenantID)

@@ -8,20 +8,20 @@ import (
 	"sync"
 	"time"
 
-	d "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
 )
 
 type AccessReviewRepository struct {
 	mu      sync.Mutex
-	plans   map[string]*d.AccessReviewPlan
-	reviews map[string]*d.AccessReview
+	plans   map[string]*igdomain.AccessReviewPlan
+	reviews map[string]*igdomain.AccessReview
 }
 
 func NewAccessReviewRepository() *AccessReviewRepository {
-	return &AccessReviewRepository{plans: map[string]*d.AccessReviewPlan{}, reviews: map[string]*d.AccessReview{}}
+	return &AccessReviewRepository{plans: map[string]*igdomain.AccessReviewPlan{}, reviews: map[string]*igdomain.AccessReview{}}
 }
 
-func cloneReviewPlan(p *d.AccessReviewPlan) *d.AccessReviewPlan {
+func cloneReviewPlan(p *igdomain.AccessReviewPlan) *igdomain.AccessReviewPlan {
 	if p == nil {
 		return nil
 	}
@@ -34,7 +34,7 @@ func cloneReviewPlan(p *d.AccessReviewPlan) *d.AccessReviewPlan {
 	return &c
 }
 
-func cloneReview(r *d.AccessReview) *d.AccessReview {
+func cloneReview(r *igdomain.AccessReview) *igdomain.AccessReview {
 	if r == nil {
 		return nil
 	}
@@ -52,33 +52,33 @@ func cloneReview(r *d.AccessReview) *d.AccessReview {
 	return &c
 }
 
-func (r *AccessReviewRepository) CreatePlan(_ context.Context, p *d.AccessReviewPlan) error {
+func (r *AccessReviewRepository) CreatePlan(_ context.Context, p *igdomain.AccessReviewPlan) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.plans[p.ID] != nil {
-		return d.ErrAccessReviewConflict
+		return igdomain.ErrAccessReviewConflict
 	}
 	r.plans[p.ID] = cloneReviewPlan(p)
 	return nil
 }
 
-func (r *AccessReviewRepository) ListPlans(_ context.Context, tenant string) ([]*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) ListPlans(_ context.Context, tenant string) ([]*igdomain.AccessReviewPlan, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*d.AccessReviewPlan{}
+	out := []*igdomain.AccessReviewPlan{}
 	for _, p := range r.plans {
 		if p.TenantID == tenant {
 			out = append(out, cloneReviewPlan(p))
 		}
 	}
-	slices.SortFunc(out, func(a, b *d.AccessReviewPlan) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortFunc(out, func(a, b *igdomain.AccessReviewPlan) int { return strings.Compare(a.ID, b.ID) })
 	return out, nil
 }
 
-func (r *AccessReviewRepository) ReadyPlans(_ context.Context, now time.Time) ([]*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) ReadyPlans(_ context.Context, now time.Time) ([]*igdomain.AccessReviewPlan, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*d.AccessReviewPlan{}
+	out := []*igdomain.AccessReviewPlan{}
 	for _, p := range r.plans {
 		if p.Enabled && p.NextStartAt != nil && !p.NextStartAt.After(now) {
 			out = append(out, cloneReviewPlan(p))
@@ -87,7 +87,7 @@ func (r *AccessReviewRepository) ReadyPlans(_ context.Context, now time.Time) ([
 	return out, nil
 }
 
-func (r *AccessReviewRepository) FindPlan(_ context.Context, tenant, id string) (*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) FindPlan(_ context.Context, tenant, id string) (*igdomain.AccessReviewPlan, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	p := r.plans[id]
@@ -97,12 +97,12 @@ func (r *AccessReviewRepository) FindPlan(_ context.Context, tenant, id string) 
 	return cloneReviewPlan(p), nil
 }
 
-func (r *AccessReviewRepository) UpdatePlan(_ context.Context, tenant, id string, apply func(*d.AccessReviewPlan) error) (*d.AccessReviewPlan, error) {
+func (r *AccessReviewRepository) UpdatePlan(_ context.Context, tenant, id string, apply func(*igdomain.AccessReviewPlan) error) (*igdomain.AccessReviewPlan, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	p := r.plans[id]
 	if p == nil || p.TenantID != tenant {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	c := cloneReviewPlan(p)
 	if err := apply(c); err != nil {
@@ -112,7 +112,7 @@ func (r *AccessReviewRepository) UpdatePlan(_ context.Context, tenant, id string
 	return c, nil
 }
 
-func (r *AccessReviewRepository) CaptureReview(_ context.Context, p *d.AccessReviewPlan, review *d.AccessReview, next *time.Time) (bool, error) {
+func (r *AccessReviewRepository) CaptureReview(_ context.Context, p *igdomain.AccessReviewPlan, review *igdomain.AccessReview, next *time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	current := r.plans[p.ID]
@@ -128,16 +128,16 @@ func (r *AccessReviewRepository) CaptureReview(_ context.Context, p *d.AccessRev
 	return true, nil
 }
 
-func (r *AccessReviewRepository) ListByPlan(_ context.Context, tenant, planID string) ([]*d.AccessReview, error) {
+func (r *AccessReviewRepository) ListByPlan(_ context.Context, tenant, planID string) ([]*igdomain.AccessReview, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*d.AccessReview{}
+	out := []*igdomain.AccessReview{}
 	for _, v := range r.reviews {
 		if v.TenantID == tenant && v.PlanID == planID {
 			out = append(out, cloneReview(v))
 		}
 	}
-	slices.SortFunc(out, func(a, b *d.AccessReview) int {
+	slices.SortFunc(out, func(a, b *igdomain.AccessReview) int {
 		if n := b.StartedAt.Compare(a.StartedAt); n != 0 {
 			return n
 		}
@@ -146,28 +146,28 @@ func (r *AccessReviewRepository) ListByPlan(_ context.Context, tenant, planID st
 	return out, nil
 }
 
-func (r *AccessReviewRepository) ListForReviewer(_ context.Context, tenant, userID string) ([]*d.AccessReview, error) {
+func (r *AccessReviewRepository) ListForReviewer(_ context.Context, tenant, userID string) ([]*igdomain.AccessReview, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*d.AccessReview{}
+	out := []*igdomain.AccessReview{}
 	for _, v := range r.reviews {
 		if v.TenantID != tenant {
 			continue
 		}
 		c := cloneReview(v)
-		c.Items = slices.DeleteFunc(c.Items, func(i d.AccessReviewItem) bool { return i.ReviewerID != userID })
+		c.Items = slices.DeleteFunc(c.Items, func(i igdomain.AccessReviewItem) bool { return i.ReviewerID != userID })
 		if len(c.Items) > 0 {
 			out = append(out, c)
 		}
 	}
-	slices.SortFunc(out, func(a, b *d.AccessReview) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortFunc(out, func(a, b *igdomain.AccessReview) int { return strings.Compare(a.ID, b.ID) })
 	return out, nil
 }
 
-func (r *AccessReviewRepository) ActiveReviews(_ context.Context) ([]*d.AccessReview, error) {
+func (r *AccessReviewRepository) ActiveReviews(_ context.Context) ([]*igdomain.AccessReview, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := []*d.AccessReview{}
+	out := []*igdomain.AccessReview{}
 	for _, v := range r.reviews {
 		if v.Status != "completed" {
 			out = append(out, cloneReview(v))
@@ -176,12 +176,12 @@ func (r *AccessReviewRepository) ActiveReviews(_ context.Context) ([]*d.AccessRe
 	return out, nil
 }
 
-func (r *AccessReviewRepository) UpdateReview(_ context.Context, tenant, id string, apply func(*d.AccessReview) error) (*d.AccessReview, error) {
+func (r *AccessReviewRepository) UpdateReview(_ context.Context, tenant, id string, apply func(*igdomain.AccessReview) error) (*igdomain.AccessReview, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	v := r.reviews[id]
 	if v == nil || v.TenantID != tenant {
-		return nil, d.ErrAccessReviewInvalid
+		return nil, igdomain.ErrAccessReviewInvalid
 	}
 	c := cloneReview(v)
 	if err := apply(c); err != nil {

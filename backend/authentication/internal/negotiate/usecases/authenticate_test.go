@@ -7,20 +7,20 @@ import (
 	"time"
 
 	memory "github.com/ambi/idmagic/backend/authentication/internal/federation/db_memory"
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/ports"
-	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
+	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
+	negotiateports "github.com/ambi/idmagic/backend/authentication/internal/negotiate/ports"
+	negotiateusecases "github.com/ambi/idmagic/backend/authentication/internal/negotiate/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type verifier struct {
-	value ports.Verified
+	value negotiateports.Verified
 	err   error
 }
 
-func (v verifier) Verify(context.Context, domain.Config, []byte, string) (ports.Verified, error) {
+func (v verifier) Verify(context.Context, negotiatedomain.Config, []byte, string) (negotiateports.Verified, error) {
 	return v.value, v.err
 }
 
@@ -36,10 +36,10 @@ func (failedReplay) Reserve(context.Context, string, string, time.Time) (bool, e
 
 //spec:covers REQ-AUTHENTICATION-042: 共有ストア障害を再送なしと誤認せず、User を成功として返さない。
 func TestReplayStoreFailureFailsClosed(t *testing.T) {
-	config := domain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []domain.Binding{{Principal: "alice", UserID: "id"}}}
-	v := verifier{value: ports.Verified{Principal: domain.Principal{Realm: "EXAMPLE.COM", Name: "alice"}, ReplayID: "authenticator"}}
+	config := negotiatedomain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []negotiatedomain.Binding{{Principal: "alice", UserID: "id"}}}
+	v := verifier{value: negotiateports.Verified{Principal: negotiatedomain.Principal{Realm: "EXAMPLE.COM", Name: "alice"}, ReplayID: "authenticator"}}
 	u := users{&userdomain.User{ID: "id", TenantID: "tenant", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}}}
-	s, err := usecases.New([]domain.Config{config}, v, failedReplay{}, u)
+	s, err := negotiateusecases.New([]negotiatedomain.Config{config}, v, failedReplay{}, u)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,13 +52,13 @@ func TestReplayStoreFailureFailsClosed(t *testing.T) {
 
 //spec:covers REQ-AUTHENTICATION-042: 別プロセス相当の Service から共有ストアへ同じ authenticator を予約しても一度だけ受理する。
 func TestSharedReplayReservationSurvivesServiceReconstruction(t *testing.T) {
-	config := domain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []domain.Binding{{Principal: "alice", UserID: "id"}}}
-	v := verifier{value: ports.Verified{Principal: domain.Principal{Realm: "EXAMPLE.COM", Name: "alice"}, ReplayID: "authenticator"}}
+	config := negotiatedomain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []negotiatedomain.Binding{{Principal: "alice", UserID: "id"}}}
+	v := verifier{value: negotiateports.Verified{Principal: negotiatedomain.Principal{Realm: "EXAMPLE.COM", Name: "alice"}, ReplayID: "authenticator"}}
 	u := users{&userdomain.User{ID: "id", TenantID: "tenant", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}}}
 	replay := memory.NewRepositories().Replay
 	var events []string
 	emit := func(event spec.DomainEvent) { events = append(events, event.EventType()) }
-	first, err := usecases.New([]domain.Config{config}, v, replay, u)
+	first, err := negotiateusecases.New([]negotiatedomain.Config{config}, v, replay, u)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,11 +66,11 @@ func TestSharedReplayReservationSurvivesServiceReconstruction(t *testing.T) {
 	if err != nil || accepted == nil {
 		t.Fatalf("user=%+v err=%v", accepted, err)
 	}
-	second, err := usecases.New([]domain.Config{config}, v, replay, u)
+	second, err := negotiateusecases.New([]negotiatedomain.Config{config}, v, replay, u)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if accepted, _, err := second.Authenticate(context.Background(), "tenant", []byte("token"), "192.0.2.1", time.Now(), emit); !errors.Is(err, usecases.ErrRejected) || accepted != nil {
+	if accepted, _, err := second.Authenticate(context.Background(), "tenant", []byte("token"), "192.0.2.1", time.Now(), emit); !errors.Is(err, negotiateusecases.ErrRejected) || accepted != nil {
 		t.Fatalf("replay user=%+v err=%v", accepted, err)
 	}
 	if len(events) != 1 || events[0] != "NegotiateAuthRejected" {
@@ -92,16 +92,16 @@ func TestRefusedPrincipalNeverResolvesAUser(t *testing.T) {
 		{"bad-ticket", "alice", "EXAMPLE.COM", "tenant", idmdomain.UserStatusActive, errors.New("invalid ticket")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			config := domain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []domain.Binding{{Principal: "alice", UserID: "id"}}}
-			v := verifier{value: ports.Verified{Principal: domain.Principal{Realm: tc.realm, Name: tc.principal}, ReplayID: "authenticator"}, err: tc.verifyErr}
+			config := negotiatedomain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []negotiatedomain.Binding{{Principal: "alice", UserID: "id"}}}
+			v := verifier{value: negotiateports.Verified{Principal: negotiatedomain.Principal{Realm: tc.realm, Name: tc.principal}, ReplayID: "authenticator"}, err: tc.verifyErr}
 			u := users{&userdomain.User{ID: "id", TenantID: tc.tenant, Lifecycle: userdomain.UserLifecycle{Status: tc.status}}}
-			s, err := usecases.New([]domain.Config{config}, v, memory.NewRepositories().Replay, u)
+			s, err := negotiateusecases.New([]negotiatedomain.Config{config}, v, memory.NewRepositories().Replay, u)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var events []string
 			user, _, err := s.Authenticate(context.Background(), "tenant", []byte("ticket"), "192.0.2.1", time.Now(), func(event spec.DomainEvent) { events = append(events, event.EventType()) })
-			if user != nil || !errors.Is(err, usecases.ErrRejected) || len(events) != 1 || events[0] != "NegotiateAuthRejected" {
+			if user != nil || !errors.Is(err, negotiateusecases.ErrRejected) || len(events) != 1 || events[0] != "NegotiateAuthRejected" {
 				t.Fatalf("user=%+v err=%v events=%v", user, err, events)
 			}
 		})
