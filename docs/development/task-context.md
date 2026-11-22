@@ -78,6 +78,20 @@ TypeSpec は、`spec_impact: none` の変更では `--concern contract` を指�
 参照先や節が存在しない場合は警告を表示し、読み取れたことにしない。
 通常の見出しへのアンカーは規範要件への参照として扱わない。
 
+## 読む量の測り方
+
+着手時に読む節の本体を変える変更では、変更の前後で次の 4 作業の `brief` を実行し、`Lead sections total` を比べる。
+作業項目には、`--kind` を指定すれば変更中の項目を使ってよい。
+
+```console
+mise run brief -- <work-item> --kind feature --target backend/idgovernance
+mise run brief -- <work-item> --kind bugfix --target backend/cmd/idmagic-worker
+mise run brief -- <work-item> --kind feature --target frontend/src
+mise run brief -- <work-item> --kind tooling --target tools/brief
+```
+
+本体を縮めるときの扱いは[エージェント向けの指示](agent-guidance.md#毎回読む節を縮める)に従う。
+
 ## 対象別の追加資料
 
 機能が満たすべき内容と判断は機能仕様、代表例は付録、複数の機能にまたがる仕組みと重要な判断はモジュールの内部設計から読む。
