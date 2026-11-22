@@ -2,8 +2,6 @@
 
 この文書は、管理ダッシュボードの操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Frontend](../README.md) / [ページ一覧](README.md) / 管理ダッシュボード
@@ -20,7 +18,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 利用者 | テナント管理者 |
 | 入口 | サービスの入口、管理コンソールのホーム |
 | 利用条件 | 対象テナントの管理権限で参照し、操作の認可は API が判断する。 |
-| 表示内容 | ユーザー、グループ、アプリケーションの集計、最近の活動と管理メニュー |
+| 表示内容 | ユーザー、アプリケーション、同意の集計とセキュリティスコア、推奨するセキュリティ設定への入口、クォータの使用量、管理メニュー |
 
 利用手順は[Frontend のページ一覧](README.md)にまとめる。
 
@@ -30,7 +28,9 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| users | ready | ユーザー | リンクを選択したとき | UI 内の操作 | ユーザー管理へ進む | [ユーザー一覧](../../identity-management/pages/admin-users.md) / ready | 対象の識別子とテナントの文脈 |
+| users | ready | 管理メニューのユーザー | リンクを選択したとき | UI 内の操作 | ユーザー管理へ進む | [ユーザー一覧](../../identity-management/pages/admin-users.md) / ready | 対象の識別子とテナントの文脈 |
+| signInPolicy | ready | サインインポリシーを設定 | リンクを選択したとき | UI 内の操作 | MFA を求める規則を設定する | [サインインポリシー](../../application/pages/admin-sign-in-policy.md) / ready | 対象の識別子とテナントの文脈 |
+| federation | ready | フェデレーションを設定 | リンクを選択したとき | UI 内の操作 | Entra とのフェデレーションを設定する | [Entra フェデレーション](../../ws-federation/pages/admin-entra-federation.md) / ready | 対象の識別子とテナントの文脈 |
 
 ## 表示状態
 

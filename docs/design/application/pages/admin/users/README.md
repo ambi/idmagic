@@ -2,8 +2,6 @@
 
 この文書は、ユーザー管理のページ一覧を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [UI ページ](../../README.md) / [管理コンソール](../README.md)
@@ -12,6 +10,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | ページ | URL | 目的 |
 | --- | --- | --- |
+| [ユーザーの CSV エクスポート](../../../../../modules/identity-management/pages/admin-user-export.md) | `/admin/users/exports` | 出力ジョブを開始し、完了した CSV を取得する |
 | [ユーザー一覧](../../../../../modules/identity-management/pages/admin-users.md) | `/admin/users` | ユーザーを検索し、対象の確認と管理の入口を示す |
 | [ユーザー詳細](../../../../../modules/identity-management/pages/admin-user-detail.md) | `/admin/users/$id` | 現在のプロフィール、権限、所属と認証の状態を確認する |
 | [ユーザーを追加](../../../../../modules/identity-management/pages/admin-user-create.md) | `/admin/users/new` | 初期資格情報とプロフィールを指定してユーザーを作成する |

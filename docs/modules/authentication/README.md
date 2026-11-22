@@ -68,7 +68,7 @@ CSV には呼び出し側の Tx に束縛した履歴 writer を渡し、保存�
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
-| アプリケーション設計 | [アカウントポータル](features/account-portal.md#概要)、[Authentication のページ](pages/README.md) | セルフサービス API の境界と、認証が主担当となるページの入力項目、状態と操作フロー |
+| アプリケーション設計 | [アカウントポータル](features/account-portal.md#概要)、[Authentication のページ](pages/README.md) | セルフサービス API の境界と、認証が主担当となるページの表示内容、状態と操作フロー |
 | データ設計 | [Authentication のデータ](data.md#集約)、[認証のイベントの相関と保持](observability.md#相関と保持) | Aggregate とその関係。各 Aggregate の保存は各機能の設計が、認証のイベントの保存はオブザーバビリティ設計が扱う |
 | 信頼性設計 | [認証状態の障害](#設計の要点) | 共有の一時的な状態のストアに到達できないときは失敗させる。各機能の扱いは各機能の設計が扱う |
 | オブザーバビリティ設計 | [Authentication のオブザーバビリティ](observability.md#認証のイベントの記録) | 認証のイベントの個別の記録と 5 分の集計、相関、種別ごとの保持期間 |

@@ -2,8 +2,6 @@
 
 この文書は、本人のプロフィールを編集の操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [IdManagement](../README.md) / [ページ一覧](README.md) / 本人のプロフィールを編集
@@ -30,7 +28,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| save | ready | 保存 | 更新成功 | UI 内の操作 | プロフィールへ戻り success 通知を表示する | [本人のプロフィール](account-profile.md) / ready | 対象の識別子とテナントの文脈 |
+| save | ready | 保存 | 更新成功 | IdMagic.IdManagement.Operations.UpdateUserProfile | プロフィールへ戻り success 通知を表示する | [本人のプロフィール](account-profile.md) / ready | 対象の識別子とテナントの文脈 |
 | cancel | ready | キャンセル・戻る | リンクを選択したとき | UI 内の操作 | 変更を送信せずプロフィールへ戻る | [本人のプロフィール](account-profile.md) / ready | 対象の識別子とテナントの文脈 |
 | failure | ready | 保存 | 更新拒否または通信失敗 | UI 内の操作 | 入力を保持して問題を表示する | [本人のプロフィールを編集](account-profile-edit.md) / error | 対象の識別子と操作の入力値 |
 

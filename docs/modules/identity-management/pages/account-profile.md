@@ -2,8 +2,6 @@
 
 この文書は、本人のプロフィールの操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [IdManagement](../README.md) / [ページ一覧](README.md) / 本人のプロフィール
@@ -31,6 +29,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | edit | ready | プロフィールを編集 | リンクを選択したとき | UI 内の操作 | 編集可能な項目を表示する | [本人のプロフィールを編集](account-profile-edit.md) / ready | 対象の識別子とテナントの文脈 |
+| email | ready | メールアドレスを変更 | リンクを選択したとき | UI 内の操作 | 確認の依頼へ進む | [本人のメールアドレス](account-emails.md) / ready | 対象の識別子とテナントの文脈 |
 
 ## 表示状態
 

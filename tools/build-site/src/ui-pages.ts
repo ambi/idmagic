@@ -21,6 +21,7 @@ type PageInfo = {
   name: string
   area: string
   route?: string
+  marker?: string
   actor: string
   entry: string
   context: string
@@ -250,21 +251,6 @@ export function extractUiCatalog(program: Program, root: string): UiCatalog {
   }
 }
 
-const pageMarkerRule = `
-id: page-marker
-language: tsx
-rule:
-  kind: string_fragment
-  inside:
-    kind: string
-    inside:
-      kind: jsx_attribute
-      has: { kind: property_identifier, regex: ^kind$ }
-      inside:
-        any: [{ kind: jsx_opening_element }, { kind: jsx_self_closing_element }]
-        has: { field: name, regex: ^PageMarker$ }
-`
-
 /**
  * 宣言のページ ID と実装の PageMarker を対応させ、経路と URL を埋めた写しを返す。
  * route を明示したページは、その経路のマーカーが別の ID を指していないことだけを確かめる。
@@ -275,9 +261,12 @@ export function resolveRoutes(
 ): { catalog: UiCatalog; findings: string[] } {
   const findings: string[] = []
   const pages = catalog.pages.map((page) => {
+    const marker = page.marker ?? page.id
+    if (page.marker && !page.route)
+      findings.push(`${page.id}: 共有するページマーカーには route の明示が必要`)
     const candidates = page.route
       ? routes.filter((route) => route.id === page.route)
-      : routes.filter((route) => route.markers.includes(page.id))
+      : routes.filter((route) => route.markers.includes(marker))
     if (page.route && candidates.length === 0)
       findings.push(`${page.id}: 明示した経路に実装がない: ${page.route}`)
     else if (candidates.length === 0)
@@ -289,7 +278,7 @@ export function resolveRoutes(
         `${page.id}: 同じページマーカーを持つ経路が複数ある。route で選ぶ: ${candidates.map((one) => one.id).join(', ')}`,
       )
     const route = candidates.length === 1 ? candidates[0]! : undefined
-    if (route?.markers.length && !route.markers.includes(page.id))
+    if (route?.markers.some((one) => one !== marker))
       findings.push(
         `${page.id}: ページ ID とページマーカーが異なる: ${route.id} (${route.markers.join(', ')})`,
       )
@@ -298,68 +287,62 @@ export function resolveRoutes(
   return { catalog: { ...catalog, pages }, findings }
 }
 
-/** ファイル名や JSX の見た目を推測せず、正式な経路宣言を読む。 */
-export function routeDeclarations(source: string): UiRoute[] {
-  // kind を式で決めるマーカーは数えず、その経路のページは route を明示する。
-  const marked = Bun.spawnSync(
-    ['ast-grep', 'scan', '--stdin', '--json=compact', '--inline-rules', pageMarkerRule],
-    { stdin: new TextEncoder().encode(source) },
-  )
-  if (marked.exitCode !== 0) throw new Error(marked.stderr.toString())
-  const markers = [
-    ...new Set<string>(
-      JSON.parse(marked.stdout.toString() || '[]').map((match: { text: string }) => match.text),
-    ),
-  ]
-  const matches = Bun.spawnSync(
-    ['ast-grep', 'run', '--lang', 'tsx', '-p', 'createFileRoute($ID)', '--json=compact', '--stdin'],
-    { stdin: new TextEncoder().encode(source) },
-  )
-  if (matches.exitCode !== 0 && matches.exitCode !== 1) throw new Error(matches.stderr.toString())
-  const routes: UiRoute[] = JSON.parse(matches.stdout.toString() || '[]').map(
-    (match: { metaVariables: { single: { ID: { text: string } } } }) => {
-      const text = match.metaVariables.single.ID.text
-      if (
-        !(
-          (text.startsWith("'") && text.endsWith("'")) ||
-          (text.startsWith('"') && text.endsWith('"'))
-        )
-      )
-        throw new Error('経路 ID が文字列リテラルではない')
-      const id = text.slice(1, -1)
-      const path =
-        id
-          .split('/')
-          .map((part) => (part.endsWith('_') ? part.slice(0, -1) : part))
-          .join('/')
-          .replace(/\/$/, '') || '/'
-      return { id, path, markers }
-    },
-  )
-  const root = Bun.spawnSync(
-    [
-      'ast-grep',
-      'run',
-      '--lang',
-      'tsx',
-      '-p',
-      'createRootRoute($$$ARGS)',
-      '--json=compact',
-      '--stdin',
-    ],
-    { stdin: new TextEncoder().encode(source) },
-  )
-  if (root.exitCode === 0) {
-    routes.push({ id: '__root__', path: '/', markers: [] })
+/** Git で追跡する生成ツリーの定型出力を読み、経路ソースの静的なマーカーを対応させる。 */
+export function routeDeclarations(tree: string, sources: ReadonlyMap<string, string>): UiRoute[] {
+  const imports = new Map<string, string>()
+  const declarations: { id: string; name: string }[] = []
+  const fullPaths = new Set<string>()
+  let section = ''
+  for (const line of tree.split('\n')) {
+    const imported = line.match(/^import \{ Route as (\w+) \} from ['"]\.\/routes\/([^'"]+)['"]$/)
+    if (imported) imports.set(imported[1]!, `frontend/src/routes/${imported[2]}.tsx`)
+    if (line === 'export interface FileRoutesById {') section = 'ids'
+    else if (line.trim() === 'fullPaths:') section = 'paths'
+    else if (section === 'ids') {
+      if (line === '}') section = ''
+      else {
+        const entry = line.match(/^ {2}(?:'([^']+)'|(__root__)): typeof (\w+)$/)
+        if (!entry) throw new Error(`FileRoutesById の形式を読めない: ${line}`)
+        declarations.push({ id: entry[1] ?? entry[2]!, name: entry[3]! })
+      }
+    } else if (section === 'paths') {
+      const entry = line.match(/^ {4}\| '([^']+)'$/)
+      if (entry) fullPaths.add(entry[1]!)
+      else section = ''
+    }
   }
-  return routes
+  if (!declarations.length) throw new Error('生成ツリーに FileRoutesById の経路がない')
+  if (!fullPaths.size) throw new Error('生成ツリーに fullPaths がない')
+  return declarations.map(({ id, name }) => {
+    const imported = name.endsWith('Import') ? name : `${name.replace(/WithChildren$/, '')}Import`
+    const file = imports.get(imported)
+    const source = file === undefined ? undefined : sources.get(file)
+    if (source === undefined)
+      throw new Error(`${id}: 経路ファイルを取得できない: ${file ?? imported}`)
+    const fullPath =
+      id === '__root__'
+        ? '/'
+        : id
+            .split('/')
+            .map((part) => part.replace(/_$/, ''))
+            .join('/')
+    if (!fullPaths.has(fullPath)) throw new Error(`${id}: fullPaths に URL がない: ${fullPath}`)
+    // コメントも読む。偽のマーカーは宣言の ID との照合で検出する。式の kind は数えない。
+    const markers =
+      id === '__root__'
+        ? []
+        : [
+            ...new Set(
+              [...source.matchAll(/<PageMarker\b[^>]*\bkind\s*=\s*["']([^"']+)["']/g)].map(
+                (match) => match[1]!,
+              ),
+            ),
+          ]
+    return { id, path: fullPath.replace(/\/$/, '') || '/', markers }
+  })
 }
 
-export function validateUiCatalog(
-  catalog: UiCatalog,
-  routes: readonly UiRoute[],
-  options: { allowUnassignedRoutes?: boolean } = {},
-): string[] {
+export function validateUiCatalog(catalog: UiCatalog, routes: readonly UiRoute[]): string[] {
   const findings: string[] = []
   const ids = new Set<string>()
   const paths = new Set<string>()
@@ -398,8 +381,7 @@ export function validateUiCatalog(
       findings.push(`説明の経路に実装がない: ${note.route}`)
   }
   for (const route of routes) {
-    if (!assigned.has(route.id) && !options.allowUnassignedRoutes)
-      findings.push(`実装の経路が設計にない: ${route.id}`)
+    if (!assigned.has(route.id)) findings.push(`実装の経路が設計にない: ${route.id}`)
   }
   const flowIds = new Set<string>()
   for (const flow of catalog.flows) {

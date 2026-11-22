@@ -2,8 +2,6 @@
 
 この文書は、本人のメールアドレスの操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [IdManagement](../README.md) / [ページ一覧](README.md) / 本人のメールアドレス
@@ -30,7 +28,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| send | ready | 確認メールを送信 | 依頼の受け付け成功 | UI 内の操作 | 送信結果を表示し、確認リンクをメールへ届ける | 通知メール / external | 対象の識別子と操作の入力値 |
+| send | ready | 確認メールを送信 | 依頼の受け付け成功 | IdMagic.IdManagement.Operations.RequestEmailChange | 送信結果を表示し、確認リンクをメールへ届ける | 通知メール / external | 対象の識別子と操作の入力値 |
 | failure | ready | 送信 | 入力の拒否または送信失敗 | UI 内の操作 | 入力の近くに問題を表示する | [本人のメールアドレス](account-emails.md) / error | 対象の識別子と操作の入力値 |
 
 ## 表示状態

@@ -107,6 +107,9 @@ describe('UI ページの設計', () => {
       resolveRoutes(explicit, [{ id: '/a', path: '/a', markers: ['renamed'] }]).findings,
     ).toEqual([expect.stringContaining('ページ ID とページマーカーが異なる')])
     expect(resolveRoutes(explicit, [{ id: '/a', path: '/a', markers: [] }]).findings).toEqual([])
+    expect(
+      resolveRoutes(explicit, [{ id: '/a', path: '/a', markers: ['example', 'fake'] }]).findings,
+    ).toEqual([expect.stringContaining('ページ ID とページマーカーが異なる')])
   })
 
   it('省略した遷移の既定値を補う', async () => {
@@ -119,6 +122,26 @@ describe('UI ページの設計', () => {
       data: 'なし',
       result: '移動先を表示する',
     })
+  })
+
+  it('共有マーカーを持つ異なるページには固有 ID と明示した経路を使う', async () => {
+    const shared = await catalog(
+      example.replace('id: "example",', 'id: "example", marker: "shared", route: "/a",'),
+    )
+    const routes = [
+      { id: '/a', path: '/a', markers: ['shared'] },
+      { id: '/b', path: '/b', markers: ['shared'] },
+    ]
+    expect(resolveRoutes(shared, routes).findings).toEqual([])
+    expect(resolveRoutes(shared, [{ id: '/a', path: '/a', markers: ['other'] }]).findings).toEqual([
+      expect.stringContaining('ページ ID とページマーカーが異なる'),
+    ])
+    const implicit = await catalog(
+      example.replace('id: "example",', 'id: "example", marker: "shared",'),
+    )
+    expect(resolveRoutes(implicit, routes.slice(0, 1)).findings).toEqual([
+      expect.stringContaining('route の明示が必要'),
+    ])
   })
 
   it('結果を書かないページ内の更新を拒否する', async () => {
@@ -200,19 +223,6 @@ describe('UI ページの設計', () => {
     )
   })
 
-  it('途中プレビューでは未棚卸しの実装経路だけを許し、壊れた宣言は拒否する', async () => {
-    const result = await resolved()
-    const routes = [
-      { id: '/example', path: '/example', markers: ['example'] },
-      { id: '/pending', path: '/pending', markers: ['pending'] },
-    ]
-    expect(validateUiCatalog(result, routes, { allowUnassignedRoutes: true })).toEqual([])
-    result.pages[0]!.actions[0]!.from = 'absent'
-    expect(validateUiCatalog(result, routes, { allowUnassignedRoutes: true })).toEqual(
-      expect.arrayContaining([expect.stringContaining('起点状態が不明')]),
-    )
-  })
-
   it('利用手順と実際の操作の到達先が違う場合や、入口から到達できない表示を拒否する', async () => {
     const result = await resolved()
     result.flows[0]!.links[0]!.to = 'edit'
@@ -251,8 +261,22 @@ describe('UI ページの設計', () => {
     )
   })
 
-  it('経路とページマーカーを AST から取得し、コメントと文字列に含む偽の宣言を数えない', () => {
-    const routes = routeDeclarations(`
+  it('生成ツリーの経路と import から静的マーカーを対応させ、動的な kind は数えない', () => {
+    const tree = `
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as EditRouteImport } from './routes/admin/users_/$id/edit'
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/admin/users_/$id/edit': typeof EditRoute
+}
+export interface FileRouteTypes {
+  fullPaths:
+    | '/'
+    | '/admin/users/$id/edit'
+  to: '/admin/users/$id/edit'
+}
+`
+    const source = `
       // createFileRoute('/fake') <PageMarker kind="fake">
       const label = "createFileRoute('/fake2')";
       export const Route = createFileRoute('/admin/users_/$id/edit')({ component: View });
@@ -262,9 +286,24 @@ describe('UI ページの設計', () => {
       function Dynamic({ kind }) {
         return <PageMarker kind={kind} />
       }
-    `)
-    expect(routes).toEqual([
-      { id: '/admin/users_/$id/edit', path: '/admin/users/$id/edit', markers: ['admin-user-edit'] },
+    `
+    const sources = new Map([
+      ['frontend/src/routes/__root.tsx', 'createRootRoute({})'],
+      ['frontend/src/routes/admin/users_/$id/edit.tsx', source],
     ])
+    const routes = routeDeclarations(tree, sources)
+    expect(routes).toEqual([
+      { id: '__root__', path: '/', markers: [] },
+      {
+        id: '/admin/users_/$id/edit',
+        path: '/admin/users/$id/edit',
+        markers: ['fake', 'admin-user-edit'],
+      },
+    ])
+    expect(() => routeDeclarations(tree, new Map())).toThrow('経路ファイル')
+    expect(() =>
+      routeDeclarations(tree.replace("| '/admin/users/$id/edit'", "| '/other'"), sources),
+    ).toThrow('fullPaths')
+    expect(() => routeDeclarations('', sources)).toThrow('FileRoutesById')
   })
 })

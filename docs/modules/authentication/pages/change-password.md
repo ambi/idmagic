@@ -2,8 +2,6 @@
 
 この文書は、パスワード変更の操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Authentication](../README.md) / [ページ一覧](README.md) / パスワード変更
@@ -32,6 +30,8 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | save | ready | 変更 | 更新が成功 | IdMagic.Authentication.Operations.ChangePassword | 必須アクションなら認可フローを継続し、それ以外は完了を表示する | [パスワード変更](change-password.md) / ready | 対象の識別子と操作の入力値 |
 | failure | ready | 変更 | 現在のパスワードが違う、ポリシー違反または更新失敗 | UI 内の操作 | 変更せず理由を表示する | [パスワード変更](change-password.md) / error | 対象の識別子と操作の入力値 |
+| backAdmin | ready | 戻る | 管理者 | UI 内の操作 | 移動先を表示する | [管理ダッシュボード](../../frontend/pages/admin-dashboard.md) / ready | なし |
+| back | ready | 戻る | 管理者以外 | UI 内の操作 | 移動先を表示する | [本人のプロフィール](../../identity-management/pages/account-profile.md) / ready | なし |
 
 ## 表示状態
 

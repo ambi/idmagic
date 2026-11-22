@@ -9,25 +9,20 @@ import { renderUiDocuments } from './ui-page-documents.ts'
 const root = resolve(import.meta.dir, '../../..')
 const snapshot = createWorkspaceSnapshot(root)
 const declared = await loadUiCatalog(root)
-const routes = (
+const sources = new Map(
   await Promise.all(
-    (
-      await snapshot.files('frontend/src/routes')
-    )
+    (await snapshot.files('frontend/src/routes'))
       .filter(
         (path) => path.endsWith('.tsx') && !path.split('/').some((part) => part.startsWith('-')),
       )
-      .map(async (path) => routeDeclarations(await snapshot.read(path))),
-  )
-).flat()
-const preview = process.argv.includes('--preview')
+      .map(async (path) => [path, await snapshot.read(path)] as const),
+  ),
+)
+const routes = routeDeclarations(await snapshot.read('frontend/src/routeTree.gen.ts'), sources)
 const { catalog, findings: unresolved } = resolveRoutes(declared, routes)
-const findings = [
-  ...unresolved,
-  ...validateUiCatalog(catalog, routes, { allowUnassignedRoutes: preview }),
-]
+const findings = [...unresolved, ...validateUiCatalog(catalog, routes)]
 if (findings.length) throw new Error(findings.join('\n'))
-const documents = renderUiDocuments(catalog, { preview })
+const documents = renderUiDocuments(catalog)
 const existing = [
   ...(snapshot.exists('docs/design/application/pages')
     ? await snapshot.files('docs/design/application/pages')
@@ -58,5 +53,5 @@ for (const [path, output] of documents) {
 if (!process.argv.includes('--check'))
   await rm(resolve(root, 'docs/design/application/pages.md'), { force: true })
 console.log(
-  `${preview ? 'preview' : 'ok'}  ${catalog.pages.length} UI page(s), ${routes.length} route(s), ${routes.length - catalog.pages.length - catalog.routeNotes.length} unassigned route(s)`,
+  `ok  ${catalog.pages.length} UI page(s), ${catalog.routeNotes.length} non-rendering route(s), ${routes.length} route(s)`,
 )

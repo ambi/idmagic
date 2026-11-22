@@ -47,7 +47,7 @@ IdManagement の User と Group、Application の割り当てを読み、下流�
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
-| アプリケーション設計 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める |
+| アプリケーション設計 | [標準仕様](standards.md#system-for-cross-domain-identity-management-core-schema)、[Provisioning のページ](pages/README.md#プロビジョニング) | 管理 API はシステムのアプリケーション設計に従い、下流の形は標準仕様が定める。同期設定と状態を扱うページはページ設計に示す |
 | データ設計 | [Provisioning のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
 | セキュリティ設計 | [接続の管理](features/connection.md#セキュリティ上の考慮) | 下流の URL の検証とテナントの境界は接続の管理のセキュリティ上の考慮の節が扱う |
 | 信頼性設計 | [同期の設計](features/synchronization.md#信頼性)、[接続の管理の設計](features/connection.md#信頼性) | 隔離からの回復と通知は同期の設計が、フル同期の完了は接続の管理の設計が扱う |

@@ -49,6 +49,7 @@ Group と Agent は IdManagement のモデルを使い、Application の割り�
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
+| アプリケーション設計 | [IdGovernance のページ](pages/README.md#ライフサイクル) | ライフサイクルワークフローとアクセスレビューを操作するページの表示内容、状態と操作 |
 | データ設計 | [IdGovernance のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
 | 信頼性設計 | [ワークフローの実行の設計](features/workflow-run.md#信頼性) | Job の投入の失敗と再試行の扱いはワークフローの実行の設計が扱う |
 

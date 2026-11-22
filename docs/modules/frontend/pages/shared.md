@@ -2,8 +2,6 @@
 
 この文書は、ページを数える際に区別する共有要素と外部システムを示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Frontend のページへ戻る](README.md)
@@ -23,6 +21,15 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 経路 ID | 区分 | 理由 |
 | --- | --- | --- |
+| `/admin/users_/$id` | layout | ユーザーの詳細と編集を束ねる Outlet。 |
+| `/admin/workload-identity_/$trustBundleId` | layout | 信頼バンドルの詳細、編集と関連付けを束ねる Outlet。 |
+| `/system/tenants_/$realm` | layout | テナントの詳細、基本情報、入口方式とクォータを束ねる Outlet。 |
+| `/admin/settings_/saml-idp-profiles_/$profileId` | layout | SAML IdP プロファイルの詳細と編集を束ねる Outlet。 |
+| `/admin/identity-providers_/$id` | layout | 外部 IdP の詳細と編集を束ねる Outlet。 |
+| `/admin/agents_/$agentId` | layout | Agent の詳細、編集と個別の管理ページを束ねる Outlet。 |
+| `/admin/groups_/$groupId` | layout | グループの詳細と編集を束ねる Outlet。 |
+| `/admin/applications_/$applicationId` | layout | アプリケーションの詳細、編集と同期管理を束ねる Outlet。 |
+| `/admin/access-reviews_/$planId` | layout | レビュー計画の詳細と編集を束ねる Outlet。 |
 | `__root__` | layout | エラー境界と Outlet を提供するルートで、独立したページではない。 |
 | `/account` | layout | 本人向けの子ページを収める Outlet。概要ページは /account/ が描画する。 |
 | `/admin` | layout | 管理コンソールの子ページを収める Outlet。概要ページは /admin/ が描画する。 |

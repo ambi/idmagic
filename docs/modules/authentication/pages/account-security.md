@@ -2,8 +2,6 @@
 
 この文書は、本人のセキュリティ設定の操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Authentication](../README.md) / [ページ一覧](README.md) / 本人のセキュリティ設定
@@ -20,7 +18,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | 利用者 | 認証済みの本人 |
 | 入口 | アカウントポータル |
 | 利用条件 | 対象テナントの本人のセッションで参照する。CSRF と再認証は共通規則に従う。 |
-| 表示内容 | TOTP の登録状態と登録用 QR、パスキー一覧、回復コードの残数と発行直後のコード、記憶済みデバイス、通知設定、リンク済み外部 ID |
+| 表示内容 | TOTP の登録状態と登録用 QR、パスキー一覧、回復コードの残数と発行直後のコード、記憶済みデバイス、通知設定、リンク済み外部 ID と連携の解除 |
 
 利用手順は[Authentication のページ一覧](README.md)にまとめる。
 
@@ -30,6 +28,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 
 | 操作 | 起点 | 契機 | 条件 | API | 結果 | 到達先 | データ |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| password | ready | パスワードを変更 | 常時 | UI 内の操作 | 移動先を表示する | [パスワード変更](change-password.md) / ready | なし |
 | startTotp | ready | TOTP の登録を開始 | 未登録 | IdMagic.Authentication.Operations.StartTotpEnrollment | 設定キーと QR を表示する | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
 | confirmTotp | ready | TOTP の登録を完了 | コードの確認成功 | IdMagic.Authentication.Operations.ConfirmTotpEnrollment | 登録済みの表示へ切り替える | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
 | cancelTotp | ready | 登録をキャンセル | 登録中 | UI 内の操作 | 未確定の設定キーを破棄する | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
@@ -40,6 +39,7 @@ TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手�
 | revokeRecovery | ready | 回復コードをすべて失効 | 再認証が成功 | IdMagic.Authentication.Operations.RevokeRecoveryCodes | 表示中のコードを消し、残数を更新する | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
 | devices | ready | デバイスの記憶を解除・すべて解除 | 再認証が成功 | IdMagic.Authentication.Operations.RevokeMyTrustedDevice、IdMagic.Authentication.Operations.RevokeMyTrustedDevices | 対象を記憶済みデバイス一覧から除く | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
 | notifications | ready | 通知設定を切り替える | 任意の種別で再認証が成功 | IdMagic.Authentication.Operations.UpdateMyNotificationPreferences | サーバーが返した通知設定を表示する | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
+| unlink | ready | 外部 ID の連携を解除 | 再認証と解除が成功 | IdMagic.Authentication.Operations.UnlinkExternalIdentity | 対象を連携済みの一覧から除き、解除を通知する | [本人のセキュリティ設定](account-security.md) / ready | 対象の識別子と操作の入力値 |
 | failure | ready | 操作 | キャンセル、認証器の拒否、再認証の中止または API の拒否 | UI 内の操作 | 更新を確定せず、失敗理由を表示する | [本人のセキュリティ設定](account-security.md) / error | 対象の識別子と操作の入力値 |
 
 ## 表示状態

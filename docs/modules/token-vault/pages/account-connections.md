@@ -2,8 +2,6 @@
 
 この文書は、本人の外部サービス接続の操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [TokenVault](../README.md) / [ページ一覧](README.md) / 本人の外部サービス接続

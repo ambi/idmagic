@@ -2,8 +2,6 @@
 
 この文書は、IdManagement が主担当となるページの設計を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [IdManagement のモジュール設計](../README.md) / [UI 全体の索引](../../../design/application/pages/README.md)
@@ -63,15 +61,43 @@ flowchart LR
 
 ページの詳細：[ユーザーの CSV インポート](admin-user-import.md)
 
+## Agent 管理
+
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [Agent 一覧](admin-agents.md) | `/admin/agents` | Agent を選び、状態と責任者を確認する |
+| [Agent の棚卸し](admin-agent-inventory.md) | `/admin/agents/inventory` | 責任者、資格情報、利用状態の問題を見つける |
+| [Agent を登録](admin-agent-create.md) | `/admin/agents/new` | 責任者と初期の資格情報・アクセスを指定する |
+| [Agent 詳細](admin-agent-detail.md) | `/admin/agents/$agentId` | Agent の責任者、状態と利用を管理する |
+| [Agent を編集](admin-agent-edit.md) | `/admin/agents/$agentId/edit` | 表示情報と責任者を更新する |
+| [Agent の資格情報](admin-agent-credentials.md) | `/admin/agents/$agentId/credentials` | 認証に使う資格情報を作成または関連付ける |
+| [Agent のリソース](admin-agent-resources.md) | `/admin/agents/$agentId/resources` | リソースへの割り当てを確認する |
+| [Agent のリソースを編集](admin-agent-resources-edit.md) | `/admin/agents/$agentId/resources/edit` | 対象リソースと関係の割り当てを変更する |
+| [Agent のアクセス概要](admin-agent-access-summary.md) | `/admin/agents/$agentId/access` | Agent に関連する認証、委任、リソースへの権限を確認する |
+
 ## ユーザー管理
 
 | ページ | URL | 目的 |
 | --- | --- | --- |
+| [ユーザーの CSV エクスポート](admin-user-export.md) | `/admin/users/exports` | 出力ジョブを開始し、完了した CSV を取得する |
 | [ユーザー一覧](admin-users.md) | `/admin/users` | ユーザーを検索し、対象の確認と管理の入口を示す |
 | [ユーザー詳細](admin-user-detail.md) | `/admin/users/$id` | 現在のプロフィール、権限、所属と認証の状態を確認する |
 | [ユーザーを追加](admin-user-create.md) | `/admin/users/new` | 初期資格情報とプロフィールを指定してユーザーを作成する |
 | [ユーザーを編集](admin-user-edit.md) | `/admin/users/$id/edit` | プロフィール、ロールとカスタム属性を一回の保存で変更する |
 | [ユーザーの CSV インポート](admin-user-import.md) | `/admin/users/import` | CSV をプレビューしてから確認を経て適用し、行ごとの結果を確認する |
+
+## グループ管理
+
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [グループ一覧](admin-groups.md) | `/admin/groups` | グループを選び、ロールと所属人数を確認する |
+| [グループ詳細](admin-group-detail.md) | `/admin/groups/$groupId` | グループの属性とメンバーを確認する |
+| [グループを作成](admin-group-create.md) | `/admin/groups/new` | グループの基本情報とカスタム属性を登録する |
+| [グループを編集](admin-group-edit.md) | `/admin/groups/$groupId/edit` | 属性、ロール、所属と動的ルールを管理する |
+| [グループの CSV インポート](admin-group-import.md) | `/admin/groups/import` | CSV の内容を確認してグループを取り込む |
+| [グループメンバーの CSV インポート](admin-group-member-import.md) | `/admin/groups/$groupId/members/import` | 指定グループの所属を CSV で追加または除外する |
+| [グループの CSV エクスポート](admin-group-export.md) | `/admin/groups/exports` | グループ情報を CSV で取得する |
+| [グループメンバーの CSV エクスポート](admin-group-members-export.md) | `/admin/groups/$groupId/members/exports` | 指定グループの所属を CSV で取得する |
 
 ## プロフィール
 

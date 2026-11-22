@@ -70,7 +70,7 @@ RST と RSTR のやり取り自体は、メタデータの一部ではない。
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
-| アプリケーション設計 | [標準仕様](standards.md#web-services-federation-language-ws-federation-version-12) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める |
+| アプリケーション設計 | [標準仕様](standards.md#web-services-federation-language-ws-federation-version-12)、[WsFederation のページ](pages/README.md#フェデレーション) | 管理 API はシステムのアプリケーション設計に従い、プロトコルの形は標準仕様が定める。Entra ドメインの信頼を扱うページはページ設計に示す |
 | データ設計 | [WsFederation のデータ](data.md#集約) | Aggregate とその関係。テーブルの定義はスキーマファイルが扱う |
 | セキュリティ設計 | [WsFederation のセキュリティ](security.md#テナント単位の署名) | テナント単位の署名、認可の境界、パースの境界のファズテスト |
 | 信頼性設計 | [RP と Entra フェデレーションの管理の設計](features/relying-party.md#信頼性) | Entra のフェデレーションの障害の切り分けはRP と Entra フェデレーションの管理の設計が扱い、それ以外に固有の仕組みはない |

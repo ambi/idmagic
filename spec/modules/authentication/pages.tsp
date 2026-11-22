@@ -1,5 +1,36 @@
 namespace IdMagicUi;
 
+model IdentityProviderPages {
+  @page(#{...adminContext, id: "admin-identity-providers", name: "外部 IdP の一覧", entry: "管理メニュー", purpose: "外部認証の接続状態と設定を管理する", content: #["接続方式、状態と選択対象の概要", "接続テスト、有効化、無効化と削除確認"]}) @category(Category.federation)
+  list: PageData<{
+    @transition(#{...update, event: "再取得または接続テスト", result: "接続状態またはテスト結果を表示する"}, IdentityProviderPages.list) @uses(IdMagic.Authentication.Operations.ListIdentityProviderConnections, IdMagic.Authentication.Operations.TestIdentityProviderConnection) refresh: unknown;
+    @transition(#{...update, event: "有効化または無効化・削除を確認", result: "対象の状態と一覧を更新する"}, IdentityProviderPages.list) @uses(IdMagic.Authentication.Operations.ActivateIdentityProviderConnection, IdMagic.Authentication.Operations.DisableIdentityProviderConnection, IdMagic.Authentication.Operations.DeleteIdentityProviderConnection) status: unknown;
+    @transition(#{event: "作成"}, IdentityProviderPages.create) create: unknown;
+    @transition(#{event: "詳細"}, IdentityProviderPages.detail) detail: unknown;
+    @transition(#{event: "編集"}, IdentityProviderPages.edit) edit: unknown;
+  }, ListStates>;
+  @page(#{...adminContext, id: "admin-identity-provider-detail", name: "外部 IdP の詳細", entry: "外部 IdP 一覧", purpose: "認証先の接続、マッピングと状態を確認する", content: #["接続設定と属性マッピング", "接続テスト、有効化と停止・削除の確認"]}) @category(Category.federation)
+  detail: PageData<{
+    @transition(#{event: "編集"}, IdentityProviderPages.edit) edit: unknown;
+    @transition(#{...update, event: "接続をテスト", result: "テスト結果を表示する"}, IdentityProviderPages.detail) @uses(IdMagic.Authentication.Operations.TestIdentityProviderConnection) test: unknown;
+    @transition(#{...update, event: "有効化または無効化を確認", result: "接続状態を更新する"}, IdentityProviderPages.detail) @uses(IdMagic.Authentication.Operations.ActivateIdentityProviderConnection, IdMagic.Authentication.Operations.DisableIdentityProviderConnection) toggle: unknown;
+    @transition(#{event: "削除を確認", condition: "削除が成功", result: "一覧へ戻る"}, IdentityProviderPages.list) @uses(IdMagic.Authentication.Operations.DeleteIdentityProviderConnection) delete: unknown;
+    @transition(#{event: "戻る"}, IdentityProviderPages.list) back: unknown;
+  }>;
+  @page(#{...adminContext, id: "admin-identity-provider-create", name: "外部 IdP を登録", entry: "外部 IdP 一覧", purpose: "接続方式、認証先と属性マッピングを登録する", content: #["方式別の設定とメタデータ取得候補", "属性とロールの対応", "作成とキャンセル"]}) @category(Category.federation)
+  create: PageData<{
+    @transition(#{...update, event: "メタデータを取得", result: "設定に適用できる候補を表示する"}, IdentityProviderPages.create) @uses(IdMagic.Authentication.Operations.PreviewIdentityProviderMetadata) preview: unknown;
+    @transition(#{event: "作成", condition: "登録が成功", result: "接続の詳細へ進む"}, IdentityProviderPages.detail) @uses(IdMagic.Authentication.Operations.CreateIdentityProviderConnection) save: unknown;
+    @transition(#{event: "キャンセル"}, IdentityProviderPages.list) cancel: unknown;
+  }>;
+  @page(#{...adminContext, id: "admin-identity-provider-edit", name: "外部 IdP を編集", entry: "一覧または詳細", purpose: "接続と属性マッピングを変更し試す", content: #["現在の接続設定", "メタデータの取得候補", "サンプルのクレームによるマッピングの試行"]}) @category(Category.federation)
+  edit: PageData<{
+    @transition(#{...update, event: "メタデータ取得またはマッピングの試行", result: "候補または変換結果を表示する"}, IdentityProviderPages.edit) @uses(IdMagic.Authentication.Operations.PreviewIdentityProviderMetadata, IdMagic.Authentication.Operations.PreviewIdentityProviderMapping) preview: unknown;
+    @transition(#{event: "保存", condition: "更新が成功", result: "詳細へ戻る"}, IdentityProviderPages.detail) @uses(IdMagic.Authentication.Operations.UpdateIdentityProviderConnection) save: unknown;
+    @transition(#{event: "キャンセル"}, IdentityProviderPages.detail) cancel: unknown;
+  }>;
+}
+
 const signInContext = #{area: Area.authentication, actor: "認証を受ける利用者", entry: "認可フロー、メールのリンクまたは直接アクセス", context: "対象テナントの認可トランザクションとセッションの Cookie。CSRF は表示 API から取得する。", references: #["[共通のフォーム規則](user-interface.md#フォームと検証)"]};
 
 /** Authentication が主担当となる認証のページ。 */
@@ -68,11 +99,14 @@ model AccountAuthenticationPages {
   password: PageData<{
     @transition(#{...update, event: "変更", condition: "更新が成功", result: "必須アクションなら認可フローを継続し、それ以外は完了を表示する"}, AccountAuthenticationPages.password) @uses(IdMagic.Authentication.Operations.ChangePassword) save: unknown;
     @transition(#{...update, event: "変更", condition: "現在のパスワードが違う、ポリシー違反または更新失敗", result: "変更せず理由を表示する", toState: "error"}, AccountAuthenticationPages.password) failure: unknown;
+    @transition(#{event: "戻る", condition: "管理者"}, FrontendPages.admin) backAdmin: unknown;
+    @transition(#{event: "戻る", condition: "管理者以外"}, AccountProfilePages.profile) back: unknown;
   }>;
 
-  @page(#{...accountContext, id: "account-security", name: "本人のセキュリティ設定", entry: "アカウントポータル", purpose: "認証手段、回復コード、記憶済みデバイスと通知を管理する", content: #["TOTP の登録状態と登録用 QR", "パスキー一覧", "回復コードの残数と発行直後のコード", "記憶済みデバイス", "通知設定", "リンク済み外部 ID"]})
+  @page(#{...accountContext, id: "account-security", name: "本人のセキュリティ設定", entry: "アカウントポータル", purpose: "認証手段、回復コード、記憶済みデバイスと通知を管理する", content: #["TOTP の登録状態と登録用 QR", "パスキー一覧", "回復コードの残数と発行直後のコード", "記憶済みデバイス", "通知設定", "リンク済み外部 ID と連携の解除"]})
   @category(Category.security)
   security: PageData<{
+    @transition(#{event: "パスワードを変更"}, AccountAuthenticationPages.password) password: unknown;
     @transition(#{...update, event: "TOTP の登録を開始", condition: "未登録", result: "設定キーと QR を表示する"}, AccountAuthenticationPages.security) @uses(IdMagic.Authentication.Operations.StartTotpEnrollment) startTotp: unknown;
     @transition(#{...update, event: "TOTP の登録を完了", condition: "コードの確認成功", result: "登録済みの表示へ切り替える"}, AccountAuthenticationPages.security) @uses(IdMagic.Authentication.Operations.ConfirmTotpEnrollment) confirmTotp: unknown;
     @transition(#{...update, event: "登録をキャンセル", condition: "登録中", result: "未確定の設定キーを破棄する"}, AccountAuthenticationPages.security) cancelTotp: unknown;
@@ -83,6 +117,7 @@ model AccountAuthenticationPages {
     @transition(#{...update, event: "回復コードをすべて失効", condition: "再認証が成功", result: "表示中のコードを消し、残数を更新する"}, AccountAuthenticationPages.security) @uses(IdMagic.Authentication.Operations.RevokeRecoveryCodes) revokeRecovery: unknown;
     @transition(#{...update, event: "デバイスの記憶を解除・すべて解除", condition: "再認証が成功", result: "対象を記憶済みデバイス一覧から除く"}, AccountAuthenticationPages.security) @uses(IdMagic.Authentication.Operations.RevokeMyTrustedDevice, IdMagic.Authentication.Operations.RevokeMyTrustedDevices) devices: unknown;
     @transition(#{...update, event: "通知設定を切り替える", condition: "任意の種別で再認証が成功", result: "サーバーが返した通知設定を表示する"}, AccountAuthenticationPages.security) @uses(IdMagic.Authentication.Operations.UpdateMyNotificationPreferences) notifications: unknown;
+    @transition(#{...update, event: "外部 ID の連携を解除", condition: "再認証と解除が成功", result: "対象を連携済みの一覧から除き、解除を通知する"}, AccountAuthenticationPages.security) @uses(IdMagic.Authentication.Operations.UnlinkExternalIdentity) unlink: unknown;
     @transition(#{...update, event: "操作", condition: "キャンセル、認証器の拒否、再認証の中止または API の拒否", result: "更新を確定せず、失敗理由を表示する", toState: "error"}, AccountAuthenticationPages.security) failure: unknown;
   }>;
 

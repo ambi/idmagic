@@ -45,6 +45,8 @@ model PageInfo {
   name: string;
   area: Area;
   route?: string;
+  /** 複数の異なるページが同じマーカーを使う場合だけ、route とともに明示する。 */
+  marker?: string;
   actor: string;
   entry: string;
   context: string;

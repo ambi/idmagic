@@ -44,6 +44,7 @@ OAuth2 と OIDC は JWK、JWKS、JWT の署名器を、SAML と WS-* は X.509 �
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
+| アプリケーション設計 | [SigningKeys のページ](pages/README.md#鍵) | 署名鍵の更新と稼働状態を扱うページの表示内容、状態と操作 |
 | データ設計 | [SigningKeys のデータ](data.md#集約) | Aggregate とその関係、状態の表し方、排他 |
 | インフラストラクチャ設計 | [秘密情報の設計](../../design/security/secrets.md#対象範囲) | Vault の配置はシステムの秘密情報の設計が扱う |
 | セキュリティ設計 | [SigningKeys のデータ](data.md#集約)、[秘密情報の設計](../../design/security/secrets.md#対象範囲) | 鍵素材の置き場所は集約が、鍵の種類ごとの扱いはシステムの秘密情報の設計が扱う |

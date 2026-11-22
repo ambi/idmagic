@@ -2,8 +2,6 @@
 
 この文書は、ログイン履歴とセッションの操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Authentication](../README.md) / [ページ一覧](README.md) / ログイン履歴とセッション

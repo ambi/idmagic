@@ -28,14 +28,11 @@ function link(from: string, target: string, label: string): string {
   return `[${cell(label)}](${posix.relative(posix.dirname(from), target)})`
 }
 
-function introduction(title: string, purpose: string, preview: boolean): string[] {
+function introduction(title: string, purpose: string): string[] {
   return [
     `# ${title}`,
     '',
     `この文書は、${purpose}を示す。`,
-    ...(preview
-      ? ['', '> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。']
-      : []),
     '',
     'TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。',
     '',
@@ -54,12 +51,12 @@ function summary(pages: readonly UiPage[], path: string): string[] {
   ]
 }
 
-function detail(page: UiPage, catalog: UiCatalog, preview: boolean): string {
+function detail(page: UiPage, catalog: UiCatalog): string {
   const path = pagePath(page)
   const categoryPath = `${root}/${page.area}/${page.category}/README.md`
   const modulePath = `docs/modules/${page.module}/pages/README.md`
   const moduleName = catalog.moduleNames[page.module] ?? page.module
-  const lines = introduction(page.name, `${page.name}の操作と状態`, preview)
+  const lines = introduction(page.name, `${page.name}の操作と状態`)
   const destinationLink = (id: string) => {
     const target = catalog.pages.find((one) => one.id === id)
     return target
@@ -120,11 +117,7 @@ function detail(page: UiPage, catalog: UiCatalog, preview: boolean): string {
 }
 
 /** UI の作業カテゴリで一覧を分け、詳細は一つのページを一つの文書にする。 */
-export function renderUiDocuments(
-  catalog: UiCatalog,
-  options: { preview?: boolean } = {},
-): Map<string, string> {
-  const preview = options.preview ?? false
+export function renderUiDocuments(catalog: UiCatalog): Map<string, string> {
   const documents = new Map<string, string>()
   for (const page of catalog.pages) {
     if (
@@ -135,7 +128,7 @@ export function renderUiDocuments(
       throw new Error(`UI の文書パスに使えない識別子: ${page.id}`)
   }
   const indexPath = `${root}/README.md`
-  const index = introduction('UI ページ', '利用者の作業で分類したページ設計の入口', preview)
+  const index = introduction('UI ページ', '利用者の作業で分類したページ設計の入口')
   index.push('## 主担当のモジュール', '', '| モジュール | ページ数 |', '| --- | --- |')
   for (const module of new Set(catalog.pages.map((page) => page.module))) {
     const pages = catalog.pages.filter((page) => page.module === module)
@@ -154,7 +147,7 @@ export function renderUiDocuments(
     index.push(
       `| ${link(indexPath, areaPath, name)} | ${[...categories.values()].map(cell).join('、')} | ${pages.length} |`,
     )
-    const areaLines = introduction(name, `${name}の作業カテゴリ`, preview)
+    const areaLines = introduction(name, `${name}の作業カテゴリ`)
     areaLines.push(
       `${link(areaPath, indexPath, 'UI ページへ戻る')}`,
       '',
@@ -167,7 +160,7 @@ export function renderUiDocuments(
       const categoryPath = `${root}/${area}/${category}/README.md`
       const categoryPages = pages.filter((page) => page.category === category)
       areaLines.push(`| ${link(areaPath, categoryPath, categoryName)} | ${categoryPages.length} |`)
-      const categoryLines = introduction(categoryName, `${categoryName}のページ一覧`, preview)
+      const categoryLines = introduction(categoryName, `${categoryName}のページ一覧`)
       categoryLines.push(
         `${link(categoryPath, indexPath, 'UI ページ')} / ${link(categoryPath, areaPath, name)}`,
         '',
@@ -176,8 +169,7 @@ export function renderUiDocuments(
         ...summary(categoryPages, categoryPath),
       )
       documents.set(categoryPath, categoryLines.join('\n'))
-      for (const page of categoryPages)
-        documents.set(pagePath(page), detail(page, catalog, preview))
+      for (const page of categoryPages) documents.set(pagePath(page), detail(page, catalog))
     }
     documents.set(areaPath, `${areaLines.join('\n')}\n`)
   }
@@ -194,7 +186,6 @@ export function renderUiDocuments(
   const shared = introduction(
     '共通表示と外部の到達先',
     'ページを数える際に区別する共有要素と外部システム',
-    preview,
   )
   shared.push(
     '[Frontend のページへ戻る](README.md)',
@@ -222,7 +213,7 @@ export function renderUiDocuments(
     const path = `docs/modules/${module}/pages/README.md`
     const name = catalog.moduleNames[module] ?? module
     const pages = catalog.pages.filter((page) => page.module === module)
-    const lines = introduction(`${name} のページ`, `${name} が主担当となるページの設計`, preview)
+    const lines = introduction(`${name} のページ`, `${name} が主担当となるページの設計`)
     lines.push(
       `${link(path, `docs/modules/${module}/README.md`, `${name} のモジュール設計`)} / ${link(path, indexPath, 'UI 全体の索引')}`,
       '',

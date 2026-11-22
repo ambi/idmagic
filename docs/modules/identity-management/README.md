@@ -117,7 +117,7 @@ User のライフサイクルの操作をまとめるユースケースが両方
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
-| アプリケーション設計 | [IdManagement のページ](pages/README.md#主な利用手順) | ユーザー管理など、このモジュールの機能を操作するページの入力項目、状態と操作フロー |
+| アプリケーション設計 | [IdManagement のページ](pages/README.md#主な利用手順) | ユーザー管理など、このモジュールの機能を操作するページの表示内容、状態と操作フロー |
 | データ設計 | [IdManagement のデータ](data.md#集約) | Aggregate とその関係、永続化、保持と削除、排他と一意性、テナントの属性スキーマ |
 | セキュリティ設計 | [管理 API の認可](features/admin-access.md#概要)、[認可設計](../../design/security/authorization.md#主体の種類) | 管理 API の認可は機能 管理 API の認可 が、システム全体の認可は認可設計が扱う |
 | 信頼性設計 | [IdManagement の信頼性](reliability.md#idmanagement-の信頼性) | 障害の症状、原因、直し方 |

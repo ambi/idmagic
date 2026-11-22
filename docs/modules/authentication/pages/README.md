@@ -2,8 +2,6 @@
 
 この文書は、Authentication が主担当となるページの設計を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Authentication のモジュール設計](../README.md) / [UI 全体の索引](../../../design/application/pages/README.md)
@@ -37,6 +35,15 @@ flowchart TB
 - 期限切れや使用済みリンクの扱いは、パスワード再設定ページの操作表に示す。
 
 ページの詳細：[ログイン](login.md)、[パスワード再設定の依頼](forgot-password.md)、[パスワードの再設定](reset-password.md)
+
+## フェデレーション
+
+| ページ | URL | 目的 |
+| --- | --- | --- |
+| [外部 IdP の一覧](admin-identity-providers.md) | `/admin/identity-providers` | 外部認証の接続状態と設定を管理する |
+| [外部 IdP の詳細](admin-identity-provider-detail.md) | `/admin/identity-providers/$id` | 認証先の接続、マッピングと状態を確認する |
+| [外部 IdP を登録](admin-identity-provider-create.md) | `/admin/identity-providers/new` | 接続方式、認証先と属性マッピングを登録する |
+| [外部 IdP を編集](admin-identity-provider-edit.md) | `/admin/identity-providers/$id/edit` | 接続と属性マッピングを変更し試す |
 
 ## サインイン
 

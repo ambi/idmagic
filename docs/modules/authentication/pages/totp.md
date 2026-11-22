@@ -2,8 +2,6 @@
 
 この文書は、二要素認証の操作と状態を示す。
 
-> 表示確認用の途中プレビュー。全ページの棚卸しと検証は継続中である。
-
 TypeSpec の UI 宣言から `mise run generate-ui-pages` で生成する。手で編集しない。
 
 [Authentication](../README.md) / [ページ一覧](README.md) / 二要素認証

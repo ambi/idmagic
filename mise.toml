@@ -12,8 +12,6 @@ bun = "1.4.4"
 "aqua:zizmorcore/zizmor" = "1.32.0"
 "aqua:betterleaks/betterleaks" = "1.10.1"
 "aqua:google/osv-scanner" = "2.7.1"
-# UI ページ宣言の生成と検査が、実装の経路、ページマーカーと入力を抽出するために呼ぶ。
-"aqua:ast-grep/ast-grep" = "0.51.3"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/ambi/gamut/cmd/gamut" = "0.1.0"
@@ -1145,12 +1143,12 @@ description = "Generate the UI page inventory and interaction design from TypeSp
 dir = "tools"
 run = "bun run build-site/src/write-ui-pages.ts \"$@\""
 
-# UI ページ宣言の参照、実装の経路とページマーカー、実装の入力名、生成文書の古さを検査する。
-# 全経路を宣言するまでは --preview で未宣言の経路だけを許す（wi-92664）。宣言済みのページの不整合は拒否する。
+# UI ページ宣言の参照、実装の経路とページマーカー、生成文書の古さを検査する。
+# 実装のすべての経路は、ページか描画しない経路の説明として宣言されている必要がある。
 [tasks.check-ui-pages]
-description = "Check UI page declarations against frontend routes and inputs, and the generated documents for drift"
+description = "Check UI page declarations against frontend routes and markers, and the generated documents for drift"
 dir = "tools"
-run = "bun run build-site/src/write-ui-pages.ts --preview --check"
+run = "bun run build-site/src/write-ui-pages.ts --check"
 
 [tasks.compile-ui-spec]
 description = "Compile the UI design declarations separately from the public HTTP contract"
