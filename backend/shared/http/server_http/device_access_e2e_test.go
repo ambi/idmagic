@@ -53,7 +53,7 @@ func TestDeviceApprovalCompletesAfterSecondFactor(t *testing.T) {
 		"subject_type": "user", "subject_id": userID,
 	}, f.admin, http.StatusCreated)
 	f.request(t, http.MethodPut, "/api/admin/v1/applications/"+appID+"/sign-in-policy", map[string]any{
-		"rules": []map[string]any{{"rule_id": "mfa", "name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
+		"rules": []map[string]any{{"rule_id": "mfa", "name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "mfa"}}},
 	}, f.admin, http.StatusOK)
 	secretTOTP := totpTestSecret
 	if err := f.s.MfaFactors.Save(f.s.RealmContext(t, "default"), &totpdomain.MfaFactor{

@@ -34,7 +34,7 @@ const server: McpResourceServer = {
   resource: 'https://docs.example/mcp',
   name: 'Docs MCP',
   scopes: ['mcp'],
-  state: 'Active',
+  state: 'active',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   access_rules: [

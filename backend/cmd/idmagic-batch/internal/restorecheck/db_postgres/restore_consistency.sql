@@ -8,7 +8,7 @@ SELECT
 SELECT t.id FROM tenants t
 WHERE NOT EXISTS (
   SELECT 1 FROM signing_keys sk
-  WHERE sk.tenant_id = t.id AND sk.key_usage = 'Signing' AND sk.active
+  WHERE sk.tenant_id = t.id AND sk.key_usage = 'signing' AND sk.active
 )
 ORDER BY t.id;
 

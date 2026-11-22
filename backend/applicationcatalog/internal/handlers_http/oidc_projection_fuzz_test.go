@@ -62,11 +62,11 @@ func FuzzOIDCProjection(f *testing.F) {
 				t.Fatalf("metadata=%+v credential=%+v", metadata, credential)
 			}
 		}
-		wantExpiry := "Active"
+		wantExpiry := "active"
 		if seconds <= 100 {
-			wantExpiry = "Expired"
+			wantExpiry = "expired"
 		}
-		if got.SecretCredentials[0].Status != "Active" || got.SecretCredentials[1].Status != wantExpiry || got.SecretCredentials[2].Status != "Revoked" {
+		if got.SecretCredentials[0].Status != "active" || got.SecretCredentials[1].Status != wantExpiry || got.SecretCredentials[2].Status != "revoked" {
 			t.Fatalf("statuses=%+v", got.SecretCredentials)
 		}
 		got.Rules[0].FixedValue = "changed"

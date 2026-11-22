@@ -48,7 +48,7 @@ func TestEntraRotationPublishesBeforeSwitchingTheSignature(t *testing.T) {
 	if r := configureEntra(s.e, configureBody); r.Code != http.StatusCreated {
 		t.Fatalf("configure: %d %s", r.Code, r.Body.String())
 	}
-	prepared := rotate(`{"usage":"XmlFederationSigning","action":"prepare"}`)
+	prepared := rotate(`{"usage":"xml_federation_signing","action":"prepare"}`)
 	var rotation struct {
 		Next struct {
 			Kid         string `json:"kid"`
@@ -66,7 +66,7 @@ func TestEntraRotationPublishesBeforeSwitchingTheSignature(t *testing.T) {
 	if prepared.Code != 200 || !rotation.Next.Prepared || rotation.Next.Active || !rotation.Previous.Active {
 		t.Fatalf("prepare changed the signing key: %d %s", prepared.Code, prepared.Body.String())
 	}
-	if duplicate := rotate(`{"usage":"XmlFederationSigning","action":"prepare"}`); duplicate.Code != 200 {
+	if duplicate := rotate(`{"usage":"xml_federation_signing","action":"prepare"}`); duplicate.Code != 200 {
 		t.Fatal("duplicate preparation failed")
 	}
 	if countEvents(*s.events, "SigningKeyPrepared") != 1 || countEvents(*s.events, "SigningKeyRotated") != 0 {
@@ -105,16 +105,16 @@ func TestEntraRotationPublishesBeforeSwitchingTheSignature(t *testing.T) {
 	}
 	assertSignature(old.Certificate())
 	for _, body := range []string{
-		`{"usage":"XmlFederationSigning","action":"rotate"}`,
-		`{"usage":"XmlFederationSigning","action":"activate","kid":"` + rotation.Next.Kid + `"}`,
-		`{"usage":"XmlFederationSigning","action":"activate","kid":"unknown","trust_updated":true}`,
+		`{"usage":"xml_federation_signing","action":"rotate"}`,
+		`{"usage":"xml_federation_signing","action":"activate","kid":"` + rotation.Next.Kid + `"}`,
+		`{"usage":"xml_federation_signing","action":"activate","kid":"unknown","trust_updated":true}`,
 	} {
 		if r := rotate(body); r.Code != 400 {
 			t.Fatalf("unsafe rotation accepted: %d %s", r.Code, r.Body.String())
 		}
 		assertSignature(old.Certificate())
 	}
-	activate := `{"usage":"XmlFederationSigning","action":"activate","kid":"` + rotation.Next.Kid + `","trust_updated":true}`
+	activate := `{"usage":"xml_federation_signing","action":"activate","kid":"` + rotation.Next.Kid + `","trust_updated":true}`
 	for range 2 {
 		if r := rotate(activate); r.Code != 200 {
 			t.Fatalf("activate: %d %s", r.Code, r.Body.String())

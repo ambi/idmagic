@@ -7,8 +7,8 @@ import "time"
 type RequiredAuthnStrength string
 
 const (
-	RequiredAuthnPassword RequiredAuthnStrength = "Password"
-	RequiredAuthnMfa      RequiredAuthnStrength = "Mfa"
+	RequiredAuthnPassword RequiredAuthnStrength = "password"
+	RequiredAuthnMfa      RequiredAuthnStrength = "mfa"
 )
 
 func (s RequiredAuthnStrength) Valid() bool {

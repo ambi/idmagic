@@ -54,7 +54,7 @@ const server = (overrides: Partial<McpResourceServer> = {}): McpResourceServer =
   resource: 'https://docs.example',
   scopes: ['read'],
   client_id: 'eval-client',
-  state: 'Active',
+  state: 'active',
   created_at: '',
   updated_at: '',
   access_rules: [toolRule('read', 'op-1', ['read'])],
@@ -108,7 +108,7 @@ it('reports no gaps for a fully configured connection', () => {
 //spec:covers REQ-OAUTH2-094: 登録の不足は状態と評価用クライアントの紐付けで示す。
 it('flags inactive registration and missing evaluation client separately', () => {
   const result = check({
-    servers: [server({ state: 'Disabled', client_id: undefined })],
+    servers: [server({ state: 'disabled', client_id: undefined })],
   })
   expect(gapsOf(result, 'registration')).toEqual([
     'registration_inactive',

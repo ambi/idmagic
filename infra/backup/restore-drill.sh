@@ -59,7 +59,7 @@ DATABASE_URL="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABAS
 echo "== seeding a representative active signing key per tenant ==" >&2
 psql -Atqc "
   INSERT INTO signing_keys (kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, active, created_at, updated_at)
-  SELECT 'drill-' || t.id, t.id, 'PS256', 'Postgres', 'Signing', 'default', '{}', '{}', true, now(), now()
+  SELECT 'drill-' || t.id, t.id, 'PS256', 'database', 'signing', 'default', '{}', '{}', true, now(), now()
   FROM tenants t
 "
 

@@ -60,7 +60,7 @@ export function AdminAgentAccessPage({
   const [pending, setPending] = useState<RelationTuple | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState(justGranted ? t.granted : '')
-  const server = resourceServers.find((item) => item.id === serverID && item.state === 'Active')
+  const server = resourceServers.find((item) => item.id === serverID && item.state === 'active')
   const options = [
     ...new Map(
       (server?.access_rules ?? [])
@@ -220,7 +220,7 @@ export function AdminAgentAccessPage({
               t.connection,
               serverID,
               resourceServers
-                .filter((item) => item.state === 'Active')
+                .filter((item) => item.state === 'active')
                 .map((item) => ({ value: item.id, label: item.name })),
               (value) => {
                 setServerID(value)

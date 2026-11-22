@@ -18,7 +18,7 @@ function rule(overrides: Partial<SignInRule> = {}): SignInRule {
     rule_id: 'r1',
     name: 'r1',
     enabled: true,
-    required_authn: { strength: 'Password' },
+    required_authn: { strength: 'password' },
     condition: {},
     ...overrides,
   }
@@ -63,7 +63,7 @@ describe('summarizeSignInRule', () => {
   it('appends reauth and network conditions when present', () => {
     const summary = summarizeSignInRule(
       rule({
-        required_authn: { strength: 'Mfa' },
+        required_authn: { strength: 'mfa' },
         condition: { reauth_max_age_seconds: 300, network_allow_cidrs: ['10.0.0.0/8'] },
       }),
       t,
@@ -80,20 +80,20 @@ describe('summarizeSignInRule', () => {
 
 describe('appRuleFromInputs', () => {
   it('parses reauth seconds and CIDR lines into a SignInRule', () => {
-    const result = appRuleFromInputs('Mfa', '600', '10.0.0.0/8\n192.168.1.0/24')
-    expect(result.required_authn.strength).toBe('Mfa')
+    const result = appRuleFromInputs('mfa', '600', '10.0.0.0/8\n192.168.1.0/24')
+    expect(result.required_authn.strength).toBe('mfa')
     expect(result.condition.reauth_max_age_seconds).toBe(600)
     expect(result.condition.network_allow_cidrs).toEqual(['10.0.0.0/8', '192.168.1.0/24'])
   })
 
   it('omits reauth and CIDRs when inputs are blank or non-positive', () => {
-    const result = appRuleFromInputs('Password', '  ', '')
+    const result = appRuleFromInputs('password', '  ', '')
     expect(result.condition.reauth_max_age_seconds).toBeUndefined()
     expect(result.condition.network_allow_cidrs).toBeUndefined()
   })
 
   it('treats a non-positive reauth value as unset', () => {
-    const result = appRuleFromInputs('Password', '0', '')
+    const result = appRuleFromInputs('password', '0', '')
     expect(result.condition.reauth_max_age_seconds).toBeUndefined()
   })
 })
@@ -105,9 +105,9 @@ describe('signInRuleWeakerThanDefault', () => {
   })
 
   it('is true when default requires MFA but the app rule does not', () => {
-    const defaults = [rule({ required_authn: { strength: 'Mfa' } })]
+    const defaults = [rule({ required_authn: { strength: 'mfa' } })]
     expect(
-      signInRuleWeakerThanDefault(rule({ required_authn: { strength: 'Password' } }), defaults),
+      signInRuleWeakerThanDefault(rule({ required_authn: { strength: 'password' } }), defaults),
     ).toBe(true)
   })
 
@@ -126,12 +126,12 @@ describe('signInRuleWeakerThanDefault', () => {
   it('is false when the app rule matches or is stricter than the default', () => {
     const defaults = [
       rule({
-        required_authn: { strength: 'Mfa' },
+        required_authn: { strength: 'mfa' },
         condition: { reauth_max_age_seconds: 3600, network_allow_cidrs: ['10.0.0.0/8'] },
       }),
     ]
     const appRule = rule({
-      required_authn: { strength: 'Mfa' },
+      required_authn: { strength: 'mfa' },
       condition: { reauth_max_age_seconds: 300, network_allow_cidrs: ['10.0.0.0/8'] },
     })
     expect(signInRuleWeakerThanDefault(appRule, defaults)).toBe(false)

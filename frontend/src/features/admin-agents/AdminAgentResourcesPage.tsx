@@ -52,7 +52,7 @@ export function AdminAgentResourcesPage({
   )
   const [serverID, setServerID] = useState(
     selectedServer ||
-      servers.find((server) => server.state === 'Active')?.id ||
+      servers.find((server) => server.state === 'active')?.id ||
       servers[0]?.id ||
       '',
   )
@@ -101,7 +101,7 @@ export function AdminAgentResourcesPage({
   async function save(event: FormEvent) {
     event.preventDefault()
     if (!server || truncated || running.current || !changed) return
-    if (server.state !== 'Active' && added.length) return
+    if (server.state !== 'active' && added.length) return
     if (invalid.length > 0) {
       setError(t.invalidTargets.replace('{targets}', invalid.join(', ')))
       return
@@ -174,7 +174,7 @@ export function AdminAgentResourcesPage({
                     <tr key={operationResourceID(item, rule.tool!.name)} className="border-t">
                       <td className="p-2">
                         {item.name}
-                        {item.state !== 'Active' ? ` (${t.disabled})` : ''}
+                        {item.state !== 'active' ? ` (${t.disabled})` : ''}
                       </td>
                       <td className="p-2">{rule.tool!.display_name}</td>
                       <td className="p-2">
@@ -213,7 +213,7 @@ export function AdminAgentResourcesPage({
                 {servers.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
-                    {item.state !== 'Active' ? ` (${t.disabled})` : ''}
+                    {item.state !== 'active' ? ` (${t.disabled})` : ''}
                   </option>
                 ))}
               </select>
@@ -235,7 +235,7 @@ export function AdminAgentResourcesPage({
                             busy ||
                             truncated ||
                             agent.status === 'killed' ||
-                            (server?.state !== 'Active' && !assigned.has(id))
+                            (server?.state !== 'active' && !assigned.has(id))
                           }
                           onChange={(event) =>
                             setSelected((current) => {

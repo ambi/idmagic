@@ -24,7 +24,7 @@ const server: McpResourceServer = {
   name: 'Documents',
   resource: 'https://docs.example',
   scopes: ['read', 'write'],
-  state: 'Active',
+  state: 'active',
   created_at: '',
   updated_at: '',
   access_rules: [

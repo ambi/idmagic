@@ -85,12 +85,12 @@ export function AdminAuthorizationDetailTypesPage({
                     <p className="font-mono text-sm font-semibold text-slate-900">{item.type}</p>
                     <span
                       className={
-                        item.state === 'Enabled'
+                        item.state === 'enabled'
                           ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-700'
                           : 'rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-bold text-slate-500'
                       }
                     >
-                      {item.state}
+                      {item.state === 'enabled' ? dict.stateEnabled : dict.stateDisabled}
                     </span>
                   </div>
                   {item.description ? (

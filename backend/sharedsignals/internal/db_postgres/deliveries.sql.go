@@ -16,7 +16,7 @@ const captureAuditEventDeliveries = `-- name: CaptureAuditEventDeliveries :exec
 INSERT INTO security_event_deliveries (id,tenant_id,stream_id,set_jti,set_payload,status,audit_event,created_at)
 SELECT gen_random_uuid(),s.tenant_id,s.id,gen_random_uuid()::text,'{}'::jsonb,'pending',$1::jsonb,$2::timestamptz
 FROM ssf_streams s
-WHERE s.tenant_id=$3 AND s.direction='Transmit' AND s.status='enabled'
+WHERE s.tenant_id=$3 AND s.direction='transmit' AND s.status='enabled'
   AND ('*'=ANY(s.audit_event_types) OR $4::text=ANY(s.audit_event_types))
 `
 

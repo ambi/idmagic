@@ -18,9 +18,9 @@ enum ClientType {
 
 @doc("OAuth2 モジュールが公開するクライアントシークレットの資格情報の状態を、公開契約として写したもの。")
 enum ClientSecretCredentialStatus {
-  Active: "Active",
-  Expired: "Expired",
-  Revoked: "Revoked",
+  Active: "active",
+  Expired: "expired",
+  Revoked: "revoked",
 }
 
 
@@ -150,14 +150,14 @@ model ApplicationCategory {
 }
 
 
-@doc("サインインのポリシーが求める認証の強度。`Password` はそれ以上を求めず（acr は urn:idmagic:acr:pwd を含む）、`Mfa` は第二要素を求める（acr は urn:idmagic:acr:mfa に等しく、amr は otp、webauthn、hwk、swk のいずれかを含む）。")
+@doc("サインインのポリシーが求める認証の強度。`password` はそれ以上を求めず（acr は urn:idmagic:acr:pwd を含む）、`mfa` は第二要素を求める（acr は urn:idmagic:acr:mfa に等しく、amr は otp、webauthn、hwk、swk のいずれかを含む）。")
 enum RequiredAuthnStrength {
-  Password: "Password",
-  Mfa: "Mfa",
+  Password: "password",
+  Mfa: "mfa",
 }
 
 
-@doc("サインインのポリシーが求める認証の強度。制限した選択肢である Password と Mfa を、内部の acr と amr へ対応付ける。Mfa を満たさないときは、ユーザーにステップアップを促す。")
+@doc("サインインのポリシーが求める認証の強度。制限した選択肢である password と mfa を、内部の acr と amr へ対応付ける。mfa を満たさないときは、ユーザーにステップアップを促す。")
 model RequiredAuthnLevel {
   strength: RequiredAuthnStrength = RequiredAuthnStrength.Password;
 }
@@ -187,7 +187,7 @@ model SignInRule {
   required_authn: RequiredAuthnLevel;
   condition: AccessCondition;
   mfa_enrollment?: MfaEnrollmentPolicy;
-  @doc("`required_authn` が `Mfa` のとき、記憶した信頼済みデバイス（amr が `tdev` を含む）で MFA の要求を満たしてよいかどうか。false は毎回 MFA を求め、本物の第二要素しか認めない。デフォルトは true だが、テナントが `trusted_device_max_age_seconds` を 0 のままにしている限り、信頼済みデバイスは発行も評価もされないので、実質的なデフォルトは何も記憶しないことである。")
+  @doc("`required_authn` が `mfa` のとき、記憶した信頼済みデバイス（amr が `tdev` を含む）で MFA の要求を満たしてよいかどうか。false は毎回 MFA を求め、本物の第二要素しか認めない。デフォルトは true だが、テナントが `trusted_device_max_age_seconds` を 0 のままにしている限り、信頼済みデバイスは発行も評価もされないので、実質的なデフォルトは何も記憶しないことである。")
   allow_trusted_device: boolean = true;
 }
 

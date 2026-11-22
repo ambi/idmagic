@@ -27,3 +27,27 @@ OpenID Shared Signals Framework 1.0 — https://openid.net/specs/openid-sharedsi
 | SSF10-SUB-ID | partial | MUST | 送信する SET は最上位に `sub_id` を持つ。形式は `opaque` を使う。Discovery と Stream Management API は提供せず、ストリームは管理者が登録する。 |
 | SSF10-RECEIVE-SUB-ID | partial | MUST | 最上位の `sub_id` が `iss_sub` または `opaque` の SET は、イベント内の `subject` を省略しても主体を解決して受理する。形式と発行者の検査は RFC9493-SUBID-FORMAT と RFC9493-SUBID-ISS-SUB に従う。`complex` などの未対応の形式は拒否する。 |
 | SSF10-STATUS-NO-TRANSMIT | required | MUST | `disabled` のストリームへイベントを送らない。自動無効化の Stream Updated Event は送らず、`SsfStreamAutoDisabled` で観測する。 |
+
+### SET の理由表記
+
+送信する SET の `reason` は、管理 API の `RevocationReason` と表記を分ける。
+従来の受信者が解釈する値を保つため、次の対応を使う。
+署名済み SET の `Compact` と過去の監査記録は移行で書き換えない。
+
+| 管理 API の値 | SET の reason |
+| --- | --- |
+| `agent_killed` | `AgentKilled` |
+| `agent_disabled` | `AgentDisabled` |
+| `agent_credential_unbound` | `AgentCredentialUnbound` |
+| `agent_deleted` | `AgentDeleted` |
+| `owner_disabled` | `OwnerDisabled` |
+| `owner_deleted` | `OwnerDeleted` |
+| `manual_admin` | `ManualAdmin` |
+| `user_disabled` | `UserDisabled` |
+| `user_soft_deleted` | `UserSoftDeleted` |
+| `user_deleted` | `UserDeleted` |
+| `session_revoked` | `SessionRevoked` |
+| `password_changed` | `PasswordChanged` |
+| `authenticator_changed` | `AuthenticatorChanged` |
+| `refresh_token_reuse` | `RefreshTokenReuse` |
+| `inbound_security_event` | `InboundSecurityEvent` |

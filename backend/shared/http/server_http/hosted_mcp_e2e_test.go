@@ -298,7 +298,7 @@ func TestHostedMcpPublicSetupEnforcesAssignments(t *testing.T) {
 		}
 	}
 	managedMcpCall(t, f, strings.Replace(resource, "/realms/default/", "/realms/other/", 1), token, "read_document", 404)
-	f.request(t, "PATCH", "/api/admin/v1/mcp-resource-servers/"+setupString(t, server, "id"), map[string]any{"state": "Disabled"}, f.admin, 200)
+	f.request(t, "PATCH", "/api/admin/v1/mcp-resource-servers/"+setupString(t, server, "id"), map[string]any{"state": "disabled"}, f.admin, 200)
 	managedMcpCall(t, f, resource, token, "read_document", 404)
 	if forwarded != 3 {
 		t.Fatal("disabled or cross-tenant request was forwarded")

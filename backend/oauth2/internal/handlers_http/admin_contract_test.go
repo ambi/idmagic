@@ -53,7 +53,7 @@ func TestMcpResourceServerAdminHTTPContracts(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 	created := oauthContractJSON(t, adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload()), http.StatusCreated)
 	id, ok := created["id"].(string)
-	if !ok || id == "" || created["tenant_id"] != tenancydomain.DefaultTenantID || created["resource"] != "https://mcp.example.com/tools/github" || created["name"] != "GitHub MCP Tools" || created["state"] != "Active" || !reflect.DeepEqual(created["scopes"], []any{"mcp.read", "mcp.write"}) {
+	if !ok || id == "" || created["tenant_id"] != tenancydomain.DefaultTenantID || created["resource"] != "https://mcp.example.com/tools/github" || created["name"] != "GitHub MCP Tools" || created["state"] != "active" || !reflect.DeepEqual(created["scopes"], []any{"mcp.read", "mcp.write"}) {
 		t.Fatalf("created=%v", created)
 	}
 	oauthContractTime(t, created, "created_at")
@@ -62,8 +62,8 @@ func TestMcpResourceServerAdminHTTPContracts(t *testing.T) {
 	if !reflect.DeepEqual(get, created) {
 		t.Fatalf("get=%v created=%v", get, created)
 	}
-	updated := oauthContractJSON(t, adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, map[string]any{"name": "Contract renamed", "scopes": []string{"mcp.read"}, "state": "Disabled"}), http.StatusOK)
-	if updated["id"] != id || updated["tenant_id"] != created["tenant_id"] || updated["resource"] != created["resource"] || updated["created_at"] != created["created_at"] || updated["name"] != "Contract renamed" || updated["state"] != "Disabled" || !reflect.DeepEqual(updated["scopes"], []any{"mcp.read"}) {
+	updated := oauthContractJSON(t, adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, map[string]any{"name": "Contract renamed", "scopes": []string{"mcp.read"}, "state": "disabled"}), http.StatusOK)
+	if updated["id"] != id || updated["tenant_id"] != created["tenant_id"] || updated["resource"] != created["resource"] || updated["created_at"] != created["created_at"] || updated["name"] != "Contract renamed" || updated["state"] != "disabled" || !reflect.DeepEqual(updated["scopes"], []any{"mcp.read"}) {
 		t.Fatalf("updated=%v", updated)
 	}
 	oauthContractTime(t, updated, "updated_at")
@@ -80,7 +80,7 @@ func TestAuthorizationDetailTypeAdminHTTPContracts(t *testing.T) {
 	e := newAdminAuthzTypeHandler()
 	csrf, cookie := adminCSRF(t, e)
 	created := oauthContractJSON(t, adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/authorization-detail-types", csrf, cookie, validTypePayload()), http.StatusCreated)
-	if created["tenant_id"] != tenancydomain.DefaultTenantID || created["type"] != "data_access" || created["description"] != "文書アクセス" || created["display_template"] != "{datatypes} を {actions}" || created["state"] != "Enabled" {
+	if created["tenant_id"] != tenancydomain.DefaultTenantID || created["type"] != "data_access" || created["description"] != "文書アクセス" || created["display_template"] != "{datatypes} を {actions}" || created["state"] != "enabled" {
 		t.Fatalf("created=%v", created)
 	}
 	rules := created["schema"].(map[string]any)["rules"].([]any)
@@ -96,9 +96,9 @@ func TestAuthorizationDetailTypeAdminHTTPContracts(t *testing.T) {
 	payload := validTypePayload()
 	delete(payload, "type")
 	payload["description"] = "Updated contract"
-	payload["state"] = "Disabled"
+	payload["state"] = "disabled"
 	updated := oauthContractJSON(t, adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/authorization-detail-types/data_access", csrf, cookie, payload), http.StatusOK)
-	if updated["type"] != created["type"] || updated["tenant_id"] != created["tenant_id"] || updated["created_at"] != created["created_at"] || updated["description"] != "Updated contract" || updated["state"] != "Disabled" || updated["display_template"] != created["display_template"] || !reflect.DeepEqual(updated["schema"], created["schema"]) {
+	if updated["type"] != created["type"] || updated["tenant_id"] != created["tenant_id"] || updated["created_at"] != created["created_at"] || updated["description"] != "Updated contract" || updated["state"] != "disabled" || updated["display_template"] != created["display_template"] || !reflect.DeepEqual(updated["schema"], created["schema"]) {
 		t.Fatalf("updated=%v", updated)
 	}
 	oauthContractTime(t, updated, "updated_at")

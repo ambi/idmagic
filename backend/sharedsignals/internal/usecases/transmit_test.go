@@ -144,6 +144,65 @@ func TestBuildAndSignSecurityEventToken_OmitsReasonWhenNil(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-SYSTEM-035, REQ-SHAREDSIGNALS-014: 管理 API の理由は小文字でも、署名後の SET は従来の理由表記を保持する。
+func TestRevocationReasonWireRepresentations(t *testing.T) {
+	keyStore, err := signingkeys.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenantports.WithTenant(t.Context(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	key, err := keyStore.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := &sign_jose.Signer{KeyStore: keyStore}
+	for _, tc := range []struct {
+		reason   ssdomain.RevocationReason
+		api, set string
+	}{
+		{ssdomain.RevocationReasonAgentKilled, "agent_killed", "AgentKilled"},
+		{ssdomain.RevocationReasonAgentDisabled, "agent_disabled", "AgentDisabled"},
+		{ssdomain.RevocationReasonAgentCredentialUnbound, "agent_credential_unbound", "AgentCredentialUnbound"},
+		{ssdomain.RevocationReasonAgentDeleted, "agent_deleted", "AgentDeleted"},
+		{ssdomain.RevocationReasonOwnerDisabled, "owner_disabled", "OwnerDisabled"},
+		{ssdomain.RevocationReasonOwnerDeleted, "owner_deleted", "OwnerDeleted"},
+		{ssdomain.RevocationReasonManualAdmin, "manual_admin", "ManualAdmin"},
+		{ssdomain.RevocationReasonUserDisabled, "user_disabled", "UserDisabled"},
+		{ssdomain.RevocationReasonUserSoftDeleted, "user_soft_deleted", "UserSoftDeleted"},
+		{ssdomain.RevocationReasonUserDeleted, "user_deleted", "UserDeleted"},
+		{ssdomain.RevocationReasonSessionRevoked, "session_revoked", "SessionRevoked"},
+		{ssdomain.RevocationReasonPasswordChanged, "password_changed", "PasswordChanged"},
+		{ssdomain.RevocationReasonAuthenticatorChanged, "authenticator_changed", "AuthenticatorChanged"},
+		{ssdomain.RevocationReasonRefreshTokenReuse, "refresh_token_reuse", "RefreshTokenReuse"},
+		{ssdomain.RevocationReasonInboundSecurityEvent, "inbound_security_event", "InboundSecurityEvent"},
+	} {
+		t.Run(tc.api, func(t *testing.T) {
+			apiJSON, err := json.Marshal(tc.reason)
+			if err != nil || string(apiJSON) != `"`+tc.api+`"` || !tc.reason.Valid() {
+				t.Fatalf("API reason=%s, valid=%v, error=%v", apiJSON, tc.reason.Valid(), err)
+			}
+			event := ssdomain.CaepEvent{
+				EventType: ssdomain.CaepEventTypeSessionRevoked,
+				Subject:   ssdomain.SsfSubject{SubjectType: ssdomain.SsfSubjectTypeAgent, TenantID: "tenant-a", PrincipalID: "agent-1"},
+				Reason:    &tc.reason, EventTimestamp: time.Now().UTC(), InitiatingEntity: ssdomain.InitiatingEntityAdmin,
+			}
+			set, err := ssusecases.BuildAndSignSecurityEventToken(ctx, signer, "https://issuer.example", "https://receiver.example", event)
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := tokens_jose.VerifySecurityEventToken(set.Compact, []map[string]any{key.PublicJWK}, "https://issuer.example", []string{"https://receiver.example"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := claims.Payload["events"].(map[string]any)
+			payload := events["https://schemas.openid.net/secevent/caep/event-type/session-revoked"].(map[string]any)
+			if payload["reason"] != tc.set {
+				t.Fatalf("SET reason=%v, want %s", payload["reason"], tc.set)
+			}
+		})
+	}
+}
+
 //spec:covers REQ-SHAREDSIGNALS-014: 署名する claims の最上位に opaque の sub_id がある。
 //spec:covers EX-SHAREDSIGNALS-014-01: 失効の SET。
 //spec:covers SSF10-SUB-ID: 最上位の sub_id が opaque の形式で、sub を含まない。

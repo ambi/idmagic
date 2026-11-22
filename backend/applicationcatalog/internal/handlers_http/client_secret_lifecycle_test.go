@@ -58,7 +58,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	if err := json.Unmarshal(detail.Body.Bytes(), &detailBody); err != nil {
 		t.Fatal(err)
 	}
-	if len(detailBody.OIDC.Credentials) != 1 || detailBody.OIDC.Credentials[0].Status != "Active" {
+	if len(detailBody.OIDC.Credentials) != 1 || detailBody.OIDC.Credentials[0].Status != "active" {
 		t.Fatalf("initial credentials=%#v", detailBody.OIDC.Credentials)
 	}
 	legacyID := detailBody.OIDC.Credentials[0].CredentialID
@@ -86,7 +86,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	if err := json.Unmarshal(issued.Body.Bytes(), &issuedBody); err != nil {
 		t.Fatal(err)
 	}
-	if issuedBody.ClientSecret == "" || issuedBody.Credential.Status != "Active" ||
+	if issuedBody.ClientSecret == "" || issuedBody.Credential.Status != "active" ||
 		issuedBody.Credential.ExpiresAt == nil || len(issuedBody.Credentials) != 2 {
 		t.Fatalf("issued body=%#v", issuedBody)
 	}
@@ -116,7 +116,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	if err := json.Unmarshal(revoked.Body.Bytes(), &revokedBody); err != nil {
 		t.Fatal(err)
 	}
-	if len(revokedBody.Credentials) != 2 || revokedBody.Credentials[0].Status != "Revoked" {
+	if len(revokedBody.Credentials) != 2 || revokedBody.Credentials[0].Status != "revoked" {
 		t.Fatalf("revoked credentials=%#v", revokedBody.Credentials)
 	}
 

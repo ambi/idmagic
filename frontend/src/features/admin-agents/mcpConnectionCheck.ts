@@ -148,7 +148,7 @@ export function checkMcpConnections({
   const boundClients = summary.clients.filter((client) => !client.missing)
   return resourceServers.map((server) => {
     const registration: ConnectionCheckGap[] = []
-    if (server.state !== 'Active') registration.push('registration_inactive')
+    if (server.state !== 'active') registration.push('registration_inactive')
     if (!server.client_id) registration.push('registration_no_client')
 
     const tools = toolRules(server)

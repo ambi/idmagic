@@ -54,7 +54,7 @@ type Operation = {
 
 function publishedOperations(servers: McpResourceServer[]): Operation[] {
   return servers
-    .filter((server) => server.state === 'Active')
+    .filter((server) => server.state === 'active')
     .flatMap((server) =>
       (server.access_rules ?? []).flatMap((rule) =>
         rule.tool?.assignment_resource_id
@@ -181,7 +181,7 @@ export function AdminAgentCreatePage({
         const scopes = new Set([
           ...APPROVAL_SCOPES,
           ...resourceServers
-            .filter((server) => server.state === 'Active')
+            .filter((server) => server.state === 'active')
             .flatMap((server) => server.scopes),
         ])
         next.clientID = await createAdminAgentKeyClient(csrfToken, {

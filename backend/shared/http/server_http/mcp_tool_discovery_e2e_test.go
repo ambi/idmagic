@@ -232,7 +232,7 @@ func TestMcpToolDiscoveryRejectsUnsupportedRegistrationsAndBursts(t *testing.T) 
 	f, server, id := newDiscoveryFixture(t)
 	f.request(t, http.MethodPost, "/api/admin/v1/mcp-resource-servers/missing/tool-discovery", nil, f.admin, http.StatusNotFound)
 	disabled := f.request(t, http.MethodPost, "/api/admin/v1/mcp-resource-servers", map[string]any{
-		"name": "Disabled", "resource": "https://disabled.example.com/mcp", "scopes": []string{"read"}, "state": "Disabled",
+		"name": "Disabled", "resource": "https://disabled.example.com/mcp", "scopes": []string{"read"}, "state": "disabled",
 	}, f.admin, http.StatusCreated)
 	refused := f.request(t, http.MethodPost, "/api/admin/v1/mcp-resource-servers/"+setupString(t, disabled, "id")+"/tool-discovery", nil, f.admin, http.StatusBadRequest)
 	if refused["type"] != "urn:idmagic:error:invalid_resource_server" {

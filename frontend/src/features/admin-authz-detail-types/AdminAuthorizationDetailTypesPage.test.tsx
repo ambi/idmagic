@@ -11,7 +11,7 @@ const detailType: AuthorizationDetailType = {
   description: 'Payment initiation',
   schema: { rules: [{ name: 'actions', semantics: 'set', required: true }] },
   display_template: 'Up to {instructedAmount}',
-  state: 'Enabled',
+  state: 'enabled',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
@@ -28,6 +28,9 @@ describe('AdminAuthorizationDetailTypesPage', () => {
       screen.getByRole('heading', { name: adminAuthorizationDetailTypesDictionary.en.pageTitle }),
     ).toBeInTheDocument()
     expect(
+      screen.getByText(adminAuthorizationDetailTypesDictionary.en.stateEnabled),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole('button', { name: adminAuthorizationDetailTypesDictionary.en.registerType }),
     ).toBeInTheDocument()
   })
@@ -38,6 +41,9 @@ describe('AdminAuthorizationDetailTypesPage', () => {
     )
     expect(
       screen.getByRole('heading', { name: adminAuthorizationDetailTypesDictionary.ja.pageTitle }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(adminAuthorizationDetailTypesDictionary.ja.stateEnabled),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: adminAuthorizationDetailTypesDictionary.ja.registerType }),

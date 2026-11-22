@@ -22,6 +22,8 @@ export const adminAuthorizationDetailTypesDictionary = defineDictionary(
     schemaHelp:
       '各フィールドの semantics は set (集合包含) / at_most (上限) / enum / exact のいずれか。要求はここで束縛した範囲に限定され、同意・委譲・交換でこの半順序を超えられません。',
     stateLabel: '状態',
+    stateEnabled: '有効',
+    stateDisabled: '無効',
     update: '更新',
     register: '登録',
     cancel: 'キャンセル',
@@ -53,6 +55,8 @@ export const adminAuthorizationDetailTypesDictionary = defineDictionary(
     schemaHelp:
       "Each field's semantics is one of set (subset), at_most (upper bound), enum, or exact. Requests are bound to the range defined here and cannot exceed this partial order through consent, delegation, or exchange.",
     stateLabel: 'State',
+    stateEnabled: 'Enabled',
+    stateDisabled: 'Disabled',
     update: 'Update',
     register: 'Register',
     cancel: 'Cancel',

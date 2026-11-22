@@ -20,7 +20,7 @@ const detailType: AuthorizationDetailType = {
   description: 'Payment initiation',
   schema: { rules: [{ name: 'actions', semantics: 'set', required: true }] },
   display_template: 'Up to {instructedAmount}',
-  state: 'Enabled',
+  state: 'enabled',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
@@ -44,12 +44,18 @@ describe('AdminAuthorizationDetailTypeEditPage', () => {
     fireEvent.change(screen.getByLabelText(t.descriptionLabel), {
       target: { value: 'Updated' },
     })
+    fireEvent.change(screen.getByLabelText(t.stateLabel), {
+      target: { value: 'disabled' },
+    })
     fireEvent.click(screen.getByRole('button', { name: t.update }))
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/admin/v1/authorization-detail-types/payment_initiation'),
-        expect.objectContaining({ method: 'PATCH' }),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: expect.stringContaining('"state":"disabled"'),
+        }),
       ),
     )
     await waitFor(() =>

@@ -112,8 +112,8 @@ export function statusOptions(t: AdminApplicationsDictionary): SelectOption[] {
 
 export function signInStrengthOptions(t: AdminApplicationsDictionary): SelectOption[] {
   return [
-    { value: 'Password', label: t.strengthPasswordLabel },
-    { value: 'Mfa', label: t.strengthMfaLabel },
+    { value: 'password', label: t.strengthPasswordLabel },
+    { value: 'mfa', label: t.strengthMfaLabel },
   ]
 }
 
@@ -121,7 +121,7 @@ export function signInStrengthOptions(t: AdminApplicationsDictionary): SelectOpt
 // 内部ルール名は表示せず、テナントデフォルト・実効ポリシーの読み取り専用表示に用いる (wi-115)。
 export function summarizeSignInRule(rule: SignInRule, t: AdminApplicationsDictionary): string {
   const parts: string[] = [
-    rule.required_authn.strength === 'Mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel,
+    rule.required_authn.strength === 'mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel,
   ]
   if (rule.condition.reauth_max_age_seconds) {
     parts.push(t.reauthSuffix.replace('{seconds}', String(rule.condition.reauth_max_age_seconds)))
@@ -164,7 +164,7 @@ export function signInRuleWeakerThanDefault(
 ): boolean {
   const def = defaultRules.find((rule) => rule.enabled)
   if (!def) return false
-  if (def.required_authn.strength === 'Mfa' && appRule.required_authn.strength !== 'Mfa') {
+  if (def.required_authn.strength === 'mfa' && appRule.required_authn.strength !== 'mfa') {
     return true
   }
   const defReauth = def.condition.reauth_max_age_seconds

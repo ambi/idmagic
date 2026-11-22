@@ -7,8 +7,8 @@ package domain
 type SsfStreamDirection string
 
 const (
-	SsfStreamDirectionTransmit SsfStreamDirection = "Transmit"
-	SsfStreamDirectionReceive  SsfStreamDirection = "Receive"
+	SsfStreamDirectionTransmit SsfStreamDirection = "transmit"
+	SsfStreamDirectionReceive  SsfStreamDirection = "receive"
 )
 
 func (d SsfStreamDirection) Valid() bool {
@@ -57,21 +57,21 @@ func (t CaepEventType) Valid() bool {
 type RevocationReason string
 
 const (
-	RevocationReasonAgentKilled            RevocationReason = "AgentKilled"
-	RevocationReasonAgentDisabled          RevocationReason = "AgentDisabled"
-	RevocationReasonAgentCredentialUnbound RevocationReason = "AgentCredentialUnbound"
-	RevocationReasonAgentDeleted           RevocationReason = "AgentDeleted"
-	RevocationReasonOwnerDisabled          RevocationReason = "OwnerDisabled"
-	RevocationReasonOwnerDeleted           RevocationReason = "OwnerDeleted"
-	RevocationReasonManualAdmin            RevocationReason = "ManualAdmin"
-	RevocationReasonInboundSecurityEvent   RevocationReason = "InboundSecurityEvent"
-	RevocationReasonUserDisabled           RevocationReason = "UserDisabled"
-	RevocationReasonUserSoftDeleted        RevocationReason = "UserSoftDeleted"
-	RevocationReasonUserDeleted            RevocationReason = "UserDeleted"
-	RevocationReasonSessionRevoked         RevocationReason = "SessionRevoked"
-	RevocationReasonPasswordChanged        RevocationReason = "PasswordChanged"
-	RevocationReasonAuthenticatorChanged   RevocationReason = "AuthenticatorChanged"
-	RevocationReasonRefreshTokenReuse      RevocationReason = "RefreshTokenReuse"
+	RevocationReasonAgentKilled            RevocationReason = "agent_killed"
+	RevocationReasonAgentDisabled          RevocationReason = "agent_disabled"
+	RevocationReasonAgentCredentialUnbound RevocationReason = "agent_credential_unbound"
+	RevocationReasonAgentDeleted           RevocationReason = "agent_deleted"
+	RevocationReasonOwnerDisabled          RevocationReason = "owner_disabled"
+	RevocationReasonOwnerDeleted           RevocationReason = "owner_deleted"
+	RevocationReasonManualAdmin            RevocationReason = "manual_admin"
+	RevocationReasonInboundSecurityEvent   RevocationReason = "inbound_security_event"
+	RevocationReasonUserDisabled           RevocationReason = "user_disabled"
+	RevocationReasonUserSoftDeleted        RevocationReason = "user_soft_deleted"
+	RevocationReasonUserDeleted            RevocationReason = "user_deleted"
+	RevocationReasonSessionRevoked         RevocationReason = "session_revoked"
+	RevocationReasonPasswordChanged        RevocationReason = "password_changed"
+	RevocationReasonAuthenticatorChanged   RevocationReason = "authenticator_changed"
+	RevocationReasonRefreshTokenReuse      RevocationReason = "refresh_token_reuse"
 )
 
 func (r RevocationReason) Valid() bool {

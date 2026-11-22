@@ -228,7 +228,7 @@ func TestApplicationAdminScopesAllowTheOperationsTheyName(t *testing.T) {
 	updated := applicationApiTokenRequest(t, s, http.MethodPut,
 		"/realms/default/api/admin/v1/default-sign-in-policy", settingsWrite,
 		map[string]any{"rules": []map[string]any{
-			{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}},
+			{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "mfa"}},
 		}})
 	if updated.Code != http.StatusOK && updated.Code != http.StatusNoContent {
 		t.Fatalf("update default policy status=%d body=%s", updated.Code, updated.Body.String())

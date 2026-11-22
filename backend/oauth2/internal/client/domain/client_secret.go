@@ -21,9 +21,9 @@ type ClientSecretCredential struct {
 type ClientSecretCredentialStatus string
 
 const (
-	ClientSecretCredentialActive  ClientSecretCredentialStatus = "Active"
-	ClientSecretCredentialExpired ClientSecretCredentialStatus = "Expired"
-	ClientSecretCredentialRevoked ClientSecretCredentialStatus = "Revoked"
+	ClientSecretCredentialActive  ClientSecretCredentialStatus = "active"
+	ClientSecretCredentialExpired ClientSecretCredentialStatus = "expired"
+	ClientSecretCredentialRevoked ClientSecretCredentialStatus = "revoked"
 )
 
 func (c ClientSecretCredential) IsActiveAt(now time.Time) bool {

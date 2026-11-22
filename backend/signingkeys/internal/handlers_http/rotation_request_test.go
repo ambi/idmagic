@@ -16,19 +16,19 @@ func TestRotationRequest(t *testing.T) {
 	}{
 		{body: "", action: "rotate", scope: "default"},
 		{body: `{}`, action: "rotate", scope: "default"},
-		{body: `{"usage":"XmlFederationSigning"}`, action: "prepare", scope: "default"},
-		{body: `{"usage":"XmlFederationSigning","scope_id":"profile"}`, action: "rotate", scope: "profile"},
-		{body: `{"usage":"XmlFederationSigning","action":"activate","kid":"next","trust_updated":true}`, action: "activate", scope: "default"},
-		{body: `{"usage":"XmlFederationSigning","action":"activate","kid":"next"}`, invalid: true},
-		{body: `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true}`, invalid: true},
+		{body: `{"usage":"xml_federation_signing"}`, action: "prepare", scope: "default"},
+		{body: `{"usage":"xml_federation_signing","scope_id":"profile"}`, action: "rotate", scope: "profile"},
+		{body: `{"usage":"xml_federation_signing","action":"activate","kid":"next","trust_updated":true}`, action: "activate", scope: "default"},
+		{body: `{"usage":"xml_federation_signing","action":"activate","kid":"next"}`, invalid: true},
+		{body: `{"usage":"xml_federation_signing","action":"activate","trust_updated":true}`, invalid: true},
 		{body: `{"action":"activate","kid":"next","trust_updated":true}`, invalid: true},
 		{body: `{"action":"prepare"}`, invalid: true},
-		{body: `{"usage":"XmlFederationSigning","action":"prepare","kid":"next"}`, invalid: true},
-		{body: `{"usage":"XmlFederationSigning","action":"prepare","trust_updated":true}`, invalid: true},
+		{body: `{"usage":"xml_federation_signing","action":"prepare","kid":"next"}`, invalid: true},
+		{body: `{"usage":"xml_federation_signing","action":"prepare","trust_updated":true}`, invalid: true},
 		{body: `{"kid":"next"}`, invalid: true},
 		{body: `{"trust_updated":true}`, invalid: true},
-		{body: `{"usage":"Signing","scope_id":"profile"}`, invalid: true},
-		{body: `{"usage":"XmlFederationSigning","scope_id":" default "}`, invalid: true},
+		{body: `{"usage":"signing","scope_id":"profile"}`, invalid: true},
+		{body: `{"usage":"xml_federation_signing","scope_id":" default "}`, invalid: true},
 		{body: `{"usage":"unknown"}`, invalid: true},
 		{body: `{"action":"unknown"}`, invalid: true},
 		{body: `{"usage":`, invalid: true},
@@ -59,7 +59,7 @@ func FuzzRotationConfirmation(f *testing.F) {
 		if kid == "" {
 			return
 		}
-		body := map[string]any{"usage": "XmlFederationSigning", "action": "activate", "kid": kid, "trust_updated": true}
+		body := map[string]any{"usage": "xml_federation_signing", "action": "activate", "kid": kid, "trust_updated": true}
 		payload, err := json.Marshal(body)
 		if err != nil {
 			t.Fatal(err)

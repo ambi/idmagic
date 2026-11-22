@@ -91,7 +91,7 @@ func TestOIDCAdministrationPreservesInputsAndOwnerState(t *testing.T) {
 		t.Fatalf("claim client=%+v err=%v", client, err)
 	}
 	issued, err := admin.IssueSecret(ctx, clientports.IssueClientSecretInput{ActorUserID: "actor", ClientID: created.Client.ClientID, ExpiresInDays: 30, Now: now})
-	if err != nil || issued.ClientSecret == "" || issued.Credential.StatusAt(now) != "Active" || len(issued.Credentials) != 2 {
+	if err != nil || issued.ClientSecret == "" || issued.Credential.StatusAt(now) != "active" || len(issued.Credentials) != 2 {
 		t.Fatalf("issue=%+v err=%v", issued, err)
 	}
 	_, err = admin.IssueSecret(ctx, clientports.IssueClientSecretInput{ActorUserID: "actor", ClientID: created.Client.ClientID, ExpiresInDays: 30, Now: now})
@@ -103,7 +103,7 @@ func TestOIDCAdministrationPreservesInputsAndOwnerState(t *testing.T) {
 		t.Fatalf("revoke=%+v err=%v", revoked, err)
 	}
 	for _, credential := range revoked.Credentials {
-		if credential.ID == issued.Credential.ID && credential.StatusAt(now) != "Revoked" {
+		if credential.ID == issued.Credential.ID && credential.StatusAt(now) != "revoked" {
 			t.Fatalf("credential=%+v", credential)
 		}
 	}

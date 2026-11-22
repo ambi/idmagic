@@ -181,7 +181,7 @@ func (f *secretExampleFixture) issueSecret(t *testing.T, applicationID string, d
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Credential.Status != "Active" || body.Credential.ExpiresAt == nil {
+	if body.Credential.Status != "active" || body.Credential.ExpiresAt == nil {
 		t.Fatalf("追加発行した資格情報=%+v, want Active かつ expires_at あり", body.Credential)
 	}
 	expiresAt, err := time.Parse(time.RFC3339, *body.Credential.ExpiresAt)
@@ -236,7 +236,7 @@ func TestIssuingASecondClientSecretKeepsBothUsableUntilTheOldOneIsRevoked(t *tes
 	applicationID, clientID, legacySecret := f.createApplication(t)
 
 	before := f.credentials(t, applicationID)
-	if len(before) != 1 || before[0].Status != "Active" || before[0].ExpiresAt != nil {
+	if len(before) != 1 || before[0].Status != "active" || before[0].ExpiresAt != nil {
 		t.Fatalf("追加発行前の資格情報=%+v, want 期限のない Active 1 件", before)
 	}
 

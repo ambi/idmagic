@@ -70,7 +70,7 @@ export const emptyForm: FormState = {
   scopes: DEFAULT_SCOPE,
   clientId: NEW_EVALUATOR,
   accessRules: '',
-  state: 'Active',
+  state: 'active',
 }
 
 // publishCatalogTool はカタログのツールを、名前と表示名を入れた公開の行として足す。
@@ -196,12 +196,12 @@ export function McpResourceServerStatus({ state }: { state: McpResourceServer['s
   return (
     <span
       className={
-        state === 'Active'
+        state === 'active'
           ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-700'
           : 'rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-bold text-slate-500'
       }
     >
-      {state === 'Active' ? t.statusActive : t.statusDisabled}
+      {state === 'active' ? t.statusActive : t.statusDisabled}
     </span>
   )
 }
@@ -586,8 +586,8 @@ export function McpResourceServerFormFields({
           }
           className="w-40 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
         >
-          <option value="Active">{t.statusActive}</option>
-          <option value="Disabled">{t.statusDisabled}</option>
+          <option value="active">{t.statusActive}</option>
+          <option value="disabled">{t.statusDisabled}</option>
         </select>
       </div>
     </>

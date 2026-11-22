@@ -55,8 +55,8 @@ model SsfReceiverAcceptedAudiencesRequiredError is ProblemDetails;
 
 @doc("IdMagic から見たストリームの向き。`Transmit` は IdMagic が外部の受信者へ CAEP のイベントをプッシュし、`Receive` は IdMagic が外部の送信者からイベントを受け付ける。")
 enum SsfStreamDirection {
-  Transmit: "Transmit",
-  Receive: "Receive",
+  Transmit: "transmit",
+  Receive: "receive",
 }
 
 
@@ -78,21 +78,21 @@ enum CaepEventType {
 
 @doc("失効のエポックを進めたもの。")
 enum RevocationReason {
-  AgentKilled: "AgentKilled",
-  AgentDisabled: "AgentDisabled",
-  AgentCredentialUnbound: "AgentCredentialUnbound",
-  AgentDeleted: "AgentDeleted",
-  OwnerDisabled: "OwnerDisabled",
-  OwnerDeleted: "OwnerDeleted",
-  ManualAdmin: "ManualAdmin",
-  UserDisabled: "UserDisabled",
-  UserSoftDeleted: "UserSoftDeleted",
-  UserDeleted: "UserDeleted",
-  SessionRevoked: "SessionRevoked",
-  PasswordChanged: "PasswordChanged",
-  AuthenticatorChanged: "AuthenticatorChanged",
-  RefreshTokenReuse: "RefreshTokenReuse",
-  InboundSecurityEvent: "InboundSecurityEvent",
+  AgentKilled: "agent_killed",
+  AgentDisabled: "agent_disabled",
+  AgentCredentialUnbound: "agent_credential_unbound",
+  AgentDeleted: "agent_deleted",
+  OwnerDisabled: "owner_disabled",
+  OwnerDeleted: "owner_deleted",
+  ManualAdmin: "manual_admin",
+  UserDisabled: "user_disabled",
+  UserSoftDeleted: "user_soft_deleted",
+  UserDeleted: "user_deleted",
+  SessionRevoked: "session_revoked",
+  PasswordChanged: "password_changed",
+  AuthenticatorChanged: "authenticator_changed",
+  RefreshTokenReuse: "refresh_token_reuse",
+  InboundSecurityEvent: "inbound_security_event",
 }
 
 

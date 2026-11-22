@@ -386,7 +386,7 @@ func TestCrossAppAccessKeyRotation_REQ_SIGNINGKEYS_013(t *testing.T) {
 	firstKid := xaaDecodeSegment(t, firstToken, 0)["kid"]
 
 	signingBefore := f.admin(t, "default", http.MethodGet, "/api/admin/v1/keys", nil).Body.String()
-	rotated := f.admin(t, "default", http.MethodPost, "/api/admin/v1/keys/rotate", map[string]any{"usage": "IdJagSigning"})
+	rotated := f.admin(t, "default", http.MethodPost, "/api/admin/v1/keys/rotate", map[string]any{"usage": "id_jag_signing"})
 	if rotated.Code != http.StatusOK {
 		t.Fatalf("rotate %d %s", rotated.Code, rotated.Body)
 	}
@@ -404,7 +404,7 @@ func TestCrossAppAccessKeyRotation_REQ_SIGNINGKEYS_013(t *testing.T) {
 			t.Fatalf("redeem %d %v", status, body)
 		}
 	}
-	if scoped := f.admin(t, "default", http.MethodPost, "/api/admin/v1/keys/rotate", map[string]any{"usage": "IdJagSigning", "scope_id": "other"}); scoped.Code != http.StatusBadRequest {
+	if scoped := f.admin(t, "default", http.MethodPost, "/api/admin/v1/keys/rotate", map[string]any{"usage": "id_jag_signing", "scope_id": "other"}); scoped.Code != http.StatusBadRequest {
 		t.Fatalf("scoped rotation %d %s", scoped.Code, scoped.Body)
 	}
 }

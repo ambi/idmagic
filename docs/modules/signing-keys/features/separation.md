@@ -24,7 +24,7 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 
 #### REQ-SIGNINGKEYS-014 マネージド型 Gateway の鍵はテナントと登録ごとに分離する
 
-- マネージド型 Gateway が下流への証明を必要としたとき、SigningKeys は、`McpGatewayDPoP` 用途と資源登録 ID の scope の専用鍵を使い、OAuth の署名、ID-JAG、XML の鍵を共用しない。
+- マネージド型 Gateway が下流への証明を必要としたとき、SigningKeys は、`mcp_gateway_dpop` 用途と資源登録 ID の scope の専用鍵を使い、OAuth の署名、ID-JAG、XML の鍵を共用しない。
 - マネージド型 Gateway の鍵を参照したとき、SigningKeys は、既存の鍵の提供元で保持した鍵を使い、公開 JWK だけを管理の応答に渡す。
 
 ### クライアントによる JWKS の取得
@@ -36,18 +36,18 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 
 #### REQ-SIGNINGKEYS-013 ID-JAG の署名鍵は JWT の署名用の鍵と分離して RS256 で公開する
 
-- テナントが ID-JAG に署名するとき、SigningKeys は、そのテナントの有効な `IdJagSigning` の鍵を RS256 で使い、`Signing` の鍵を使わない。
-- クライアントがテナントの JWKS を取得したとき、SigningKeys は、公開中の `IdJagSigning` の鍵を `alg` を RS256 として `Signing` の鍵と並べて返す。
-- 周期のバッチを実行するとき、SigningKeys は、`IdJagSigning` の鍵を `Signing` の鍵と同じ周期と猶予で独立にローテーションする。
-- 管理者が `usage` に `IdJagSigning` を指定して要求したとき、SigningKeys は、その用途の鍵の一覧、ローテーション、無効化を行う。
-- OAuth2 がアクセストークンと ID Token を検証するとき、SigningKeys は、`IdJagSigning` の鍵を候補に含めない。
+- テナントが ID-JAG に署名するとき、SigningKeys は、そのテナントの有効な `id_jag_signing` の鍵を RS256 で使い、`signing` の鍵を使わない。
+- クライアントがテナントの JWKS を取得したとき、SigningKeys は、公開中の `id_jag_signing` の鍵を `alg` を RS256 として `signing` の鍵と並べて返す。
+- 周期のバッチを実行するとき、SigningKeys は、`id_jag_signing` の鍵を `signing` の鍵と同じ周期と猶予で独立にローテーションする。
+- 管理者が `usage` に `id_jag_signing` を指定して要求したとき、SigningKeys は、その用途の鍵の一覧、ローテーション、無効化を行う。
+- OAuth2 がアクセストークンと ID Token を検証するとき、SigningKeys は、`id_jag_signing` の鍵を候補に含めない。
 - **判断**：既存の鍵は JWKS で PS256 と宣言しており、ID-JAG の必須実装である RS256 を同じ `kid` で使えない。鍵を分けると、ID-JAG をほかの種類のトークンとして受理する経路もなくなる。
 
 ### テナントによる XML の署名
 
 #### REQ-SIGNINGKEYS-005 XML フェデレーション署名資格情報はテナントと用途で分離される
 
-- テナントが SAML の Assertion または WS-Federation のメッセージに署名するとき、SigningKeys は、そのテナントとスコープ（SAML のプロファイル）の有効な `XmlFederationSigning` の鍵を使い、JWT の署名用の鍵とほかのテナントの鍵を使わない。
+- テナントが SAML の Assertion または WS-Federation のメッセージに署名するとき、SigningKeys は、そのテナントとスコープ（SAML のプロファイル）の有効な `xml_federation_signing` の鍵を使い、JWT の署名用の鍵とほかのテナントの鍵を使わない。
 - XML フェデレーションの鍵を作るとき、SigningKeys は、その公開鍵を含む自己署名の X.509 証明書を対応付ける。
 - 一つの SAML のプロファイルの鍵をローテーションしたとき、SigningKeys は、ほかのプロファイルと JWT の署名用の鍵を変えない。
 - **例**：EX-SIGNINGKEYS-005-01
@@ -56,7 +56,7 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 
 #### REQ-SIGNINGKEYS-006 XML フェデレーション鍵のローテーション中も既存の信頼関係を検証できる
 
-- `XmlFederationSigning` の用途の `default` のスコープに即時のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、有効な鍵を変えない。
+- `xml_federation_signing` の用途の `default` のスコープに即時のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、有効な鍵を変えない。
 - 準備済みの鍵がある間、即時のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、有効な鍵と準備済みの鍵を変えない。
 - 管理者が XML 鍵の準備を要求したとき、SigningKeys は、新しい鍵を `Prepared` としてメタデータに公開し、有効な署名鍵とその期限を変えず、`SigningKeyPrepared` を発行する。
 - `Prepared` の鍵がある間、管理者が準備を要求したとき、SigningKeys は、同じ準備済みの鍵を返し、鍵とイベントを増やさない。
@@ -66,7 +66,7 @@ XML フェデレーションの鍵には、その公開鍵を含む自己署名�
 - 管理者が準備済みの鍵を無効化したとき、SigningKeys は、その鍵を公開から除き、有効な署名鍵を変えない。
 - 重複期間の間、SAML と WS-Federation のメタデータを取得されたとき、SigningKeys は、新旧の鍵の証明書を返す。
 - 重複期間を過ぎた後、メタデータを取得されたとき、SigningKeys は、古い鍵の証明書を返さない。
-- 管理者が共有 XML 鍵の画面を表示したとき、SigningKeys は、`XmlFederationSigning` の用途の `default` のスコープの鍵ごとに、`kid`、`Active`、`Prepared`、`Verifying` の区別、証明書の SHA-256 のフィンガープリント、作成時刻、`Verifying` の鍵の公開の期限を表示し、秘密鍵を表示しない。
+- 管理者が共有 XML 鍵の画面を表示したとき、SigningKeys は、`xml_federation_signing` の用途の `default` のスコープの鍵ごとに、`kid`、`Active`、`Prepared`、`Verifying` の区別、証明書の SHA-256 のフィンガープリント、作成時刻、`Verifying` の鍵の公開の期限を表示し、秘密鍵を表示しない。
 - 管理者が共有 XML 鍵の画面を表示したとき、SigningKeys は、同じ鍵を使う信頼先として、Entra のドメインと確認の状態、Entra の定型設定を持たない WS-Federation の RP、デフォルトの IdP プロファイルの SAML の SP を表示する。
 - `Prepared` の鍵がある間、管理者が共有 XML 鍵の画面を表示したとき、SigningKeys は、その鍵の `kid` とフィンガープリントを表示し、Entra のドメインごとに `NextSigningCertificate` を含む更新のコマンドを表示する。
 - いずれかの Entra のドメインの確認の状態が `matched` でないか、比べた次の署名証明書の拇印が準備済みの鍵のフィンガープリントと異なる間、SigningKeys は、画面の切り替えの操作を無効にする。

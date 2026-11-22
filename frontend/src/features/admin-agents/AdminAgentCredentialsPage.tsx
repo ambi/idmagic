@@ -60,7 +60,7 @@ export function AdminAgentCredentialsPage({
   const [selectedScopes, setSelectedScopes] = useState<string[]>([
     ...new Set(
       resourceServers
-        .filter((server) => server.state === 'Active')
+        .filter((server) => server.state === 'active')
         .flatMap((server) => server.scopes),
     ),
   ])

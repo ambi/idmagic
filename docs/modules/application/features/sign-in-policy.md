@@ -16,8 +16,8 @@
 
 | 規則の項目 | 内容 |
 | --- | --- |
-| 必須の認証強度 | 自由な入力ではなく、`Password` または `Mfa` に制約した `RequiredAuthnStrength`。内部の ACR の URN と AMR の値へ一対一で対応付ける |
-| `allow_trusted_device` | `Mfa` を要求する規則で、Authentication の信頼済みデバイス（AMR の `tdev`）で満たしてよいか。デフォルトは `true`。`false` は毎回の MFA を意味する |
+| 必須の認証強度 | 自由な入力ではなく、`password` または `mfa` に制約した `RequiredAuthnStrength`。内部の ACR の URN と AMR の値へ一対一で対応付ける |
+| `allow_trusted_device` | `mfa` を要求する規則で、Authentication の信頼済みデバイス（AMR の `tdev`）で満たしてよいか。デフォルトは `true`。`false` は毎回の MFA を意味する |
 | `reauth_max_age_seconds` | Authentication のステップアップ認証の直近性に対して評価する |
 | `network_allow_cidrs` | 保存の時点で検証した CIDR に対して、要求元のクライアントの IP を検査する |
 
@@ -39,9 +39,9 @@
 #### REQ-APPLICATION-009 管理者はアプリケーション別サインインポリシーを設定できる
 
 - 管理者がアプリケーションのサインインポリシーを保存したとき、Application は、規則を保存し、`AppSignInPolicyUpdated` を発行する。
-- 管理者が規則を保存したとき、Application は、必須の認証強度の省略を `Password` として、`allow_trusted_device` の省略を `true` として扱い、許可する CIDR を正規化して保存する。
-- 名前のない規則、重複する規則の ID、`Password` と `Mfa` 以外の認証強度、CIDR として読めない値、0 以下の `reauth_max_age_seconds` を含むポリシーを保存しようとした場合、Application は、400 と `invalid_sign_in_policy` で拒否し、保存済みのポリシーを変えない。
-- MFA の登録の猶予を、`Mfa` 以外の規則に指定するか、適用の開始日時か正の猶予期間を伴わずに指定するか、過去の適用の開始日時で指定した場合、Application は、400 と `invalid_sign_in_policy` で拒否する。
+- 管理者が規則を保存したとき、Application は、必須の認証強度の省略を `password` として、`allow_trusted_device` の省略を `true` として扱い、許可する CIDR を正規化して保存する。
+- 名前のない規則、重複する規則の ID、`password` と `mfa` 以外の認証強度、CIDR として読めない値、0 以下の `reauth_max_age_seconds` を含むポリシーを保存しようとした場合、Application は、400 と `invalid_sign_in_policy` で拒否し、保存済みのポリシーを変えない。
+- MFA の登録の猶予を、`mfa` 以外の規則に指定するか、適用の開始日時か正の猶予期間を伴わずに指定するか、過去の適用の開始日時で指定した場合、Application は、400 と `invalid_sign_in_policy` で拒否する。
 - 利用者がアプリケーションへフェデレーションするとき、Application は、トークンまたは Assertion の発行の前に、実効のポリシーの有効な規則を評価する。
 - 空でない CIDR の許可リストにクライアントの IP が含まれないか、クライアントの IP を特定できない場合、Application は、ステップアップ認証の機会を与えずにフェデレーションを拒否し、`AppAccessDeniedByPolicy` を発行する。
 - 認証強度が規則の要求に届かないか、ステップアップ認証から `reauth_max_age_seconds` を過ぎた場合、Application は、ステップアップ認証を要求し、`AppStepUpRequired` と `AppAccessDeniedByPolicy` を発行し、認証強度を上げた後にフェデレーションを完了させる。

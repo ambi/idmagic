@@ -50,7 +50,7 @@ WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3;
 INSERT INTO signing_keys (
   kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, certificate_der, active, prepared, created_at
 ) VALUES (
-  $1, $2, 'PS256', 'Database', $3, $4, $5, $6, $7, $8, $9, $10
+  $1, $2, 'PS256', 'database', $3, $4, $5, $6, $7, $8, $9, $10
 );
 
 -- name: ActivatePreparedKey :exec

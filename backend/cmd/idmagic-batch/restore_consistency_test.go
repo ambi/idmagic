@@ -34,7 +34,7 @@ func seedActiveSigningKey(tb testing.TB, tenantID string) {
 	db := pgtest.Require(tb)
 	_, err := db.Exec(context.Background(), `
 		INSERT INTO signing_keys (kid, tenant_id, alg, provider, key_usage, scope_id, public_jwk, private_jwk, active, created_at, updated_at)
-		VALUES ($1, $2, $3, 'Postgres', 'Signing', 'default', '{}', '{}', true, $4, $4)
+		VALUES ($1, $2, $3, 'database', 'signing', 'default', '{}', '{}', true, $4, $4)
 	`, fixtures.UniqueID("kid"), tenantID, signingdomain.SigAlgPS256, pgtest.Now())
 	if err != nil {
 		tb.Fatalf("seed signing key: %v", err)

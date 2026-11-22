@@ -119,7 +119,7 @@ OAuth 2.0 の `expires_in` と RFC 8628 の `interval` は、標準の名称の�
 
 - **目的**：列挙ごとに大文字小文字の規則をクライアントに覚えさせない。
 - **担保手段**：なし。値の転記元は[HTTP ボディの宣言](#http-ボディの宣言)が定める。
-- **適用状況**：未適用。次の列挙がパスカルケースの値を返す。`AuthorizationDetailTypeState`、`McpResourceServerState`、`SsfStreamDirection`、`ClientSecretCredentialStatus`、`KeyProvider`、`KeyUsage`、`SigningKeyState`、`RequiredAuthnStrength`、`RevocationReason`。
+- **適用状況**：全面適用。[REQ-SYSTEM-035](../../modules/system/features/http-api.md#req-system-035-汎用-api-の独自の列挙値は小文字のスネークケースで表す) が定める。SET の理由表記は [SharedSignals の標準仕様](../../modules/sharedsignals/standards.md#set-の理由表記)に従う。
 
 ### 識別子
 

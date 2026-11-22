@@ -147,8 +147,8 @@ enum AuthorizationDetailFieldSemantics {
 
 @doc("AuthorizationDetailType の運用上の状態。受け付けるのは `enabled` だけで、`disabled` は新しいリクエストを拒否し、発行済みのトークンは期限が切れるまで有効なままである。")
 enum AuthorizationDetailTypeState {
-  Enabled: "Enabled",
-  Disabled: "Disabled",
+  Enabled: "enabled",
+  Disabled: "disabled",
 }
 
 
@@ -322,8 +322,8 @@ model AuthorizationDetailType {
 
 @doc("McpResourceServer の運用上の状態。リソースインジケーターの検査を通るのは `active` だけで、`disabled` は新たな発行を拒否し、発行済みのトークンは期限が切れるまで有効なままである。")
 enum McpResourceServerState {
-  Active: "Active",
-  Disabled: "Disabled",
+  Active: "active",
+  Disabled: "disabled",
 }
 
 

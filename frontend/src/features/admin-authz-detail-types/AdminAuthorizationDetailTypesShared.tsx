@@ -34,7 +34,7 @@ export const emptyForm: FormState = {
   type: '',
   description: '',
   displayTemplate: '',
-  state: 'Enabled',
+  state: 'enabled',
   schemaJSON: sampleSchema,
 }
 
@@ -177,8 +177,8 @@ export function AuthorizationDetailTypeFormFields({
           }
           className="w-40 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
         >
-          <option value="Enabled">Enabled</option>
-          <option value="Disabled">Disabled</option>
+          <option value="enabled">{t.stateEnabled}</option>
+          <option value="disabled">{t.stateDisabled}</option>
         </select>
       </div>
     </>

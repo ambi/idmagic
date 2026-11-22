@@ -18,7 +18,7 @@
 ローテーションは、古い有効な鍵を同じ処理の中で検証用に降格させ、重複期間を設ける。
 JWKS の利用者と RP は、ローテーションの直前に発行されたメッセージも検証できる。
 
-共有する XML 鍵（`XmlFederationSigning` の `default`）は、公開と切り替えを二つの操作に分ける。
+共有する XML 鍵（`xml_federation_signing` の `default`）は、公開と切り替えを二つの操作に分ける。
 管理 API の `action` を省略した XML のローテーション要求は準備を行い、`Prepared` の証明書を先に公開する。
 管理者は共有鍵を使うすべての連携先へ新しい証明書を登録し、`action: activate`、準備済みの `kid`、`trust_updated: true` を指定して切り替える。
 準備した候補がある間も、メタデータと証明書ダウンロードの有効な証明書は現在の署名鍵に対応する。
@@ -81,11 +81,11 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 #### REQ-SIGNINGKEYS-001 署名鍵をローテーションしても以前の kid は JWKS に残る
 
 - テナント、用途、スコープの組に有効な鍵がない間、その組の鍵で初めて署名するとき、SigningKeys は、その組の `Active` の鍵を作る。
-- 事前公開を要求しない鍵の集合では、管理者が署名鍵をローテーションしたとき、SigningKeys は、指定した用途（省略時は `Signing`、または `XmlFederationSigning`）の新しい鍵を `Active` にし、それまでの `Active` の鍵を同じ処理の中で `Verifying` にして `expires_at` を重複期間（7 日）の後にし、200 と新旧の鍵を返し、`SigningKeyRotated` を発行する。
+- 事前公開を要求しない鍵の集合では、管理者が署名鍵をローテーションしたとき、SigningKeys は、指定した用途（省略時は `signing`、または `xml_federation_signing`）の新しい鍵を `Active` にし、それまでの `Active` の鍵を同じ処理の中で `Verifying` にして `expires_at` を重複期間（7 日）の後にし、200 と新旧の鍵を返し、`SigningKeyRotated` を発行する。
 - 管理者が XML 鍵の準備または確認付きの切り替えを要求したとき、SigningKeys は、[事前公開の規則](separation.md#req-signingkeys-006-xml-フェデレーション鍵のローテーション中も既存の信頼関係を検証できる)に従い、200 と新旧の鍵を返す。
 - クライアントが JWKS を取得したとき、SigningKeys は、`Active` の鍵と、`expires_at` を過ぎていない `Verifying` の鍵の公開鍵を返し、`Retired` と `Archived` の鍵を返さない。
 - 管理者が署名鍵を一覧または取得したとき、SigningKeys は、`kid`、状態、有効期間、証明書、フィンガープリントを返し、秘密鍵の素材を返さない。
-- `Signing` と `XmlFederationSigning` 以外の用途のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、鍵を変えない。
+- `signing` と `xml_federation_signing` 以外の用途のローテーションを要求された場合、SigningKeys は、400 と `invalid_request` で拒否し、鍵を変えない。
 - 存在しない `kid` の取得を要求された場合、SigningKeys は、404 と `key_not_found` で拒否する。
 - 鍵の保管先を構成していない場合、SigningKeys は、ローテーションと無効化を 503 と `key_store_unavailable` で拒否する。
 - **例**：EX-SIGNINGKEYS-001-01
@@ -101,7 +101,7 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 
 #### REQ-SIGNINGKEYS-002 猶予期間終了後の署名鍵は JWKS から除去してアーカイブする
 
-- スケジューラーがアーカイブを実行したとき、SigningKeys は、`Signing` の鍵と、`XmlFederationSigning` の鍵を持つすべてのスコープの鍵のうち、`expires_at` が実行の時刻以前でまだアーカイブしていない鍵を `Archived` にし、鍵ごとに `kid`、`retiredAt`、`expiresAt`、`disposedAt` を載せた `SigningKeyArchived` を発行する。
+- スケジューラーがアーカイブを実行したとき、SigningKeys は、`signing` の鍵と、`xml_federation_signing` の鍵を持つすべてのスコープの鍵のうち、`expires_at` が実行の時刻以前でまだアーカイブしていない鍵を `Archived` にし、鍵ごとに `kid`、`retiredAt`、`expiresAt`、`disposedAt` を載せた `SigningKeyArchived` を発行する。
 - SigningKeys は、`Archived` の鍵素材を消さず、個別に完全に削除する経路を持たない。
 - **例**：EX-SIGNINGKEYS-002-01
 
@@ -109,10 +109,10 @@ SAML 専用プロファイルのスコープでは、即時のローテーショ
 
 #### REQ-SIGNINGKEYS-003 ライフサイクルのバッチは周期を過ぎた鍵の集合だけを回し、不正な設定では起動しない
 
-- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`Signing` の鍵のうち `Active` の鍵が作成から `-cadence-days`（デフォルト 90 日）を過ぎた組だけをローテーションし、`-grace-days`（デフォルト 7 日）を重複期間として使う。
-- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`XmlFederationSigning` の鍵を持つスコープごとに、`Active` の鍵が作成から `-cadence-days` を過ぎ、`Prepared` の鍵がない集合だけに新しい鍵を `Prepared` として準備し、`SigningKeyPrepared` を発行し、有効な署名鍵を変えない。
+- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`signing` の鍵のうち `Active` の鍵が作成から `-cadence-days`（デフォルト 90 日）を過ぎた組だけをローテーションし、`-grace-days`（デフォルト 7 日）を重複期間として使う。
+- `system_admin` が `idmagic-batch signing-key-lifecycle` を起動したとき、SigningKeys は、`xml_federation_signing` の鍵を持つスコープごとに、`Active` の鍵が作成から `-cadence-days` を過ぎ、`Prepared` の鍵がない集合だけに新しい鍵を `Prepared` として準備し、`SigningKeyPrepared` を発行し、有効な署名鍵を変えない。
 - `Prepared` の鍵がある集合では、SigningKeys は、バッチの実行で鍵とイベントを増やさない。
-- バッチを実行したとき、SigningKeys は、`XmlFederationSigning` の鍵を持たないテナントとスコープに XML 鍵を作らない。
+- バッチを実行したとき、SigningKeys は、`xml_federation_signing` の鍵を持たないテナントとスコープに XML 鍵を作らない。
 - `-grace-days` が `-cadence-days` 以上か、`-cadence-days` が 0 以下の場合、SigningKeys は、設定エラーで終了し、鍵をローテーションしない。
 - **例**：EX-SIGNINGKEYS-003-01、EX-SIGNINGKEYS-003-02
 

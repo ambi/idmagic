@@ -65,7 +65,7 @@ describe('admin API client', () => {
         credential_id: 'credential/a b',
         created_at: '2026-08-01T00:00:00Z',
         expires_at: '2026-10-30T00:00:00Z',
-        status: 'Active' as const,
+        status: 'active' as const,
       },
     ]
     const fetchMock = mock()
@@ -139,7 +139,7 @@ describe('admin API client', () => {
       resource: 'https://mcp.example.com',
       name: 'Example MCP',
       scopes: ['mcp.read'],
-      state: 'Active' as const,
+      state: 'active' as const,
       created_at: '2026-07-20T00:00:00Z',
       updated_at: '2026-07-20T00:00:00Z',
     }
@@ -160,7 +160,7 @@ describe('admin API client', () => {
     await adminAPI.updateMcpResourceServer('csrf', resourceServer.id, {
       name: 'Renamed MCP',
       scopes: ['mcp.read', 'mcp.write'],
-      state: 'Disabled',
+      state: 'disabled',
     })
     await adminAPI.deleteMcpResourceServer('csrf', resourceServer.id)
 
@@ -178,7 +178,7 @@ describe('admin API client', () => {
         body: JSON.stringify({
           name: 'Renamed MCP',
           scopes: ['mcp.read', 'mcp.write'],
-          state: 'Disabled',
+          state: 'disabled',
         }),
       }),
     )

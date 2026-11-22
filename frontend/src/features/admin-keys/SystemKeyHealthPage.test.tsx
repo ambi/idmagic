@@ -40,7 +40,7 @@ describe('KeyHealthTable', () => {
           tenants={[
             {
               tenant_id: 'tenant-a',
-              provider: 'VaultTransit',
+              provider: 'vault_transit',
               usage: 'signing',
               active_kid: '',
               jwks_key_count: 2,

@@ -33,8 +33,8 @@ import {
 
 function strengthOptions(t: AdminSignInPolicyDictionary): SelectOption[] {
   return [
-    { value: 'Password', label: t.strengthPasswordLabel },
-    { value: 'Mfa', label: t.strengthMfaLabel },
+    { value: 'password', label: t.strengthPasswordLabel },
+    { value: 'mfa', label: t.strengthMfaLabel },
   ]
 }
 
@@ -48,7 +48,7 @@ export type SignInPolicyAppRow = {
 const DEFAULT_RULE_NAME = 'tenant-default'
 
 function strengthLabel(strength: RequiredAuthnStrength, t: AdminSignInPolicyDictionary): string {
-  return strength === 'Mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel
+  return strength === 'mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel
 }
 
 // summarizeRules は実効ルール列を利用者向けの短い文へ要約する。内部ルール名は見せない。
@@ -122,7 +122,7 @@ function DefaultPolicyCard({
   const [editing, setEditing] = useState(false)
   const t = useDictionary(adminSignInPolicyDictionary)
 
-  const strength = rule?.required_authn.strength ?? 'Password'
+  const strength = rule?.required_authn.strength ?? 'password'
   const reauth = rule?.condition.reauth_max_age_seconds
   const cidrs = rule?.condition.network_allow_cidrs ?? []
 
@@ -195,7 +195,7 @@ export function DefaultPolicyFormPresentation({
   error?: string
 }) {
   const [strength, setStrength] = useState<RequiredAuthnStrength>(
-    rule?.required_authn.strength ?? 'Password',
+    rule?.required_authn.strength ?? 'password',
   )
   const [reauthMaxAge, setReauthMaxAge] = useState(
     rule?.condition.reauth_max_age_seconds?.toString() ?? '',
@@ -218,8 +218,8 @@ export function DefaultPolicyFormPresentation({
       formSchema({
         reauthMaxAge: optionalPositiveInteger(),
         networkCIDRs: cidrList(),
-        enforcementStart: when(strength === 'Mfa', requiredText()),
-        gracePeriod: when(strength === 'Mfa', positiveInteger()),
+        enforcementStart: when(strength === 'mfa', requiredText()),
+        gracePeriod: when(strength === 'mfa', positiveInteger()),
       }),
     [strength],
   )
@@ -277,7 +277,7 @@ export function DefaultPolicyFormPresentation({
         />
         <p className="text-xs text-slate-500">{t.mfaStepUpHelp}</p>
       </div>
-      {strength === 'Mfa' ? (
+      {strength === 'mfa' ? (
         <div className="grid gap-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
           <div className="grid gap-1.5">
             <Label htmlFor="mfa-enforcement-start" required>

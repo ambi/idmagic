@@ -4,6 +4,6 @@ import "testing"
 
 func TestKeyUsageValidIncludesXMLFederationSigning(t *testing.T) {
 	if !KeyUsageXMLFederationSigning.Valid() {
-		t.Fatal("XmlFederationSigning must be a valid key usage")
+		t.Fatal("xml_federation_signing must be a valid key usage")
 	}
 }

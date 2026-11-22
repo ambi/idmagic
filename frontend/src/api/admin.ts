@@ -1108,7 +1108,7 @@ export async function disableTenantKey(csrfToken: string, kid: string): Promise<
 }
 
 // 共有 XML 鍵は、WS-* とデフォルトの SAML IdP プロファイルが使う XmlFederationSigning の default スコープである。
-const XML_FEDERATION_KEY_QUERY = '?usage=XmlFederationSigning&scope_id=default'
+const XML_FEDERATION_KEY_QUERY = '?usage=xml_federation_signing&scope_id=default'
 
 export async function listXmlFederationKeys(): Promise<AdminKey[]> {
   return (await request<AdminKeyListResponse>(`/api/admin/v1/keys${XML_FEDERATION_KEY_QUERY}`)).keys
@@ -1118,7 +1118,7 @@ export async function listXmlFederationKeys(): Promise<AdminKey[]> {
 export async function prepareXmlFederationKey(csrfToken: string): Promise<AdminRotateKeyResponse> {
   return request<AdminRotateKeyResponse>(
     '/api/admin/v1/keys/rotate',
-    adminRequest(csrfToken, 'POST', { usage: 'XmlFederationSigning', action: 'prepare' }),
+    adminRequest(csrfToken, 'POST', { usage: 'xml_federation_signing', action: 'prepare' }),
   )
 }
 
@@ -1130,7 +1130,7 @@ export async function activateXmlFederationKey(
   return request<AdminRotateKeyResponse>(
     '/api/admin/v1/keys/rotate',
     adminRequest(csrfToken, 'POST', {
-      usage: 'XmlFederationSigning',
+      usage: 'xml_federation_signing',
       action: 'activate',
       kid,
       trust_updated: true,

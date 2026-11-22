@@ -142,7 +142,7 @@ describe('AdminApplicationEditPage', () => {
           {
             credential_id: 'credential-1',
             created_at: '2026-08-01T00:00:00Z',
-            status: 'Active',
+            status: 'active',
           },
         ],
         sub_source_attribute: '',

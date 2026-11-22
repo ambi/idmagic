@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
@@ -16,7 +16,7 @@ function renderEn(ui: Parameters<typeof render>[0]) {
 
 const key = {
   kid: 'kid-1',
-  provider: 'Local',
+  provider: 'local',
   alg: 'RS256',
   active: true,
   created_at: '2026-01-01T00:00:00Z',
@@ -59,14 +59,23 @@ describe('AdminKeysPage', () => {
 
   it('keeps a successfully disabled key removed even when the subsequent list request is unavailable', async () => {
     const inactiveKey = { ...key, kid: 'kid-previous', active: false }
-    stubGlobal(
-      'fetch',
-      mock().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: mock().mockResolvedValue(inactiveKey),
-      }),
-    )
+    const deletion = Promise.withResolvers<Response>()
+    const fetchMock = mock((input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(input instanceof Request ? input.url : input, window.location.href)
+        .pathname
+      const method = init?.method ?? 'GET'
+      if (path.endsWith('/api/branding') && method === 'GET') {
+        return Promise.resolve(Response.json({}))
+      }
+      if (path.endsWith(`/api/admin/v1/keys/${inactiveKey.kid}/disable`) && method === 'POST') {
+        return deletion.promise
+      }
+      if (path.endsWith('/api/admin/v1/keys') && method === 'GET') {
+        return Promise.resolve(Response.json({ message: 'Unavailable' }, { status: 503 }))
+      }
+      throw new Error(`Unexpected request: ${method} ${path}`)
+    })
+    stubGlobal('fetch', fetchMock)
     await renderWithRouter(
       <AdminKeysPage
         csrfToken="csrf"
@@ -80,20 +89,27 @@ describe('AdminKeysPage', () => {
     fireEvent.click(
       screen.getByRole('button', { name: t.disableKeyAria.replace('{kid}', inactiveKey.kid) }),
     )
-    fireEvent.click(screen.getByRole('button', { name: t.executeDisable }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: t.executeDisable }))
+    })
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining(`/api/admin/v1/keys/${inactiveKey.kid}/disable`),
-        expect.objectContaining({ method: 'POST' }),
-      )
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/api/admin/v1/keys/${inactiveKey.kid}/disable`),
+      expect.objectContaining({ method: 'POST' }),
+    )
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText(inactiveKey.kid)).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    // 応答の到着と React の更新を確定させてから観測し、消える通知を実時間でポーリングしない。
+    await act(async () => {
+      deletion.resolve(Response.json(inactiveKey))
     })
-    await waitFor(() => {
-      expect(within(screen.getByRole('table')).queryByText(inactiveKey.kid)).not.toBeInTheDocument()
-      expect(
-        screen.getByText(t.disabledNotice.replace('{kid}', inactiveKey.kid)),
-      ).toBeInTheDocument()
-    })
+    expect(table.queryByText(inactiveKey.kid)).not.toBeInTheDocument()
+    expect(table.getByText(key.kid)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      t.disabledNotice.replace('{kid}', inactiveKey.kid),
+    )
   })
 })
 

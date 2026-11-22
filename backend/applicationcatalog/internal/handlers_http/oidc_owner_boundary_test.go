@@ -214,7 +214,7 @@ func TestFirstPartyApplicationDeletionIsRefused(t *testing.T) {
 		t.Fatalf("assignment status=%d body=%s", assignment.Code, assignment.Body.String())
 	}
 	policy := adminJSON(t, f.e, http.MethodPut, path+"/sign-in-policy", f.csrf, f.cookie, map[string]any{
-		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
+		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "mfa"}}},
 	})
 	if policy.Code != http.StatusOK {
 		t.Fatalf("policy status=%d body=%s", policy.Code, policy.Body.String())

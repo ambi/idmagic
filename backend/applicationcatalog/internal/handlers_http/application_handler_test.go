@@ -234,7 +234,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 
 	// テナントデフォルトで MFA 必須を設定。
 	put := adminJSON(t, e, http.MethodPut, "/api/admin/v1/default-sign-in-policy", csrf, cookie, map[string]any{
-		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
+		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "mfa"}}},
 	})
 	if put.Code != http.StatusOK {
 		t.Fatalf("put default status=%d body=%s", put.Code, put.Body.String())
@@ -323,7 +323,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 
 	// アプリに弱い個別ポリシー (パスワードのみ) を設定するとデフォルトを上書きし、警告フラグが立つ。
 	upd := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, map[string]any{
-		"rules": []map[string]any{{"name": "Password", "enabled": true, "required_authn": map[string]any{"strength": "Password"}}},
+		"rules": []map[string]any{{"name": "Password", "enabled": true, "required_authn": map[string]any{"strength": "password"}}},
 	})
 	if upd.Code != http.StatusOK {
 		t.Fatalf("put app policy status=%d body=%s", upd.Code, upd.Body.String())
@@ -344,7 +344,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if len(updView.EffectiveRules) != 1 {
 		t.Fatalf("effective_rules after override=%d, want 1", len(updView.EffectiveRules))
 	}
-	if strength, _ := updView.EffectiveRules[0]["required_authn"].(map[string]any); strength["strength"] != "Password" {
+	if strength, _ := updView.EffectiveRules[0]["required_authn"].(map[string]any); strength["strength"] != "password" {
 		t.Fatalf("effective strength=%v, want Password (app override)", strength["strength"])
 	}
 	if !updView.WeakerThanDefault {
@@ -374,7 +374,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if len(otherDecoded.EffectiveRules) != 1 {
 		t.Fatalf("bystander effective_rules=%+v, want the tenant default", otherDecoded.EffectiveRules)
 	}
-	if strength, _ := otherDecoded.EffectiveRules[0]["required_authn"].(map[string]any); strength["strength"] != "Mfa" {
+	if strength, _ := otherDecoded.EffectiveRules[0]["required_authn"].(map[string]any); strength["strength"] != "mfa" {
 		t.Fatalf("bystander effective strength=%v, want the default Mfa", strength["strength"])
 	}
 

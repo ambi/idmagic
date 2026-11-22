@@ -354,8 +354,8 @@ CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,
     alg TEXT NOT NULL,
-    provider TEXT NOT NULL DEFAULT 'Postgres',
-    key_usage TEXT NOT NULL DEFAULT 'Signing',
+    provider TEXT NOT NULL DEFAULT 'database',
+    key_usage TEXT NOT NULL DEFAULT 'signing',
     scope_id TEXT NOT NULL DEFAULT 'default',
     public_jwk JSONB NOT NULL,
     private_jwk JSONB NOT NULL,
@@ -752,8 +752,8 @@ CREATE TABLE authorization_detail_types (
     description TEXT,
     "schema" JSONB NOT NULL DEFAULT jsonb_build_object('rules', jsonb_build_array()),
     display_template TEXT NOT NULL,
-    state TEXT NOT NULL DEFAULT 'Enabled'
-        CHECK (state IN ('Enabled', 'Disabled')),
+    state TEXT NOT NULL DEFAULT 'enabled'
+        CHECK (state IN ('disabled', 'enabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, type),
@@ -773,8 +773,8 @@ CREATE TABLE mcp_resource_servers (
     client_id TEXT,
     access_rules JSONB NOT NULL DEFAULT '[]',
     hosting JSONB,
-    state TEXT NOT NULL DEFAULT 'Active'
-        CHECK (state IN ('Active', 'Disabled')),
+    state TEXT NOT NULL DEFAULT 'active'
+        CHECK (state IN ('active', 'disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT mcp_resource_servers_tenant_id_fkey
@@ -2115,8 +2115,8 @@ CREATE TABLE agent_revocation_epochs (
     epoch TIMESTAMPTZ NOT NULL,
     reason TEXT NOT NULL
         CHECK (reason IN (
-            'AgentCredentialUnbound', 'AgentDeleted', 'AgentDisabled', 'AgentKilled',
-            'InboundSecurityEvent', 'ManualAdmin', 'OwnerDeleted', 'OwnerDisabled'
+            'agent_credential_unbound', 'agent_deleted', 'agent_disabled', 'agent_killed',
+            'inbound_security_event', 'manual_admin', 'owner_deleted', 'owner_disabled'
         )),
     advanced_at TIMESTAMPTZ NOT NULL,
     source_event_id TEXT,
@@ -2130,8 +2130,8 @@ CREATE TABLE user_revocation_epochs (
     epoch TIMESTAMPTZ NOT NULL,
     reason TEXT NOT NULL
         CHECK (reason IN (
-            'UserDisabled', 'UserSoftDeleted', 'SessionRevoked', 'PasswordChanged',
-            'AuthenticatorChanged', 'RefreshTokenReuse', 'InboundSecurityEvent'
+            'authenticator_changed', 'inbound_security_event', 'password_changed',
+            'refresh_token_reuse', 'session_revoked', 'user_disabled', 'user_soft_deleted'
         )),
     advanced_at TIMESTAMPTZ NOT NULL,
     source_event_id TEXT,
@@ -2144,7 +2144,7 @@ CREATE TABLE user_revocation_epochs (
 CREATE TABLE ssf_streams (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
-    direction TEXT NOT NULL CHECK (direction IN ('Transmit', 'Receive')),
+    direction TEXT NOT NULL CHECK (direction IN ('receive', 'transmit')),
     event_types JSONB NOT NULL,
     status TEXT NOT NULL DEFAULT 'enabled' CHECK (status IN ('enabled', 'disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

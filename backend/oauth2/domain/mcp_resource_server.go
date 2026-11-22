@@ -15,8 +15,8 @@ import (
 type McpResourceServerState string
 
 const (
-	McpResourceServerActive   McpResourceServerState = "Active"
-	McpResourceServerDisabled McpResourceServerState = "Disabled"
+	McpResourceServerActive   McpResourceServerState = "active"
+	McpResourceServerDisabled McpResourceServerState = "disabled"
 )
 
 func (s McpResourceServerState) Valid() bool {

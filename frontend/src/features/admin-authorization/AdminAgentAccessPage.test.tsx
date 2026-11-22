@@ -24,7 +24,7 @@ const server: McpResourceServer = {
   name: 'Documents',
   resource: 'https://docs.example',
   scopes: ['docs:read'],
-  state: 'Active',
+  state: 'active',
   created_at: '',
   updated_at: '',
   access_rules: [
@@ -132,7 +132,7 @@ it('excludes disabled principals and wildcard-only permissions', async () => {
     <AdminAgentAccessPage
       {...props}
       agents={[agent, { ...agent, id: 'disabled', name: 'Disabled', status: 'disabled' }]}
-      resourceServers={[server, { ...server, id: 'disabled', name: 'Disabled', state: 'Disabled' }]}
+      resourceServers={[server, { ...server, id: 'disabled', name: 'Disabled', state: 'disabled' }]}
       resourceTypes={[
         {
           name: 'document',

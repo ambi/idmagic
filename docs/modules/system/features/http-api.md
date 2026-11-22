@@ -91,6 +91,11 @@ HTTP の共有ライブラリが Problem Details とエラーの書き出し、�
 
 ### API の利用者への応答
 
+#### REQ-SYSTEM-035 汎用 API の独自の列挙値は小文字のスネークケースで表す
+
+- 汎用 API で `AuthorizationDetailTypeState`、`McpResourceServerState`、`SsfStreamDirection`、`ClientSecretCredentialStatus`、`KeyProvider`、`KeyUsage`、`SigningKeyState`、`RequiredAuthnStrength`、`RevocationReason` を送受信するとき、System は、TypeSpec が宣言する小文字のスネークケースを使う。
+- **判断**：標準が定める値と、SharedSignals が SET 内で送る理由の表記は、それぞれの標準仕様に従う。
+
 #### REQ-SYSTEM-029 バックエンドの応答はセキュリティヘッダーを伴う
 
 - 自動送信のフォーム以外の応答を返すとき、System は、`X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`X-Frame-Options: DENY` と、`default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'` を方針とする `Content-Security-Policy` を付ける。

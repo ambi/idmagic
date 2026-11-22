@@ -60,8 +60,8 @@ func TestSharedSignalsStreamHTTPContracts(t *testing.T) {
 	eventTypes := []string{"session-revoked"}
 	transmitter := assertStreamContract(t, s.admin(t, http.MethodPost, "/api/admin/v1/shared-signals/streams/transmitter", map[string]any{
 		"delivery_endpoint": "https://receiver.example/events", "audience": "https://receiver.example", "event_types": eventTypes,
-	}), http.StatusCreated, "Transmit", "enabled", eventTypes)
-	receiver := assertStreamContract(t, s.admin(t, http.MethodPost, "/api/admin/v1/shared-signals/streams/receiver", receiverRequest(newTransmitterKey(t))), http.StatusCreated, "Receive", "enabled", eventTypes)
+	}), http.StatusCreated, "transmit", "enabled", eventTypes)
+	receiver := assertStreamContract(t, s.admin(t, http.MethodPost, "/api/admin/v1/shared-signals/streams/receiver", receiverRequest(newTransmitterKey(t))), http.StatusCreated, "receive", "enabled", eventTypes)
 	listed := s.admin(t, http.MethodGet, "/api/admin/v1/shared-signals/streams", nil)
 	var body struct {
 		Streams []streamContractBody `json:"streams"`
@@ -81,18 +81,18 @@ func TestSharedSignalsStreamHTTPContracts(t *testing.T) {
 	}
 	path := "/api/admin/v1/shared-signals/streams/" + transmitter.ID
 	updatedTypes := []string{"credential-change"}
-	updated := assertStreamContract(t, s.admin(t, http.MethodPatch, path, map[string]any{"event_types": updatedTypes}), http.StatusOK, "Transmit", "enabled", updatedTypes)
+	updated := assertStreamContract(t, s.admin(t, http.MethodPatch, path, map[string]any{"event_types": updatedTypes}), http.StatusOK, "transmit", "enabled", updatedTypes)
 	if updated.ID != transmitter.ID || !updated.CreatedAt.Equal(transmitter.CreatedAt) || updated.UpdatedAt == nil || updated.UpdatedAt.IsZero() {
 		t.Fatalf("updated=%+v, original=%+v", updated, transmitter)
 	}
-	read := assertStreamContract(t, s.admin(t, http.MethodGet, path, nil), http.StatusOK, "Transmit", "enabled", updatedTypes)
+	read := assertStreamContract(t, s.admin(t, http.MethodGet, path, nil), http.StatusOK, "transmit", "enabled", updatedTypes)
 	if !reflect.DeepEqual(read, updated) {
 		t.Fatalf("read=%+v, want %+v", read, updated)
 	}
 	assertStreamNoContent(t, s.admin(t, http.MethodPost, path+"/disable", nil))
-	assertStreamContract(t, s.admin(t, http.MethodGet, path, nil), http.StatusOK, "Transmit", "disabled", updatedTypes)
+	assertStreamContract(t, s.admin(t, http.MethodGet, path, nil), http.StatusOK, "transmit", "disabled", updatedTypes)
 	assertStreamNoContent(t, s.admin(t, http.MethodPost, path+"/enable", nil))
-	assertStreamContract(t, s.admin(t, http.MethodGet, path, nil), http.StatusOK, "Transmit", "enabled", updatedTypes)
+	assertStreamContract(t, s.admin(t, http.MethodGet, path, nil), http.StatusOK, "transmit", "enabled", updatedTypes)
 	for _, id := range []string{transmitter.ID, receiver.ID} {
 		assertStreamNoContent(t, s.admin(t, http.MethodDelete, "/api/admin/v1/shared-signals/streams/"+id, nil))
 	}

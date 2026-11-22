@@ -34,8 +34,8 @@ func (s AuthorizationDetailFieldSemantics) Valid() bool {
 type AuthorizationDetailTypeState string
 
 const (
-	DetailTypeEnabled  AuthorizationDetailTypeState = "Enabled"
-	DetailTypeDisabled AuthorizationDetailTypeState = "Disabled"
+	DetailTypeEnabled  AuthorizationDetailTypeState = "enabled"
+	DetailTypeDisabled AuthorizationDetailTypeState = "disabled"
 )
 
 func (s AuthorizationDetailTypeState) Valid() bool {

@@ -19,19 +19,19 @@ const credentials: ClientSecretCredentialMetadata[] = [
     credential_id: 'active-credential',
     created_at: '2026-07-01T00:00:00Z',
     expires_at: '2026-10-01T00:00:00Z',
-    status: 'Active',
+    status: 'active',
   },
   {
     credential_id: 'revoked-credential',
     created_at: '2026-06-01T00:00:00Z',
     revoked_at: '2026-07-01T00:00:00Z',
-    status: 'Revoked',
+    status: 'revoked',
   },
   {
     credential_id: 'expired-credential',
     created_at: '2026-05-01T00:00:00Z',
     expires_at: '2026-06-01T00:00:00Z',
-    status: 'Expired',
+    status: 'expired',
   },
 ]
 
@@ -81,7 +81,7 @@ describe('ClientSecretRotationPanel', () => {
       credential_id: 'new-credential',
       created_at: '2026-08-01T00:00:00Z',
       expires_at: '2026-10-30T00:00:00Z',
-      status: 'Active' as const,
+      status: 'active' as const,
     }
     const fetchMock = mock().mockResolvedValue(
       response(201, {
@@ -115,7 +115,7 @@ describe('ClientSecretRotationPanel', () => {
     const revoked = {
       ...credentials[0],
       revoked_at: '2026-08-01T00:00:00Z',
-      status: 'Revoked' as const,
+      status: 'revoked' as const,
     }
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { credentials: [revoked] })))
     await renderWithRouter(

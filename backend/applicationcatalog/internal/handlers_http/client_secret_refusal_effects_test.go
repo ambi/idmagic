@@ -203,7 +203,7 @@ func TestRevokeClientSecretWithForeignCredentialLeavesItActive(t *testing.T) {
 	assertCredentialsUnchanged(t, targetBefore, readSecretCredentials(t, e, csrf, cookie, target))
 	after := readSecretCredentials(t, e, csrf, cookie, other)
 	assertCredentialsUnchanged(t, otherCredentials, after)
-	if after[0].Status != "Active" {
+	if after[0].Status != "active" {
 		t.Fatalf("別クライアントの資格情報が %s になった", after[0].Status)
 	}
 }

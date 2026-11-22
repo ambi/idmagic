@@ -43,7 +43,7 @@ func TestUpdateAppSignInPolicyEmitsItsEvent(t *testing.T) {
 	updated := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+applicationID+"/sign-in-policy", csrf, cookie, map[string]any{
 		"rules": []map[string]any{{
 			"name": "MFA", "enabled": true,
-			"required_authn": map[string]any{"strength": "Mfa"},
+			"required_authn": map[string]any{"strength": "mfa"},
 			"condition":      map[string]any{"reauth_max_age_seconds": 900},
 		}},
 	})
@@ -73,7 +73,7 @@ func TestUpdateAppSignInPolicyRefusesANonAdmin(t *testing.T) {
 		"name": "Payroll", "type": "weblink", "launch_url": "https://payroll.example",
 	})
 	seeded := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+applicationID+"/sign-in-policy", csrf, cookie, map[string]any{
-		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
+		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "mfa"}}},
 	})
 	if seeded.Code != http.StatusOK {
 		t.Fatalf("seed policy status=%d body=%s", seeded.Code, seeded.Body.String())
@@ -83,7 +83,7 @@ func TestUpdateAppSignInPolicyRefusesANonAdmin(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodPut,
 		"/realms/default/api/admin/v1/applications/"+applicationID+"/sign-in-policy",
-		strings.NewReader(`{"rules":[{"name":"Password","enabled":true,"required_authn":{"strength":"Password"}}]}`))
+		strings.NewReader(`{"rules":[{"name":"Password","enabled":true,"required_authn":{"strength":"password"}}]}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -111,7 +111,7 @@ func TestUpdateAppSignInPolicyRefusesANonAdmin(t *testing.T) {
 		t.Fatalf("rules changed after the refusal: %+v, want %+v", after, before)
 	}
 	strength, _ := after[0]["required_authn"].(map[string]any)
-	if strength["strength"] != "Mfa" {
+	if strength["strength"] != "mfa" {
 		t.Fatalf("required_authn=%v after the refusal, want the seeded Mfa", strength["strength"])
 	}
 	if events.contains("AppSignInPolicyUpdated") {

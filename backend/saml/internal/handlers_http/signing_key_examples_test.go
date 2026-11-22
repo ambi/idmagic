@@ -174,7 +174,7 @@ func TestAdministratorRotatesTheXmlFederationKeyWithoutBreakingTrust(t *testing.
 		r.AddCookie(&http.Cookie{Name: support.CSRFCookie, Value: exampleCSRFToken})
 		return serve(t, s, r)
 	}
-	prepared := rotate(`{"usage":"XmlFederationSigning"}`)
+	prepared := rotate(`{"usage":"xml_federation_signing"}`)
 	if prepared.Code != http.StatusOK {
 		t.Fatalf("prepare: %d %s", prepared.Code, prepared.Body.String())
 	}
@@ -189,7 +189,7 @@ func TestAdministratorRotatesTheXmlFederationKeyWithoutBreakingTrust(t *testing.
 	if !activeXMLCertificate(t, s).Equal(k1) {
 		t.Fatal("preparation switched the XML signature")
 	}
-	if r := rotate(`{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"` + result.Next.Kid + `"}`); r.Code != http.StatusOK {
+	if r := rotate(`{"usage":"xml_federation_signing","action":"activate","trust_updated":true,"kid":"` + result.Next.Kid + `"}`); r.Code != http.StatusOK {
 		t.Fatalf("activate: %d %s", r.Code, r.Body.String())
 	}
 

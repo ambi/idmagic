@@ -73,6 +73,7 @@
 
 - SET を署名するとき、SharedSignals は、最上位に `format` が `opaque` の `sub_id` を含め、`sub` と `exp` を含めない。
 - 失効の SET を署名するとき、SharedSignals は、`sub_id` の `id` を失効した主体の識別子にする。
+- 失効の SET に `reason` を含めるとき、SharedSignals は、[SET の理由表記](../standards.md#set-の理由表記)が定める従来のパスカルケースで送る。
 - **例**：EX-SHAREDSIGNALS-014-01
 
 ### 監査イベントの配送

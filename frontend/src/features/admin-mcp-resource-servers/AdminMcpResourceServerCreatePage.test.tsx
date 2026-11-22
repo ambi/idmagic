@@ -46,7 +46,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
             client_id: 'internal-evaluator',
             hosting: body.hosting,
             gateway_dpop_jwk: { kty: 'RSA', n: 'public', e: 'AQAB' },
-            state: 'Active',
+            state: 'active',
           }),
         )
       }),
@@ -158,7 +158,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
     resource: 'https://mcp.example.com',
     name: 'Example MCP',
     scopes: ['mcp'],
-    state: 'Active',
+    state: 'active',
   })
 
   //spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む resource と JSON でないアクセス規則を欄のエラー文で示し、登録しないこと
@@ -207,7 +207,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
       resource: 'https://mcp.example.com',
       name: 'Example MCP',
       scopes: ['mcp.read', 'mcp.write', 'profile'],
-      state: 'Active',
+      state: 'active',
     })
   })
 
@@ -232,7 +232,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
       name: 'Example MCP',
       scopes: ['mcp'],
       client_id: 'new-client',
-      state: 'Active',
+      state: 'active',
     })
     expect(document.querySelector('#result-client-secret')).toHaveTextContent('new-secret')
     const config = document.querySelector('#result-gateway-config')?.textContent ?? ''

@@ -31,7 +31,7 @@ export function ClientSecretRotationPanel({
   const [copied, setCopied] = useState(false)
   const t = useDictionary(adminApplicationsDictionary)
   const { locale } = useLocale()
-  const activeCount = credentials.filter((credential) => credential.status === 'Active').length
+  const activeCount = credentials.filter((credential) => credential.status === 'active').length
   const atLimit = activeCount >= 2
 
   function formatDate(value: string): string {
@@ -42,14 +42,14 @@ export function ClientSecretRotationPanel({
   }
 
   function statusLabel(status: ClientSecretCredentialMetadata['status']): string {
-    if (status === 'Revoked') return t.secretStatusRevoked
-    if (status === 'Expired') return t.secretStatusExpired
+    if (status === 'revoked') return t.secretStatusRevoked
+    if (status === 'expired') return t.secretStatusExpired
     return t.secretStatusActive
   }
 
   function statusClass(status: ClientSecretCredentialMetadata['status']): string {
-    if (status === 'Active') return 'bg-emerald-100 text-emerald-800'
-    if (status === 'Expired') return 'bg-amber-100 text-amber-800'
+    if (status === 'active') return 'bg-emerald-100 text-emerald-800'
+    if (status === 'expired') return 'bg-amber-100 text-amber-800'
     return 'bg-slate-200 text-slate-700'
   }
 
@@ -178,7 +178,7 @@ export function ClientSecretRotationPanel({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {credential.status === 'Active' ? (
+                    {credential.status === 'active' ? (
                       <Button
                         type="button"
                         variant="outline"

@@ -16,7 +16,7 @@ describe('DefaultPolicyFormPresentation', () => {
     rule_id: 'rule-1',
     name: 'tenant-default',
     enabled: true,
-    required_authn: { strength: 'Mfa' },
+    required_authn: { strength: 'mfa' },
     condition: {
       reauth_max_age_seconds: 3600,
       network_allow_cidrs: ['192.168.1.0/24'],
@@ -82,7 +82,7 @@ describe('DefaultPolicyFormPresentation', () => {
         rule_id: 'rule-1',
         name: 'tenant-default',
         enabled: true,
-        required_authn: { strength: 'Mfa' },
+        required_authn: { strength: 'mfa' },
         condition: {
           reauth_max_age_seconds: 1800,
           network_allow_cidrs: ['10.0.0.0/8', '172.16.0.0/12'],

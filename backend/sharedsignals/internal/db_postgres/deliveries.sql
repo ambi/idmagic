@@ -23,7 +23,7 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO security_event_deliveries (id,tenant_id,stream_id,set_jti,set_payload,status,audit_event,created_at)
 SELECT gen_random_uuid(),s.tenant_id,s.id,gen_random_uuid()::text,'{}'::jsonb,'pending',sqlc.arg(audit_event)::jsonb,sqlc.arg(now)::timestamptz
 FROM ssf_streams s
-WHERE s.tenant_id=sqlc.arg(tenant_id) AND s.direction='Transmit' AND s.status='enabled'
+WHERE s.tenant_id=sqlc.arg(tenant_id) AND s.direction='transmit' AND s.status='enabled'
   AND ('*'=ANY(s.audit_event_types) OR sqlc.arg(event_type)::text=ANY(s.audit_event_types));
 
 -- name: ClaimDueSecurityEventDeliveries :many

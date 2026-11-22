@@ -286,7 +286,7 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await waitForUrl(view, /\/admin\/mcp-resource-servers\/[^/]+\/edit$/)
     await setInputValue(view, '#name', 'MCP E2E updated')
     await setInputValue(view, '#scopes', 'mcp.read')
-    await setSelectValue(view, '#state', 'Disabled')
+    await setSelectValue(view, '#state', 'disabled')
     await clickButtonByText(view, 'Update')
     // 'Disabled' is also literal <option> text in the still-current edit form, so wait
     // for the post-save redirect back to the list before asserting the committed state.

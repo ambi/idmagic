@@ -149,7 +149,7 @@ describe('XmlFederationKeyPage', () => {
     await waitFor(() => expect(rotationCalls(fetchMock)).toHaveLength(1))
     const [, init] = rotationCalls(fetchMock)[0]
     expect(JSON.parse(String(init?.body))).toEqual({
-      usage: 'XmlFederationSigning',
+      usage: 'xml_federation_signing',
       action: 'activate',
       kid: prepared.kid,
       trust_updated: true,

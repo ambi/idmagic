@@ -11,7 +11,7 @@ const resourceServer: McpResourceServer = {
   resource: 'https://mcp.example.com',
   name: 'Example MCP',
   scopes: ['mcp.read', 'mcp.write'],
-  state: 'Active',
+  state: 'active',
   created_at: '2026-07-20T00:00:00Z',
   updated_at: '2026-07-20T00:00:00Z',
 }
@@ -80,7 +80,7 @@ const servers: McpResourceServer[] = [
     id: 'one',
     name: 'Documents',
     resource: 'https://docs.example/mcp',
-    state: 'Active',
+    state: 'active',
     scopes: ['docs'],
     client_id: 'docs-client',
     access_rules: [
@@ -99,7 +99,7 @@ const servers: McpResourceServer[] = [
     id: 'two',
     name: 'Archive',
     resource: 'https://archive.example/mcp',
-    state: 'Disabled',
+    state: 'disabled',
     scopes: ['archive'],
     client_id: 'archive-client',
   },

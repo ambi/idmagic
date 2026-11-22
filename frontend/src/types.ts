@@ -312,7 +312,7 @@ export type ApplicationAssignment = {
   updated_at: string
 }
 
-export type RequiredAuthnStrength = 'Password' | 'Mfa'
+export type RequiredAuthnStrength = 'password' | 'mfa'
 
 export type RequiredAuthnLevel = {
   strength: RequiredAuthnStrength
@@ -394,7 +394,7 @@ export type ClientSecretCredentialMetadata = {
   created_at: string
   expires_at?: string
   revoked_at?: string
-  status: 'Active' | 'Expired' | 'Revoked'
+  status: 'active' | 'expired' | 'revoked'
 }
 
 export type ApplicationWsFedConfig = {
@@ -586,7 +586,7 @@ export type AuthorizationDetailType = {
   description?: string
   schema: { rules: AuthorizationDetailFieldRule[] }
   display_template: string
-  state: 'Enabled' | 'Disabled'
+  state: 'enabled' | 'disabled'
   created_at: string
   updated_at: string
 }
@@ -639,7 +639,7 @@ export type McpResourceServer = {
   hosting?: HostedMcpConfiguration
   gateway_dpop_jwk?: Record<string, unknown>
   access_rules?: ResourceAccessRule[]
-  state: 'Active' | 'Disabled'
+  state: 'active' | 'disabled'
   created_at: string
   updated_at: string
 }

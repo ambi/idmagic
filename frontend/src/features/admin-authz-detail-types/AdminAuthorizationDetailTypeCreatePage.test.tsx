@@ -26,7 +26,7 @@ describe('AdminAuthorizationDetailTypeCreatePage', () => {
           response(201, {
             type: 'payment_initiation',
             display_template: 'Up to {instructedAmount}',
-            state: 'Enabled',
+            state: 'enabled',
             schema: { rules: [] },
           }),
         ),

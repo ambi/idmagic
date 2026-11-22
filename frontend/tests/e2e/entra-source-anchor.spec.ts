@@ -193,7 +193,7 @@ test('Entra configuration displays Graph commands with the real signing certific
       }])
       await api.request('/api/admin/v1/keys/rotate', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': account.csrf_token },
-        body: JSON.stringify({ usage: 'XmlFederationSigning', action: 'prepare' }),
+        body: JSON.stringify({ usage: 'xml_federation_signing', action: 'prepare' }),
       })
       return JSON.stringify(schema.attributes)
     })()`)) as string
@@ -243,9 +243,9 @@ test('Entra configuration displays Graph commands with the real signing certific
           const api = await import('/src/api.ts')
           const account = await api.request('/api/auth/account')
           ${removeEntraFederationInPage}
-          const keys = await api.request('/api/admin/v1/keys?usage=XmlFederationSigning')
+          const keys = await api.request('/api/admin/v1/keys?usage=xml_federation_signing')
           for (const key of keys.keys.filter(key => key.prepared)) {
-            await api.request('/api/admin/v1/keys/' + encodeURIComponent(key.kid) + '/disable?usage=XmlFederationSigning', {
+            await api.request('/api/admin/v1/keys/' + encodeURIComponent(key.kid) + '/disable?usage=xml_federation_signing', {
               method: 'POST', headers: { 'X-CSRF-Token': account.csrf_token },
             })
           }

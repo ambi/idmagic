@@ -144,7 +144,7 @@ export function AdminApplicationEditPage({
   const initialSignInRule = signInView?.policy?.rules?.[0]
   const [signInEnabled, setSignInEnabled] = useState(initialSignInRule?.enabled ?? false)
   const [signInStrength, setSignInStrength] = useState<RequiredAuthnStrength>(
-    initialSignInRule?.required_authn.strength ?? 'Password',
+    initialSignInRule?.required_authn.strength ?? 'password',
   )
   const [signInReauthMaxAge, setSignInReauthMaxAge] = useState(
     initialSignInRule?.condition.reauth_max_age_seconds?.toString() ?? '',

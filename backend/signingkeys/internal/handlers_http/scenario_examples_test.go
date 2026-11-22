@@ -21,6 +21,7 @@ import (
 
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/authentication"
+	"github.com/ambi/idmagic/backend/idmanagement"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -379,17 +380,17 @@ func TestRotationWithXmlFederationUsageRotatesOnlyTheXmlKey(t *testing.T) {
 	xmlKid := activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning)
 
 	admin := signedInAdmin(t, s)
-	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning"}`))
+	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing"}`))
 	if !prepared.Next.Prepared || prepared.Next.Active || activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning) != xmlKid {
 		t.Fatal("preparation changed the active XML key")
 	}
-	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning"}`))
+	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing"}`))
 	s.Events.AssertEmitted(t, "SigningKeyPrepared")
 	s.Events.AssertNotEmitted(t, "SigningKeyRotated")
 	before := time.Now().UTC()
-	rotation := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
+	rotation := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
 	after := time.Now().UTC()
-	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
+	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
 	counts := map[string]int{}
 	for _, event := range s.Events.All() {
 		counts[event.EventType()]++
@@ -423,8 +424,8 @@ func TestRotationWithXmlFederationUsageRotatesOnlyTheXmlKey(t *testing.T) {
 func TestAdminCanReadAndCancelPreparedXMLProfileKey(t *testing.T) {
 	s := newExampleStack(t)
 	admin := signedInAdmin(t, s)
-	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","scope_id":"profile","action":"prepare"}`))
-	const query = "?usage=XmlFederationSigning&scope_id=profile"
+	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing","scope_id":"profile","action":"prepare"}`))
+	const query = "?usage=xml_federation_signing&scope_id=profile"
 	get := func(path string) *httptest.ResponseRecorder {
 		r := newRequest(t, http.MethodGet, path, "")
 		r.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: admin.sessionID})
@@ -438,10 +439,10 @@ func TestAdminCanReadAndCancelPreparedXMLProfileKey(t *testing.T) {
 	if r := get(adminKeysPath + "/" + prepared.Next.Kid + query); r.Code != 200 || !strings.Contains(r.Body.String(), `"prepared":true`) {
 		t.Fatalf("profile key: %d %s", r.Code, r.Body.String())
 	}
-	if r := get(adminKeysPath + "/" + prepared.Next.Kid + "?usage=XmlFederationSigning"); r.Code != 404 {
+	if r := get(adminKeysPath + "/" + prepared.Next.Kid + "?usage=xml_federation_signing"); r.Code != 404 {
 		t.Fatal("profile key escaped to the shared scope")
 	}
-	if r := get(adminKeysPath + "?usage=Signing&scope_id=profile"); r.Code != 400 {
+	if r := get(adminKeysPath + "?usage=signing&scope_id=profile"); r.Code != 400 {
 		t.Fatal("JWT profile query was accepted")
 	}
 	if r := admin.post(t, adminKeysPath+"/"+prepared.Next.Kid+"/disable"+query, ""); r.Code != 200 || !strings.Contains(r.Body.String(), `"prepared":false`) {
@@ -457,8 +458,8 @@ func TestAdminKeyListShowsXmlFingerprintAndOverlapExpiry(t *testing.T) {
 	s := newExampleStack(t)
 	admin := signedInAdmin(t, s)
 	xmlKid := activeKid(t, s, realm, signingdomain.KeyUsageXMLFederationSigning)
-	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"prepare"}`))
-	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"XmlFederationSigning","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
+	prepared := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing","action":"prepare"}`))
+	decodeRotation(t, admin.post(t, rotatePath, `{"usage":"xml_federation_signing","action":"activate","trust_updated":true,"kid":"`+prepared.Next.Kid+`"}`))
 	old, err := s.KeyStore.FindByKID(signingports.WithKeyUsage(s.RealmContext(t, realm), signingdomain.KeyUsageXMLFederationSigning), xmlKid)
 	if err != nil || old == nil || old.ExpiresAt == nil {
 		t.Fatalf("old key: %v %+v", err, old)
@@ -483,7 +484,7 @@ func TestAdminKeyListShowsXmlFingerprintAndOverlapExpiry(t *testing.T) {
 		return body.Keys
 	}
 	seen := map[string]listed{}
-	for _, key := range list("?usage=XmlFederationSigning") {
+	for _, key := range list("?usage=xml_federation_signing") {
 		der, err := base64.StdEncoding.DecodeString(key.Certificate)
 		sum := sha256.Sum256(der)
 		if err != nil || len(der) == 0 || key.Fingerprint != hex.EncodeToString(sum[:]) {
@@ -561,5 +562,46 @@ func TestAdminKeyHTTPContract(t *testing.T) {
 				t.Fatal("current key must be active")
 			}
 		})
+	}
+}
+
+//spec:covers REQ-SYSTEM-035: 小文字の用途でローテーションし、読み戻した鍵とヘルスも小文字の用途とプロバイダーを返す。
+func TestAdminKeyEnumsUseLowerSnakeCase(t *testing.T) {
+	s := newExampleStack(t)
+	admin := signedInAdmin(t, s)
+	rotation := decodeRotation(t, admin.post(t, rotatePath, `{"usage":"signing"}`))
+	if rotation.Next.Usage != "signing" {
+		t.Fatalf("rotation usage=%q, want signing", rotation.Next.Usage)
+	}
+	request := newRequest(t, http.MethodGet, adminKeysPath+"?usage=signing", "")
+	request.AddCookie(&http.Cookie{Name: authentication.SessionCookie, Value: admin.sessionID})
+	recorder := httptest.NewRecorder()
+	s.Echo.ServeHTTP(recorder, request)
+	var body struct {
+		Keys []signinghttp.AdminKeyResponse `json:"keys"`
+	}
+	if recorder.Code != http.StatusOK || json.Unmarshal(recorder.Body.Bytes(), &body) != nil || len(body.Keys) == 0 {
+		t.Fatalf("list: status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	for _, key := range body.Keys {
+		if key.Usage != "signing" {
+			t.Fatalf("listed usage=%q, want signing", key.Usage)
+		}
+	}
+	if key := activeKid(t, s, realm, signingdomain.KeyUsageSigning); key != rotation.Next.Kid {
+		t.Fatalf("stored active kid=%s, want %s", key, rotation.Next.Kid)
+	}
+	healthServer := newHealthServer(t, s.KeyStore, idmanagement.NewMemoryModule().GroupRepo,
+		healthUser("system-operator", tenancydomain.DefaultTenantID, "system_admin"))
+	health := decodeHealth(t, healthServer.get(t, adminKeysPath+"/health"))[tenancydomain.DefaultTenantID]
+	if health.Provider != "local" || health.Usage != "signing" || health.ActiveKid != rotation.Next.Kid {
+		t.Fatalf("health=%+v, want local signing key %s", health, rotation.Next.Kid)
+	}
+	refused := admin.post(t, rotatePath, `{"usage":"Signing"}`)
+	if refused.Code != http.StatusBadRequest {
+		t.Fatalf("legacy usage: status=%d body=%s, want 400", refused.Code, refused.Body.String())
+	}
+	if key := activeKid(t, s, realm, signingdomain.KeyUsageSigning); key != rotation.Next.Kid {
+		t.Fatalf("legacy usage changed active kid to %s", key)
 	}
 }

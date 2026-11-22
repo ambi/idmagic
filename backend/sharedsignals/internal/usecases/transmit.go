@@ -60,7 +60,7 @@ func BuildAndSignSecurityEventToken(ctx context.Context, signer ssports.Security
 		"initiating_entity": string(event.InitiatingEntity),
 	}
 	if event.Reason != nil {
-		eventClaims["reason"] = string(*event.Reason)
+		eventClaims["reason"] = caepRevocationReason(*event.Reason)
 	}
 	claims := map[string]any{
 		"iss":    issuer,
@@ -82,6 +82,45 @@ func BuildAndSignSecurityEventToken(ctx context.Context, signer ssports.Security
 		return ssdomain.SecurityEventToken{}, err
 	}
 	return set, nil
+}
+
+// caepRevocationReason は管理 API の表記から SET の従来の理由表記へ写す。
+// 対応表は docs/modules/sharedsignals/standards.md の「SET の理由表記」が定める。
+func caepRevocationReason(reason ssdomain.RevocationReason) string {
+	switch reason {
+	case ssdomain.RevocationReasonAgentKilled:
+		return "AgentKilled"
+	case ssdomain.RevocationReasonAgentDisabled:
+		return "AgentDisabled"
+	case ssdomain.RevocationReasonAgentCredentialUnbound:
+		return "AgentCredentialUnbound"
+	case ssdomain.RevocationReasonAgentDeleted:
+		return "AgentDeleted"
+	case ssdomain.RevocationReasonOwnerDisabled:
+		return "OwnerDisabled"
+	case ssdomain.RevocationReasonOwnerDeleted:
+		return "OwnerDeleted"
+	case ssdomain.RevocationReasonManualAdmin:
+		return "ManualAdmin"
+	case ssdomain.RevocationReasonUserDisabled:
+		return "UserDisabled"
+	case ssdomain.RevocationReasonUserSoftDeleted:
+		return "UserSoftDeleted"
+	case ssdomain.RevocationReasonUserDeleted:
+		return "UserDeleted"
+	case ssdomain.RevocationReasonSessionRevoked:
+		return "SessionRevoked"
+	case ssdomain.RevocationReasonPasswordChanged:
+		return "PasswordChanged"
+	case ssdomain.RevocationReasonAuthenticatorChanged:
+		return "AuthenticatorChanged"
+	case ssdomain.RevocationReasonRefreshTokenReuse:
+		return "RefreshTokenReuse"
+	case ssdomain.RevocationReasonInboundSecurityEvent:
+		return "InboundSecurityEvent"
+	default:
+		return string(reason)
+	}
 }
 
 // SignAuditSecurityEventToken は監査の配送の SET を署名する。jti は配送の行が持つ値を使う。

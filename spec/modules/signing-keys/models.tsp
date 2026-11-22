@@ -9,28 +9,28 @@ enum SignatureAlgorithm {
 
 @doc("SigningKeyLifecycle の内部の状態。Prepared は署名開始前に公開する XML 鍵、Active は現在の署名鍵、Verifying は切り替え後の重複期間に検証だけに使う鍵、Retired は公開を終えた鍵、Archived は監査のために保管する鍵である。")
 enum SigningKeyState {
-  Prepared: "Prepared",
-  Active: "Active",
-  Verifying: "Verifying",
-  Retired: "Retired",
-  Archived: "Archived",
+  Prepared: "prepared",
+  Active: "active",
+  Verifying: "verifying",
+  Retired: "retired",
+  Archived: "archived",
 }
 
 
 @doc("暗号鍵の保管場所と、署名を行う主体。Local は秘密鍵をプロセスの中だけで保持する。Database は秘密鍵を平文のままアプリケーションのデータベースへ保存するので、そのデータベースのバックアップにも含まれる。VaultTransit は秘密鍵を Vault の外へ出さない。平文の暗号鍵を永続化するプロバイダーを選ぶのは明示的な選択であり、デフォルトにはしない。Database は特定の製品を指さない。")
 enum KeyProvider {
-  Local: "Local",
-  Database: "Database",
-  VaultTransit: "VaultTransit",
+  Local: "local",
+  Database: "database",
+  VaultTransit: "vault_transit",
 }
 
 
 @doc("鍵の用途。Signing は OAuth 2.0 と OpenID Connect の JWT 署名を、XmlFederationSigning は SAML 2.0、WS-Federation、WS-Trust の XML 署名と、それらとともに公開する X.509 のメタデータを扱う。一つのテナントの中でも、用途ごとに有効な鍵は別である。")
 enum KeyUsage {
-  McpGatewayDPoP: "McpGatewayDPoP",
-  Signing: "Signing",
-  XmlFederationSigning: "XmlFederationSigning",
-  IdJagSigning: "IdJagSigning",
+  McpGatewayDPoP: "mcp_gateway_dpop",
+  Signing: "signing",
+  XmlFederationSigning: "xml_federation_signing",
+  IdJagSigning: "id_jag_signing",
 }
 
 

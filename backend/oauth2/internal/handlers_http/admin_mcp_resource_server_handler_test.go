@@ -111,7 +111,7 @@ func TestAdminCreatesAndListsMcpResourceServer(t *testing.T) {
 	if createdBody["id"] == "" || createdBody["id"] == nil {
 		t.Fatalf("expected id to be generated: %+v", createdBody)
 	}
-	if createdBody["state"] != "Active" {
+	if createdBody["state"] != "active" {
 		t.Fatalf("expected default state Active, got %v", createdBody["state"])
 	}
 
@@ -177,7 +177,7 @@ func TestAdminUpdatesMcpResourceServerNameScopesState(t *testing.T) {
 	update := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, map[string]any{
 		"name":   "GitHub Tools (renamed)",
 		"scopes": []string{"mcp.read"},
-		"state":  "Disabled",
+		"state":  "disabled",
 	})
 	if update.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", update.Code, update.Body.String())
@@ -186,7 +186,7 @@ func TestAdminUpdatesMcpResourceServerNameScopesState(t *testing.T) {
 	if err := json.Unmarshal(update.Body.Bytes(), &updatedBody); err != nil {
 		t.Fatal(err)
 	}
-	if updatedBody["name"] != "GitHub Tools (renamed)" || updatedBody["state"] != "Disabled" {
+	if updatedBody["name"] != "GitHub Tools (renamed)" || updatedBody["state"] != "disabled" {
 		t.Fatalf("update did not apply: %+v", updatedBody)
 	}
 	// resource (canonical URI) は不変。

@@ -20,7 +20,7 @@ const resourceServer: McpResourceServer = {
   resource: 'https://mcp.example.com',
   name: 'Example MCP',
   scopes: ['mcp.read', 'mcp.write'],
-  state: 'Active',
+  state: 'active',
   created_at: '2026-07-20T00:00:00Z',
   updated_at: '2026-07-20T00:00:00Z',
 }
@@ -120,7 +120,7 @@ describe('AdminMcpResourceServerEditPage', () => {
           scopes: resourceServer.scopes,
           client_id: 'rs-client',
           access_rules: rules,
-          state: 'Active',
+          state: 'active',
         },
       ]),
     )

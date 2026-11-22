@@ -24,9 +24,9 @@ func (s SignatureAlgorithm) Valid() bool { return s == SigAlgPS256 || s == SigAl
 type KeyProvider string
 
 const (
-	KeyProviderLocal        KeyProvider = "Local"
-	KeyProviderDatabase     KeyProvider = "Database"
-	KeyProviderVaultTransit KeyProvider = "VaultTransit"
+	KeyProviderLocal        KeyProvider = "local"
+	KeyProviderDatabase     KeyProvider = "database"
+	KeyProviderVaultTransit KeyProvider = "vault_transit"
 )
 
 func (p KeyProvider) Valid() bool {
@@ -36,11 +36,11 @@ func (p KeyProvider) Valid() bool {
 type KeyUsage string
 
 const (
-	KeyUsageSigning              KeyUsage = "Signing"
-	KeyUsageXMLFederationSigning KeyUsage = "XmlFederationSigning"
+	KeyUsageSigning              KeyUsage = "signing"
+	KeyUsageXMLFederationSigning KeyUsage = "xml_federation_signing"
 	// KeyUsageIdJagSigning は ID-JAG の署名に使う。
-	KeyUsageIdJagSigning   KeyUsage = "IdJagSigning"
-	KeyUsageMcpGatewayDPoP KeyUsage = "McpGatewayDPoP"
+	KeyUsageIdJagSigning   KeyUsage = "id_jag_signing"
+	KeyUsageMcpGatewayDPoP KeyUsage = "mcp_gateway_dpop"
 )
 
 func (u KeyUsage) Valid() bool {
