@@ -22,7 +22,7 @@ import (
 func TestAccessReviewRuntimeRevokesAssignmentsAndAgent(t *testing.T) {
 	f := newRevocationFixture(t)
 	ctx := context.Background()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	f.deps.Application = application.NewMemoryModule()
 	app := &appdomain.Application{ID: "portal", TenantID: "tenant-a", Name: "Portal", Kind: appdomain.ApplicationWeblink, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now}
 	if err := f.deps.Application.Repo.Save(ctx, app); err != nil {
@@ -140,7 +140,7 @@ func (r *failFirstReviewRevocation) React(ctx context.Context, event spec.Domain
 func TestAccessReviewRetriesRevocationAfterAgentStateCommit(t *testing.T) {
 	f := newRevocationFixture(t)
 	ctx := context.Background()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	emit := func(e spec.DomainEvent) {
 		if err := f.sink.Emit(ctx, e); err != nil {
 			t.Error(err)
