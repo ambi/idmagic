@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -150,5 +151,50 @@ func TestCSVImportHTTPContractsRefuseNonAdmin(t *testing.T) {
 	}
 	if len(f.runnableJobs(t)) != 0 || len(*f.events) != 0 {
 		t.Fatal("refused import created jobs or events")
+	}
+}
+
+//spec:covers REQ-IDMANAGEMENT-004, REQ-IDMANAGEMENT-026, REQ-IDMANAGEMENT-029: 存在しない、未完了、ダイジェストの一致しないプレビューの適用が、404 と *_import_not_found、409 と preview_not_ready、409 と preview_digest_mismatch の Problem Details を返し、適用のジョブとイベントを作らないこと。
+//verify:operation ApplyAdminUserImport: 存在しない、未完了、ダイジェストの一致しないプレビューへの 404 と 409 の Problem Details と、適用のジョブを作らないこと
+//verify:operation ApplyAdminGroupImport: 存在しない、未完了、ダイジェストの一致しないプレビューへの 404 と 409 の Problem Details と、適用のジョブを作らないこと
+//verify:operation ApplyAdminGroupMemberImport: 存在しない、未完了、ダイジェストの一致しないプレビューへの 404 と 409 の Problem Details と、適用のジョブを作らないこと
+func TestCSVImportApplyHTTPContractsRefuseUnusablePreviews(t *testing.T) {
+	for _, tc := range []struct {
+		name, imports, csv, notFound string
+	}{
+		{"user", "/api/admin/v1/users/imports", "preferred_username\napply-refused\n", "user_import_not_found"},
+		{"group", "/api/admin/v1/groups/imports", "name\napply-refused\n", "group_import_not_found"},
+		{"membership", "/api/admin/v1/groups/" + idmRefusalManualGroup + "/members/imports", "membership_state,user_id\npresent," + idmRefusalBob + "\n", "group_membership_import_not_found"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newIdmRefusalServer(t)
+			admin := f.seedSession(t, "apply-refused-"+tc.name, tenancydomain.DefaultTenantID, idmRefusalAdmin)
+			apply := func(previewID string) *httptest.ResponseRecorder {
+				return f.send(t, idmRefusalRequest{method: http.MethodPost, path: tc.imports + "/" + previewID + "/apply", sessionID: admin, csrf: idmRefusalCSRF})
+			}
+
+			idmContractProblem(t, apply("missing"), http.StatusNotFound, tc.notFound)
+
+			preview := idmContractJSON(t, f.send(t, idmRefusalRequest{method: http.MethodPost, path: tc.imports, sessionID: admin, csrf: idmRefusalCSRF, contentType: "text/csv", rawBody: tc.csv}), http.StatusAccepted)
+			previewID, _ := preview["id"].(string)
+			eventsAfterPreview := len(*f.events)
+			idmContractProblem(t, apply(previewID), http.StatusConflict, "preview_not_ready")
+			if claimed := f.runnableJobs(t); len(claimed) != 1 || claimed[0].ID != previewID {
+				t.Fatalf("runnable jobs=%v, want only the preview %s", claimed, previewID)
+			}
+
+			// 改ざんした成果物を作る正式な入口はないので、プレビューの結果が記録するダイジェストを
+			// 保存したペイロードと食い違わせた完了で代える。
+			if _, err := f.jobs.Complete(context.Background(), previewID, "refusal-effects-worker", json.RawMessage(`{"source_sha256":"tampered"}`), time.Now().UTC()); err != nil {
+				t.Fatal(err)
+			}
+			idmContractProblem(t, apply(previewID), http.StatusConflict, "preview_digest_mismatch")
+			if claimed := f.runnableJobs(t); len(claimed) != 0 {
+				t.Fatalf("refused apply queued jobs: %v", claimed)
+			}
+			if len(*f.events) != eventsAfterPreview {
+				t.Fatalf("refused apply emitted events: %v", (*f.events)[eventsAfterPreview:])
+			}
+		})
 	}
 }

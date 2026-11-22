@@ -1618,4 +1618,12 @@ model GroupImportNotFoundError is ProblemDetails;
 model GroupMembershipImportNotFoundError is ProblemDetails;
 
 
+@doc("適用に指定したプレビューのジョブが、まだ成功していない（`queued`、`running`、`failed` などである）。プレビューが成功した後に再試行できるので、要求の形の誤りの 400 ではなく、対象の状態との衝突の 409 である。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:preview_not_ready` である。")
+model PreviewNotReadyError is ProblemDetails;
+
+
+@doc("適用に指定したプレビューのジョブについて、保存したペイロードを読めないか、その SHA-256 または大きさが、プレビューのジョブが記録した値と一致しない。プレビューが判定した CSV と別のものを適用しないように拒否し、同じプレビューを再試行しても成功しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:preview_digest_mismatch` である。")
+model PreviewDigestMismatchError is ProblemDetails;
+
+
 }

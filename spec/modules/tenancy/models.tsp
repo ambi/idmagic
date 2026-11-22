@@ -705,4 +705,13 @@ model AttributeReferencedByDynamicGroupError is ProblemDetails;
 @doc("`unique` に変えようとした属性は、テナントの削除されていない二人以上の User が同じ値を持っている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:attribute_values_not_unique` である。")
 model AttributeValuesNotUniqueError is ProblemDetails;
 
+@doc("作成しようとしたテナントの realm を、既存のテナントがすでに使っている。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:tenant_conflict` である。")
+model TenantConflictError is ProblemDetails;
+
+@doc("ブランド設定の値が不正である。上限を超える長さの文字列、`#rrggbb` の形でない色、小文字の `https://` で始まらないフッターのリンクの URL、ラベルと URL の一方だけのフッターのリンクである。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_branding` である。")
+model InvalidBrandingError is ProblemDetails;
+
+@doc("通知テンプレートの文面が不正である。テンプレートキーに許可した集合にない差し込み変数を含むか、件名、平文の本文、HTML の本文のどれかが空である。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_notification_template` である。カタログにないテンプレートキーまたは言語は、この型ではなく InvalidRequestError で拒否する。")
+model InvalidNotificationTemplateError is ProblemDetails;
+
 }

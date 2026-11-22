@@ -514,6 +514,7 @@ func (s *refusalServer) templateDetail(t *testing.T) struct {
 // 「次に届くメールが組込みデフォルトのままである」ことまで読む。
 //
 //spec:covers EX-TENANCY-017-01: 許可集合外の差し込み変数を含む上書きは拒否され、保存されない。
+//verify:operation UpdateNotificationTemplate: 許可されていない差し込み変数は 400 invalid_notification_template の Problem Details で拒否し、上書きを保存しない。
 func TestNotificationTemplateRefusesUnknownPlaceholderAndSendsTheBuiltinDefault(t *testing.T) {
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	before := server.templateDetail(t)
@@ -532,12 +533,7 @@ func TestNotificationTemplateRefusesUnknownPlaceholderAndSendsTheBuiltinDefault(
 	refused := server.send(t, http.MethodPut, refusalTemplatePath+"/password_reset/ja", map[string]any{
 		"subject": "件名", "body_text": "{{password}}", "body_html": "<p>{{password}}</p>",
 	})
-	if refused.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d body=%s, want 400", refused.Code, refused.Body.String())
-	}
-	if !strings.Contains(refused.Body.String(), "invalid_notification_template") {
-		t.Fatalf("body=%s, want invalid_notification_template", refused.Body.String())
-	}
+	assertTenancyProblem(t, refused, http.StatusBadRequest, "invalid_notification_template")
 	if len(*server.events) != 0 {
 		t.Fatalf("拒否された更新が %d 件のイベントを発行した", len(*server.events))
 	}

@@ -99,6 +99,16 @@ model CreateTenantError403 {
   @body body: CreateTenantError403Body;
 }
 
+union CreateTenantError409Body {
+  IdMagic.Contract.TenantConflictError,
+}
+
+model CreateTenantError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: CreateTenantError409Body;
+}
+
 @doc("system_admin がテナントを作成する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("CreateTenant")
@@ -106,7 +116,7 @@ model CreateTenantError403 {
 @post
 op CreateTenant(
   @body body: IdMagic.Contract.TenantCreateRequest
-): CreateTenantSuccess_201 | CreateTenantError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | CreateTenantError403;
+): CreateTenantSuccess_201 | CreateTenantError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | CreateTenantError403 | CreateTenantError409;
 
 model UpdateTenantSuccess_200 {
   @statusCode statusCode: 200;
@@ -604,6 +614,7 @@ model UpdateTenantBrandingSuccess_200 {
 
 union UpdateTenantBrandingError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidBrandingError,
 }
 
 model UpdateTenantBrandingError400 {
@@ -781,6 +792,7 @@ model UpdateNotificationTemplateSuccess_200 {
 
 union UpdateNotificationTemplateError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidNotificationTemplateError,
 }
 
 model UpdateNotificationTemplateError400 {
@@ -858,6 +870,7 @@ model PreviewNotificationTemplateSuccess_200 {
 
 union PreviewNotificationTemplateError400Body {
   IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidNotificationTemplateError,
 }
 
 model PreviewNotificationTemplateError400 {

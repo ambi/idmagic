@@ -484,6 +484,27 @@ model ApplyAdminUserImportError403 {
   @body body: ApplyAdminUserImportError403Body;
 }
 
+union ApplyAdminUserImportError404Body {
+  IdMagic.Contract.UserImportNotFoundError,
+}
+
+model ApplyAdminUserImportError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminUserImportError404Body;
+}
+
+union ApplyAdminUserImportError409Body {
+  IdMagic.Contract.PreviewNotReadyError,
+  IdMagic.Contract.PreviewDigestMismatchError,
+}
+
+model ApplyAdminUserImportError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminUserImportError409Body;
+}
+
 @doc("管理者が、同じテナントの成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器がリポジトリの現在の状態に対して計画し直す。ファイル全体は行単位で成功し、各行のプロフィール、ロール、必須のアクション、カスタム属性は、一つの集約の変更として原子的に確定する。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminUserImport")
@@ -491,7 +512,7 @@ model ApplyAdminUserImportError403 {
 @post
 op ApplyAdminUserImport(
   @path preview_job_id: string
-): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminUserImportError403;
+): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminUserImportError403 | ApplyAdminUserImportError404 | ApplyAdminUserImportError409;
 
 model GetAdminUserImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -923,6 +944,27 @@ model ApplyAdminGroupImportError403 {
   @body body: ApplyAdminGroupImportError403Body;
 }
 
+union ApplyAdminGroupImportError404Body {
+  IdMagic.Contract.GroupImportNotFoundError,
+}
+
+model ApplyAdminGroupImportError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupImportError404Body;
+}
+
+union ApplyAdminGroupImportError409Body {
+  IdMagic.Contract.PreviewNotReadyError,
+  IdMagic.Contract.PreviewDigestMismatchError,
+}
+
+model ApplyAdminGroupImportError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupImportError409Body;
+}
+
 @doc("管理者が、同じテナントの成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器がリポジトリの現在の状態に対して計画し直す。ファイル全体は行単位で成功し、各行の名前、説明、連絡先のアドレス、ロール、カスタム属性、動的な規則は、一つの集約の変更として原子的に確定する。`lifecycle_action=delete` を含む行は、Group を削除し、その中のすべてのメンバーシップを連鎖して解除し、同じトランザクションで監査の記録を書く。削除は取り消せないので、CSV が指定しない Group を削除することはない。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupImport")
@@ -930,7 +972,7 @@ model ApplyAdminGroupImportError403 {
 @post
 op ApplyAdminGroupImport(
   @path preview_job_id: string
-): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupImportError403;
+): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupImportError403 | ApplyAdminGroupImportError404 | ApplyAdminGroupImportError409;
 
 model GetAdminGroupImportSuccess_200 {
   @statusCode statusCode: 200;
@@ -1489,6 +1531,17 @@ model ApplyAdminGroupMemberImportError404 {
   @body body: ApplyAdminGroupMemberImportError404Body;
 }
 
+union ApplyAdminGroupMemberImportError409Body {
+  IdMagic.Contract.PreviewNotReadyError,
+  IdMagic.Contract.PreviewDigestMismatchError,
+}
+
+model ApplyAdminGroupMemberImportError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupMemberImportError409Body;
+}
+
 @doc("管理者が、同じテナントと同じ Group の成功したプレビューのジョブを指定して CSV を適用する。CSV は再び送らない。プレビューのペイロードと `source_sha256` を読み、同じ決定的な計画器が現在のメンバーシップに対して計画し直すので、プレビューの後に別の操作が行った追加や解除は、再生せずに判断し直す。受け付けた各行は、メンバーシップと監査の記録を原子的に確定し、失敗した行は、すでに適用した行をそのまま残す。触れるのはファイルが指定する行だけである。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupMemberImport")
@@ -1497,7 +1550,7 @@ model ApplyAdminGroupMemberImportError404 {
 op ApplyAdminGroupMemberImport(
   @path group_id: string,
   @path preview_job_id: string
-): ApplyAdminGroupMemberImportSuccess_202 | ApplyAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupMemberImportError403 | ApplyAdminGroupMemberImportError404;
+): ApplyAdminGroupMemberImportSuccess_202 | ApplyAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupMemberImportError403 | ApplyAdminGroupMemberImportError404 | ApplyAdminGroupMemberImportError409;
 
 model GetAdminGroupMemberImportSuccess_200 {
   @statusCode statusCode: 200;

@@ -309,12 +309,13 @@ func TestCreateTenantRefusesRealmsThatAreNotAnUnreservedDNSLabel(t *testing.T) {
 	requireStatus(t, s.send(t, http.MethodPost, tenantsPath, map[string]string{"realm": longest, "display_name": "X"}), http.StatusCreated)
 }
 
-//spec:covers EX-TENANCY-025-05: 既存の realm での作成は 409 tenant_conflict になり、テナントは増えず、イベントも発行されない。
+//spec:covers REQ-TENANCY-025, EX-TENANCY-025-05: 既存の realm での作成は 409 tenant_conflict になり、テナントは増えず、イベントも発行されない。
+//verify:operation CreateTenant: 既存の realm での作成は 409 tenant_conflict の Problem Details で拒否し、テナントとイベントを増やさない。
 func TestCreateTenantRefusesADuplicateRealm(t *testing.T) {
 	s := newRulesServer(t, systemAdmin(), rulesOptions{})
 
 	response := s.send(t, http.MethodPost, tenantsPath, map[string]string{"realm": "acme", "display_name": "Other Acme"})
-	requireProblem(t, response, http.StatusConflict, "tenant_conflict")
+	assertTenancyProblem(t, response, http.StatusConflict, "tenant_conflict")
 	all, err := s.tenants.FindAll(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -660,6 +661,7 @@ func TestBrandingTrimsTextAndEmptyStringUnsets(t *testing.T) {
 }
 
 //spec:covers REQ-TENANCY-032, EX-TENANCY-032-02, EX-TENANCY-032-03: 81 文字の日本語のラベルと、大文字のスキームの URL は 400 invalid_branding になり、何も保存しない。80 文字の日本語のラベルは受け付ける。
+//verify:operation UpdateTenantBranding: 不正なフッターのリンクは 400 invalid_branding の Problem Details で拒否し、何も保存しない。
 func TestBrandingRefusesLongMultibyteLabelsAndUppercaseSchemes(t *testing.T) {
 	label := func(n int) string { return strings.Repeat("ヘ", n) }
 	for name, link := range map[string]map[string]string{
@@ -669,7 +671,7 @@ func TestBrandingRefusesLongMultibyteLabelsAndUppercaseSchemes(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
-			requireProblem(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]any{"footer_link_1": link}),
+			assertTenancyProblem(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]any{"footer_link_1": link}),
 				http.StatusBadRequest, "invalid_branding")
 			if saved, _ := s.branding.FindByTenant(context.Background(), "acme"); saved != nil {
 				t.Fatalf("branding saved: %+v", saved)
@@ -811,6 +813,22 @@ func TestPreviewUsesTheTenantProductName(t *testing.T) {
 	requireStatus(t, response, http.StatusOK)
 	if got := decodeJSON(t, response)["subject"]; got != "Acme ID のお知らせ" {
 		t.Fatalf("subject = %v", got)
+	}
+}
+
+//spec:covers REQ-TENANCY-038: 許可した集合にない差し込み変数を含むプレビューは 400 invalid_notification_template になり、メールを送らず、上書きを保存しない。
+//verify:operation PreviewNotificationTemplate: 許可されていない差し込み変数は 400 invalid_notification_template の Problem Details で拒否し、メールを送らない。
+func TestPreviewRefusesAnUnknownPlaceholder(t *testing.T) {
+	sender := &recordingSender{}
+	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{sender: sender})
+
+	response := s.send(t, http.MethodPost, passwordResetTemplate+"ja/preview", map[string]string{"subject": "{{password}}"})
+	assertTenancyProblem(t, response, http.StatusBadRequest, "invalid_notification_template")
+	if len(sender.sent) != 0 {
+		t.Fatalf("refused preview sent %d email(s)", len(sender.sent))
+	}
+	if overrides, err := s.templates.ListAll(context.Background(), "acme"); err != nil || len(overrides) != 0 {
+		t.Fatalf("refused preview saved overrides %v, err=%v", overrides, err)
 	}
 }
 
