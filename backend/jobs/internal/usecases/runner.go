@@ -11,6 +11,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -57,6 +58,9 @@ type RunnerDeps struct {
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	// Tests inject a fixed/controllable clock.
 	Now func() time.Time
+	// RandomDelay は 0 以上上限以下の待ち時間を返す。並行呼び出し可能な関数を渡す。
+	// nil なら resilience.RandomDelay を使う。
+	RandomDelay func(time.Duration) time.Duration
 	// Metrics records lane-scoped observability signals (wi-261 T006). Nil is
 	// valid and records nothing.
 	Metrics JobsMetrics
@@ -102,6 +106,9 @@ func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner {
 	cfg = cfg.withDefaults()
 	if deps.Now == nil {
 		deps.Now = func() time.Time { return time.Now().UTC() }
+	}
+	if deps.RandomDelay == nil {
+		deps.RandomDelay = resilience.RandomDelay
 	}
 	return &Runner{cfg: cfg, deps: deps, sem: make(chan struct{}, cfg.Concurrency)}
 }
@@ -243,7 +250,7 @@ func (rn *Runner) fail(ctx context.Context, job *jobsdomain.Job, handlerErr erro
 		outcome.NextStatus = jobsdomain.StatusFailed
 	} else {
 		outcome.NextStatus = jobsdomain.StatusQueued
-		outcome.RunAt = jobsdomain.NextRetryRunAt(now, job.Attempts, rn.cfg.BackoffBase, rn.cfg.BackoffCap)
+		outcome.RunAt = jobsdomain.NextRetryRunAt(now, job.Attempts, rn.cfg.BackoffBase, rn.cfg.BackoffCap, rn.deps.RandomDelay)
 	}
 
 	updated, err := rn.deps.Repo.Fail(ctx, job.ID, rn.cfg.WorkerID, outcome, now)

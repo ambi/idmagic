@@ -3,9 +3,60 @@ package resilience
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
+	"testing/synctest"
 	"time"
 )
+
+func TestRetryWithBackoffRandomizesWait(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		start := time.Now()
+		calls := 0
+		boom := errors.New("unavailable")
+		err := RetryWithBackoff(context.Background(), func() error { calls++; return boom })
+		if !errors.Is(err, boom) || calls != 5 {
+			t.Fatalf("err=%v calls=%d, want last error and 5 attempts", err, calls)
+		}
+		// 4 回の待機がすべて上限になる確率は 10^-36 未満。固定待機への退行を検出する。
+		if elapsed := time.Since(start); elapsed < 0 || elapsed >= 7500*time.Millisecond {
+			t.Fatalf("elapsed=%v, want randomized waits totaling less than 7.5s", elapsed)
+		}
+	})
+}
+
+func TestRetryWithBackoffUsesSampledDelay(t *testing.T) {
+	for _, divisor := range []time.Duration{0, 2, 1} {
+		t.Run(divisor.String(), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				start := time.Now()
+				calls := 0
+				var limits []time.Duration
+				var total time.Duration
+				boom := errors.New("unavailable")
+				err := retryWithBackoff(context.Background(), func() error {
+					if elapsed := time.Since(start); elapsed != total {
+						t.Errorf("attempt=%d elapsed=%v, want %v", calls+1, elapsed, total)
+					}
+					calls++
+					return boom
+				}, func(limit time.Duration) time.Duration {
+					limits = append(limits, limit)
+					var delay time.Duration
+					if divisor > 0 {
+						delay = limit / divisor
+					}
+					total += delay
+					return delay
+				})
+				want := []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second, 4 * time.Second}
+				if !errors.Is(err, boom) || calls != 5 || !slices.Equal(limits, want) || time.Since(start) != total {
+					t.Fatalf("err=%v calls=%d limits=%v elapsed=%v, want 5 attempts and limits=%v total=%v", err, calls, limits, time.Since(start), want, total)
+				}
+			})
+		})
+	}
+}
 
 func TestCircuitBreakerOpensAfterThresholdAndRecovers(t *testing.T) {
 	cb := NewCircuitBreaker(Settings{

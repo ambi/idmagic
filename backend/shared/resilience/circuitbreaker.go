@@ -188,8 +188,12 @@ func (cb *CircuitBreaker) setState(state State, expiry time.Time) {
 	}
 }
 
-// RetryWithBackoff は与えられた操作を Exponential Backoff でリトライする。
+// RetryWithBackoff は指数的な上限までの一様乱数で待ちながら、操作を最大 5 回試す。
 func RetryWithBackoff(ctx context.Context, op func() error) error {
+	return retryWithBackoff(ctx, op, RandomDelay)
+}
+
+func retryWithBackoff(ctx context.Context, op func() error, randomDelay func(time.Duration) time.Duration) error {
 	const maxAttempts = 5
 	backoff := 500 * time.Millisecond
 	const maxBackoff = 5 * time.Second
@@ -210,7 +214,7 @@ func RetryWithBackoff(ctx context.Context, op func() error) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(backoff):
+		case <-time.After(randomDelay(backoff)):
 		}
 
 		backoff = time.Duration(float64(backoff) * factor)

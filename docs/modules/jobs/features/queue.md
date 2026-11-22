@@ -111,7 +111,7 @@
 
 #### REQ-JOBS-005 ハンドラーが失敗し続けると `max_attempts` 到達時に配信不能となる
 
-- ハンドラーが失敗し、`attempts` が `max_attempts` 未満の場合、Jobs は、ジョブを `queued` に戻し、30 秒から倍々に増えて 30 分を上限とする待ち時間の後を `run_at` にし、`JobFailed` と `JobRetried` を発行する。
+- ハンドラーが失敗し、`attempts` が `max_attempts` 未満の場合、Jobs は、ジョブを `queued` に戻し、30 秒から倍々に増えて最大 30 分となる値を待ち時間の上限とし、0 以上上限以下の一様乱数で選んだ待ち時間の後を `run_at` にして、`JobFailed` と `JobRetried` を発行する。
 - ハンドラーが失敗し、`attempts` が `max_attempts` に達した場合、Jobs は、ジョブを `failed` にしてエラーを保持し、`JobFailed` を発行し、以後 `running` にしない。
 - **例**：EX-JOBS-005-01
 

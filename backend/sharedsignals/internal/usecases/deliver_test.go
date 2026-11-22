@@ -105,7 +105,8 @@ func TestProcessDueDeliveries_FailureBelowMaxSchedulesBackoffRetry(t *testing.T)
 	pusher := &fakePusher{err: errors.New("receiver unreachable")}
 	deps := ssusecases.DeliverDeps{
 		DeliveryRepo: deliveryRepo, TransmitterConfigRepo: configRepo, Pusher: pusher,
-		Emit: func(e spec.DomainEvent) error { emitted = append(emitted, e); return nil },
+		Emit:        func(e spec.DomainEvent) error { emitted = append(emitted, e); return nil },
+		RandomDelay: func(time.Duration) time.Duration { return time.Second },
 	}
 	now := time.Now().UTC()
 	if _, err := ssusecases.ProcessDueDeliveries(ctx, deps, now, 10); err != nil {
@@ -125,6 +126,48 @@ func TestProcessDueDeliveries_FailureBelowMaxSchedulesBackoffRetry(t *testing.T)
 	}
 	if len(emitted) != 1 || emitted[0].EventType() != "SecurityEventDeliveryFailed" {
 		t.Fatalf("expected SecurityEventDeliveryFailed, got %+v", emitted)
+	}
+}
+
+//spec:covers REQ-SHAREDSIGNALS-006: 配送の失敗後に指数上限から選んだ待ち時間を保存し、0 と上限の両端も受け入れる。
+func TestProcessDueDeliveries_RandomizesRetryTime(t *testing.T) {
+	for _, tc := range []struct {
+		attempts int
+		limit    time.Duration
+	}{
+		{0, 30 * time.Second},
+		{1, time.Minute},
+		{2, 2 * time.Minute},
+		{5, 16 * time.Minute},
+		{6, 30 * time.Minute},
+		{49, 30 * time.Minute},
+	} {
+		for _, chosen := range []time.Duration{0, tc.limit / 2, tc.limit} {
+			ctx := context.Background()
+			repo := ssmemory.NewSecurityEventDeliveryRepository()
+			configs := ssmemory.NewSsfTransmitterConfigRepository()
+			seedConfigForStream(t, configs, 100)
+			seedDelivery(t, repo, "stream_1", ssdomain.SecurityEventDeliveryStatusPending, tc.attempts)
+			now := time.Now().UTC()
+			var limit time.Duration
+			_, err := ssusecases.ProcessDueDeliveries(ctx, ssusecases.DeliverDeps{
+				DeliveryRepo: repo, TransmitterConfigRepo: configs,
+				Pusher:      &fakePusher{err: errors.New("unavailable")},
+				RandomDelay: func(upper time.Duration) time.Duration { limit = upper; return chosen },
+			}, now, 10)
+			if err != nil {
+				t.Fatal(err)
+			}
+			deliveries, err := repo.ListByStream(ctx, deliveryTestTenantID, "stream_1")
+			if err != nil || len(deliveries) != 1 {
+				t.Fatalf("deliveries=%v err=%v", deliveries, err)
+			}
+			d := deliveries[0]
+			if limit != tc.limit || d.NextAttemptAt == nil || !d.NextAttemptAt.Equal(now.Add(chosen)) ||
+				d.Status != ssdomain.SecurityEventDeliveryStatusFailed || d.AttemptCount != tc.attempts+1 {
+				t.Fatalf("attempts=%d limit=%v chosen=%v delivery=%+v", tc.attempts, limit, chosen, d)
+			}
+		}
 	}
 }
 

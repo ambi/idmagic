@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -28,9 +29,8 @@ const (
 	deliveryConcurrency = 8
 )
 
-// nextAttemptDelay returns the exponential backoff delay before the next
-// delivery attempt, given the attempt count that just failed.
-func nextAttemptDelay(attemptCount int) time.Duration {
+// nextAttemptDelay は失敗した試行回数から上限を計算し、待ち時間を抽選する。
+func nextAttemptDelay(attemptCount int, randomDelay func(time.Duration) time.Duration) time.Duration {
 	if attemptCount < 1 {
 		attemptCount = 1
 	}
@@ -38,14 +38,17 @@ func nextAttemptDelay(attemptCount int) time.Duration {
 	for i := 1; i < attemptCount; i++ {
 		delay *= 2
 		if delay >= deliveryBackoffCap {
-			return deliveryBackoffCap
+			delay = deliveryBackoffCap
+			break
 		}
 	}
-	return delay
+	return randomDelay(delay)
 }
 
 // DeliverDeps holds what ProcessDueDeliveries needs.
 type DeliverDeps struct {
+	// RandomDelay は並行呼び出し可能で、0 以上上限以下を返す。nil なら本番用の一様乱数を使う。
+	RandomDelay           func(time.Duration) time.Duration
 	DeliveryRepo          ssports.SecurityEventDeliveryRepository
 	TransmitterConfigRepo ssports.SsfTransmitterConfigRepository
 	Pusher                ssports.SecurityEventPusher
@@ -67,6 +70,9 @@ type DeliverDeps struct {
 // exhausted. A push failure is expected, ordinary behavior (recorded in the
 // delivery's own state); only a repository failure is returned.
 func ProcessDueDeliveries(ctx context.Context, deps DeliverDeps, now time.Time, limit int) (int, error) {
+	if deps.RandomDelay == nil {
+		deps.RandomDelay = resilience.RandomDelay
+	}
 	due, err := deps.DeliveryRepo.ClaimDue(ctx, now, now.Add(deliveryLease), deliveriesPerStream, limit)
 	if err != nil {
 		return 0, err
@@ -196,7 +202,7 @@ func deliverOne(ctx context.Context, deps DeliverDeps, d *ssdomain.SecurityEvent
 		updated.NextAttemptAt = nil
 	} else {
 		updated.Status = ssdomain.SecurityEventDeliveryStatusFailed
-		next := now.Add(nextAttemptDelay(updated.AttemptCount))
+		next := now.Add(nextAttemptDelay(updated.AttemptCount, deps.RandomDelay))
 		updated.NextAttemptAt = &next
 	}
 	if err := deps.DeliveryRepo.Save(ctx, &updated); err != nil {

@@ -50,7 +50,7 @@
 
 - `AgentAccessRevoked` を発行したとき、SharedSignals は、`enabled` で `session-revoked` を購読する送信側のストリームごとに、`pending` の配送を作る。
 - `worker` が配送の時刻が来た `pending` の配送を試行し、受信側が受理したとき、SharedSignals は、配送を `delivered` にし、`SecurityEventTransmitted` を発行する。
-- `worker` が配送を試行して失敗し、試行の回数が `max_delivery_attempts`（デフォルト 8 回）未満の場合、SharedSignals は、配送を `failed` にし、30 秒から倍々に増えて 30 分を上限とする待ち時間の後に次の試行を予定し、`SecurityEventDeliveryFailed` を発行する。
+- `worker` が配送を試行して失敗し、試行の回数が `max_delivery_attempts`（デフォルト 8 回）未満の場合、SharedSignals は、配送を `failed` にし、30 秒から倍々に増えて最大 30 分となる値を待ち時間の上限とし、0 以上上限以下の一様乱数で選んだ待ち時間の後に次の試行を予定して、`SecurityEventDeliveryFailed` を発行する。
 - `worker` が配送を試行して失敗し、試行の回数が `max_delivery_attempts` に達した場合、SharedSignals は、配送を `dead_letter` にし、`SecurityEventDeliveryFailed` と `SecurityEventDeliveryDeadLettered` を発行し、管理者がやり直すまで配送しない。
 - `failed` の配送の再試行の時刻が来たとき、SharedSignals は、配送を `pending` に戻し、`SecurityEventDeliveryRetried` を発行してから試行する。
 - 送信側の設定を削除したストリームの配送を試行する場合、SharedSignals は、配送を失敗として扱う。
@@ -137,7 +137,7 @@ Audit と SharedSignals は互いを import しない。
 
 ### 信頼性
 
-再試行の間隔は、30 秒から始めて失敗のたびに倍にし、30 分で頭打ちにする。
+再試行の待ち時間は、[再試行の要件](#req-sharedsignals-006-配送失敗は再試行し上限を超えると-dead_letter-へ遷移する)に従って毎回選ぶ。
 `max_delivery_attempts` を使い切った配送は `dead_letter` になり、管理者がやり直すまで送らない。
 受信側を直した後は、管理 API の配送の状況から `dead_letter` の配送を確かめ、ストリームの単位でやり直す。
 

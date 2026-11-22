@@ -201,6 +201,7 @@ func TestIsJobLifecycleTerminal(t *testing.T) {
 	}
 }
 
+//spec:covers REQ-JOBS-005: 指数的な上限を乱数関数へ渡し、0、中間、上限の待ち時間を実行時刻に適用する。
 func TestNextRetryRunAt(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	base := 30 * time.Second
@@ -216,10 +217,17 @@ func TestNextRetryRunAt(t *testing.T) {
 		{attempts: 10, want: 30 * time.Minute}, // capped
 	}
 	for _, tt := range tests {
-		got := NextRetryRunAt(now, tt.attempts, base, maxBackoff)
-		want := now.Add(tt.want)
-		if !got.Equal(want) {
-			t.Errorf("NextRetryRunAt(now, %d, ...) = %v, want %v", tt.attempts, got, want)
+		for _, chosen := range []time.Duration{0, tt.want / 2, tt.want} {
+			got := NextRetryRunAt(now, tt.attempts, base, maxBackoff, func(limit time.Duration) time.Duration {
+				if limit != tt.want {
+					t.Errorf("attempts=%d limit=%v, want %v", tt.attempts, limit, tt.want)
+				}
+				return chosen
+			})
+			want := now.Add(chosen)
+			if !got.Equal(want) {
+				t.Errorf("attempts=%d chosen=%v got=%v, want %v", tt.attempts, chosen, got, want)
+			}
 		}
 	}
 }
@@ -229,10 +237,19 @@ func TestNextRetryRunAt_NeverExceedsCap(t *testing.T) {
 	base := 30 * time.Second
 	maxBackoff := 30 * time.Minute
 	for attempts := 1; attempts <= 50; attempts++ {
-		got := NextRetryRunAt(now, attempts, base, maxBackoff)
+		got := NextRetryRunAt(now, attempts, base, maxBackoff, func(limit time.Duration) time.Duration { return limit })
 		if got.After(now.Add(maxBackoff)) {
 			t.Errorf("NextRetryRunAt(now, %d, ...) = %v exceeds cap %v", attempts, got, now.Add(maxBackoff))
 		}
+	}
+}
+
+func TestNextRetryRunAtSaturatesBeforeOverflow(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	const limit time.Duration = 1<<63 - 1
+	got := NextRetryRunAt(now, 100, limit/2+1, limit, func(upper time.Duration) time.Duration { return upper })
+	if want := now.Add(limit); !got.Equal(want) {
+		t.Fatalf("run_at=%v, want %v", got, want)
 	}
 }
 

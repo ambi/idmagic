@@ -190,9 +190,12 @@ CPU で詰まって拒否が起きている場合は、CPU 使用率が上がる
 
 | 再試行 | ばらつきの実装状況 |
 | --- | --- |
-| PostgreSQL への接続の確立 | 未実装。固定の間隔で待つ |
-| ジョブの実行 | 未実装。固定の間隔で待つ |
-| Shared Signals の配信 | 未実装。固定の間隔で待つ |
+| PostgreSQL への接続の確立 | `RetryWithBackoff` が待機のたびに抽選する |
+| ジョブの実行 | `Runner` が抽選した待ち時間を `run_at` に保存する |
+| Shared Signals の配信 | 配送処理が抽選した待ち時間を `next_attempt_at` に保存する |
+
+抽選は共有ライブラリ `backend/shared/resilience` に置き、試行回数と間隔の上限の計算は各再試行の所有者に残す。
+ジョブと配送は待ち時間を選ぶ関数を受け取り、省略時も本番用の一様乱数を使う。
 
 ワーカーの `latency_sensitive`、`default`、`bulk` は実行枠を分け、`bulk` の滞留で認証に近い処理を止めない。
 

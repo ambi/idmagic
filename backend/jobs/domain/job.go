@@ -190,16 +190,15 @@ const (
 // override it per kind.
 const DefaultMaxAttempts = 5
 
-// NextRetryRunAt computes the run_at for a Job returned to Queued via EventRetry,
-// using exponential backoff: base * 2^(attempts-1), capped at maxBackoff.
-// attempts is the Job's attempt count after the failure being retried (>= 1).
-func NextRetryRunAt(now time.Time, attempts int, base, maxBackoff time.Duration) time.Time {
+// NextRetryRunAt は失敗後の試行回数から上限を計算する。randomDelay は
+// 0 以上上限以下の待ち時間を返す。base と maxBackoff は正の値を渡す。
+func NextRetryRunAt(now time.Time, attempts int, base, maxBackoff time.Duration, randomDelay func(time.Duration) time.Duration) time.Time {
 	if attempts < 1 {
 		attempts = 1
 	}
 	delay := base
 	for i := 1; i < attempts; i++ {
-		if delay >= maxBackoff {
+		if delay >= maxBackoff-delay {
 			delay = maxBackoff
 			break
 		}
@@ -208,7 +207,7 @@ func NextRetryRunAt(now time.Time, attempts int, base, maxBackoff time.Duration)
 	if delay > maxBackoff {
 		delay = maxBackoff
 	}
-	return now.Add(delay)
+	return now.Add(randomDelay(delay))
 }
 
 // JobProgress is an optional progress snapshot a handler may report while Running
