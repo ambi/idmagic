@@ -4,6 +4,24 @@ using TypeSpec.Http;
 
 namespace IdMagic.Contract {
 
+@doc("総件数を返さないキーセットページングのレスポンスヘッダー。")
+model PageLinksHeaders {
+  @doc("ページ送りの URL を RFC 8288 の Link 形式で返す。前後のページがなければ省く。総件数を返す操作では、先頭と末尾へのリンクも含む。")
+  @header("Link") link?: string;
+}
+
+@doc("総件数を返すキーセットページングのレスポンスヘッダー。空の結果でも Pagination-* を返す。")
+model PaginationHeaders extends PageLinksHeaders {
+  @doc("検索条件に一致する総件数。インポートの取得では行エラーの総件数。")
+  @header("Pagination-Total-Items") paginationTotalItems: int64;
+  @doc("ページの総数。結果が空なら0。")
+  @header("Pagination-Total-Pages") paginationTotalPages: integer;
+  @doc("1から始まる現在のページ番号。結果が空なら0。")
+  @header("Pagination-Current-Page") paginationCurrentPage: integer;
+  @doc("要求の limit にデフォルト値と最大値を適用したページサイズ。")
+  @header("Pagination-Page-Size") paginationPageSize: integer;
+}
+
 enum FeatureMaturity {
   experimental,
   preview,

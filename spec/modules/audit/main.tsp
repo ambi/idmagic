@@ -95,6 +95,7 @@ namespace IdMagic.Audit {
 
 namespace Operations {
 model ListAdminAuditEventsSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminAuditEventListResponse;
 }
@@ -228,6 +229,7 @@ op GetAdminAuditEvent(
 ): GetAdminAuditEventSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminAuditEventError403 | GetAdminAuditEventError404;
 
 model ListSystemAuditEventsSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminAuditEventListResponse;
 }

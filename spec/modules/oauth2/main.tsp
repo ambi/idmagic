@@ -1046,6 +1046,7 @@ op DeleteAuthorizationDetailType(
 ): DeleteAuthorizationDetailTypeSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAuthorizationDetailTypeError403;
 
 model ListAdminOAuth2ClientsSuccess_200 {
+  ...IdMagic.Contract.PageLinksHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminOAuth2ClientListResponse;
 }
@@ -1645,6 +1646,7 @@ op DeleteAdminCrossAppAccessRedeemPolicy(
 ): DeleteAdminCrossAppAccessPolicySuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | AdminCrossAppAccessError403 | AdminCrossAppAccessError404;
 
 model ListAdminConsentsSuccess_200 {
+  ...IdMagic.Contract.PageLinksHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminConsentListResponse;
 }
@@ -2004,6 +2006,7 @@ op RevokeMyAgentDelegation(
 ): RevokeMyAgentDelegationSuccess_204 | IdMagic.Contract.AuthenticationRequiredResponse | RevokeMyAgentDelegationError403 | RevokeMyAgentDelegationError404;
 
 model ListAdminAgentDelegationsSuccess_200 {
+  ...IdMagic.Contract.PageLinksHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminAgentDelegationListResponse;
 }

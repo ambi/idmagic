@@ -9,6 +9,7 @@ namespace IdMagic.Application {
 
 namespace Operations {
 model ListAdminApplicationsSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminApplicationListResponse;
 }
@@ -669,6 +670,7 @@ op UpdateApplicationSamlConfig(
 ): UpdateApplicationSamlConfigSuccess_204 | UpdateApplicationSamlConfigError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateApplicationSamlConfigError403 | UpdateApplicationSamlConfigError404;
 
 model ListApplicationAssignmentsSuccess_200 {
+  ...IdMagic.Contract.PageLinksHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.ApplicationAssignmentListResponse;
 }

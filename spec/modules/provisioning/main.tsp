@@ -353,6 +353,7 @@ model ListProvisioningTasksHttpResponse {
 }
 
 model ListProvisioningTasksSuccess_200 {
+  ...IdMagic.Contract.PageLinksHeaders;
   @statusCode statusCode: 200;
   @body body: ListProvisioningTasksHttpResponse;
 }

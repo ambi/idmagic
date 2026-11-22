@@ -285,6 +285,7 @@ op ExportAccountData(
 ): ExportAccountDataSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ExportAccountDataError403;
 
 model ListAdminUsersSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminUserListResponse;
 }
@@ -515,6 +516,7 @@ op ApplyAdminUserImport(
 ): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminUserImportError403 | ApplyAdminUserImportError404 | ApplyAdminUserImportError409;
 
 model GetAdminUserImportSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.UserImportJob;
 }
@@ -975,6 +977,7 @@ op ApplyAdminGroupImport(
 ): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupImportError403 | ApplyAdminGroupImportError404 | ApplyAdminGroupImportError409;
 
 model GetAdminGroupImportSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.GroupImportJob;
 }
@@ -1553,6 +1556,7 @@ op ApplyAdminGroupMemberImport(
 ): ApplyAdminGroupMemberImportSuccess_202 | ApplyAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | ApplyAdminGroupMemberImportError403 | ApplyAdminGroupMemberImportError404 | ApplyAdminGroupMemberImportError409;
 
 model GetAdminGroupMemberImportSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.GroupMembershipImportJob;
 }
@@ -1951,6 +1955,7 @@ op ClearUserRequiredAction(
 ): ClearUserRequiredActionSuccess_200 | ClearUserRequiredActionError400 | IdMagic.Contract.AuthenticationRequiredResponse | ClearUserRequiredActionError403;
 
 model ListGroupsSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.GroupListResponse;
 }
@@ -2483,6 +2488,7 @@ op ListUserGroups(
 ): ListUserGroupsSuccess_200 | ListUserGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListUserGroupsError403;
 
 model ListAgentsSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AgentListResponse;
 }
@@ -2593,6 +2599,7 @@ op ImportAgentObservations(
 ): ImportAgentObservationsSuccess_200 | AgentObservationError400 | IdMagic.Contract.AuthenticationRequiredResponse | AgentObservationError403 | ImportAgentObservationsError409 | ImportAgentObservationsError422;
 
 model ListAgentObservationsSuccess_200 {
+  ...IdMagic.Contract.PaginationHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AgentObservationListResponse;
 }

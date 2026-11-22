@@ -1011,6 +1011,7 @@ op ListUserSignInActivity(
 ): ListUserSignInActivitySuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListUserSignInActivityError403;
 
 model ListAuthenticationEventBucketsSuccess_200 {
+  ...IdMagic.Contract.PageLinksHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AuthenticationEventBucketListResponse;
 }
