@@ -20,7 +20,7 @@ model AuditExportLegacyLimit { @statusCode statusCode: 422; @header contentType:
 @TypeSpec.OpenAPI.operationId("StartAdminAuditExport")
 @route("/api/admin/v1/audit-events/exports")
 @post
-op StartAdminAuditExport(@query query: IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
+op StartAdminAuditExport(...IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.AuthenticationRequiredResponse | AuditExportMutationForbidden;
 
 @doc("現在の要求者と経路の範囲に属する直近 20 件を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
@@ -55,7 +55,7 @@ op DownloadAdminAuditExport(@path export_id: string): AuditExportFileOK | AuditE
 @TypeSpec.OpenAPI.operationId("StartSystemAuditExport")
 @route("/api/admin/v1/system/audit-events/exports")
 @post
-op StartSystemAuditExport(@query query: IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportMutationForbidden;
+op StartSystemAuditExport(...IdMagic.Contract.AuditEventQuery): AuditExportAccepted | ExportAdminAuditEventsError400 | AuditExportQuota | IdMagic.Contract.StepUpAuthenticationRequiredResponse | SystemAuditExportMutationForbidden;
 
 @doc("現在の要求者と経路の範囲に属する直近 20 件を返す。")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
@@ -126,7 +126,7 @@ model ListAdminAuditEventsError403 {
 @route("/api/admin/v1/audit-events")
 @get
 op ListAdminAuditEvents(
-  @query query: IdMagic.Contract.AuditEventQuery
+  ...IdMagic.Contract.AuditEventQuery
 ): ListAdminAuditEventsSuccess_200 | ListAdminAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminAuditEventsError403;
 
 model ExportAdminAuditEventsSuccess_200 {
@@ -164,7 +164,7 @@ model ExportAdminAuditEventsError403 {
 @route("/api/admin/v1/audit-events/export")
 @get
 op ExportAdminAuditEvents(
-  @query query: IdMagic.Contract.AuditEventQuery
+  ...IdMagic.Contract.AuditEventQuery
 ): ExportAdminAuditEventsSuccess_200 | ExportAdminAuditEventsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ExportAdminAuditEventsError403 | AuditExportLegacyBusy | AuditExportLegacyLimit;
 
 model GetAdminAuditEventSearchOptionsSuccess_200 {
@@ -260,7 +260,7 @@ model ListSystemAuditEventsError403 {
 @route("/api/admin/v1/system/audit-events")
 @get
 op ListSystemAuditEvents(
-  @query query: IdMagic.Contract.AuditEventQuery
+  ...IdMagic.Contract.AuditEventQuery
 ): ListSystemAuditEventsSuccess_200 | ListSystemAuditEventsError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ListSystemAuditEventsError403;
 
 model ExportSystemAuditEventsSuccess_200 {
@@ -299,7 +299,7 @@ model ExportSystemAuditEventsError403 {
 @route("/api/admin/v1/system/audit-events/export")
 @get
 op ExportSystemAuditEvents(
-  @query query: IdMagic.Contract.AuditEventQuery
+  ...IdMagic.Contract.AuditEventQuery
 ): ExportSystemAuditEventsSuccess_200 | ExportSystemAuditEventsError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | ExportSystemAuditEventsError403 | AuditExportLegacyBusy | AuditExportLegacyLimit;
 
 model GetSystemAuditEventSuccess_200 {
