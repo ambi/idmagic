@@ -189,9 +189,11 @@ func TestProcessDueDeliveries_ExhaustingMaxAttemptsDeadLetters(t *testing.T) {
 
 	var emitted []spec.DomainEvent
 	pusher := &fakePusher{err: errors.New("receiver unreachable")}
+	// 待ち時間は上限までの乱数なので、上限そのものを返して伸び方を決定的にする。
 	deps := ssusecases.DeliverDeps{
 		DeliveryRepo: deliveryRepo, TransmitterConfigRepo: configRepo, Pusher: pusher,
-		Emit: func(e spec.DomainEvent) error { emitted = append(emitted, e); return nil },
+		Emit:        func(e spec.DomainEvent) error { emitted = append(emitted, e); return nil },
+		RandomDelay: func(upper time.Duration) time.Duration { return upper },
 	}
 
 	// now を毎回 1 時間ずつ進めて呼ぶ: backoff の上限 (30分) より確実に大きい
