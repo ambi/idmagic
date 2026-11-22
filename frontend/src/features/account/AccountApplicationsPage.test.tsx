@@ -8,6 +8,7 @@ import {
   formatAccountConsentDate,
 } from './AccountApplicationsPage'
 import type { AccountConsent } from '../../types'
+import { accountApplicationsDictionary } from './AccountApplicationsPage.i18n'
 
 const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
   renderWithRouterBase(ui, { locale: 'ja' })
@@ -23,6 +24,13 @@ const brandingOr204 = (url: string) =>
   url.endsWith('/api/branding') ? response(200, {}) : response(204)
 
 describe('formatAccountConsentDate', () => {
+  it('英語を指定すると英語の日付書式で整形する', () => {
+    const value = '2026-01-15T10:30:00Z'
+    expect(formatAccountConsentDate(value, 'en')).toBe(
+      new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(value)),
+    )
+  })
+
   it('formats a valid ISO date string', () => {
     expect(formatAccountConsentDate('2026-01-15T10:30:00Z')).toContain('2026')
   })
@@ -52,6 +60,16 @@ describe('AccountApplicationsPresentation', () => {
     onDismissNotice: mock(),
     onRevoke: mock(),
   }
+
+  it('英語の画面では承認日も英語で表示する', async () => {
+    await renderWithRouterBase(<AccountApplicationsPresentation {...baseProps} />, { locale: 'en' })
+    const date = new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(
+      new Date(consent.granted_at),
+    )
+    expect(
+      screen.getByText(accountApplicationsDictionary.en.granted.replace('{date}', date)),
+    ).toBeInTheDocument()
+  })
 
   it('shows an empty state when there are no consents', async () => {
     await renderWithRouter(<AccountApplicationsPresentation {...baseProps} consents={[]} />)

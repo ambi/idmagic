@@ -11,7 +11,7 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Toast } from '../../components/ui/toast'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import { accountApprovalsDictionary } from './AccountApprovalsPage.i18n'
 
@@ -92,10 +92,10 @@ export function AccountApprovalsPresentation({
   onDecision: (request: AccountApprovalRequest, decision: 'approve' | 'deny') => void
 }) {
   const t = useDictionary(accountApprovalsDictionary)
-  const { locale } = useLocale()
+  const { formatDateTimeWithSeconds } = useFormatters()
   const formatDateTime = (value: string) => {
     const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale)
+    return Number.isNaN(date.getTime()) ? value : formatDateTimeWithSeconds(date)
   }
   // 承認の URL が名指した承認リクエストを先頭に置く。本人宛の保留中になければ、判断できないことを示す。
   const focused = approvalRequests.find((request) => request.id === focusRequestId)

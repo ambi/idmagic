@@ -16,7 +16,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
-import { useLocale } from '../../lib/i18n'
+import { createFormatters, useLocale } from '../../lib/i18n'
 import type { AdminJobsDictionary } from './AdminJobsPage.i18n'
 
 // JobsBrowser はジョブの一覧、詳細、取り消しの表示と操作を持つ。
@@ -405,7 +405,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function formatDate(value: string, locale: 'ja' | 'en'): string {
   try {
-    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+    return createFormatters(locale).formatDateTimeWithSeconds(value)
   } catch {
     return value
   }

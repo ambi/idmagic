@@ -8,7 +8,7 @@ import {
 import type { ReactNode } from 'react'
 import { AccountShell } from '../../components/AccountShell'
 import { Card } from '../../components/ui/card'
-import { useDictionary, useFormatters } from '../../lib/i18n'
+import { createFormatters, useDictionary, useFormatters } from '../../lib/i18n'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import { requiredActionLabel, type AccountSummary } from '../../types'
 import { accountHomeDictionary } from './AccountHomePage.i18n'
@@ -25,13 +25,7 @@ export function formatAccountSummaryDateTime(
   if (Number.isNaN(date.getTime())) {
     return empty
   }
-  return date.toLocaleString(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return createFormatters(locale).formatDateTime(date)
 }
 
 export function AccountHomePage({

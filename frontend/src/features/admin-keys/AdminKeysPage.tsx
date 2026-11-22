@@ -11,7 +11,7 @@ import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { createFormatters, useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminKey } from '../../types'
 import { adminKeysDictionary } from './AdminKeysPage.i18n'
 import { xmlFederationKeyURL } from './xmlFederationNavigation'
@@ -286,7 +286,7 @@ export function SigningKeyDetail({ keyItem }: { keyItem: AdminKey | null }) {
 
 export function formatDate(value: string, locale: 'ja' | 'en' = 'en'): string {
   try {
-    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+    return createFormatters(locale).formatDateTimeWithSeconds(value)
   } catch {
     return value
   }

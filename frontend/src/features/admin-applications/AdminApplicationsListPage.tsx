@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
@@ -190,7 +190,7 @@ function ApplicationSummaryCard({
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const t = useDictionary(adminApplicationsDictionary)
-  const { locale } = useLocale()
+  const { formatDateTimeWithSeconds } = useFormatters()
 
   if (!app) {
     return (
@@ -326,17 +326,13 @@ function ApplicationSummaryCard({
             <div>
               {t.registeredLabel.replace(
                 '{date}',
-                app.created_at
-                  ? new Date(app.created_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
-                  : t.unknownDate,
+                app.created_at ? formatDateTimeWithSeconds(app.created_at) : t.unknownDate,
               )}
             </div>
             <div className="mt-0.5">
               {t.updatedLabel.replace(
                 '{date}',
-                app.updated_at
-                  ? new Date(app.updated_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
-                  : t.unknownDate,
+                app.updated_at ? formatDateTimeWithSeconds(app.updated_at) : t.unknownDate,
               )}
             </div>
           </div>

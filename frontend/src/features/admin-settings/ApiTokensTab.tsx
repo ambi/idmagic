@@ -18,7 +18,7 @@ import {
   requiredText,
   useFormValidation,
 } from '../../lib/form'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import type { AdminIntegrationEndpointCatalog, ApiToken, ApiTokenScope } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { ApiTokenScopePicker } from './ApiTokenScopePicker'
@@ -62,7 +62,7 @@ export function ApiTokensTab({
   const t = useDictionary(adminSettingsDictionary)
   const schema = useMemo(() => tokenSchema(personal), [personal])
   const validation = useFormValidation(schema, { description: tokenDesc, expiryDays: tokenExpiry })
-  const { locale } = useLocale()
+  const { formatDateTimeWithSeconds } = useFormatters()
   const { guard, dialog } = useStepUpGuard()
   const basePath = personal ? '/account/api-tokens' : '/admin/api-tokens'
   const personalAPI = '/api/account/v1/api-tokens'
@@ -353,17 +353,9 @@ export function ApiTokensTab({
                         </div>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{tok.user_id}</td>
+                      <td className="px-4 py-3">{formatDateTimeWithSeconds(tok.created_at)}</td>
                       <td className="px-4 py-3">
-                        {new Date(tok.created_at).toLocaleString(
-                          locale === 'ja' ? 'ja-JP' : 'en-US',
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {tok.expires_at
-                          ? new Date(tok.expires_at).toLocaleString(
-                              locale === 'ja' ? 'ja-JP' : 'en-US',
-                            )
-                          : t.noneLabel}
+                        {tok.expires_at ? formatDateTimeWithSeconds(tok.expires_at) : t.noneLabel}
                       </td>
                       <td className="px-4 py-3">
                         <Button

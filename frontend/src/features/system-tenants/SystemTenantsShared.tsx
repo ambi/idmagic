@@ -4,7 +4,7 @@ import { AuthenticationAPIError, setAdminTenantDisabled } from '../../api'
 import { ConfirmActionDialog } from '../../components/ConfirmActionDialog'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Button } from '../../components/ui/button'
-import { useDictionary } from '../../lib/i18n'
+import { createFormatters, useDictionary } from '../../lib/i18n'
 import type { AdminTenant } from '../../types'
 import { systemTenantsDictionary } from './SystemTenantsPage.i18n'
 
@@ -23,7 +23,7 @@ export function StatusBadge({ status }: { status: AdminTenant['status'] }) {
 export function formatDate(value: string | undefined, locale: 'ja' | 'en'): string {
   if (!value) return '—'
   try {
-    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+    return createFormatters(locale).formatDateTimeWithSeconds(value)
   } catch {
     return value
   }

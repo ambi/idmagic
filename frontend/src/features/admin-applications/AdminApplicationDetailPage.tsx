@@ -5,7 +5,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import { AssignmentList } from './AdminApplicationAssignments'
 import { AdminApplicationDetailActions } from './AdminApplicationDetailActions'
 import { IdMagicSetupCard } from './IdMagicSetupCard'
@@ -51,7 +51,7 @@ export function AdminApplicationDetailPage({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const t = useDictionary(adminApplicationsDictionary)
-  const { locale } = useLocale()
+  const { formatDateTimeWithSeconds } = useFormatters()
 
   async function handleDelete() {
     setBusy(true)
@@ -167,16 +167,12 @@ export function AdminApplicationDetailPage({
             <section className="grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 text-xs text-slate-500">
               <ReadOnlyField label={t.registeredAtFieldLabel}>
                 <span>
-                  {app.created_at
-                    ? new Date(app.created_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
-                    : t.unknownDate}
+                  {app.created_at ? formatDateTimeWithSeconds(app.created_at) : t.unknownDate}
                 </span>
               </ReadOnlyField>
               <ReadOnlyField label={t.lastUpdatedAtFieldLabel}>
                 <span>
-                  {app.updated_at
-                    ? new Date(app.updated_at).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
-                    : t.unknownDate}
+                  {app.updated_at ? formatDateTimeWithSeconds(app.updated_at) : t.unknownDate}
                 </span>
               </ReadOnlyField>
             </section>

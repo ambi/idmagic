@@ -7,16 +7,16 @@ import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import type { AccountAgentDelegation, AccountConsent, DelegableAgent } from '../../types'
-import { useDictionary, useFormatters } from '../../lib/i18n'
+import { createFormatters, useDictionary, useFormatters } from '../../lib/i18n'
 import { accountApplicationsDictionary } from './AccountApplicationsPage.i18n'
 import { AgentDelegationsSection } from './AgentDelegationsSection'
 
-export function formatAccountConsentDate(value: string): string {
+export function formatAccountConsentDate(value: string, locale = 'en'): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return value
   }
-  return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
+  return createFormatters(locale).formatDate(date)
 }
 
 export function AccountApplicationsPage({

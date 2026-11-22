@@ -5,7 +5,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters, useLocale } from '../../lib/i18n'
 import { attributeDisplayName } from '../../lib/utils'
 import type { DataExportJob, DataExportStatus } from '../../types'
 import { dataExportDictionary } from './DataExportPage.i18n'
@@ -47,12 +47,6 @@ function exportErrorLabel(t: typeof dataExportDictionary.ja, code: string | unde
   }
 }
 
-function formatDateTime(value: string | undefined): string {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
-}
-
 export function DataExportPage({
   csrfToken,
   actorUsername,
@@ -68,6 +62,12 @@ export function DataExportPage({
 }) {
   const t = useDictionary(dataExportDictionary)
   const { locale } = useLocale()
+  const { formatDateTimeWithSeconds } = useFormatters()
+  function formatDateTime(value: string | undefined): string {
+    if (!value) return '—'
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? value : formatDateTimeWithSeconds(date)
+  }
   const baseColumns = EXPORT_COLUMNS[target]
   const listPath = backPath || tenantURL(target === 'users' ? '/admin/users' : '/admin/groups')
   const [attributeColumns, setAttributeColumns] = useState<ExportColumn[]>([])

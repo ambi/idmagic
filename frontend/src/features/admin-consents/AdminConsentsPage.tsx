@@ -7,7 +7,7 @@ import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { createFormatters, useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminAgentDelegation, AdminConsent } from '../../types'
 import { AdminAgentDelegationsSection } from './AdminAgentDelegationsSection'
 import { adminConsentsDictionary } from './AdminConsentsPage.i18n'
@@ -272,7 +272,7 @@ export function ConsentStateBadge({ state }: { state: AdminConsent['state'] }) {
 export function formatConsentDate(value?: string, locale: 'ja' | 'en' = 'en'): string {
   if (!value) return '—'
   try {
-    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+    return createFormatters(locale).formatDateTimeWithSeconds(value)
   } catch {
     return value
   }

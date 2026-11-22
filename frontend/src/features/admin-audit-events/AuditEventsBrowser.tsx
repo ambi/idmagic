@@ -16,7 +16,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { createFormatters, useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
 import type { AdminAuditEvent } from '../../types'
 import { friendlyEventName } from '../admin-dashboard/AdminDashboardPage.i18n'
@@ -727,7 +727,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function formatDate(value: string, locale: 'ja' | 'en'): string {
   try {
-    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+    return createFormatters(locale).formatDateTimeWithSeconds(value)
   } catch {
     return value
   }

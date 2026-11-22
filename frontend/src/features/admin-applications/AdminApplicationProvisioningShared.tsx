@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
-import { useDictionary } from '../../lib/i18n'
+import { createFormatters, useDictionary } from '../../lib/i18n'
 import { provisioningURL } from './AdminApplicationsShared'
 import {
   provisioningDictionary,
@@ -32,7 +32,7 @@ export function formatDate(
   unknown: string,
 ): string {
   if (!value) return unknown
-  return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+  return createFormatters(locale).formatDateTimeWithSeconds(value)
 }
 
 function authMethodOptions(t: ProvisioningDictionary) {

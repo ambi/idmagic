@@ -12,11 +12,11 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import type { AccountSession, AccountSignInActivity } from '../../types'
-import { useDictionary, useFormatters } from '../../lib/i18n'
+import { createFormatters, useDictionary, useFormatters } from '../../lib/i18n'
 import { accountActivityDictionary } from './AccountActivityPage.i18n'
 
 export function formatAccountActivityDateTime(value: string, locale = 'en'): string {
-  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
+  return createFormatters(locale).formatDateTime(value)
 }
 
 const amrLabels: Record<string, string> = accountActivityDictionary.en

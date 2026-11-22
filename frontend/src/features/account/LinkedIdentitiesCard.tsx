@@ -6,13 +6,8 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Toast } from '../../components/ui/toast'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import { accountSecurityDictionary } from './AccountSecurityPage.i18n'
-
-function formatLinkedAt(value: string, locale: string, noRecord: string): string {
-  if (!value) return noRecord
-  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
-}
 
 export function LinkedIdentitiesCard({
   csrfToken,
@@ -22,7 +17,7 @@ export function LinkedIdentitiesCard({
   initialIdentities: LinkedIdentity[]
 }) {
   const t = useDictionary(accountSecurityDictionary)
-  const { locale } = useLocale()
+  const { formatDateTime } = useFormatters()
   const [identities, setIdentities] = useState(initialIdentities)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -75,7 +70,7 @@ export function LinkedIdentitiesCard({
                   <p className="mt-0.5 text-xs text-slate-500">
                     {t.linkedAt.replace(
                       '{date}',
-                      formatLinkedAt(identity.linked_at, locale, t.noRecord),
+                      identity.linked_at ? formatDateTime(identity.linked_at) : t.noRecord,
                     )}
                   </p>
                 </div>

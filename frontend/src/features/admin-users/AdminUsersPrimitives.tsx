@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { createFormatters, useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminUser } from '../../types'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
@@ -194,11 +194,5 @@ export function optionalValue(value: FormDataEntryValue | null) {
 export function formatDateTime(value: string, locale: 'ja' | 'en' = 'en') {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
+  return createFormatters(locale).formatDateTime(date)
 }

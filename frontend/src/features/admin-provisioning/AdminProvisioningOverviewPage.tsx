@@ -4,12 +4,12 @@ import { AdminShell } from '../../components/AdminShell'
 import { useState } from 'react'
 import { listAdminTenantProvisioningConnections } from '../../api/admin'
 import { Card } from '../../components/ui/card'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { createFormatters, useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminApplication, ProvisioningConnection } from '../../types'
 
 function formatDate(value: string | null | undefined, locale: string, unknown: string): string {
   if (!value) return unknown
-  return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+  return createFormatters(locale).formatDateTimeWithSeconds(value)
 }
 
 export function AdminProvisioningOverviewPage({

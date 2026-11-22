@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'bun:test'
-import { defineDictionary, LocaleProvider, useDictionary, useFormatters } from './index'
+import { defineDictionary, LocaleProvider, useDictionary, useFormatters, useLocale } from './index'
 import { commonDictionary } from './common.i18n'
 
 // 主要ユースケース追跡: REQ-SYSTEM-010。
@@ -20,7 +20,43 @@ function Probe() {
   )
 }
 
+function SecondsProbe({ value }: { value: string }) {
+  const { setLocale } = useLocale()
+  const { formatDateTime, formatDateTimeWithSeconds } = useFormatters()
+  return (
+    <>
+      <button type="button" onClick={() => setLocale('ja')}>
+        ja
+      </button>
+      <span data-testid="minutes">{formatDateTime(value)}</span>
+      <span data-testid="seconds">{formatDateTimeWithSeconds(value)}</span>
+    </>
+  )
+}
+
 describe('the selected locale reaches both the dictionary and the formatters', () => {
+  it('秒までの日時を表示し、ロケールの変更を反映する', () => {
+    const value = '2026-09-13T04:05:06Z'
+    render(
+      <LocaleProvider initialLocale="en">
+        <SecondsProbe value={value} />
+      </LocaleProvider>,
+    )
+    for (const locale of ['en', 'ja']) {
+      if (locale === 'ja') fireEvent.click(screen.getByRole('button', { name: 'ja' }))
+      const date = new Date(value)
+      expect(screen.getByTestId('minutes').textContent).toBe(
+        new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date),
+      )
+      expect(screen.getByTestId('seconds').textContent).toBe(
+        new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(date),
+      )
+      expect(screen.getByTestId('seconds').textContent).not.toBe(
+        screen.getByTestId('minutes').textContent,
+      )
+    }
+  })
+
   // 文言だけを見る検査は、日時と数値を locale と無関係に組み立てる実装を通す。それが
   // いちばん起きやすい退行であり (`String(value)` や固定の 'en')、辞書の側からは直せない。
   // 書式の判定に固定の文字列を使わないのは、ICU のバージョンで表記が動くためである。en と ja を

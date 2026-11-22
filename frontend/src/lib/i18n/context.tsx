@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react'
 import { setCurrentLocale } from './currentLocale'
+import { createFormatters } from './formatters'
 import { FALLBACK_LOCALE, type Locale } from './locale'
 import { resolveLocale } from './resolveLocale'
 
@@ -90,17 +91,5 @@ export function useDictionary<T extends Record<string, string>>(dictionary: Reco
 
 export function useFormatters() {
   const { locale } = useLocale()
-  return useMemo(() => {
-    const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' })
-    const dateTimeFormatter = new Intl.DateTimeFormat(locale, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
-    const numberFormatter = new Intl.NumberFormat(locale)
-    return {
-      formatDate: (value: Date | string | number) => dateFormatter.format(new Date(value)),
-      formatDateTime: (value: Date | string | number) => dateTimeFormatter.format(new Date(value)),
-      formatNumber: (value: number) => numberFormatter.format(value),
-    }
-  }, [locale])
+  return useMemo(() => createFormatters(locale), [locale])
 }

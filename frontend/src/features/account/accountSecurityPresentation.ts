@@ -1,3 +1,4 @@
+import { createFormatters } from '../../lib/i18n'
 import { accountSecurityDictionary } from './AccountSecurityPage.i18n'
 
 export function formatAccountSecurityDateTime(
@@ -6,5 +7,5 @@ export function formatAccountSecurityDateTime(
   noRecord = accountSecurityDictionary.en.noRecord,
 ): string {
   if (!value) return noRecord
-  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
+  return createFormatters(locale).formatDateTime(value)
 }

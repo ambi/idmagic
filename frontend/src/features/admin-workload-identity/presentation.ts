@@ -1,4 +1,4 @@
-import type { Locale } from '../../lib/i18n'
+import { createFormatters, type Locale } from '../../lib/i18n'
 import type { AdminAgent, AdminAuditEvent, WorkloadTrustBundle } from '../../types'
 import type { adminWorkloadIdentityDictionary } from './AdminWorkloadIdentityPage.i18n'
 
@@ -75,14 +75,12 @@ export function jwksSource(bundle: WorkloadTrustBundle, t: Dictionary): string {
   return t.jwksSourceNone
 }
 
-// formatDateTime は lib/i18n の useFormatters と重なるが、あちらはフックで、未設定と
-// 解釈できない値を扱わない。ここは純関数のまま置き、未設定を em ダッシュ、解釈できない値を
-// 生のまま返す振る舞いをテストで固定する。
+// 未設定と解釈できない値の代替表示は、この画面の表示判断として扱う。
 export function formatDateTime(value: string | undefined, locale: Locale): string {
   if (!value) return '—'
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return value
-  return parsed.toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+  return createFormatters(locale).formatDateTimeWithSeconds(parsed)
 }
 
 export type Confirmation = { title: string; message: string }

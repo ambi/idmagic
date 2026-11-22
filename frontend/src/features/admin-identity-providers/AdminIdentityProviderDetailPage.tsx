@@ -13,7 +13,7 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Toast } from '../../components/ui/toast'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { createFormatters, useDictionary, useLocale } from '../../lib/i18n'
 import { identityProvidersDictionary } from './AdminIdentityProvidersPage.i18n'
 import {
   connectionErrorMessage,
@@ -24,7 +24,7 @@ import {
 
 function formatDateTime(value: string | undefined, locale: string): string {
   if (!value) return ''
-  return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
+  return createFormatters(locale).formatDateTimeWithSeconds(value)
 }
 
 export function AdminIdentityProviderDetailPage({

@@ -4,7 +4,7 @@ import { issueApplicationClientSecret, revokeApplicationClientSecret } from '../
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary, useFormatters } from '../../lib/i18n'
 import type { ClientSecretCredentialMetadata } from '../../types'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import { CopyableField, messageOf } from './AdminApplicationsShared'
@@ -30,16 +30,9 @@ export function ClientSecretRotationPanel({
   const [secret, setSecret] = useState('')
   const [copied, setCopied] = useState(false)
   const t = useDictionary(adminApplicationsDictionary)
-  const { locale } = useLocale()
+  const { formatDateTime: formatDate } = useFormatters()
   const activeCount = credentials.filter((credential) => credential.status === 'active').length
   const atLimit = activeCount >= 2
-
-  function formatDate(value: string): string {
-    return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value))
-  }
 
   function statusLabel(status: ClientSecretCredentialMetadata['status']): string {
     if (status === 'revoked') return t.secretStatusRevoked
