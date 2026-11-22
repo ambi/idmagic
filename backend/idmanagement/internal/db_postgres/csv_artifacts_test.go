@@ -109,7 +109,7 @@ func TestCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
 
 // REQ-IDMANAGEMENT-080 の主要な使い方を、PostgreSQL の成果物ストアで固定する。
 //
-//spec:covers EX-IDMANAGEMENT-080-01: 境界の時刻より前に作った成果物を分割片ごと消し、境界の時刻ちょうどとそれより後の成果物を残すこと。
+//spec:covers GDPR-ERASURE, EX-IDMANAGEMENT-080-01: 境界の時刻より前に作った成果物を分割片ごと消し、境界の時刻ちょうどとそれより後の成果物を残すこと。
 func TestCSVArtifactStoreDeletesArtifactsCreatedBeforeTheCutoff(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

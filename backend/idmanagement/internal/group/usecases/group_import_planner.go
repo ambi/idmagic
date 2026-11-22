@@ -180,6 +180,9 @@ func PlanGroupImport(
 	seenIDs := map[string]struct{}{}
 	seenNames := map[string]struct{}{}
 	for {
+		if err := ctx.Err(); err != nil {
+			return summary, err
+		}
 		record, err := reader.Next()
 		if errors.Is(err, io.EOF) {
 			return summary, nil

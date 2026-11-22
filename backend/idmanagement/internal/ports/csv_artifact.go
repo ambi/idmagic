@@ -17,10 +17,11 @@ var ErrCSVArtifactNotFound = errors.New("CSV artifact not found")
 // サーバーが所有する preview/apply ジョブのための完全性バインディングであり、
 // クライアントの署名ではない。
 type CSVArtifact struct {
-	Ref      string `json:"ref"`
-	TenantID string `json:"-"`
-	SHA256   string `json:"sha256"`
-	ByteSize int64  `json:"byte_size"`
+	Ref       string    `json:"ref"`
+	TenantID  string    `json:"-"`
+	SHA256    string    `json:"sha256"`
+	ByteSize  int64     `json:"byte_size"`
+	CreatedAt time.Time `json:"-"`
 }
 
 // CSVArtifactStore は write が nil を返したときにだけ成果物を確定する。

@@ -105,7 +105,7 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ログインセッション | 本人としての操作の継続 | `authentication_sessions` |
 | 認可コード、`request_uri`、デバイスコード、リフレッシュトークン | 認可の横取りと権限の継続的な取得 | OAuth2 |
 | API アクセストークン | テナント運用または本人のアカウント権限での機械アクセス | ApiTokens |
-| 個人データ（User 属性、監査イベントの PII） | 法的義務の違反と当事者への直接の害 | IdManagement、Audit |
+| 個人データ（User 属性、CSV の入力、監査イベントの PII） | 法的義務の違反と当事者への直接の害 | IdManagement（CSV の保持と削除は REQ-IDMANAGEMENT-080）、Audit |
 | 監査記録 | 何が起きたかを後から言えなくなる | Audit |
 | テナントの信頼設定（外部 IdP、RP、SP、`WorkloadTrustBundle`） | サインイン経路の乗っ取り | Tenancy、Authentication、Saml、WsFederation、WorkloadIdentity |
 | 認可モデルと関係タプル | 細粒度認可の判定の書き換え | AccessControl |

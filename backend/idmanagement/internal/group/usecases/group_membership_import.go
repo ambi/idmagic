@@ -136,7 +136,7 @@ func StartGroupMembershipImportApply(
 		return nil, errors.New("group membership import apply dependencies are incomplete")
 	}
 	tenantID := tenantports.TenantID(ctx)
-	params, result, err := loadBoundGroupMembershipPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, groupID, previewJobID)
+	params, result, err := loadBoundGroupMembershipPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, groupID, previewJobID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +192,7 @@ func GroupMembershipImportJobHandler(
 		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		var source GroupMembershipImportParams
 		if mode == GroupMembershipImportModeApply {
-			bound, previewResult, err := loadBoundGroupMembershipPreview(
-				ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.GroupID, params.PreviewJobID)
+			bound, previewResult, err := loadBoundGroupMembershipPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.GroupID, params.PreviewJobID, deps.now())
 			if err != nil {
 				return nil, err
 			}
@@ -204,6 +203,11 @@ func GroupMembershipImportJobHandler(
 		} else {
 			source = params
 		}
+		ctx, cancel, err := idmusecases.CSVImportContext(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.now())
+		if err != nil {
+			return nil, err
+		}
+		defer cancel()
 		if err := idmusecases.CheckStoredCSVLimits(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.policy()); err != nil {
 			return nil, err
 		}
@@ -288,12 +292,7 @@ func GroupMembershipImportJobHandler(
 // loadBoundGroupMembershipPreview は同一テナントかつ同一 Group の成功済みプレビュー
 // だけを返す。別 Group のジョブ ID は「存在しない」に潰し、あるグループが別の
 // グループのジョブ ID を漏らさないようにする。
-func loadBoundGroupMembershipPreview(
-	ctx context.Context,
-	jobs jobsports.JobRepository,
-	artifacts idmports.CSVArtifactStore,
-	tenantID, groupID, previewJobID string,
-) (GroupMembershipImportParams, GroupMembershipImportResult, error) {
+func loadBoundGroupMembershipPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts idmports.CSVArtifactStore, tenantID, groupID, previewJobID string, now time.Time) (GroupMembershipImportParams, GroupMembershipImportResult, error) {
 	preview, err := jobs.Get(ctx, previewJobID)
 	if errors.Is(err, jobsports.ErrJobNotFound) || preview == nil || preview.TenantID != tenantID ||
 		preview.Kind != jobsdomain.KindGroupMembershipImportPreview {
@@ -321,8 +320,7 @@ func loadBoundGroupMembershipPreview(
 		return GroupMembershipImportParams{}, GroupMembershipImportResult{}, ErrGroupMembershipImportDigestMismatch
 	}
 	_ = reader.Close()
-	if artifact.SHA256 != params.SourceSHA256 || artifact.ByteSize != params.ByteSize ||
-		result.SourceSHA256 != params.SourceSHA256 {
+	if artifact.SHA256 != params.SourceSHA256 || artifact.ByteSize != params.ByteSize || result.SourceSHA256 != params.SourceSHA256 || artifact.CreatedAt.Before(now.Add(-idmusecases.CSVArtifactRetention)) {
 		return GroupMembershipImportParams{}, GroupMembershipImportResult{}, ErrGroupMembershipImportDigestMismatch
 	}
 	return params, result, nil

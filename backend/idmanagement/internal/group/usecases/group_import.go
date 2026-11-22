@@ -126,7 +126,7 @@ func StartGroupImportApply(ctx context.Context, deps GroupImportStartDeps, actor
 		return nil, errors.New("group import apply dependencies are incomplete")
 	}
 	tenantID := tenantports.TenantID(ctx)
-	params, result, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, previewJobID)
+	params, result, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, previewJobID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func GroupImportJobHandler(deps GroupImportJobDeps, mode GroupImportMode) func(c
 		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		var source GroupImportParams
 		if mode == GroupImportModeApply {
-			bound, previewResult, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID)
+			bound, previewResult, err := loadBoundGroupPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID, deps.now())
 			if err != nil {
 				return nil, err
 			}
@@ -190,6 +190,11 @@ func GroupImportJobHandler(deps GroupImportJobDeps, mode GroupImportMode) func(c
 		} else {
 			source = params
 		}
+		ctx, cancel, err := idmusecases.CSVImportContext(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.now())
+		if err != nil {
+			return nil, err
+		}
+		defer cancel()
 		if err := idmusecases.CheckStoredCSVLimits(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.policy()); err != nil {
 			return nil, err
 		}
@@ -264,7 +269,7 @@ func GroupImportJobHandler(deps GroupImportJobDeps, mode GroupImportMode) func(c
 	}
 }
 
-func loadBoundGroupPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts idmports.CSVArtifactStore, tenantID, previewJobID string) (GroupImportParams, GroupImportResult, error) {
+func loadBoundGroupPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts idmports.CSVArtifactStore, tenantID, previewJobID string, now time.Time) (GroupImportParams, GroupImportResult, error) {
 	preview, err := jobs.Get(ctx, previewJobID)
 	if errors.Is(err, jobsports.ErrJobNotFound) || preview == nil || preview.TenantID != tenantID || preview.Kind != jobsdomain.KindGroupImportPreview {
 		return GroupImportParams{}, GroupImportResult{}, ErrGroupImportNotFound
@@ -285,7 +290,7 @@ func loadBoundGroupPreview(ctx context.Context, jobs jobsports.JobRepository, ar
 		return GroupImportParams{}, GroupImportResult{}, ErrGroupImportDigestMismatch
 	}
 	_ = reader.Close()
-	if artifact.SHA256 != params.SourceSHA256 || artifact.ByteSize != params.ByteSize || result.SourceSHA256 != params.SourceSHA256 {
+	if artifact.SHA256 != params.SourceSHA256 || artifact.ByteSize != params.ByteSize || result.SourceSHA256 != params.SourceSHA256 || artifact.CreatedAt.Before(now.Add(-idmusecases.CSVArtifactRetention)) {
 		return GroupImportParams{}, GroupImportResult{}, ErrGroupImportDigestMismatch
 	}
 	return params, result, nil

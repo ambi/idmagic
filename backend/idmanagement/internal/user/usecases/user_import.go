@@ -124,7 +124,7 @@ func StartUserImportApply(ctx context.Context, deps UserImportStartDeps, actorUs
 		return nil, errors.New("user import apply dependencies are incomplete")
 	}
 	tenantID := tenantports.TenantID(ctx)
-	params, result, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, previewJobID)
+	params, result, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, tenantID, previewJobID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 		ctx = tenantports.WithTenantID(ctx, job.TenantID)
 		var source UserImportParams
 		if mode == UserImportModeApply {
-			bound, previewResult, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID)
+			bound, previewResult, err := loadBoundPreview(ctx, deps.Jobs, deps.Artifacts, job.TenantID, params.PreviewJobID, deps.now())
 			if err != nil {
 				return nil, err
 			}
@@ -188,6 +188,11 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 		} else {
 			source = params
 		}
+		ctx, cancel, err := idmusecases.CSVImportContext(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.now())
+		if err != nil {
+			return nil, err
+		}
+		defer cancel()
 		if err := idmusecases.CheckStoredCSVLimits(ctx, deps.Artifacts, job.TenantID, source.ArtifactRef, deps.policy()); err != nil {
 			return nil, err
 		}
@@ -261,7 +266,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 	}
 }
 
-func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts idmports.CSVArtifactStore, tenantID, previewJobID string) (UserImportParams, UserImportResult, error) {
+func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts idmports.CSVArtifactStore, tenantID, previewJobID string, now time.Time) (UserImportParams, UserImportResult, error) {
 	preview, err := jobs.Get(ctx, previewJobID)
 	if errors.Is(err, jobsports.ErrJobNotFound) || preview == nil || preview.TenantID != tenantID || preview.Kind != jobsdomain.KindUserImportPreview {
 		return UserImportParams{}, UserImportResult{}, ErrUserImportNotFound
@@ -282,7 +287,7 @@ func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifac
 		return UserImportParams{}, UserImportResult{}, ErrUserImportDigestMismatch
 	}
 	_ = reader.Close()
-	if artifact.SHA256 != params.SourceSHA256 || artifact.ByteSize != params.ByteSize || result.SourceSHA256 != params.SourceSHA256 {
+	if artifact.SHA256 != params.SourceSHA256 || artifact.ByteSize != params.ByteSize || result.SourceSHA256 != params.SourceSHA256 || artifact.CreatedAt.Before(now.Add(-idmusecases.CSVArtifactRetention)) {
 		return UserImportParams{}, UserImportResult{}, ErrUserImportDigestMismatch
 	}
 	return params, result, nil

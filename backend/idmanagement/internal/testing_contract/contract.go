@@ -31,7 +31,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err != nil {
 		t.Fatalf("PutCSVArtifact: %v", err)
 	}
-	if metadata.Ref == "" || metadata.TenantID != f.TenantA || metadata.ByteSize != int64(len(payload)) || metadata.SHA256 == "" {
+	if metadata.Ref == "" || metadata.TenantID != f.TenantA || metadata.ByteSize != int64(len(payload)) || metadata.SHA256 == "" || metadata.CreatedAt.IsZero() {
 		t.Fatalf("metadata = %+v", metadata)
 	}
 	reader, opened, err := f.Artifacts.OpenCSVArtifact(ctx, f.TenantA, metadata.Ref)
@@ -58,6 +58,9 @@ func Run(t *testing.T, newFixture NewFixture) {
 	})
 	if err != nil {
 		t.Fatalf("PutCSVArtifactPages: %v", err)
+	}
+	if pageMetadata.CreatedAt.IsZero() {
+		t.Fatal("ページの保存時刻がない")
 	}
 	for index, want := range pages {
 		page, readMetadata, err := f.Artifacts.ReadCSVArtifactPage(ctx, f.TenantA, pageMetadata.Ref, index)

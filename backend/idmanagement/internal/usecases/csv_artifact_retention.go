@@ -8,7 +8,7 @@ import (
 )
 
 // CSVArtifactRetention は CSV の成果物を作成から残す期間である。エクスポートの保持期限
-// (DataExportTTL) と同じ長さにし、成果物は完了の時点で作るので、期限切れのエクスポートの
+// (DataExportTTL) と同じ長さにし、エクスポートの成果物は完了の時点で作るので、期限切れのエクスポートの
 // ファイルが期限と同じ時点で消える。
 const CSVArtifactRetention = DataExportTTL
 

@@ -278,10 +278,13 @@ func (m Module) GroupMembershipCommands(emit func(spec.DomainEvent) error, actor
 
 // PurgeExpiredCSVArtifacts は保持期間を過ぎた CSV の成果物を削除し、削除した件数を返す。
 // 保存先が期限切れの削除を持たなければ purged を false にする。
-func (m Module) PurgeExpiredCSVArtifacts(ctx context.Context, now time.Time) (deleted int64, purged bool, err error) {
+func (m Module) PurgeExpiredCSVArtifacts(ctx context.Context, jobs jobsports.JobRepository, canceler jobsports.Canceler, now time.Time) (deleted int64, purged bool, err error) {
 	artifacts, ok := m.CSVArtifacts.(idmports.CSVArtifactPurger)
 	if !ok {
 		return 0, false, nil
+	}
+	if err := idmusecases.CancelExpiredCSVImports(ctx, m.CSVArtifacts, jobs, canceler, now); err != nil {
+		return 0, false, err
 	}
 	deleted, err = idmusecases.PurgeExpiredCSVArtifacts(ctx, artifacts, now)
 	return deleted, true, err

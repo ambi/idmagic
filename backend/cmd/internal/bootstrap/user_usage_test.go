@@ -11,6 +11,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -20,7 +21,7 @@ import (
 func TestRetentionSweepRecountsUserUsage(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-	deps := &Dependencies{Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: &recordingEventSink{}}}
+	deps := &Dependencies{Jobs: jobs.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: &recordingEventSink{}}}
 	saveUser := func(tenantID, id string, lifecycle userdomain.UserLifecycle) {
 		t.Helper()
 		if err := deps.IdManagement.UserRepo.Save(ctx, &userdomain.User{
@@ -76,7 +77,7 @@ func (r holdingCountFailure) CountHoldingQuota(ctx context.Context, tenantID str
 //spec:covers REQ-TENANCY-049: 件数の測定に失敗したテナントの使用量を保ち、残りのテナントを再集計してからバッチの失敗を返す。
 func TestRetentionSweepKeepsUserUsageWhenTheCountFails(t *testing.T) {
 	ctx := context.Background()
-	deps := &Dependencies{Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: &recordingEventSink{}}}
+	deps := &Dependencies{Jobs: jobs.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: &recordingEventSink{}}}
 	for _, id := range []string{"tenant-a", "tenant-b"} {
 		if err := deps.Tenancy.TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: id, Realm: id, Status: tenancydomain.TenantStatusActive}); err != nil {
 			t.Fatal(err)

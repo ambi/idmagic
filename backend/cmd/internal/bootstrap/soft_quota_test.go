@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -22,7 +23,7 @@ func TestRetentionSweepReconcilesSoftQuotas(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	sink := &recordingEventSink{}
-	deps := &Dependencies{Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
+	deps := &Dependencies{Jobs: jobs.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
 	for _, id := range []string{"tenant-a", "tenant-b"} {
 		if err := deps.Tenancy.TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: id, Realm: id, Status: tenancydomain.TenantStatusActive}); err != nil {
 			t.Fatal(err)
@@ -102,7 +103,7 @@ func (r quotaCountFailure) Count(ctx context.Context, query auditports.AuditEven
 func TestRetentionSweepKeepsUsageWhenMeasurementFails(t *testing.T) {
 	ctx := context.Background()
 	sink := &recordingEventSink{}
-	deps := &Dependencies{Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
+	deps := &Dependencies{Jobs: jobs.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idmanagement.NewMemoryModule(), OAuth2: oauth2.Module{EventSink: sink}}
 	for _, id := range []string{"tenant-a", "tenant-b"} {
 		if err := deps.Tenancy.TenantRepo.Save(ctx, &tenancydomain.Tenant{ID: id, Realm: id, Status: tenancydomain.TenantStatusActive}); err != nil {
 			t.Fatal(err)

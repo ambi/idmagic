@@ -70,7 +70,8 @@ func (s *CSVArtifactStore) PutCSVArtifact(ctx context.Context, tenantID string, 
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
 	queries := New(tx)
-	if err := queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize}); err != nil {
+	metadata.CreatedAt, err = queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize})
+	if err != nil {
 		_ = temporary.Close()
 		return idmports.CSVArtifact{}, err
 	}
@@ -112,6 +113,7 @@ func (s *CSVArtifactStore) OpenCSVArtifact(ctx context.Context, tenantID, ref st
 		return nil, idmports.CSVArtifact{}, err
 	}
 	metadata.SHA256, metadata.ByteSize = row.Sha256, row.ByteSize
+	metadata.CreatedAt = row.CreatedAt
 	return &csvChunkReader{ctx: ctx, queries: queries, ref: ref}, metadata, nil
 }
 
@@ -127,7 +129,8 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID str
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
 	queries := New(tx)
 	placeholder := "0000000000000000000000000000000000000000000000000000000000000000"
-	if err := queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: placeholder}); err != nil {
+	createdAt, err := queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: placeholder})
+	if err != nil {
 		return idmports.CSVArtifact{}, err
 	}
 	digest := sha256.New()
@@ -148,7 +151,7 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID str
 	if err := write(emit); err != nil {
 		return idmports.CSVArtifact{}, err
 	}
-	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size}
+	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size, CreatedAt: createdAt}
 	if err := queries.UpdateCSVArtifactDigest(ctx, UpdateCSVArtifactDigestParams{ID: ref, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize}); err != nil {
 		return idmports.CSVArtifact{}, err
 	}
@@ -174,6 +177,7 @@ func (s *CSVArtifactStore) ReadCSVArtifactPage(ctx context.Context, tenantID, re
 		return nil, idmports.CSVArtifact{}, err
 	}
 	metadata.SHA256, metadata.ByteSize = row.Sha256, row.ByteSize
+	metadata.CreatedAt = row.CreatedAt
 	return row.Payload, metadata, nil
 }
 

@@ -66,9 +66,9 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(_ context.Context, tenantID strin
 	if err != nil {
 		return idmports.CSVArtifact{}, err
 	}
-	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size}
+	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size, CreatedAt: s.clock().UTC().Truncate(time.Microsecond)}
 	s.mu.Lock()
-	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, pages: pages, createdAt: s.clock()}
+	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, pages: pages, createdAt: metadata.CreatedAt}
 	s.mu.Unlock()
 	return metadata, nil
 }
@@ -110,10 +110,10 @@ func (s *CSVArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, wr
 	}
 	digest := sha256.Sum256(content.Bytes())
 	metadata := idmports.CSVArtifact{
-		Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(content.Len()),
+		Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(content.Len()), CreatedAt: s.clock().UTC().Truncate(time.Microsecond),
 	}
 	s.mu.Lock()
-	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, content: append([]byte(nil), content.Bytes()...), createdAt: s.clock()}
+	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, content: append([]byte(nil), content.Bytes()...), createdAt: metadata.CreatedAt}
 	s.mu.Unlock()
 	return metadata, nil
 }

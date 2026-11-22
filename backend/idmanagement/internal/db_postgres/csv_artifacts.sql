@@ -1,5 +1,5 @@
--- name: InsertCSVArtifact :exec
-INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4);
+-- name: InsertCSVArtifact :one
+INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4) RETURNING created_at;
 
 -- name: InsertCSVArtifactChunk :exec
 INSERT INTO csv_artifact_chunks (artifact_id, chunk_number, payload) VALUES ($1, $2, $3);
@@ -8,7 +8,7 @@ INSERT INTO csv_artifact_chunks (artifact_id, chunk_number, payload) VALUES ($1,
 UPDATE csv_artifacts SET sha256 = $2, byte_size = $3 WHERE id = $1;
 
 -- name: FindCSVArtifact :one
-SELECT sha256, byte_size FROM csv_artifacts WHERE tenant_id = $1 AND id = $2;
+SELECT sha256, byte_size, created_at FROM csv_artifacts WHERE tenant_id = $1 AND id = $2;
 
 -- name: ListCSVArtifactChunkPayloadsFrom :many
 SELECT payload FROM csv_artifact_chunks
@@ -17,7 +17,7 @@ ORDER BY chunk_number
 LIMIT sqlc.arg(page_limit);
 
 -- name: FindCSVArtifactPage :one
-SELECT a.sha256, a.byte_size, c.payload FROM csv_artifacts a
+SELECT a.sha256, a.byte_size, a.created_at, c.payload FROM csv_artifacts a
 JOIN csv_artifact_chunks c ON c.artifact_id = a.id
 WHERE a.tenant_id = $1 AND a.id = $2 AND c.chunk_number = $3;
 

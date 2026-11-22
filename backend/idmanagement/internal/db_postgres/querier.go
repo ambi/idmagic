@@ -15,7 +15,7 @@ type Querier interface {
 	DeleteCSVArtifactsCreatedBefore(ctx context.Context, createdAt time.Time) (int64, error)
 	FindCSVArtifact(ctx context.Context, arg FindCSVArtifactParams) (*FindCSVArtifactRow, error)
 	FindCSVArtifactPage(ctx context.Context, arg FindCSVArtifactPageParams) (*FindCSVArtifactPageRow, error)
-	InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactParams) error
+	InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactParams) (time.Time, error)
 	InsertCSVArtifactChunk(ctx context.Context, arg InsertCSVArtifactChunkParams) error
 	ListCSVArtifactChunkPayloadsFrom(ctx context.Context, arg ListCSVArtifactChunkPayloadsFromParams) ([][]byte, error)
 	UpdateCSVArtifactDigest(ctx context.Context, arg UpdateCSVArtifactDigestParams) error

@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -22,7 +23,7 @@ func TestRetentionSweepRecountsActiveSessionUsage(t *testing.T) {
 	now := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 	idm := idmanagement.NewMemoryModule()
 	deps := &Dependencies{
-		Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idm,
+		Jobs: jobs.NewMemoryModule(), Tenancy: tenancy.NewMemoryModule(), Audit: audit.NewMemoryModule(100), IdManagement: idm,
 		Authentication: authentication.NewMemoryModule(idm.UserRepo), OAuth2: oauth2.Module{EventSink: &recordingEventSink{}},
 	}
 	tenants := map[string]*tenancydomain.Tenant{}

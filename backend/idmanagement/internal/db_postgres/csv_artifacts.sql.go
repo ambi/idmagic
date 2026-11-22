@@ -35,7 +35,7 @@ func (q *Queries) DeleteCSVArtifactsCreatedBefore(ctx context.Context, createdAt
 }
 
 const findCSVArtifact = `-- name: FindCSVArtifact :one
-SELECT sha256, byte_size FROM csv_artifacts WHERE tenant_id = $1 AND id = $2
+SELECT sha256, byte_size, created_at FROM csv_artifacts WHERE tenant_id = $1 AND id = $2
 `
 
 type FindCSVArtifactParams struct {
@@ -44,19 +44,20 @@ type FindCSVArtifactParams struct {
 }
 
 type FindCSVArtifactRow struct {
-	Sha256   string
-	ByteSize int64
+	Sha256    string
+	ByteSize  int64
+	CreatedAt time.Time
 }
 
 func (q *Queries) FindCSVArtifact(ctx context.Context, arg FindCSVArtifactParams) (*FindCSVArtifactRow, error) {
 	row := q.db.QueryRow(ctx, findCSVArtifact, arg.TenantID, arg.ID)
 	var i FindCSVArtifactRow
-	err := row.Scan(&i.Sha256, &i.ByteSize)
+	err := row.Scan(&i.Sha256, &i.ByteSize, &i.CreatedAt)
 	return &i, err
 }
 
 const findCSVArtifactPage = `-- name: FindCSVArtifactPage :one
-SELECT a.sha256, a.byte_size, c.payload FROM csv_artifacts a
+SELECT a.sha256, a.byte_size, a.created_at, c.payload FROM csv_artifacts a
 JOIN csv_artifact_chunks c ON c.artifact_id = a.id
 WHERE a.tenant_id = $1 AND a.id = $2 AND c.chunk_number = $3
 `
@@ -68,20 +69,26 @@ type FindCSVArtifactPageParams struct {
 }
 
 type FindCSVArtifactPageRow struct {
-	Sha256   string
-	ByteSize int64
-	Payload  []byte
+	Sha256    string
+	ByteSize  int64
+	CreatedAt time.Time
+	Payload   []byte
 }
 
 func (q *Queries) FindCSVArtifactPage(ctx context.Context, arg FindCSVArtifactPageParams) (*FindCSVArtifactPageRow, error) {
 	row := q.db.QueryRow(ctx, findCSVArtifactPage, arg.TenantID, arg.ID, arg.ChunkNumber)
 	var i FindCSVArtifactPageRow
-	err := row.Scan(&i.Sha256, &i.ByteSize, &i.Payload)
+	err := row.Scan(
+		&i.Sha256,
+		&i.ByteSize,
+		&i.CreatedAt,
+		&i.Payload,
+	)
 	return &i, err
 }
 
-const insertCSVArtifact = `-- name: InsertCSVArtifact :exec
-INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4)
+const insertCSVArtifact = `-- name: InsertCSVArtifact :one
+INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4) RETURNING created_at
 `
 
 type InsertCSVArtifactParams struct {
@@ -91,14 +98,16 @@ type InsertCSVArtifactParams struct {
 	ByteSize int64
 }
 
-func (q *Queries) InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactParams) error {
-	_, err := q.db.Exec(ctx, insertCSVArtifact,
+func (q *Queries) InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, insertCSVArtifact,
 		arg.ID,
 		arg.TenantID,
 		arg.Sha256,
 		arg.ByteSize,
 	)
-	return err
+	var created_at time.Time
+	err := row.Scan(&created_at)
+	return created_at, err
 }
 
 const insertCSVArtifactChunk = `-- name: InsertCSVArtifactChunk :exec

@@ -932,3 +932,20 @@ func TestCharacterizeGroupMembershipImportPreviewOfMalformedFiles(t *testing.T) 
 		})
 	}
 }
+
+//spec:covers REQ-IDMANAGEMENT-080: 中断後は先読み済みのメンバーシップ CSV の次の行を計画しない。
+func TestGroupMembershipImportStopsPlanningAfterCancellation(t *testing.T) {
+	f := newMembershipFixture(t, groupdomain.GroupMembershipManual, membershipOwnership{})
+	ctx, cancel := context.WithCancel(f.ctx)
+	defer cancel()
+	rows := 0
+	_, err := groupusecases.PlanGroupMembershipImport(ctx, f.planDeps, engineeringID, strings.NewReader("user_id,membership_state\nuser-bob,present\nuser-dave,present\n"), idmdomain.DefaultCSVTransferPolicy(), func(groupdomain.GroupMembershipImportRowPlan) error {
+		rows++
+		cancel()
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) || rows != 1 {
+		t.Fatalf("rows=%d err=%v", rows, err)
+	}
+	f.assertMembersUnchanged()
+}

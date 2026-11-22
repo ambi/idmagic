@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ambi/idmagic/backend/jobs"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -35,7 +37,13 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 			"deleted_buckets", res.Buckets,
 			"deleted_sessions", res.Sessions, "deleted_known_devices", res.KnownDevices)
 	}
-	deleted, purged, err := deps.IdManagement.PurgeExpiredCSVArtifacts(ctx, now)
+	// API の取り消しは HTTP の組み立て時に結ばれるため、Batch 自身の発行先で構築する。
+	var csvCanceler jobsports.Canceler
+	if deps.Jobs.Repo != nil && deps.Tenancy.QuotaRepo != nil {
+		//nolint:contextcheck // バッチの監査は独立した期限付きの配信点を使う。
+		csvCanceler = jobs.NewCanceler(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logging.Default()))
+	}
+	deleted, purged, err := deps.IdManagement.PurgeExpiredCSVArtifacts(ctx, deps.Jobs.Repo, csvCanceler, now)
 	if err != nil {
 		return err
 	}

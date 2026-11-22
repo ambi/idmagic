@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"testing"
 	"time"
@@ -10,7 +11,11 @@ import (
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/jobs"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
+	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -18,9 +23,15 @@ import (
 
 // 保持期間の境界は IdManagement のテストが確かめる。ここでは、掃除のバッチが IdManagement の
 // 成果物ストアの期限切れの削除を呼ぶことを確かめる。
+//
+//spec:covers REQ-IDMANAGEMENT-080: 本番と同じ組み立ての Batch が期限切れ入力のジョブを取り消し、入力を削除する。
 func TestRetentionSweepPurgesExpiredCSVArtifacts(t *testing.T) {
 	ctx := context.Background()
-	store := idmanagement.NewMemoryModule().CSVArtifacts
+	deps, err := assembleMemory(SharedConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := deps.IdManagement.CSVArtifacts
 	metadata, err := store.PutCSVArtifact(ctx, "tenant-a", func(output io.Writer) error {
 		_, err := io.WriteString(output, "preferred_username\nalice\n")
 		return err
@@ -28,13 +39,31 @@ func TestRetentionSweepPurgesExpiredCSVArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	params, err := json.Marshal(map[string]string{"artifact_ref": metadata.Ref})
+	if err != nil {
+		t.Fatal(err)
+	}
+	enqueuer := jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, deps.NewEmitFunc(logging.Default()))
+	job, err := enqueuer.Enqueue(ctx, jobsports.EnqueueInput{TenantID: "tenant-a", Kind: jobsdomain.KindUserImportPreview, Params: params}, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	deps := &Dependencies{IdManagement: idmanagement.Module{CSVArtifacts: store}}
 	if err := RunRetentionSweepOnce(ctx, deps, time.Now().UTC().Add(10*365*24*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := store.OpenCSVArtifact(ctx, "tenant-a", metadata.Ref); err == nil {
 		t.Fatal("保持期限を過ぎた成果物が残った")
+	}
+	if stored, err := deps.Jobs.Repo.Get(ctx, job.ID); err != nil || stored.Status != jobsdomain.StatusCanceled {
+		t.Fatalf("期限切れ入力のジョブ=%+v err=%v", stored, err)
+	}
+	// Jobs の既存の送信表現は TenantID を使う。テナント別検索の是正は wi-98158 が扱う。
+	if events, err := deps.Audit.AuditEventRepo.List(ctx, auditports.AuditEventQuery{AllTenants: true, Type: "JobCanceled"}); err != nil || len(events) != 1 || events[0].Payload["JobID"] != job.ID || events[0].Payload["TenantID"] != "tenant-a" {
+		t.Fatalf("JobCanceled=%v err=%v", events, err)
+	}
+	if usage, err := deps.Tenancy.QuotaRepo.GetUsage(ctx, "tenant-a"); err != nil || usage.ActiveJobs != 0 {
+		t.Fatalf("usage=%+v err=%v", usage, err)
 	}
 }
 
