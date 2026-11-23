@@ -67,6 +67,36 @@ model ProblemDetails {
 @doc("リクエストに必須のパラメーターがないか不正な値を含む、または対象が他のテナントに属しており存在しないものとして扱う。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_request` である。OAuth 2.0 のエンドポイントは、同じ条件を代わりに OAuthInvalidRequestError として報告する。")
 model InvalidRequestError is ProblemDetails;
 
+@doc("任意の冪等キー。IETF draft-09 の Structured Field の文字列形式で指定する。受付から 24 時間は同じテナントと主体の要求を識別する。")
+model IdempotencyHeaders {
+  @header("Idempotency-Key") idempotencyKey?: string;
+}
+
+@doc("冪等キーの形式、長さまたは個数が不正である。")
+model IdempotencyInvalidRequestResponse {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: InvalidRequestError;
+}
+
+@doc("同じキーの要求が実行中か、停止または保存失敗により結果が不明である。type は urn:idmagic:error:idempotency_key_in_progress。自動では再実行しない。")
+model IdempotencyInProgressError is ProblemDetails;
+
+@doc("同じテナントと主体のキーを、異なる要求に再利用した。type は urn:idmagic:error:idempotency_key_reused。")
+model IdempotencyReusedError is ProblemDetails;
+
+model IdempotencyInProgressResponse {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: IdempotencyInProgressError;
+}
+
+model IdempotencyReusedResponse {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: IdempotencyReusedError;
+}
+
 
 @doc("ブラウザーのリクエストの Origin が製品のオリジンと一致しない。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_origin` である。")
 model InvalidOriginError is ProblemDetails;

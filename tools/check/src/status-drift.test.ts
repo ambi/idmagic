@@ -80,6 +80,24 @@ func (d Deps) handleMeta(c *echo.Context) (map[string]any, error) {
 })
 
 describe('guards and error mappers', () => {
+  it('コールバック内の状態コードで外側のガードの追跡を打ち切らない', () => {
+    const found = responders(`
+func withReservation(c *echo.Context, next echo.HandlerFunc) error {
+	if duplicate {
+		return WriteProblem(c, http.StatusConflict, "in_progress", "x")
+	}
+	return next(c)
+}
+
+func handleCreate(c *echo.Context) error {
+	return withReservation(c, func(c *echo.Context) error {
+		return c.NoContent(http.StatusCreated)
+	})
+}`)
+    expect([...(found.get('handleCreate')?.statuses ?? [])].sort()).toEqual([201, 409])
+    expect(found.get('handleCreate')?.unread).toEqual([])
+  })
+
   it('follows a guard, because every branch of it is reachable where it is called', () => {
     // VerifyBrowserRequest decides from the request in front of it, so an
     // operation that calls it can answer 403 whatever its use case does.

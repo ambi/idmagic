@@ -452,10 +452,11 @@ model ImportAdminUsersError403 {
 @route("/api/admin/v1/users/imports")
 @post
 op ImportAdminUsers(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @header contentType: "text/csv",
   @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
-): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminUsersError403;
+): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminUsersError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ApplyAdminUserImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -628,8 +629,9 @@ model StartUserCsvExportError503 {
 @route("/api/admin/v1/users/exports")
 @post
 op StartUserCsvExport(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.DataExportRequest
-): StartUserCsvExportSuccess_202 | StartUserCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartUserCsvExportError403 | StartUserCsvExportError422 | StartUserCsvExportError429 | StartUserCsvExportError503;
+): StartUserCsvExportSuccess_202 | StartUserCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartUserCsvExportError403 | StartUserCsvExportError422 | StartUserCsvExportError429 | StartUserCsvExportError503 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ListUserExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -876,8 +878,9 @@ model StartGroupCsvExportError503 {
 @route("/api/admin/v1/groups/exports")
 @post
 op StartGroupCsvExport(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.DataExportRequest
-): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartGroupCsvExportError403 | StartGroupCsvExportError422 | StartGroupCsvExportError429 | StartGroupCsvExportError503;
+): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartGroupCsvExportError403 | StartGroupCsvExportError422 | StartGroupCsvExportError429 | StartGroupCsvExportError503 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ImportAdminGroupsSuccess_202 {
   @statusCode statusCode: 202;
@@ -913,10 +916,11 @@ model ImportAdminGroupsError403 {
 @route("/api/admin/v1/groups/imports")
 @post
 op ImportAdminGroups(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @header contentType: "text/csv",
   @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
-): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupsError403;
+): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupsError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ApplyAdminGroupImportSuccess_202 {
   @statusCode statusCode: 202;
@@ -1269,9 +1273,10 @@ model StartGroupMemberCsvExportError503 {
 @route("/api/admin/v1/groups/{group_id}/members/exports")
 @post
 op StartGroupMemberCsvExport(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @path group_id: string,
   @body body: IdMagic.Contract.DataExportRequest
-): StartGroupMemberCsvExportSuccess_202 | StartGroupMemberCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartGroupMemberCsvExportError403 | StartGroupMemberCsvExportError422 | StartGroupMemberCsvExportError429 | StartGroupMemberCsvExportError503;
+): StartGroupMemberCsvExportSuccess_202 | StartGroupMemberCsvExportError400 | IdMagic.Contract.AuthenticationRequiredResponse | StartGroupMemberCsvExportError403 | StartGroupMemberCsvExportError422 | StartGroupMemberCsvExportError429 | StartGroupMemberCsvExportError503 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ListGroupMemberExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -1490,11 +1495,12 @@ model ImportAdminGroupMembersError403 {
 @route("/api/admin/v1/groups/{group_id}/members/imports")
 @post
 op ImportAdminGroupMembers(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @path group_id: string,
   @header contentType: "text/csv",
   @doc("リクエストボディとしてストリーミングする CSV の文書そのもの。JSON のエンベロープはなく、このエンドポイントは常にプレビューを実行する。")
   @body csv: string
-): ImportAdminGroupMembersSuccess_202 | ImportAdminGroupMembersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupMembersError403;
+): ImportAdminGroupMembersSuccess_202 | ImportAdminGroupMembersError400 | IdMagic.Contract.AuthenticationRequiredResponse | ImportAdminGroupMembersError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ApplyAdminGroupMemberImportSuccess_202 {
   @statusCode statusCode: 202;

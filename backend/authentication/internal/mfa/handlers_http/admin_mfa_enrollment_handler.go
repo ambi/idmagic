@@ -32,21 +32,23 @@ func HandleIssueMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var input issueMfaEnrollmentBypassRequest
-	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	if input.ExpiresInSeconds == 0 {
-		input.ExpiresInSeconds = 900
-	}
-	bypass, err := mfausecases.IssueMfaEnrollmentBypass(
-		c.Request().Context(), mfaEnrollmentDeps(d), actor.ID, c.Param("sub"),
-		time.Duration(input.ExpiresInSeconds)*time.Second, time.Now().UTC(),
-	)
-	if err != nil {
-		return writeMfaEnrollmentAdminError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"bypass": bypass})
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		var input issueMfaEnrollmentBypassRequest
+		if err := support.DecodeJSON(c.Request(), &input); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		if input.ExpiresInSeconds == 0 {
+			input.ExpiresInSeconds = 900
+		}
+		bypass, err := mfausecases.IssueMfaEnrollmentBypass(
+			c.Request().Context(), mfaEnrollmentDeps(d), actor.ID, c.Param("sub"),
+			time.Duration(input.ExpiresInSeconds)*time.Second, time.Now().UTC(),
+		)
+		if err != nil {
+			return writeMfaEnrollmentAdminError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"bypass": bypass})
+	})
 }
 
 func HandleRevokeMfaEnrollmentBypass(d httpdeps.Deps, c *echo.Context) error {

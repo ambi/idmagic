@@ -520,6 +520,8 @@ erDiagram
     }
     endpoint_rate_limit_counters {
     }
+    http_idempotency_records {
+    }
     saml_authnrequest_replays {
     }
     tenants ||--o{ oauth2_authorization_requests : 認可要求を持つ
@@ -536,6 +538,7 @@ erDiagram
     tenants ||--o{ webauthn_sessions : WebAuthn状態を持つ
     tenants ||--o{ login_throttle_counters : サインイン回数を持つ
     tenants ||--o{ endpoint_rate_limit_counters : API回数を持つ
+    tenants ||--o{ http_idempotency_records : 冪等要求を識別する
     tenants ||--o{ saml_authnrequest_replays : SAML再送を持つ
 ```
 
@@ -552,6 +555,7 @@ erDiagram
 | `webauthn_sessions` | Authentication | `UNLOGGED` | 複合主キーの一部 | WebAuthn の登録と認証で発行したチャレンジ |
 | `login_throttle_counters` | Authentication | `LOGGED` | 複合主キーの一部 | サインイン失敗の回数とロックアウトの期限 |
 | `endpoint_rate_limit_counters` | 共通基盤 | `UNLOGGED` | 複合主キーの一部 | エンドポイントごとの流量制御の回数 |
+| `http_idempotency_records` | 共通基盤 | `LOGGED` | 非キーカラム | テナント、主体、キーのハッシュの組による受付と暗号化した応答。保持期間は REQ-SYSTEM-036 が定める |
 | `saml_authnrequest_replays` | Saml | `UNLOGGED` | 複合主キーの一部 | 受け取った SAML AuthnRequest の ID。同じ要求の再送を拒否する |
 
 ### セキュリティイベントと認可関係
@@ -724,6 +728,7 @@ Repository の保存は、Aggregate 全体を ID で上書きする（`ON CONFLI
 - DataKeys モジュールは、ラップされた DEK のメタデータとライフサイクル（初期化、ローテーション、無効化、破棄）だけを担い、暗号処理のポート自体は定義しない。SigningKeys が `transit/sign` を暗号化、復号、データ鍵の機能から分離しているのと同じ構成である。
 - ローテーションでは新しい DEK のバージョンを以後の書き込み用に有効化し、直前のバージョンを復号可能な `retiring` のまま残す。Jobs のジョブ種別とハンドラーの登録簿に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古いバージョンを破棄できる。再暗号化の移行ポートにより、各モジュールは自身の一括再暗号化処理と残件数の算出を登録する。これにより、DataKeys はこのポートを利用するモジュールのスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
 - アンラップに失敗した場合、プロバイダーへ到達できない場合、追加認証データが一致しない場合、または改ざんを検知した場合は、フェイルクローズで復号を拒否する。呼び出し元は平文へフォールバックしたり、項目を読み飛ばしたりしない。
+- 管理 API の冪等応答もシークレットを含み得るため、本文と保存対象のヘッダーを一緒に暗号化する。共有の受付記録は `http_idempotency_response` の移行処理として参加し、期限切れの行も実際に削除されるまでは鍵の参照に数える。
 - マスターキーの提供元は OpenBao（Vault Transit 互換の HTTP API）である。開発環境とローカル環境では Tink の平文鍵セットを使うため、OpenBao は不要である。提供元は設計上差し替え可能である。
 - HTTP の接点は `system_admin` に限定した制御面の管理 API だけである。`GET /api/admin/v1/data-keys/health` は各テナントで有効な DEK のバージョンとステータス、マスターキー提供元の名前と到達性を報告する。緊急のローテーションと無効化も同じ境界で公開する。どの応答も鍵素材を返さない。破棄は内部操作とし、管理用エンドポイントを公開しない。
 

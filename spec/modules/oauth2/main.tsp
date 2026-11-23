@@ -1171,8 +1171,9 @@ model CreateAdminOAuth2ClientError422 {
 @route("/api/admin/v1/clients")
 @post
 op CreateAdminOAuth2Client(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.AdminOAuth2ClientCreateRequest
-): CreateAdminOAuth2ClientSuccess_201 | CreateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminOAuth2ClientError403 | CreateAdminOAuth2ClientError422;
+): CreateAdminOAuth2ClientSuccess_201 | CreateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminOAuth2ClientError403 | CreateAdminOAuth2ClientError422 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model UpdateAdminOAuth2ClientSuccess_200 {
   @statusCode statusCode: 200;

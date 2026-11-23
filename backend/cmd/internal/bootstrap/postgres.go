@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/idempotency"
+	idempotencypg "github.com/ambi/idmagic/backend/shared/idempotency/db_postgres"
+
 	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -87,6 +90,8 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 		pool.Close()
 		return nil, err
 	}
+	idempotencyLedger := idempotency.New(&idempotencypg.Store{Pool: resilientDB}, dataKeysModule.FieldCipher())
+	dataKeysModule.Migrators.Register("http_idempotency_response", idempotencyLedger)
 	authnModule := authentication.NewPostgresModule(resilientDB, dataKeysModule.FieldCipher(), idmanagement.UserWriterInTx)
 	// dataKeysModule.Migrators feeds the data_key_reencryption job (wi-97 T006):
 	// every owning module registers its FieldMigrator here so Rotate can
@@ -124,6 +129,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	}
 
 	return &Dependencies{
+		Idempotency:      idempotencyLedger,
 		SeedRequestLock:  seeding.PostgresRequestLock(pool),
 		Tenancy:          tenancyModule,
 		IdManagement:     idmModule,

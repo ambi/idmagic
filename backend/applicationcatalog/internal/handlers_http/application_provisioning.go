@@ -110,130 +110,132 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var req createApplicationRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	ctx := c.Request().Context()
-	now := time.Now().UTC()
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		var req createApplicationRequest
+		if err := support.DecodeJSON(c.Request(), &req); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		ctx := c.Request().Context()
+		now := time.Now().UTC()
 
-	switch req.Type {
-	case "weblink":
-		app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
-			ActorUserID: actor.ID, Name: req.Name, Kind: appdomain.ApplicationWeblink,
-			LaunchURL: req.LaunchURL, Now: now,
-		})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
-
-	case "oidc":
-		if len(req.RedirectURIs) == 0 {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify at least one redirect URI.")
-		}
-		registration := clientports.RegisterClientInput{
-			ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
-			GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
-			ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
-			TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod), Scope: nonEmpty(req.Scope, defaultOIDCScope),
-		}
-		if dn := strings.TrimSpace(req.TLSClientAuthSubjectDN); dn != "" {
-			registration.TlsClientAuthSubjectDN = &dn
-		}
-		if uri := strings.TrimSpace(req.JwksURI); uri != "" {
-			registration.JwksURI = &uri
-		}
-		result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
-			ActorUserID:  actor.ID,
-			Registration: registration,
-			Now:          now,
-		})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
-			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
-		})
-
-	case "service":
-		// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
-		// 出さない service kind の Application として登録する (Okta の API Services 相当)。
-		result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
-			ActorUserID: actor.ID,
-			Registration: clientports.RegisterClientInput{
-				ClientName: req.Name, ClientType: spec.ClientConfidential,
-				GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
-				TokenEndpointAuthMethod: "client_secret_basic", Scope: nonEmpty(req.Scope, defaultServiceScope),
-			},
-			Now: now,
-		})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationService,
-			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-			"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
-		})
-
-	case "wsfed":
-		if strings.TrimSpace(req.Wtrealm) == "" || len(req.ReplyURLs) == 0 {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify wtrealm and a reply URL.")
-		}
-		if d.RelyingParties == nil {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "WS-Federation is unavailable.")
-		}
-		if err := d.RelyingParties.CreateForApplication(ctx, wsfedports.CreateApplicationRelyingPartyInput{
-			TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
-			NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Now: now,
-		}); err != nil {
-			if errors.Is(err, wsfedports.ErrRelyingPartyAlreadyRegistered) {
-				return writeProtocolAlreadyRegistered(c)
+		switch req.Type {
+		case "weblink":
+			app, err := appusecases.CreateApplication(ctx, d.applicationDeps(), appusecases.CreateApplicationInput{
+				ActorUserID: actor.ID, Name: req.Name, Kind: appdomain.ApplicationWeblink,
+				LaunchURL: req.LaunchURL, Now: now,
+			})
+			if err != nil {
+				return d.writeApplicationError(c, err)
 			}
-			return err
-		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
-			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolWsFed, Wtrealm: req.Wtrealm})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
+			return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
 
-	case "saml":
-		if strings.TrimSpace(req.EntityID) == "" || len(req.ACSURLs) == 0 {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify an entity ID and an ACS URL.")
-		}
-		if d.ServiceProviders == nil {
-			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
-		}
-		if err := d.ServiceProviders.CreateForApplication(ctx, samlports.CreateApplicationServiceProviderInput{
-			TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.Name,
-			IDPProfileID: req.IDPProfileID, ACSURLs: req.ACSURLs, SLOURL: req.SLOURL,
-			NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource,
-			SignResponse: req.SignResponse, WantAuthnRequestsSigned: req.WantAuthnRequestsSigned,
-			AuthnRequestSigningCertificatePEM: req.AuthnRequestSigningCertificatePEM, Now: now,
-		}); err != nil {
-			return writeServiceProviderError(c, err)
-		}
-		app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
-			appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolSAML, EntityID: req.EntityID})
-		if err != nil {
-			return d.writeApplicationError(c, err)
-		}
-		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
+		case "oidc":
+			if len(req.RedirectURIs) == 0 {
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify at least one redirect URI.")
+			}
+			registration := clientports.RegisterClientInput{
+				ClientName: req.Name, ClientType: req.ClientType, RedirectURIs: req.RedirectURIs,
+				GrantTypes:              []spec.GrantType{spec.GrantAuthorizationCode, spec.GrantRefreshToken},
+				ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
+				TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod), Scope: nonEmpty(req.Scope, defaultOIDCScope),
+			}
+			if dn := strings.TrimSpace(req.TLSClientAuthSubjectDN); dn != "" {
+				registration.TlsClientAuthSubjectDN = &dn
+			}
+			if uri := strings.TrimSpace(req.JwksURI); uri != "" {
+				registration.JwksURI = &uri
+			}
+			result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
+				ActorUserID:  actor.ID,
+				Registration: registration,
+				Now:          now,
+			})
+			if err != nil {
+				return d.writeApplicationError(c, err)
+			}
+			app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
+				appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
+			if err != nil {
+				return d.writeApplicationError(c, err)
+			}
+			return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
+				"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
+			})
 
-	default:
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The type must be oidc, wsfed, saml, or weblink.")
-	}
+		case "service":
+			// M2M / サービスクライアント (client_credentials)。redirect を持たず、ポータルにも
+			// 出さない service kind の Application として登録する (Okta の API Services 相当)。
+			result, err := d.Clients.Create(ctx, clientports.CreateAdminOAuth2ClientInput{
+				ActorUserID: actor.ID,
+				Registration: clientports.RegisterClientInput{
+					ClientName: req.Name, ClientType: spec.ClientConfidential,
+					GrantTypes:              []spec.GrantType{spec.GrantClientCredentials},
+					TokenEndpointAuthMethod: "client_secret_basic", Scope: nonEmpty(req.Scope, defaultServiceScope),
+				},
+				Now: now,
+			})
+			if err != nil {
+				return d.writeApplicationError(c, err)
+			}
+			app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationService,
+				appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: result.Client.ClientID})
+			if err != nil {
+				return d.writeApplicationError(c, err)
+			}
+			return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
+				"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app), "client_id": result.Client.ClientID, "client_secret": result.ClientSecret,
+			})
+
+		case "wsfed":
+			if strings.TrimSpace(req.Wtrealm) == "" || len(req.ReplyURLs) == 0 {
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify wtrealm and a reply URL.")
+			}
+			if d.RelyingParties == nil {
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "WS-Federation is unavailable.")
+			}
+			if err := d.RelyingParties.CreateForApplication(ctx, wsfedports.CreateApplicationRelyingPartyInput{
+				TenantID: support.RequestTenantID(c), Wtrealm: req.Wtrealm, DisplayName: req.Name, ReplyURLs: req.ReplyURLs,
+				NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource, Now: now,
+			}); err != nil {
+				if errors.Is(err, wsfedports.ErrRelyingPartyAlreadyRegistered) {
+					return writeProtocolAlreadyRegistered(c)
+				}
+				return err
+			}
+			app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
+				appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolWsFed, Wtrealm: req.Wtrealm})
+			if err != nil {
+				return d.writeApplicationError(c, err)
+			}
+			return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
+
+		case "saml":
+			if strings.TrimSpace(req.EntityID) == "" || len(req.ACSURLs) == 0 {
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify an entity ID and an ACS URL.")
+			}
+			if d.ServiceProviders == nil {
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
+			}
+			if err := d.ServiceProviders.CreateForApplication(ctx, samlports.CreateApplicationServiceProviderInput{
+				TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.Name,
+				IDPProfileID: req.IDPProfileID, ACSURLs: req.ACSURLs, SLOURL: req.SLOURL,
+				NameIDFormat: req.NameIDFormat, NameIDSource: req.NameIDSource,
+				SignResponse: req.SignResponse, WantAuthnRequestsSigned: req.WantAuthnRequestsSigned,
+				AuthnRequestSigningCertificatePEM: req.AuthnRequestSigningCertificatePEM, Now: now,
+			}); err != nil {
+				return writeServiceProviderError(c, err)
+			}
+			app, err := d.createCatalogApp(ctx, actor.ID, req, now, appdomain.ApplicationFederated,
+				appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolSAML, EntityID: req.EntityID})
+			if err != nil {
+				return d.writeApplicationError(c, err)
+			}
+			return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"application": d.buildApplicationResponse(ctx, support.RequestTenantID(c), app)})
+
+		default:
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The type must be oidc, wsfed, saml, or weblink.")
+		}
+	})
 }
 
 // createCatalogApp は指定 kind の Application と不変な単一 protocol relation を作成する。

@@ -15,11 +15,43 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	"github.com/ambi/idmagic/backend/oauth2"
+	"github.com/ambi/idmagic/backend/shared/idempotency"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
+
+//spec:covers REQ-SYSTEM-036: 正式なメモリの組み立てで受付記録を作り、retention sweep が期限の直前には残し、期限に達したら削除する。
+func TestRetentionSweepPurgesIdempotencyRecords(t *testing.T) {
+	deps, err := assembleMemory(SharedConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	first, _, err := deps.Idempotency.Claim(t.Context(), "tenant-a", "admin", "key", "fingerprint", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := deps.Idempotency.Complete(t.Context(), first, idempotency.Response{Status: 201, Body: []byte("secret")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := RunRetentionSweepOnce(t.Context(), deps, first.ExpiresAt.Add(-time.Microsecond)); err != nil {
+		t.Fatal(err)
+	}
+	found, acquired, err := deps.Idempotency.Claim(t.Context(), "tenant-a", "admin", "key", "fingerprint", now)
+	if err != nil || acquired || found.ID != first.ID {
+		t.Fatalf("live record acquired=%v error=%v", acquired, err)
+	}
+	if err := RunRetentionSweepOnce(t.Context(), deps, first.ExpiresAt); err != nil {
+		t.Fatal(err)
+	}
+	// 照会に過去の時刻を使い、Claim 自体の期限切れ置換ではなく sweep の削除を観測する。
+	_, acquired, err = deps.Idempotency.Claim(t.Context(), "tenant-a", "admin", "key", "fingerprint", now)
+	if err != nil || !acquired {
+		t.Fatalf("purged record acquired=%v error=%v", acquired, err)
+	}
+}
 
 // 保持期間の境界は IdManagement のテストが確かめる。ここでは、掃除のバッチが IdManagement の
 // 成果物ストアの期限切れの削除を呼ぶことを確かめる。

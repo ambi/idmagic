@@ -56,7 +56,11 @@ import (
 	"github.com/ambi/idmagic/backend/apitoken"
 	"github.com/ambi/idmagic/backend/audit"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
+	"github.com/ambi/idmagic/backend/datakeys"
+	"github.com/ambi/idmagic/backend/shared/idempotency"
 	authorizationlocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	apitokenports "github.com/ambi/idmagic/backend/apitoken/ports"
@@ -193,6 +197,7 @@ func (l *EventLog) AssertNotEmitted(t *testing.T, eventTypes ...string) {
 // 保存先を公開するのは、拒否が防いだ効果を読み直すためである。nil のままの field は
 // その option を渡していないことを意味する。
 type Stack struct {
+	Idempotency          *idempotency.Ledger
 	IdGovernance         idgovernance.Module
 	Echo                 *echo.Echo
 	Events               *EventLog
@@ -506,6 +511,21 @@ func WithEndpointRateLimitReached(policy, key string) Option {
 // WithRateLimiter は実物のカウンターまたは到達不能のストアを、正式な HTTP 経路へ配線する。
 func WithRateLimiter(limiter rlports.RateLimiter) Option {
 	return func(b *builder) { b.deps.RateLimiter = limiter }
+}
+
+// WithIdempotency は本番と同じ DEK の暗号化を、メモリの受付記録へ結ぶ。
+func WithIdempotency() Option {
+	return func(b *builder) {
+		provider, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+		if err != nil {
+			b.t.Fatal(err)
+		}
+		keys := datakeys.NewMemoryModule(envelope_crypto.NewTinkEnvelopeCrypto(provider))
+		ledger := idempotency.New(idempotency.NewMemoryStore(), keys.FieldCipher())
+		keys.Migrators.Register("http_idempotency_response", ledger)
+		b.deps.DataKeys, b.deps.Idempotency = keys, ledger
+		b.stack.Idempotency = ledger
+	}
 }
 
 // WithApiTokens は管理発行の API アクセストークンを配線する。

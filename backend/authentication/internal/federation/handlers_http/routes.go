@@ -253,28 +253,34 @@ func withSecretPresence(connection *federationdomain.IdentityProviderConnection)
 }
 
 func (d Deps) createAdmin(c *echo.Context) error {
-	if err := d.requireBrowserAdmin(c); err != nil {
+	if err := d.Auth.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	var input connectionInput
-	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	actor, err := d.Auth.RequireAdmin(c)
+	if err != nil {
+		return d.Auth.WriteAdminAccessError(c, err)
 	}
-	var connection federationdomain.IdentityProviderConnection
-	input.apply(&connection)
-	now := time.Now().UTC()
-	if connection.ID == "" {
-		connection.ID = uuid.NewV4().String()
-	}
-	connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDisabled
-	connection.CreatedAt, connection.UpdatedAt = now, now
-	if err := connection.Validate(); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
-	}
-	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
-		return err
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, withSecretPresence(&connection))
+	return support.WithIdempotency(c, d.Auth.Deps, actor.ID, func(c *echo.Context) error {
+		var input connectionInput
+		if err := support.DecodeJSON(c.Request(), &input); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		var connection federationdomain.IdentityProviderConnection
+		input.apply(&connection)
+		now := time.Now().UTC()
+		if connection.ID == "" {
+			connection.ID = uuid.NewV4().String()
+		}
+		connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDisabled
+		connection.CreatedAt, connection.UpdatedAt = now, now
+		if err := connection.Validate(); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
+		if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
+			return err
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, withSecretPresence(&connection))
+	})
 }
 
 func (d Deps) updateAdmin(c *echo.Context) error {

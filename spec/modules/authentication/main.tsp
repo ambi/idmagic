@@ -1398,9 +1398,10 @@ model IssueMfaEnrollmentBypassSuccess_201 {
 @route("/api/admin/v1/users/{user_id}/mfa-enrollment-bypass")
 @post
 op IssueMfaEnrollmentBypass(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @path user_id: string,
   @body body: IdMagic.Contract.MfaEnrollmentBypassIssueRequest
-): IssueMfaEnrollmentBypassSuccess_201 | IssueMfaEnrollmentBypassError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueMfaEnrollmentBypassError403 | IssueMfaEnrollmentBypassError422;
+): IssueMfaEnrollmentBypassSuccess_201 | IssueMfaEnrollmentBypassError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueMfaEnrollmentBypassError403 | IssueMfaEnrollmentBypassError422 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model RevokeMfaEnrollmentBypassSuccess_204 {
   @statusCode statusCode: 204;
@@ -1893,8 +1894,9 @@ model CreateIdentityProviderConnectionError403 {
 @route("/api/admin/v1/identity-providers")
 @post
 op CreateIdentityProviderConnection(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.IdentityProviderConnectionRequest
-): CreateIdentityProviderConnectionSuccess_201 | CreateIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateIdentityProviderConnectionError403;
+): CreateIdentityProviderConnectionSuccess_201 | CreateIdentityProviderConnectionError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateIdentityProviderConnectionError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model UpdateIdentityProviderConnectionSuccess_200 {
   @statusCode statusCode: 200;

@@ -53,17 +53,19 @@ func (d Deps) handleCreateCategory(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var req categoryRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	category, err := appusecases.CreateCategory(c.Request().Context(), d.categoryDeps(), appusecases.CreateCategoryInput{
-		ActorUserID: actor.ID, Name: req.Name, Position: req.Position, Now: time.Now().UTC(),
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		var req categoryRequest
+		if err := support.DecodeJSON(c.Request(), &req); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		category, err := appusecases.CreateCategory(c.Request().Context(), d.categoryDeps(), appusecases.CreateCategoryInput{
+			ActorUserID: actor.ID, Name: req.Name, Position: req.Position, Now: time.Now().UTC(),
+		})
+		if err != nil {
+			return d.writeCategoryError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"category": toCategoryResponse(category)})
 	})
-	if err != nil {
-		return d.writeCategoryError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{"category": toCategoryResponse(category)})
 }
 
 func (d Deps) handleUpdateCategory(c *echo.Context) error {

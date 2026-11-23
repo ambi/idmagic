@@ -20,6 +20,11 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
+	if deps.Idempotency != nil {
+		if err := deps.Idempotency.PurgeExpired(ctx, now); err != nil {
+			return err
+		}
+	}
 	if err := deps.Sourcing.PurgeExpiredPasswordChallenges(ctx, now); err != nil {
 		return err
 	}

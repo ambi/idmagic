@@ -117,22 +117,24 @@ func handleStartExport(d Deps, c *echo.Context, target idmdomain.DataExportTarge
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil {
-		return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
-	}
-	var in startDataExportRequest
-	if err := support.DecodeJSON(c.Request(), &in); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The export request is invalid.")
-	}
-	filter := in.Filter
-	if target == idmdomain.ExportTargetGroupMembership {
-		filter = map[string]string{"group_id": c.Param("group_id")}
-	}
-	view, err := idmusecases.StartDataExport(c.Request().Context(), exportUsecaseDeps(d), actor.ID, string(target), in.Columns, filter, time.Now().UTC())
-	if err != nil {
-		return writeDataExportError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusAccepted, toDataExportResponse(view))
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		if d.JobRepo == nil {
+			return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
+		}
+		var in startDataExportRequest
+		if err := support.DecodeJSON(c.Request(), &in); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The export request is invalid.")
+		}
+		filter := in.Filter
+		if target == idmdomain.ExportTargetGroupMembership {
+			filter = map[string]string{"group_id": c.Param("group_id")}
+		}
+		view, err := idmusecases.StartDataExport(c.Request().Context(), exportUsecaseDeps(d), actor.ID, string(target), in.Columns, filter, time.Now().UTC())
+		if err != nil {
+			return writeDataExportError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusAccepted, toDataExportResponse(view))
+	})
 }
 
 func handleListExports(d Deps, c *echo.Context, target idmdomain.DataExportTargetKind) error {

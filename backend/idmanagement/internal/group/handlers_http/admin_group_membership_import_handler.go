@@ -39,15 +39,16 @@ func HandleImportAdminGroupMembers(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-
-	job, err := groupusecases.StartGroupMembershipImportPreview(
-		c.Request().Context(), groupMembershipImportStartDeps(d), actor.ID, c.Param("group_id"),
-		c.Request().Body, time.Now().UTC())
-	if err != nil {
-		return writeGroupMembershipImportError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusAccepted, map[string]any{
-		"id": job.ID, "status": job.Status, "mode": groupusecases.GroupMembershipImportModePreview,
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		job, err := groupusecases.StartGroupMembershipImportPreview(
+			c.Request().Context(), groupMembershipImportStartDeps(d), actor.ID, c.Param("group_id"),
+			c.Request().Body, time.Now().UTC())
+		if err != nil {
+			return writeGroupMembershipImportError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusAccepted, map[string]any{
+			"id": job.ID, "status": job.Status, "mode": groupusecases.GroupMembershipImportModePreview,
+		})
 	})
 }
 

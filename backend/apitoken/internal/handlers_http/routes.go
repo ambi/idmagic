@@ -98,22 +98,24 @@ func (h handler) issue(c *echo.Context) error {
 	if err != nil {
 		return h.deps.WriteAdminAccessError(c, err)
 	}
-	var request issueRequest
-	if err := support.DecodeJSON(c.Request(), &request); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid API token request")
-	}
-	literal, metadata, err := h.deps.Service.Issue(
-		c.Request().Context(), support.RequestTenantID(c), actor.ID, request.Description, request.Scopes, request.ExpiryDays, request.DPoPJKT,
-	)
-	if errors.Is(err, apitokenusecases.ErrInvalidRequest) {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
-	}
-	if err != nil {
-		return err
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-		"token": literal,
-		"meta":  metadataJSON(metadata),
+	return support.WithIdempotency(c, h.deps.Deps, actor.ID, func(c *echo.Context) error {
+		var request issueRequest
+		if err := support.DecodeJSON(c.Request(), &request); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid API token request")
+		}
+		literal, metadata, err := h.deps.Service.Issue(
+			c.Request().Context(), support.RequestTenantID(c), actor.ID, request.Description, request.Scopes, request.ExpiryDays, request.DPoPJKT,
+		)
+		if errors.Is(err, apitokenusecases.ErrInvalidRequest) {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
+		if err != nil {
+			return err
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
+			"token": literal,
+			"meta":  metadataJSON(metadata),
+		})
 	})
 }
 

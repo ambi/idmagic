@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -94,13 +96,24 @@ func (w *dataKeyLifecycleWorld) rotatedAudits(t *testing.T, tenantID string) int
 	return len(records)
 }
 
-func (w *dataKeyLifecycleWorld) reencryptionJobs(t *testing.T, tenantID string) int {
+func (w *dataKeyLifecycleWorld) reencryptionMigrators(t *testing.T, tenantID string) []string {
 	t.Helper()
 	jobs, err := w.deps.Jobs.Repo.ListByTenantAndKinds(context.Background(), tenantID, []jobsdomain.JobKind{jobsdomain.KindDataKeyReencryption}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return len(jobs)
+	migrators := make([]string, 0, len(jobs))
+	for _, job := range jobs {
+		var params struct {
+			Migrator string `json:"migrator"`
+		}
+		if err := json.Unmarshal(job.Params, &params); err != nil {
+			t.Fatal(err)
+		}
+		migrators = append(migrators, params.Migrator)
+	}
+	slices.Sort(migrators)
+	return migrators
 }
 
 //spec:covers REQ-DATAKEYS-007, REQ-DATAKEYS-002: 周期を過ぎたテナントだけバージョンが増え、再暗号化のジョブと監査が残り、DEK のないテナントには作らず、再実行では増えない。
@@ -119,11 +132,11 @@ func TestDataKeyLifecycleRotatesOnlyDueTenants(t *testing.T) {
 	if _, err := w.deps.DataKeys.Repository.FindActive(t.Context(), "empty"); err == nil {
 		t.Fatal("a DEK was created for the tenant without one")
 	}
-	if got := w.reencryptionJobs(t, "due"); got != 1 {
-		t.Fatalf("due reencryption jobs = %d, want 1", got)
+	if got := w.reencryptionMigrators(t, "due"); !slices.Equal(got, []string{"fixture", "http_idempotency_response"}) {
+		t.Fatalf("due reencryption migrators = %v, want fixture and http_idempotency_response", got)
 	}
-	if got := w.reencryptionJobs(t, "fresh"); got != 0 {
-		t.Fatalf("fresh reencryption jobs = %d, want 0", got)
+	if got := w.reencryptionMigrators(t, "fresh"); len(got) != 0 {
+		t.Fatalf("fresh reencryption migrators = %v, want none", got)
 	}
 	if got := w.rotatedAudits(t, "due"); got != 1 {
 		t.Fatalf("due rotated audits = %d, want 1", got)

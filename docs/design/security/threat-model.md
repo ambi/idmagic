@@ -213,6 +213,8 @@ LINDDUN は併用しない。7 分類のうちこのプロダクトで意味を�
 | ID | 分類 | 脅威 | モジュール | 制御 | 状態 |
 |---|---|---|---|---|---|
 | THREAT-055 | Information disclosure | 暗号文を別テナント、別テーブル、別フィールドへ複製して復号する | DataKeys | [データベース設計：可逆な秘密情報のエンベロープ暗号](../data/database.md#可逆な秘密情報のエンベロープ暗号) | `covered` |
+| THREAT-119 | Information disclosure | 別の主体または権限を失った主体が冪等キーを使い、保存済みのクレデンシャルを再生する | System | REQ-SYSTEM-036: 再生前の認証と認可、テナントと主体による照合 | `covered` |
+| THREAT-120 | Information disclosure | 冪等応答の保存先から平文のクレデンシャルを読み取る | System, DataKeys | REQ-SYSTEM-036: 応答全体のエンベロープ暗号と鍵の移行 | `covered` |
 | THREAT-056 | Elevation of privilege | マスターキー提供元へ到達できないときに平文へ退避する | DataKeys | [データベース設計：可逆な秘密情報のエンベロープ暗号](../data/database.md#可逆な秘密情報のエンベロープ暗号) | `covered` |
 | THREAT-057 | Information disclosure | 破棄したはずの鍵で、残った暗号文が復号できる | DataKeys | REQ-DATAKEYS-003、REQ-DATAKEYS-005 | `covered` |
 | THREAT-058 | Information disclosure | 管理 API またはエラーレスポンスから鍵素材が出る | DataKeys, SigningKeys | REQ-DATAKEYS-006、[認可設計：レスポンスが決して含まないもの](authorization.md#レスポンスが決して含まないもの) | `covered` |

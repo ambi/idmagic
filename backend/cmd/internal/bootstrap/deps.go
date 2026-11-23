@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/shared/idempotency"
+
 	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	"github.com/ambi/idmagic/backend/accesscontrol"
@@ -33,6 +35,7 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
+	Idempotency      *idempotency.Ledger
 	Tenancy          tenancy.Module
 	IdManagement     idmanagement.Module
 	IdGovernance     idgovernance.Module

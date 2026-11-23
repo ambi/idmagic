@@ -7,14 +7,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ambi/idmagic/backend/shared/idempotency"
+
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // Deps は全 HTTP ハンドラが共有する依存集約のうち、HTTP 横断設定とライフサイクルに関連するもの。
 type Deps struct {
-	Issuer   string
-	Contract *spec.RuntimeContract
+	Issuer      string
+	Contract    *spec.RuntimeContract
+	Idempotency *idempotency.Ledger
 	// TenantBaseDomain は subdomain style のテナントが載る親ドメイン。
 	// 空なら host ベースのテナント解決そのものが無効になり、path prefix 経路だけが
 	// 残る。ワイルドカード DNS / 証明書を用意できない配備を一級市民として保つための

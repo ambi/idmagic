@@ -84,8 +84,9 @@ model IssueApiTokenSuccess_201 {
 @route("/api/admin/v1/api-tokens")
 @post
 op IssueApiToken(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IssueApiTokenHttpRequest
-): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApiTokenError403;
+): IssueApiTokenSuccess_201 | IssueApiTokenError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApiTokenError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 union RevokeApiTokenError403Body {
   IdMagic.Contract.CsrfFailedError,

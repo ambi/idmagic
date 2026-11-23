@@ -104,29 +104,32 @@ func (d Deps) handleCreateIDPProfile(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.IDPProfileRepo == nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
-	}
-	var req idpProfileRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	now := time.Now().UTC()
-	profile := &samldomain.SamlIdentityProviderProfile{
-		TenantID: support.RequestTenantID(c), ProfileID: uuid.NewV4().String(),
-		Name: strings.TrimSpace(req.Name), Mode: req.Mode, CreatedAt: now, UpdatedAt: now,
-	}
-	if err := d.IDPProfileRepo.SaveIDPProfile(c.Request().Context(), profile); err != nil {
-		return d.writeIDPProfileError(c, err)
-	}
-	response, err := d.idpProfileResponse(c, profile, 0)
-	if err != nil {
-		return err
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, response)
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		if d.IDPProfileRepo == nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
+		}
+		var req idpProfileRequest
+		if err := support.DecodeJSON(c.Request(), &req); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		now := time.Now().UTC()
+		profile := &samldomain.SamlIdentityProviderProfile{
+			TenantID: support.RequestTenantID(c), ProfileID: uuid.NewV4().String(),
+			Name: strings.TrimSpace(req.Name), Mode: req.Mode, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := d.IDPProfileRepo.SaveIDPProfile(c.Request().Context(), profile); err != nil {
+			return d.writeIDPProfileError(c, err)
+		}
+		response, err := d.idpProfileResponse(c, profile, 0)
+		if err != nil {
+			return err
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, response)
+	})
 }
 
 func (d Deps) handleUpdateIDPProfile(c *echo.Context) error {

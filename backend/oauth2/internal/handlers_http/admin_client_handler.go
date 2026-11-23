@@ -126,45 +126,47 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	var req registerClientRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	if err := validateRegisterClientRequest(&req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
-	}
-	if req.JwksURI != nil {
-		if err := tokens_jose.ValidateJWKSURI(*req.JwksURI); err != nil {
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		var req registerClientRequest
+		if err := support.DecodeJSON(c.Request(), &req); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		if err := validateRegisterClientRequest(&req); err != nil {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 		}
-	}
-	registration := clientusecases.RegisterClientInput{
-		ClientName: req.ClientName, ClientType: spec.ClientType(req.ClientType),
-		RedirectURIs: req.RedirectURIs, TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
-		Scope: req.Scope, JWKS: req.JWKS, JwksURI: req.JwksURI,
-		TlsClientAuthSubjectDN: req.TlsClientAuthSubjectDN, RequirePAR: req.RequirePAR,
-		RequirePKCE:           req.RequirePKCE,
-		DpopBoundAccessTokens: req.DpopBoundAccessTokens, FapiProfile: oauthdomain.FapiProfile(req.FapiProfile),
-		BackChannelLogoutURI: req.BackChannelLogoutURI, BackChannelLogoutSessionRequired: req.BackChannelLogoutSessionRequired,
-		FrontChannelLogoutURI: req.FrontChannelLogoutURI, FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
-	}
-	for _, grant := range req.GrantTypes {
-		registration.GrantTypes = append(registration.GrantTypes, spec.GrantType(grant))
-	}
-	for _, responseType := range req.ResponseTypes {
-		registration.ResponseTypes = append(registration.ResponseTypes, spec.ResponseType(responseType))
-	}
-	result, err := clientusecases.CreateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.CreateAdminOAuth2ClientInput{
-		ActorUserID: actor.ID, Registration: registration, Now: time.Now().UTC(),
+		if req.JwksURI != nil {
+			if err := tokens_jose.ValidateJWKSURI(*req.JwksURI); err != nil {
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
+			}
+		}
+		registration := clientusecases.RegisterClientInput{
+			ClientName: req.ClientName, ClientType: spec.ClientType(req.ClientType),
+			RedirectURIs: req.RedirectURIs, TokenEndpointAuthMethod: oauthdomain.TokenEndpointAuthMethod(req.TokenEndpointAuthMethod),
+			Scope: req.Scope, JWKS: req.JWKS, JwksURI: req.JwksURI,
+			TlsClientAuthSubjectDN: req.TlsClientAuthSubjectDN, RequirePAR: req.RequirePAR,
+			RequirePKCE:           req.RequirePKCE,
+			DpopBoundAccessTokens: req.DpopBoundAccessTokens, FapiProfile: oauthdomain.FapiProfile(req.FapiProfile),
+			BackChannelLogoutURI: req.BackChannelLogoutURI, BackChannelLogoutSessionRequired: req.BackChannelLogoutSessionRequired,
+			FrontChannelLogoutURI: req.FrontChannelLogoutURI, FrontChannelLogoutSessionRequired: req.FrontChannelLogoutSessionRequired,
+		}
+		for _, grant := range req.GrantTypes {
+			registration.GrantTypes = append(registration.GrantTypes, spec.GrantType(grant))
+		}
+		for _, responseType := range req.ResponseTypes {
+			registration.ResponseTypes = append(registration.ResponseTypes, spec.ResponseType(responseType))
+		}
+		result, err := clientusecases.CreateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.CreateAdminOAuth2ClientInput{
+			ActorUserID: actor.ID, Registration: registration, Now: time.Now().UTC(),
+		})
+		if err != nil {
+			return d.writeAdminOAuth2ClientError(c, err)
+		}
+		response := map[string]any{"client": toAdminOAuth2ClientResponse(result.Client)}
+		if result.ClientSecret != "" {
+			response["client_secret"] = result.ClientSecret
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, response)
 	})
-	if err != nil {
-		return d.writeAdminOAuth2ClientError(c, err)
-	}
-	response := map[string]any{"client": toAdminOAuth2ClientResponse(result.Client)}
-	if result.ClientSecret != "" {
-		response["client_secret"] = result.ClientSecret
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, response)
 }
 
 func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {

@@ -201,6 +201,7 @@ func Run() error {
 	jobsModule.Enqueuer = jobs.NewEnqueuer(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	jobsModule.Canceler = jobs.NewCanceler(deps.Jobs.Repo, deps.Tenancy.QuotaRepo, emit)
 	httpadapter.Register(e, httpadapter.Deps{
+		Idempotency:               deps.Idempotency,
 		MetricsHandler:            appMetrics.Handler(),
 		Admission:                 api.Admission,
 		Issuer:                    issuer,

@@ -298,8 +298,24 @@ function candidatesFor(
 }
 
 function statusesIn(args: string): number[] {
+  // コールバックや入れ子の呼び出しの定数は、その呼び出し自身の解析が扱う。
+  // 外側の関数へ状態コードを直接渡したことにはしない。
+  let direct = ''
+  const pairs: Record<string, string> = { '(': '()', '[': '[]', '{': '{}' }
+  for (let i = 0; i < args.length; i++) {
+    const pair = pairs[args[i] ?? '']
+    if (pair) {
+      const inner = sliceBalanced(args, i, pair)
+      if (inner !== undefined) {
+        i += inner.length + 1
+        direct += ' '
+        continue
+      }
+    }
+    direct += args[i]
+  }
   const found: number[] = []
-  for (const match of args.matchAll(/http\.(Status\w+)/g)) {
+  for (const match of direct.matchAll(/http\.(Status\w+)/g)) {
     const code = STATUS[match[1] ?? '']
     if (code) found.push(code)
   }

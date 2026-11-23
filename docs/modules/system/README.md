@@ -42,7 +42,7 @@
 | [起動時設定](features/startup-configuration.md) | 起動時設定の検証、設定の参照文書、機能のレジストリ |
 | [アドミッションコントロール](features/admission-control.md) | 飽和したときの優先度による拒否と、経路の優先度の参照文書 |
 | [API の境界](features/api-boundary.md) | 非推奨のインターフェース、テナント横断の操作の入口、ゲートウェイの許可リスト |
-| [HTTP API の共通の振る舞い](features/http-api.md) | エラーの形式、ページサイズとカーソルとページ送りのヘッダー、ボディと文字列の長さの上限、セキュリティヘッダー、レートリミットの拒否の形式 |
+| [HTTP API の共通の振る舞い](features/http-api.md) | エラーの形式、ページサイズとカーソルとページ送りのヘッダー、ボディと文字列の長さの上限、セキュリティヘッダー、レートリミットの拒否の形式、管理 API の冪等要求 |
 
 System の機能は機能スライスを持たず、組み立て地点と共有の部品が実装する。
 
@@ -52,14 +52,14 @@ System の機能は機能スライスを持たず、組み立て地点と共有�
 | [起動時設定](features/startup-configuration.md) | 起動時設定の検証、機能の登録簿、[設定リファレンス](../../operations/configuration.md)の生成 |
 | [アドミッションコントロール](features/admission-control.md) | 優先度クラスの分類、入場の上限のミドルウェア、[経路の優先度リファレンス](../../operations/route-priority.md)の生成 |
 | [API の境界](features/api-boundary.md) | 経路の種類ごとの認可、非推奨のヘッダー、ゲートウェイの許可リスト |
-| [HTTP API の共通の振る舞い](features/http-api.md) | HTTP 応答の共通処理、ランタイム契約の検証、起動処理のボディ上限のミドルウェア |
+| [HTTP API の共通の振る舞い](features/http-api.md) | HTTP 応答の共通処理、ランタイム契約の検証、起動処理のボディ上限のミドルウェア、冪等要求の受付と暗号化した応答の保存 |
 
 ## 文書
 
 | 設計領域 | 文書 | 内容 |
 | --- | --- | --- |
 | アプリケーション設計 | [API の境界](features/api-boundary.md#概要) | API と UI の方式はシステムのアプリケーション設計が扱い、このモジュールは経路の分け方をAPI の境界で定める |
-| データ設計 | [System のデータ](data.md#集約) | Aggregate とその関係。このモジュールは永続状態を保存しない |
+| データ設計 | [System のデータ](data.md#集約) | 業務状態の担当と、共通基盤の冪等要求の受付記録 |
 | インフラストラクチャ設計 | [配置の設計](../../design/architecture/deployment.md#共通トポロジー) | システムのインフラストラクチャ設計と配置の設計が扱う |
 | セキュリティ設計 | [API の境界](features/api-boundary.md#認可トランザクション)、[認可設計](../../design/security/authorization.md#主体の種類) | 認可トランザクションは API の境界が、システム全体の認可は認可設計が扱う |
 | 信頼性設計 | [運用](features/operations.md#概要) | プローブは運用が、システム全体の可用性は信頼性設計が扱う |

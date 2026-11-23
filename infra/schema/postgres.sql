@@ -34,6 +34,24 @@ CREATE TABLE tenants (
     )
 );
 
+CREATE TABLE http_idempotency_records (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    principal_id TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    response_key_version INTEGER NOT NULL DEFAULT 0,
+    response_ciphertext BYTEA,
+    CONSTRAINT http_idempotency_key_unique UNIQUE (tenant_id, principal_id, key_hash),
+    CONSTRAINT http_idempotency_response_valid CHECK (
+        (response_key_version = 0 AND response_ciphertext IS NULL) OR
+        (response_key_version > 0 AND response_ciphertext IS NOT NULL)
+    )
+);
+CREATE INDEX http_idempotency_expiry_idx ON http_idempotency_records (expires_at);
+
 CREATE TABLE tenant_quotas (
     tenant_id UUID PRIMARY KEY,
     users INT,

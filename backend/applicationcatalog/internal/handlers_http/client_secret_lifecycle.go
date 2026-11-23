@@ -24,27 +24,29 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	app, err := d.requireApp(c)
-	if err != nil {
-		return d.writeApplicationError(c, err)
-	}
-	clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
-	if clientID == "" {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
-	}
-	var req rotateOIDCClientSecretRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	graceDays := 7
-	if req.GraceDays != nil {
-		graceDays = *req.GraceDays
-	}
-	result, err := d.Clients.RotateSecret(c.Request().Context(), clientports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
-	if err != nil {
-		return d.writeApplicationError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"client_secret": result.ClientSecret, "grace_until": result.GraceUntil, "credentials": secretMetadata(result.Credentials, time.Now().UTC())})
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		app, err := d.requireApp(c)
+		if err != nil {
+			return d.writeApplicationError(c, err)
+		}
+		clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
+		if clientID == "" {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
+		}
+		var req rotateOIDCClientSecretRequest
+		if err := support.DecodeJSON(c.Request(), &req); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		graceDays := 7
+		if req.GraceDays != nil {
+			graceDays = *req.GraceDays
+		}
+		result, err := d.Clients.RotateSecret(c.Request().Context(), clientports.RotateClientSecretInput{ActorUserID: actor.ID, ClientID: clientID, GraceDays: graceDays, Now: time.Now().UTC()})
+		if err != nil {
+			return d.writeApplicationError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"client_secret": result.ClientSecret, "grace_until": result.GraceUntil, "credentials": secretMetadata(result.Credentials, time.Now().UTC())})
+	})
 }
 
 type issueOIDCClientSecretRequest struct {
@@ -59,33 +61,35 @@ func (d Deps) handleIssueOIDCClientSecret(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	app, err := d.requireApp(c)
-	if err != nil {
-		return d.writeApplicationError(c, err)
-	}
-	clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
-	if clientID == "" {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
-	}
-	var req issueOIDCClientSecretRequest
-	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
-	}
-	expiresInDays := 90
-	if req.ExpiresInDays != nil {
-		expiresInDays = *req.ExpiresInDays
-	}
-	now := time.Now().UTC()
-	result, err := d.Clients.IssueSecret(c.Request().Context(), clientports.IssueClientSecretInput{
-		ActorUserID: actor.ID, ClientID: clientID, ExpiresInDays: expiresInDays, Now: now,
-	})
-	if err != nil {
-		return d.writeApplicationError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
-		"client_secret": result.ClientSecret,
-		"credential":    secretMetadata([]oauthdomain.ClientSecretCredential{result.Credential}, now)[0],
-		"credentials":   secretMetadata(result.Credentials, now),
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		app, err := d.requireApp(c)
+		if err != nil {
+			return d.writeApplicationError(c, err)
+		}
+		clientID := bindingKeyOf(app, appdomain.ApplicationProtocolOIDC)
+		if clientID == "" {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
+		}
+		var req issueOIDCClientSecretRequest
+		if err := support.DecodeJSON(c.Request(), &req); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		}
+		expiresInDays := 90
+		if req.ExpiresInDays != nil {
+			expiresInDays = *req.ExpiresInDays
+		}
+		now := time.Now().UTC()
+		result, err := d.Clients.IssueSecret(c.Request().Context(), clientports.IssueClientSecretInput{
+			ActorUserID: actor.ID, ClientID: clientID, ExpiresInDays: expiresInDays, Now: now,
+		})
+		if err != nil {
+			return d.writeApplicationError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusCreated, map[string]any{
+			"client_secret": result.ClientSecret,
+			"credential":    secretMetadata([]oauthdomain.ClientSecretCredential{result.Credential}, now)[0],
+			"credentials":   secretMetadata(result.Credentials, now),
+		})
 	})
 }
 

@@ -34,12 +34,13 @@ func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-
-	job, err := userusecases.StartUserImportPreview(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Request().Body, time.Now().UTC())
-	if err != nil {
-		return writeUserImportError(c, err)
-	}
-	return support.NoStoreJSON(c, http.StatusAccepted, map[string]any{"id": job.ID, "status": job.Status, "mode": userusecases.UserImportModePreview})
+	return support.WithIdempotency(c, d.Deps, actor.ID, func(c *echo.Context) error {
+		job, err := userusecases.StartUserImportPreview(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Request().Body, time.Now().UTC())
+		if err != nil {
+			return writeUserImportError(c, err)
+		}
+		return support.NoStoreJSON(c, http.StatusAccepted, map[string]any{"id": job.ID, "status": job.Status, "mode": userusecases.UserImportModePreview})
+	})
 }
 
 func HandleApplyAdminUserImport(d Deps, c *echo.Context) error {

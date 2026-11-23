@@ -468,8 +468,9 @@ model CreateSamlIdentityProviderProfileError403 {
 @route("/api/admin/v1/saml/idp-profiles")
 @post
 op CreateSamlIdentityProviderProfile(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.SamlIdentityProviderProfileRequest
-): CreateSamlIdentityProviderProfileSuccess_201 | CreateSamlIdentityProviderProfileError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateSamlIdentityProviderProfileError403;
+): CreateSamlIdentityProviderProfileSuccess_201 | CreateSamlIdentityProviderProfileError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateSamlIdentityProviderProfileError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model ListSamlIdentityProviderProfilesHttpResponse {
   profiles: IdMagic.Contract.SamlIdentityProviderProfileAdminResponse[];

@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"context"
 
+	"github.com/ambi/idmagic/backend/shared/idempotency"
+
 	"github.com/ambi/idmagic/backend/signinpolicy"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -51,9 +53,10 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	}
 	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
 	dataKeysModule := datakeys.NewMemoryModule(dataKeysCrypto)
-	// No FieldMigrator to register: the memory runtime's MfaFactorRepository
-	// (below) never encrypts, so there is nothing for the
-	// data_key_reencryption job to migrate (dev/test only).
+	idempotencyLedger := idempotency.New(idempotency.NewMemoryStore(), dataKeysModule.FieldCipher())
+	dataKeysModule.Migrators.Register("http_idempotency_response", idempotencyLedger)
+	// 開発用のメモリ構成では MFA 要素を暗号化しないため、その移行処理は登録しない。
+	// 冪等応答はこの構成でも暗号化し、上で登録した処理が鍵を移行する。
 	tenancyModule := tenancy.NewMemoryModule()
 	sharedSignalsModule := sharedsignals.NewMemoryModule().WithDeliveryEndpointCheck()
 	auditModule := audit.NewMemoryModule(0).WithCapture(nil, captureAuditRecordInMemory(sharedSignalsModule))
@@ -74,6 +77,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		WithMemoryClientDeletion(idmModule.DeleteClientBindings, tenancyModule.QuotaRepo)
 	oauth2Module.EventSink = sinks_console.NewConsoleSink()
 	return &Dependencies{
+		Idempotency: idempotencyLedger,
 		SeedRequestLock: func(ctx context.Context, _ seedingdomain.Request, apply func(context.Context) error) error {
 			return apply(ctx)
 		},

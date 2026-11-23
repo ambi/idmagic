@@ -140,8 +140,9 @@ model CreateAdminApplicationError409 {
 @route("/api/admin/v1/applications")
 @post
 op CreateAdminApplication(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.AdminApplicationCreateRequest
-): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminApplicationError403 | CreateAdminApplicationError409 | CreateAdminApplicationError422;
+): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminApplicationError403 | CreateAdminApplicationError409 | CreateAdminApplicationError422 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model UpdateAdminApplicationSuccess_200 {
   @statusCode statusCode: 200;
@@ -463,9 +464,10 @@ model RotateApplicationClientSecretError404 {
 @route("/api/admin/v1/applications/{id}/oidc/rotate-secret")
 @post
 op RotateApplicationClientSecret(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @path id: string,
   @body body: IdMagic.Contract.RotateApplicationClientSecretRequest
-): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RotateApplicationClientSecretError403 | RotateApplicationClientSecretError404;
+): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | RotateApplicationClientSecretError403 | RotateApplicationClientSecretError404 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model IssueApplicationClientSecretSuccess_201 {
   @statusCode statusCode: 201;
@@ -521,9 +523,10 @@ model IssueApplicationClientSecretError422 {
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets")
 @post
 op IssueApplicationClientSecret(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @path id: string,
   @body body: IdMagic.Contract.IssueApplicationClientSecretRequest
-): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422 | IssueApplicationClientSecretError404;
+): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IdMagic.Contract.AuthenticationRequiredResponse | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422 | IssueApplicationClientSecretError404 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model RevokeApplicationClientSecretSuccess_200 {
   @statusCode statusCode: 200;
@@ -1033,8 +1036,9 @@ model CreateApplicationCategoryError403 {
 @route("/api/admin/v1/application-categories")
 @post
 op CreateApplicationCategory(
+  ...IdMagic.Contract.IdempotencyHeaders,
   @body body: IdMagic.Contract.AdminApplicationCategoryRequest
-): CreateApplicationCategorySuccess_201 | CreateApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateApplicationCategoryError422 | CreateApplicationCategoryError403;
+): CreateApplicationCategorySuccess_201 | CreateApplicationCategoryError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateApplicationCategoryError422 | CreateApplicationCategoryError403 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model UpdateApplicationCategoryHttpResponse {
   category: IdMagic.Contract.AdminApplicationCategoryResponse;
