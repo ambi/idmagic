@@ -189,12 +189,12 @@ func TestMainSendsIdMagicRequestsThroughTheProxy(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		client, _, err := http.NewResponseController(w).Hijack()
+		client, buffered, err := http.NewResponseController(w).Hijack()
 		if err != nil {
 			_ = upstream.Close()
 			return
 		}
-		go func() { _, _ = io.Copy(upstream, client); _ = upstream.Close() }()
+		go func() { _, _ = io.Copy(upstream, buffered); _ = upstream.Close() }()
 		_, _ = io.Copy(client, upstream)
 		_ = client.Close()
 	}))
