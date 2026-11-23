@@ -9,6 +9,7 @@ import (
 
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // TenantBrandingRepository は branding config を PostgreSQL に保存する (wi-89)
@@ -18,6 +19,10 @@ type TenantBrandingRepository struct{ Pool sharedpg.DB }
 
 func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID string) (*tenancydomain.TenantBranding, error) {
 	row, err := New(r.Pool).FindTenantBrandingByTenant(ctx, tenantID)
+	return brandingFromRow(row, err)
+}
+
+func brandingFromRow(row *TenantBranding, err error) (*tenancydomain.TenantBranding, error) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -42,7 +47,48 @@ func (r *TenantBrandingRepository) FindByTenant(ctx context.Context, tenantID st
 }
 
 func (r *TenantBrandingRepository) Save(ctx context.Context, branding *tenancydomain.TenantBranding) error {
-	return New(r.Pool).SaveTenantBranding(ctx, SaveTenantBrandingParams{
+	_, err := r.Update(ctx, branding.TenantID, func(_ *tenancydomain.TenantBranding) (*tenancydomain.TenantBranding, error) {
+		return branding, nil
+	})
+	return err
+}
+
+func (r *TenantBrandingRepository) Update(ctx context.Context, tenantID string, change tenantports.BrandingChange) (*tenancydomain.TenantBranding, error) {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := New(tx)
+	if _, err := q.LockTenantForUpdate(ctx, tenantID); err != nil {
+		return nil, err
+	}
+	current, err := brandingFromRow(q.FindTenantBrandingByTenant(ctx, tenantID))
+	if err != nil {
+		return nil, err
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, nil
+	}
+	if err := saveBranding(ctx, q, updated); err != nil {
+		return nil, err
+	}
+	updated, err = brandingFromRow(q.FindTenantBrandingByTenant(ctx, tenantID))
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
+func saveBranding(ctx context.Context, q *Queries, branding *tenancydomain.TenantBranding) error {
+	return q.SaveTenantBranding(ctx, SaveTenantBrandingParams{
 		TenantID:         branding.TenantID,
 		ProductName:      textOrNil(branding.ProductName),
 		LogoObjectKey:    textOrNil(branding.LogoObjectKey),

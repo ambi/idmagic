@@ -70,6 +70,22 @@ func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, application
 	return nil
 }
 
+func (r *SignInPolicyRepository) Update(_ context.Context, tenantID, applicationID string, change func(*policydomain.AppSignInPolicy) (*policydomain.AppSignInPolicy, error)) (*policydomain.AppSignInPolicy, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID)
+	var current *policydomain.AppSignInPolicy
+	if stored := r.policies[key]; stored != nil {
+		current = cloneSignInPolicy(stored)
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	r.policies[key] = cloneSignInPolicy(updated)
+	return cloneSignInPolicy(updated), nil
+}
+
 // =====================================================================
 // DefaultSignInPolicyRepository (wi-115)
 // =====================================================================
@@ -108,4 +124,19 @@ func (r *DefaultSignInPolicyRepository) Save(_ context.Context, policy *policydo
 	}
 	r.policies[policy.TenantID] = cloned
 	return nil
+}
+
+func (r *DefaultSignInPolicyRepository) Update(_ context.Context, tenantID string, change func(*policydomain.TenantDefaultSignInPolicy) (*policydomain.TenantDefaultSignInPolicy, error)) (*policydomain.TenantDefaultSignInPolicy, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var current *policydomain.TenantDefaultSignInPolicy
+	if stored := r.policies[tenantID]; stored != nil {
+		current = cloneDefaultSignInPolicy(stored)
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	r.policies[tenantID] = cloneDefaultSignInPolicy(updated)
+	return cloneDefaultSignInPolicy(updated), nil
 }

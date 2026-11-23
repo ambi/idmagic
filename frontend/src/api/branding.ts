@@ -1,5 +1,11 @@
 import type { Branding, BrandingUpdateInput, TenantBrandingAssetKind } from '../types'
-import { AuthenticationAPIError, adminRequest, request } from './core'
+import {
+  AuthenticationAPIError,
+  adminRequest,
+  conditionalAdminRequest,
+  refreshSavedResource,
+  request,
+} from './core'
 import { commonDictionary } from '../lib/i18n/common.i18n'
 import { getCurrentLocale } from '../lib/i18n/currentLocale'
 
@@ -14,8 +20,12 @@ export async function getBranding(): Promise<Branding> {
 export async function updateBranding(
   csrfToken: string,
   input: BrandingUpdateInput,
+  snapshot?: object,
 ): Promise<Branding> {
-  return request('/api/admin/v1/tenant/branding', adminRequest(csrfToken, 'PUT', input))
+  return request(
+    '/api/admin/v1/tenant/branding',
+    conditionalAdminRequest(csrfToken, 'PATCH', input, snapshot),
+  )
 }
 
 export async function uploadTenantBrandingAsset(
@@ -33,17 +43,16 @@ export async function uploadTenantBrandingAsset(
   if (!body?.branding) {
     throw new AuthenticationAPIError(uiFallback())
   }
-  return body.branding
+  return refreshSavedResource<Branding>('/api/branding')
 }
 
 export async function deleteTenantBrandingAsset(
   csrfToken: string,
   kind: TenantBrandingAssetKind,
 ): Promise<Branding> {
-  return (
-    await request<{ branding: Branding }>(
-      `/api/admin/v1/tenant/branding/assets/${kind}`,
-      adminRequest(csrfToken, 'DELETE'),
-    )
-  ).branding
+  await request<{ branding: Branding }>(
+    `/api/admin/v1/tenant/branding/assets/${kind}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
+  return refreshSavedResource<Branding>('/api/branding')
 }

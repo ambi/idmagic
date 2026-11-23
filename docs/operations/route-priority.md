@@ -239,7 +239,7 @@ API プロセスが飽和すると、優先度の低いクラスから順にリ�
 | `/api/admin/v1/system/jobs` | GET |
 | `/api/admin/v1/system/jobs/{job_id}` | GET |
 | `/api/admin/v1/system/jobs/{job_id}/cancel` | POST |
-| `/api/admin/v1/tenant/branding` | PUT |
+| `/api/admin/v1/tenant/branding` | PATCH |
 | `/api/admin/v1/tenant/branding/assets/{kind}` | DELETE, POST |
 | `/api/admin/v1/tenant/group-attribute-schema` | GET, PUT |
 | `/api/admin/v1/tenant/notification-templates` | GET |

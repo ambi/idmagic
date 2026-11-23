@@ -29,6 +29,7 @@ type SignInPolicyDeps struct {
 }
 
 type UpdateSignInPolicyInput struct {
+	CheckCurrent  func(*policydomain.AppSignInPolicy) error
 	ActorUserID   string
 	ApplicationID string
 	Rules         []policydomain.SignInRule
@@ -36,7 +37,7 @@ type UpdateSignInPolicyInput struct {
 }
 
 func EmptySignInPolicy(tenantID, applicationID string, now time.Time) *policydomain.AppSignInPolicy {
-	at := adminNow(now)
+	at := now
 	return &policydomain.AppSignInPolicy{
 		TenantID: tenantID, ApplicationID: applicationID, Rules: []policydomain.SignInRule{}, CreatedAt: at, UpdatedAt: at,
 	}
@@ -48,14 +49,14 @@ func GetSignInPolicy(ctx context.Context, deps SignInPolicyDeps, applicationID s
 		return nil, err
 	}
 	if deps.PolicyRepo == nil {
-		return EmptySignInPolicy(tenantID, applicationID, time.Now().UTC()), nil
+		return EmptySignInPolicy(tenantID, applicationID, time.Time{}), nil
 	}
 	policy, err := deps.PolicyRepo.Get(ctx, tenantID, applicationID)
 	if err != nil {
 		return nil, err
 	}
 	if policy == nil {
-		return EmptySignInPolicy(tenantID, applicationID, time.Now().UTC()), nil
+		return EmptySignInPolicy(tenantID, applicationID, time.Time{}), nil
 	}
 	if policy.Rules == nil {
 		policy.Rules = []policydomain.SignInRule{}
@@ -77,14 +78,23 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 		TenantID: tenantID, ApplicationID: in.ApplicationID, Rules: rules, CreatedAt: now, UpdatedAt: now,
 	}
 	if deps.PolicyRepo != nil {
-		existing, err := deps.PolicyRepo.Get(ctx, tenantID, in.ApplicationID)
+		var err error
+		policy, err = deps.PolicyRepo.Update(ctx, tenantID, in.ApplicationID, func(existing *policydomain.AppSignInPolicy) (*policydomain.AppSignInPolicy, error) {
+			if in.CheckCurrent != nil {
+				current := existing
+				if current == nil {
+					current = EmptySignInPolicy(tenantID, in.ApplicationID, time.Time{})
+				}
+				if err := in.CheckCurrent(current); err != nil {
+					return nil, err
+				}
+			}
+			if existing != nil && !existing.CreatedAt.IsZero() {
+				policy.CreatedAt = existing.CreatedAt
+			}
+			return policy, nil
+		})
 		if err != nil {
-			return nil, err
-		}
-		if existing != nil && !existing.CreatedAt.IsZero() {
-			policy.CreatedAt = existing.CreatedAt
-		}
-		if err := deps.PolicyRepo.Save(ctx, policy); err != nil {
 			return nil, err
 		}
 	}
@@ -96,7 +106,7 @@ func UpdateSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateSig
 
 // EmptyDefaultSignInPolicy は未設定テナントの空のデフォルトポリシーを返す。
 func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *policydomain.TenantDefaultSignInPolicy {
-	at := adminNow(now)
+	at := now
 	return &policydomain.TenantDefaultSignInPolicy{
 		TenantID: tenantID, Rules: []policydomain.SignInRule{}, CreatedAt: at, UpdatedAt: at,
 	}
@@ -106,14 +116,14 @@ func EmptyDefaultSignInPolicy(tenantID string, now time.Time) *policydomain.Tena
 func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*policydomain.TenantDefaultSignInPolicy, error) {
 	tenantID := tenantports.TenantID(ctx)
 	if deps.DefaultRepo == nil {
-		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
+		return EmptyDefaultSignInPolicy(tenantID, time.Time{}), nil
 	}
 	policy, err := deps.DefaultRepo.Get(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	if policy == nil {
-		return EmptyDefaultSignInPolicy(tenantID, time.Now().UTC()), nil
+		return EmptyDefaultSignInPolicy(tenantID, time.Time{}), nil
 	}
 	if policy.Rules == nil {
 		policy.Rules = []policydomain.SignInRule{}
@@ -122,9 +132,10 @@ func GetDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps) (*policy
 }
 
 type UpdateDefaultSignInPolicyInput struct {
-	ActorUserID string
-	Rules       []policydomain.SignInRule
-	Now         time.Time
+	CheckCurrent func(*policydomain.TenantDefaultSignInPolicy) error
+	ActorUserID  string
+	Rules        []policydomain.SignInRule
+	Now          time.Time
 }
 
 // UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える。
@@ -140,14 +151,23 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 		TenantID: tenantID, Rules: rules, CreatedAt: now, UpdatedAt: now,
 	}
 	if deps.DefaultRepo != nil {
-		existing, err := deps.DefaultRepo.Get(ctx, tenantID)
+		var err error
+		policy, err = deps.DefaultRepo.Update(ctx, tenantID, func(existing *policydomain.TenantDefaultSignInPolicy) (*policydomain.TenantDefaultSignInPolicy, error) {
+			if in.CheckCurrent != nil {
+				current := existing
+				if current == nil {
+					current = EmptyDefaultSignInPolicy(tenantID, time.Time{})
+				}
+				if err := in.CheckCurrent(current); err != nil {
+					return nil, err
+				}
+			}
+			if existing != nil && !existing.CreatedAt.IsZero() {
+				policy.CreatedAt = existing.CreatedAt
+			}
+			return policy, nil
+		})
 		if err != nil {
-			return nil, err
-		}
-		if existing != nil && !existing.CreatedAt.IsZero() {
-			policy.CreatedAt = existing.CreatedAt
-		}
-		if err := deps.DefaultRepo.Save(ctx, policy); err != nil {
 			return nil, err
 		}
 	}

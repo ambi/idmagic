@@ -29,6 +29,8 @@ type Querier interface {
 	ListGroupsByTenantPageBefore(ctx context.Context, arg ListGroupsByTenantPageBeforeParams) ([]*Group, error)
 	ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsByTenantPageEndParams) ([]*Group, error)
 	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*ListGroupsByUserRow, error)
+	LockGroupForUpdate(ctx context.Context, arg LockGroupForUpdateParams) (string, error)
+	LockTenantForGroupAttributeSchema(ctx context.Context, id string) (string, error)
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
 	SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error
 	SaveGroup(ctx context.Context, arg SaveGroupParams) error

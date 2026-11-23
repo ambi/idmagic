@@ -66,78 +66,86 @@ type UpdateAdminOAuth2ClientInput = clientports.UpdateAdminOAuth2ClientInput
 
 func UpdateAdminOAuth2Client(ctx context.Context, deps AdminOAuth2ClientDeps, in UpdateAdminOAuth2ClientInput) (*oauthdomain.OAuth2Client, error) {
 	tenantID := tenantports.TenantID(ctx)
-	client, err := deps.ClientRepo.FindByID(ctx, tenantID, in.ClientID)
+	var changed []string
+	updated, err := deps.ClientRepo.Update(ctx, tenantID, in.ClientID, func(client *oauthdomain.OAuth2Client) (*oauthdomain.OAuth2Client, error) {
+		if client == nil {
+			return nil, ErrClientNotFound
+		}
+		if in.CheckCurrent != nil {
+			if err := in.CheckCurrent(client); err != nil {
+				return nil, err
+			}
+		}
+		updated := *client
+		changed = []string{}
+		if in.ClientName != nil && !adminEqualOptionalString(client.ClientName, in.ClientName) {
+			updated.ClientName = in.ClientName
+			changed = append(changed, "client_name")
+		}
+		if in.RedirectURIs != nil && !slices.Equal(client.RedirectURIs, *in.RedirectURIs) {
+			updated.RedirectURIs = slices.Clone(*in.RedirectURIs)
+			changed = append(changed, "redirect_uris")
+		}
+		if in.GrantTypes != nil && !slices.Equal(client.GrantTypes, *in.GrantTypes) {
+			updated.GrantTypes = slices.Clone(*in.GrantTypes)
+			changed = append(changed, "grant_types")
+		}
+		if in.ResponseTypes != nil && !slices.Equal(client.ResponseTypes, *in.ResponseTypes) {
+			updated.ResponseTypes = slices.Clone(*in.ResponseTypes)
+			changed = append(changed, "response_types")
+		}
+		if in.Scope != nil && client.Scope != *in.Scope {
+			updated.Scope = *in.Scope
+			changed = append(changed, "scope")
+		}
+		if in.RequirePAR != nil && client.RequirePushedAuthorizationRequests != *in.RequirePAR {
+			updated.RequirePushedAuthorizationRequests = *in.RequirePAR
+			changed = append(changed, "require_pushed_authorization_requests")
+		}
+		if in.DpopBoundTokens != nil && client.DpopBoundAccessTokens != *in.DpopBoundTokens {
+			updated.DpopBoundAccessTokens = *in.DpopBoundTokens
+			changed = append(changed, "dpop_bound_access_tokens")
+		}
+		if in.RequirePKCE != nil && client.RequirePKCE != *in.RequirePKCE {
+			updated.RequirePKCE = *in.RequirePKCE
+			changed = append(changed, "require_pkce")
+		}
+		if in.BackChannelLogoutURI != nil && !adminEqualOptionalString(client.BackChannelLogoutURI, in.BackChannelLogoutURI) {
+			updated.BackChannelLogoutURI = in.BackChannelLogoutURI
+			changed = append(changed, "backchannel_logout_uri")
+		}
+		if in.BackChannelLogoutSessionRequired != nil && client.BackChannelLogoutSessionRequired != *in.BackChannelLogoutSessionRequired {
+			updated.BackChannelLogoutSessionRequired = *in.BackChannelLogoutSessionRequired
+			changed = append(changed, "backchannel_logout_session_required")
+		}
+		if in.FrontChannelLogoutURI != nil && !adminEqualOptionalString(client.FrontChannelLogoutURI, in.FrontChannelLogoutURI) {
+			updated.FrontChannelLogoutURI = in.FrontChannelLogoutURI
+			changed = append(changed, "frontchannel_logout_uri")
+		}
+		if in.FrontChannelLogoutSessionRequired != nil && client.FrontChannelLogoutSessionRequired != *in.FrontChannelLogoutSessionRequired {
+			updated.FrontChannelLogoutSessionRequired = *in.FrontChannelLogoutSessionRequired
+			changed = append(changed, "frontchannel_logout_session_required")
+		}
+		if len(changed) == 0 {
+			return &updated, nil
+		}
+		updated.UpdatedAt = adminNow(in.Now)
+		if err := updated.Validate(); err != nil {
+			return nil, NewOAuthError("invalid_client_metadata", err.Error())
+		}
+		return &updated, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if client == nil {
-		return nil, ErrClientNotFound
-	}
-	updated := *client
-	changed := []string{}
-	if in.ClientName != nil && !adminEqualOptionalString(client.ClientName, in.ClientName) {
-		updated.ClientName = in.ClientName
-		changed = append(changed, "client_name")
-	}
-	if in.RedirectURIs != nil && !slices.Equal(client.RedirectURIs, *in.RedirectURIs) {
-		updated.RedirectURIs = slices.Clone(*in.RedirectURIs)
-		changed = append(changed, "redirect_uris")
-	}
-	if in.GrantTypes != nil && !slices.Equal(client.GrantTypes, *in.GrantTypes) {
-		updated.GrantTypes = slices.Clone(*in.GrantTypes)
-		changed = append(changed, "grant_types")
-	}
-	if in.ResponseTypes != nil && !slices.Equal(client.ResponseTypes, *in.ResponseTypes) {
-		updated.ResponseTypes = slices.Clone(*in.ResponseTypes)
-		changed = append(changed, "response_types")
-	}
-	if in.Scope != nil && client.Scope != *in.Scope {
-		updated.Scope = *in.Scope
-		changed = append(changed, "scope")
-	}
-	if in.RequirePAR != nil && client.RequirePushedAuthorizationRequests != *in.RequirePAR {
-		updated.RequirePushedAuthorizationRequests = *in.RequirePAR
-		changed = append(changed, "require_pushed_authorization_requests")
-	}
-	if in.DpopBoundTokens != nil && client.DpopBoundAccessTokens != *in.DpopBoundTokens {
-		updated.DpopBoundAccessTokens = *in.DpopBoundTokens
-		changed = append(changed, "dpop_bound_access_tokens")
-	}
-	if in.RequirePKCE != nil && client.RequirePKCE != *in.RequirePKCE {
-		updated.RequirePKCE = *in.RequirePKCE
-		changed = append(changed, "require_pkce")
-	}
-	if in.BackChannelLogoutURI != nil && !adminEqualOptionalString(client.BackChannelLogoutURI, in.BackChannelLogoutURI) {
-		updated.BackChannelLogoutURI = in.BackChannelLogoutURI
-		changed = append(changed, "backchannel_logout_uri")
-	}
-	if in.BackChannelLogoutSessionRequired != nil && client.BackChannelLogoutSessionRequired != *in.BackChannelLogoutSessionRequired {
-		updated.BackChannelLogoutSessionRequired = *in.BackChannelLogoutSessionRequired
-		changed = append(changed, "backchannel_logout_session_required")
-	}
-	if in.FrontChannelLogoutURI != nil && !adminEqualOptionalString(client.FrontChannelLogoutURI, in.FrontChannelLogoutURI) {
-		updated.FrontChannelLogoutURI = in.FrontChannelLogoutURI
-		changed = append(changed, "frontchannel_logout_uri")
-	}
-	if in.FrontChannelLogoutSessionRequired != nil && client.FrontChannelLogoutSessionRequired != *in.FrontChannelLogoutSessionRequired {
-		updated.FrontChannelLogoutSessionRequired = *in.FrontChannelLogoutSessionRequired
-		changed = append(changed, "frontchannel_logout_session_required")
-	}
 	if len(changed) == 0 {
-		return &updated, nil
-	}
-	updated.UpdatedAt = adminNow(in.Now)
-	if err := updated.Validate(); err != nil {
-		return nil, NewOAuthError("invalid_client_metadata", err.Error())
-	}
-	if err := deps.ClientRepo.Save(ctx, &updated); err != nil {
-		return nil, err
+		return updated, nil
 	}
 	emit(deps.Emit, &oauthdomain.AdminOAuth2ClientUpdated{
-		At: adminNow(in.Now), TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: client.ClientID,
+		At: adminNow(in.Now), TenantID: tenantID, ActorUserID: in.ActorUserID, ClientID: updated.ClientID,
 		ChangedFields: changed,
 	})
-	return &updated, nil
+	return updated, nil
 }
 
 func DeleteAdminOAuth2Client(
@@ -145,13 +153,14 @@ func DeleteAdminOAuth2Client(
 	deps AdminOAuth2ClientDeps,
 	actorUserID, clientID string,
 	now time.Time,
+	checks ...func(*oauthdomain.OAuth2Client) error,
 ) error {
 	if deps.ClientDeletion == nil {
 		return errors.New("client deletion is not wired")
 	}
 	tenantID := tenantports.TenantID(ctx)
 	// 単独の削除の操作が、専用状態、束縛と使用量を同じ確定で消す。行だけを消す経路へ戻らない。
-	err := deps.ClientDeletion.DeleteStandalone(ctx, tenantID, clientID)
+	err := deps.ClientDeletion.DeleteStandalone(ctx, tenantID, clientID, checks...)
 	if errors.Is(err, clientports.ErrCatalogClientNotFound) {
 		return ErrClientNotFound
 	}

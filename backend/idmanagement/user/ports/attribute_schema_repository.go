@@ -10,5 +10,6 @@ import (
 type TenantUserAttributeSchemaRepository interface {
 	FindByTenant(ctx context.Context, tenantID string) (*userdomain.TenantUserAttributeSchema, error)
 	Save(ctx context.Context, schema *userdomain.TenantUserAttributeSchema) error
+	Update(ctx context.Context, tenantID string, change func(*userdomain.TenantUserAttributeSchema) (*userdomain.TenantUserAttributeSchema, error)) (*userdomain.TenantUserAttributeSchema, error)
 	Delete(ctx context.Context, tenantID string) error
 }

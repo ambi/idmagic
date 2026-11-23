@@ -356,7 +356,11 @@ func updateUserInTx(ctx context.Context, tx pgx.Tx, sub string, change userports
 	if err := internalSaveUser(ctx, tx, user); err != nil {
 		return nil, err
 	}
-	return user, nil
+	row, err = New(tx).FindUserBySubIncludingDeleted(ctx, sub)
+	if err != nil {
+		return nil, err
+	}
+	return userFromRow(row)
 }
 
 // internalSaveUser は、呼び出し側のトランザクション tx で User の行を保存し、その User の

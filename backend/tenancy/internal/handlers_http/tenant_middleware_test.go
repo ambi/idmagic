@@ -298,9 +298,25 @@ func (r tenantsByID) Save(_ context.Context, tenant *tenancydomain.Tenant) error
 	return nil
 }
 
+func (r tenantsByID) Update(ctx context.Context, id string, change func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	current, err := r.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	return updated, r.Save(ctx, updated)
+}
+
 // erroringTenantRepo implements tenantports.TenantRepository with every
 // method failing, to exercise resolveTenant's repository-error passthrough.
 type erroringTenantRepo struct{}
+
+func (erroringTenantRepo) Update(context.Context, string, func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	return nil, errors.New("boom")
+}
 
 func (erroringTenantRepo) FindByID(context.Context, string) (*tenancydomain.Tenant, error) {
 	return nil, errors.New("boom")

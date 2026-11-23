@@ -15,6 +15,35 @@ import (
 // 削除が「既定へのリセット」になる。クエリは sqlc 生成。
 type NotificationTemplateRepository struct{ Pool sharedpg.DB }
 
+func (r *NotificationTemplateRepository) Save(ctx context.Context, override *notificationports.TemplateOverride) error {
+	_, err := r.Update(ctx, override.TenantID, override.Key, override.Locale, func(_ *notificationports.TemplateOverride) (*notificationports.TemplateOverride, error) {
+		return override, nil
+	})
+	return err
+}
+
+func (r *NotificationTemplateRepository) Update(ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string, change func(*notificationports.TemplateOverride) (*notificationports.TemplateOverride, error)) (*notificationports.TemplateOverride, error) {
+	return sharedpg.InTransaction(ctx, r.Pool, func(tx pgx.Tx) (*notificationports.TemplateOverride, error) {
+		if _, err := New(tx).LockTenantForUpdate(ctx, tenantID); err != nil {
+			return nil, err
+		}
+		bound := &NotificationTemplateRepository{Pool: sharedpg.BindTransaction(tx)}
+		current, err := bound.FindByKey(ctx, tenantID, key, locale)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := change(current)
+		if err != nil {
+			return nil, err
+		}
+		if updated == nil {
+			_, err := New(tx).DeleteNotificationTemplate(ctx, DeleteNotificationTemplateParams{TenantID: tenantID, TemplateKey: string(key), Locale: locale})
+			return nil, err
+		}
+		return updated, bound.save(ctx, updated)
+	})
+}
+
 func (r *NotificationTemplateRepository) FindByKey(
 	ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string,
 ) (*notificationports.TemplateOverride, error) {
@@ -44,7 +73,7 @@ func (r *NotificationTemplateRepository) ListAll(
 	return out, nil
 }
 
-func (r *NotificationTemplateRepository) Save(ctx context.Context, override *notificationports.TemplateOverride) error {
+func (r *NotificationTemplateRepository) save(ctx context.Context, override *notificationports.TemplateOverride) error {
 	return New(r.Pool).SaveNotificationTemplate(ctx, SaveNotificationTemplateParams{
 		TenantID:        override.TenantID,
 		TemplateKey:     string(override.Key),
@@ -61,13 +90,12 @@ func (r *NotificationTemplateRepository) Save(ctx context.Context, override *not
 func (r *NotificationTemplateRepository) Delete(
 	ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string,
 ) (bool, error) {
-	affected, err := New(r.Pool).DeleteNotificationTemplate(ctx, DeleteNotificationTemplateParams{
-		TenantID: tenantID, TemplateKey: string(key), Locale: locale,
+	removed := false
+	_, err := r.Update(ctx, tenantID, key, locale, func(current *notificationports.TemplateOverride) (*notificationports.TemplateOverride, error) {
+		removed = current != nil
+		return nil, nil
 	})
-	if err != nil {
-		return false, err
-	}
-	return affected > 0, nil
+	return removed, err
 }
 
 func notificationTemplateFromRow(row *NotificationTemplate) *notificationports.TemplateOverride {

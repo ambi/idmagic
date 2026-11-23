@@ -305,7 +305,10 @@ func (r *singleTenantRepo) FindAll(_ context.Context) ([]*tenancydomain.Tenant, 
 }
 
 func (r *singleTenantRepo) Save(_ context.Context, _ *tenancydomain.Tenant) error { return nil }
-func (r *singleTenantRepo) Delete(_ context.Context, _ string) error              { return nil }
+func (r *singleTenantRepo) Update(context.Context, string, func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	panic("unexpected mutation in read-only tenant fixture")
+}
+func (r *singleTenantRepo) Delete(_ context.Context, _ string) error { return nil }
 
 // fakeDenylist は AccessToken denylist を任意の jti セットで再現する。
 type fakeDenylist struct {

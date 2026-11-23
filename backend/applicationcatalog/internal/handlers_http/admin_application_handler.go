@@ -236,18 +236,54 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 	if app == nil {
 		return d.writeApplicationError(c, appusecases.ErrApplicationNotFound)
 	}
+	view, err := d.applicationDetail(c, app)
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	return support.ETagJSON(c, http.StatusOK, view)
+}
+
+type applicationDetailResponse struct {
+	Application  applicationResponse `json:"application"`
+	OIDC         *oidcConfig         `json:"oidc"`
+	WsFed        *wsfedConfig        `json:"wsfed"`
+	SAML         *samlConfig         `json:"saml"`
+	SignInPolicy map[string]any      `json:"sign_in_policy"`
+}
+
+func (d Deps) applicationDetail(c *echo.Context, app *appdomain.Application) (*applicationDetailResponse, error) {
 	oidc, wsfed, saml := d.resolveProtocolConfig(c, app)
 	policy, err := policyusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), app.ID)
 	if err != nil {
-		return d.writeApplicationError(c, err)
+		return nil, err
 	}
 	signInView, err := d.signInPolicyView(c, policy)
 	if err != nil {
-		return d.writeApplicationError(c, err)
+		return nil, err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"application": d.buildApplicationResponse(c.Request().Context(), tenantID, app), "oidc": oidc, "wsfed": wsfed, "saml": saml, "sign_in_policy": signInView,
-	})
+	return &applicationDetailResponse{
+		Application: d.buildApplicationResponse(c.Request().Context(), app.TenantID, app), OIDC: oidc, WsFed: wsfed, SAML: saml, SignInPolicy: signInView,
+	}, nil
+}
+
+func (d Deps) applicationCondition(c *echo.Context) (func(*appdomain.Application) error, error) {
+	condition, err := support.ReadIfMatch(c)
+	if err != nil || !condition.Present() {
+		return nil, err
+	}
+	app, err := d.requireApp(c)
+	if err != nil {
+		return nil, err
+	}
+	view, err := d.applicationDetail(c, app)
+	if err != nil {
+		return nil, err
+	}
+	metadata := view.Application
+	return func(current *appdomain.Application) error {
+		view.Application = projectApplicationResponse(current, metadata)
+		return condition.Check(view)
+	}, nil
 }
 
 func (d Deps) handleUpdateApplication(c *echo.Context) error {
@@ -262,14 +298,27 @@ func (d Deps) handleUpdateApplication(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	check, err := d.applicationCondition(c)
+	if err != nil {
+		return err
+	}
 	app, err := appusecases.UpdateApplication(c.Request().Context(), d.applicationDeps(), appusecases.UpdateApplicationInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("id"),
+		CheckCurrent: check,
+		ActorUserID:  actor.ID, ApplicationID: c.Param("id"),
 		Name: req.Name, Status: req.Status, LaunchURL: req.LaunchURL, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, d.buildApplicationResponse(c.Request().Context(), support.RequestTenantID(c), app))
+	view, err := d.applicationDetail(c, app)
+	if err != nil {
+		return err
+	}
+	tag, err := support.EntityTag(view)
+	if err != nil {
+		return err
+	}
+	return support.ETagJSON(c, http.StatusOK, view.Application, tag)
 }
 
 func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
@@ -369,8 +418,16 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 			return d.writeApplicationError(c, clientports.ErrFirstPartyClientProtected)
 		}
 	}
+	check, err := d.applicationCondition(c)
+	if err != nil {
+		return err
+	}
+	var checks []func(*appdomain.Application) error
+	if check != nil {
+		checks = append(checks, check)
+	}
 	if err := appusecases.DeleteApplication(
-		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("id"), time.Now().UTC(),
+		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("id"), time.Now().UTC(), checks...,
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -466,6 +523,10 @@ func (d Deps) signInPolicyView(c *echo.Context, policy *policydomain.AppSignInPo
 	if err != nil {
 		return nil, err
 	}
+	return signInPolicyResponse(policy, defaultPolicy), nil
+}
+
+func signInPolicyResponse(policy *policydomain.AppSignInPolicy, defaultPolicy *policydomain.TenantDefaultSignInPolicy) map[string]any {
 	effective := policyusecases.EffectiveSignInRules(defaultPolicy, policy)
 	if effective == nil {
 		effective = []policydomain.SignInRule{}
@@ -475,7 +536,7 @@ func (d Deps) signInPolicyView(c *echo.Context, policy *policydomain.AppSignInPo
 		"tenant_default":      defaultPolicy,
 		"effective_rules":     effective,
 		"weaker_than_default": policyusecases.AppPolicyWeakerThanDefault(defaultPolicy, policy),
-	}, nil
+	}
 }
 
 func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
@@ -490,7 +551,7 @@ func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, view)
+	return support.ETagJSON(c, http.StatusOK, view)
 }
 
 func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
@@ -505,7 +566,18 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
+	defaultPolicy, err := policyusecases.GetDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps())
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
 	policy, err := policyusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), policyusecases.UpdateSignInPolicyInput{
+		CheckCurrent: func(current *policydomain.AppSignInPolicy) error {
+			return condition.Check(signInPolicyResponse(current, defaultPolicy))
+		},
 		ActorUserID: actor.ID, ApplicationID: c.Param("id"), Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -515,7 +587,7 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, view)
+	return support.ETagJSON(c, http.StatusOK, view)
 }
 
 func (d Deps) handleGetDefaultSignInPolicy(c *echo.Context) error {
@@ -530,7 +602,7 @@ func (d Deps) handleGetDefaultSignInPolicy(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy, "unenrolled_user_count": count})
+	return support.ETagJSON(c, http.StatusOK, map[string]any{"policy": policy, "unenrolled_user_count": count})
 }
 
 func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
@@ -545,17 +617,28 @@ func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	policy, err := policyusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), policyusecases.UpdateDefaultSignInPolicyInput{
-		ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC(),
-	})
+	condition, err := support.ReadIfMatch(c)
 	if err != nil {
-		return d.writeApplicationError(c, err)
+		return err
 	}
 	count, err := d.unenrolledUserCount(c)
 	if err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"policy": policy, "unenrolled_user_count": count})
+	policy, err := policyusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), policyusecases.UpdateDefaultSignInPolicyInput{
+		CheckCurrent: func(current *policydomain.TenantDefaultSignInPolicy) error {
+			return condition.Check(map[string]any{"policy": current, "unenrolled_user_count": count})
+		},
+		ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC(),
+	})
+	if err != nil {
+		return d.writeApplicationError(c, err)
+	}
+	count, err = d.unenrolledUserCount(c)
+	if err != nil {
+		return err
+	}
+	return support.ETagJSON(c, http.StatusOK, map[string]any{"policy": policy, "unenrolled_user_count": count})
 }
 
 func (d Deps) unenrolledUserCount(c *echo.Context) (int, error) {
@@ -719,6 +802,13 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 		policySummary = fmt.Sprintf("Tenant default (%d rules)", defaultRuleCount)
 	}
 
+	return projectApplicationResponse(app, applicationResponse{
+		DeletionProtected: d.applicationDeletionProtected(ctx, tenantID, app),
+		CategoryNames:     categoryNames, AssignedSubjectCount: assignedCount, SignInPolicySummary: policySummary,
+	})
+}
+
+func projectApplicationResponse(app *appdomain.Application, metadata applicationResponse) applicationResponse {
 	protocol, protocolSummary := applicationProtocolProjection(app)
 	categoryIDs := app.CategoryIDs
 	if categoryIDs == nil {
@@ -726,7 +816,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	}
 	return applicationResponse{
 		ID:                   app.ID,
-		DeletionProtected:    d.applicationDeletionProtected(ctx, tenantID, app),
+		DeletionProtected:    metadata.DeletionProtected,
 		Name:                 app.Name,
 		Kind:                 app.Kind,
 		Status:               app.Status,
@@ -735,10 +825,10 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 		LaunchURL:            app.LaunchURL,
 		Protocol:             protocol,
 		CategoryIDs:          categoryIDs,
-		CategoryNames:        categoryNames,
+		CategoryNames:        metadata.CategoryNames,
 		ProtocolSummary:      protocolSummary,
-		AssignedSubjectCount: assignedCount,
-		SignInPolicySummary:  policySummary,
+		AssignedSubjectCount: metadata.AssignedSubjectCount,
+		SignInPolicySummary:  metadata.SignInPolicySummary,
 		CreatedAt:            app.CreatedAt,
 		UpdatedAt:            app.UpdatedAt,
 	}

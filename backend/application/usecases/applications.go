@@ -111,6 +111,7 @@ func createApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 }
 
 type UpdateApplicationInput struct {
+	CheckCurrent  func(*appdomain.Application) error
 	ActorUserID   string
 	ApplicationID string
 	Name          *string
@@ -121,49 +122,57 @@ type UpdateApplicationInput struct {
 
 func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateApplicationInput) (*appdomain.Application, error) {
 	tenantID := tenantports.TenantID(ctx)
-	app, err := deps.Repo.FindByID(ctx, tenantID, in.ApplicationID)
+	var changed []string
+	updated, err := deps.Repo.Update(ctx, tenantID, in.ApplicationID, func(app *appdomain.Application) (*appdomain.Application, error) {
+		if app == nil {
+			return nil, ErrApplicationNotFound
+		}
+		if in.CheckCurrent != nil {
+			if err := in.CheckCurrent(app); err != nil {
+				return nil, err
+			}
+		}
+		updated := *app
+		updated.Protocol = cloneProtocol(app.Protocol)
+		changed = []string{}
+		if in.Name != nil {
+			if name := strings.TrimSpace(*in.Name); name != app.Name {
+				updated.Name = name
+				changed = append(changed, "name")
+			}
+		}
+		if in.Status != nil && *in.Status != app.Status {
+			updated.Status = *in.Status
+			changed = append(changed, "status")
+		}
+		if in.LaunchURL != nil {
+			if launch := strings.TrimSpace(*in.LaunchURL); launch != app.LaunchURL {
+				updated.LaunchURL = launch
+				changed = append(changed, "launch_url")
+			}
+		}
+		if len(changed) == 0 {
+			return &updated, nil
+		}
+		if err := appdomain.ValidateApplication(&updated); err != nil {
+			return nil, err
+		}
+		updated.UpdatedAt = adminNow(in.Now)
+		return &updated, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	if app == nil {
-		return nil, ErrApplicationNotFound
-	}
-	updated := *app
-	updated.Protocol = cloneProtocol(app.Protocol)
-	changed := []string{}
-	if in.Name != nil {
-		if name := strings.TrimSpace(*in.Name); name != app.Name {
-			updated.Name = name
-			changed = append(changed, "name")
-		}
-	}
-	if in.Status != nil && *in.Status != app.Status {
-		updated.Status = *in.Status
-		changed = append(changed, "status")
-	}
-	if in.LaunchURL != nil {
-		if launch := strings.TrimSpace(*in.LaunchURL); launch != app.LaunchURL {
-			updated.LaunchURL = launch
-			changed = append(changed, "launch_url")
-		}
-	}
 	if len(changed) == 0 {
-		return &updated, nil
-	}
-	if err := appdomain.ValidateApplication(&updated); err != nil {
-		return nil, err
-	}
-	updated.UpdatedAt = adminNow(in.Now)
-	if err := deps.Repo.Save(ctx, &updated); err != nil {
-		return nil, err
+		return updated, nil
 	}
 	emit(deps.Emit, &appdomain.ApplicationUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ID, ChangedFields: changed,
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: updated.ID, ChangedFields: changed,
 	})
-	return &updated, nil
+	return updated, nil
 }
 
-func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time) error {
+func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, applicationID string, now time.Time, checks ...func(*appdomain.Application) error) error {
 	tenantID := tenantports.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
@@ -173,6 +182,14 @@ func DeleteApplication(ctx context.Context, deps ApplicationDeps, actorUserID, a
 		return ErrApplicationNotFound
 	}
 	if err := deps.Repo.DeleteWithRelated(ctx, app, appports.DeletionParticipants{
+		CheckCurrent: func(current *appdomain.Application) error {
+			for _, check := range checks {
+				if err := check(current); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
 		Assignments: deps.AssignmentRepo, Policy: deps.PolicyRepo, Icons: deps.IconStore,
 		Quota: deps.QuotaRepo, DeleteProtocol: deps.DeleteProtocol,
 	}); err != nil {

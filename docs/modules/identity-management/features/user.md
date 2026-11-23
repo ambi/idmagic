@@ -242,13 +242,13 @@ User と値の有無、ローカルでの上書き、取り込み元の解除と
 
 完全削除は、Aggregate を破棄せずにその場で Tombstone へ書き換え、次の順に進む。
 
-1. 所有する Agent を無効化する。
-2. 再識別と再認証に使える項目を一度に消した Tombstone を保存する。Tombstone の `lifecycle` には、残りの手順（`pending_purge`）と、`UserDeleted` に記録する操作者と理由を入れる。
+1. User をロックし、要求の条件を照合してから、再識別と再認証に使える項目を一度に消した Tombstone を保存する。Tombstone の `lifecycle` には、残りの手順（`pending_purge`）と、`UserDeleted` に記録する操作者と理由を入れる。
+2. 所有する Agent を無効化する。ここで失敗しても、Tombstone の残りの手順から再実行する。
 3. 削除した User から以後たどれてはならない記録を、それを所有するモジュールのポートを通して一つずつ消す。ポートは呼び出しごとに確定し、ポートをまたぐトランザクションはない。
 4. テナントの User の使用量を一つ減らし、残りの手順を手順 5 に進めて Tombstone を保存する。
 5. `UserDeleted` を発行し、下流のプロビジョニングへ通知し、`pending_purge` を消して Tombstone を保存する。
 
-手順 3 は何度行っても同じ結果になる。
+手順 2 と 3 は何度行っても同じ結果になる。
 冪等でない手順 4 と 5 は、終えるたびに `pending_purge` を進めるので、再実行は終えていない手順から再開する。
 再実行するのは、同じ User の完全削除の要求と、Batch の `retention-sweep` である。
 `retention-sweep` は、各テナントで猶予期間を過ぎた `PendingDeletion` の User と、`pending_purge` を持つ Tombstone を探して完全削除し、一人の失敗で残りを止めない。

@@ -135,6 +135,8 @@ describe('AdminApplicationsPage', () => {
         if (url.includes('/api/admin/v1/applications') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the application.' }))
         }
+        if (url.endsWith(`/applications/${app.id}`) && !init?.method)
+          return Promise.resolve(response(200, { application: app }))
         throw new Error(`unexpected fetch ${url}`)
       }),
     )

@@ -34,7 +34,7 @@ export function AdminGroupDetailPage({
     setBusy(true)
     setError('')
     try {
-      await deleteAdminGroup(csrfToken, group.id)
+      await deleteAdminGroup(csrfToken, group.id, group)
       window.location.assign(tenantURL('/admin/groups'))
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.groupDeleteFailedError)

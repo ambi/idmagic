@@ -2,7 +2,6 @@ package handlers_http
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -48,14 +47,15 @@ func toBrandingResponse(b *tenancydomain.TenantBranding) BrandingResponse {
 	return resp
 }
 
-// brandingETag は branding の version を ETag にする。未設定テナントは全テナント共通の
+// brandingETag は返送する JSON のハッシュを ETag にする。未設定テナントは全テナント共通の
 // 固定値を返し、cross-tenant のキャッシュ混同は URL (tenant 解決済み path) 側で防ぐ。
 // 担保するルールは docs/design/application/api-guidelines.md の「キャッシュ検証」。
 func brandingETag(b *tenancydomain.TenantBranding) string {
-	if b == nil || !b.IsConfigured() || b.UpdatedAt.IsZero() {
+	if b == nil || !b.IsConfigured() {
 		return `"branding-default"`
 	}
-	return `"branding-` + strconv.FormatInt(b.UpdatedAt.UnixNano(), 10) + `"`
+	tag, _ := support.EntityTag(toBrandingResponse(b))
+	return tag
 }
 
 // handleGetBranding は解決済みテナントの hosted UI branding を返す公開 endpoint。
@@ -72,7 +72,7 @@ func (d Deps) handleGetBranding(c *echo.Context) error {
 	if match := c.Request().Header.Get("If-None-Match"); match != "" && match == etag {
 		return c.NoContent(http.StatusNotModified)
 	}
-	return c.JSON(http.StatusOK, toBrandingResponse(branding))
+	return support.ETagJSON(c, http.StatusOK, toBrandingResponse(branding), etag)
 }
 
 // handleGetBrandingAsset は保存済み branding アセット (ロゴ / favicon) を配信する公開

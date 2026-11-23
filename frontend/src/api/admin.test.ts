@@ -216,7 +216,9 @@ describe('admin API client', () => {
       ]),
     )
     expect(
-      calls.every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
+      calls
+        .filter(([, init]) => init?.method)
+        .every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
     ).toBe(true)
     expect(
       calls.find(([url]) => String(url).includes('/users/user%2Fa%20b?purge=true'))?.[1],

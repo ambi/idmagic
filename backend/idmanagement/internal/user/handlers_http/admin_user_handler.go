@@ -173,6 +173,11 @@ func HandleGetAdminUser(d Deps, c *echo.Context) error {
 	if user.TenantID != support.RequestTenantID(c) {
 		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	}
+	res := adminUserDetail(c, d, user)
+	return support.ETagJSON(c, http.StatusOK, res)
+}
+
+func adminUserDetail(c *echo.Context, d Deps, user *userdomain.User) adminUserResponse {
 	res := toAdminUserResponse(user)
 	if d.SCIMUsers != nil {
 		managed, _ := d.SCIMUsers.IsSCIMUser(c.Request().Context(), user.TenantID, user.ID)
@@ -181,7 +186,27 @@ func HandleGetAdminUser(d Deps, c *echo.Context) error {
 			res.ScimSource = &src
 		}
 	}
-	return support.NoStoreJSON(c, http.StatusOK, res)
+	return res
+}
+
+func adminUserCondition(c *echo.Context, d Deps) (func(*userdomain.User) error, error) {
+	condition, err := support.ReadIfMatch(c)
+	if err != nil || !condition.Present() {
+		return nil, err
+	}
+	var source *string
+	if d.SCIMUsers != nil {
+		managed, _ := d.SCIMUsers.IsSCIMUser(c.Request().Context(), support.RequestTenantID(c), c.Param("sub"))
+		if managed {
+			value := "SCIM"
+			source = &value
+		}
+	}
+	return func(current *userdomain.User) error {
+		view := toAdminUserResponse(current)
+		view.ScimSource = source
+		return condition.Check(view)
+	}, nil
 }
 
 func HandleCreateAdminUser(d Deps, c *echo.Context) error {
@@ -227,11 +252,16 @@ func HandleUpdateAdminUser(d Deps, c *echo.Context) error {
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
+	check, err := adminUserCondition(c, d)
+	if err != nil {
+		return err
+	}
 	user, err := userusecases.UpdateUser(
 		ctx,
 		adminUserDeps(d),
 		userusecases.UpdateUserInput{
-			ActorUserID: actor.ID, Sub: c.Param("sub"),
+			CheckCurrent: check,
+			ActorUserID:  actor.ID, Sub: c.Param("sub"),
 			PreferredUsername: input.PreferredUsername, Name: input.Name,
 			GivenName: input.GivenName, FamilyName: input.FamilyName, Email: input.Email,
 			EmailVerified: input.EmailVerified, Roles: input.Roles,
@@ -241,7 +271,7 @@ func HandleUpdateAdminUser(d Deps, c *echo.Context) error {
 	if err != nil {
 		return writeAdminUserError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toAdminUserResponse(user))
+	return support.ETagJSON(c, http.StatusOK, adminUserDetail(c, d, user))
 }
 
 func HandleDisableAdminUser(d Deps, c *echo.Context) error {
@@ -270,13 +300,19 @@ func HandleDeleteAdminUser(d Deps, c *echo.Context) error {
 	// (anonymize cascade) に分岐する。
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
+	check, err := adminUserCondition(c, d)
+	if err != nil {
+		return err
+	}
 	if c.QueryParam("purge") == "true" || input.Force {
 		err = userusecases.DeleteUser(ctx, adminUserDeps(d), userusecases.DeleteUserInput{
-			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
+			CheckCurrent: check,
+			ActorUserID:  actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	} else {
 		err = userusecases.SoftDeleteUser(ctx, adminUserDeps(d), userusecases.SoftDeleteUserInput{
-			ActorUserID: actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
+			CheckCurrent: check,
+			ActorUserID:  actor.ID, Sub: c.Param("sub"), Reason: input.Reason, Now: time.Now().UTC(),
 		})
 	}
 	if err != nil {

@@ -172,6 +172,8 @@ describe('AdminUsersPage', () => {
         if (url.includes('/api/admin/v1/users') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the user.' }))
         }
+        if (url.endsWith(`/users/${user.id}`) && !init?.method)
+          return Promise.resolve(response(200, user))
         throw new Error(`unexpected fetch ${url}`)
       }),
     )

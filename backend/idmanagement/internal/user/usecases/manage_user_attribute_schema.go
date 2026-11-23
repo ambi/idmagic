@@ -27,8 +27,7 @@ func GetUserAttributeSchema(
 		return nil, err
 	}
 	if schema == nil {
-		now := time.Now().UTC()
-		return &userdomain.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []userdomain.UserAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
+		return &userdomain.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []userdomain.UserAttributeDef{}}, nil
 	}
 	return schema, nil
 }
@@ -37,7 +36,7 @@ func GetUserAttributeSchema(
 // 組み込み属性との key 衝突・重複 key を拒否したうえで保存する。
 func UpdateUserAttributeSchema(
 	ctx context.Context, repo userports.TenantUserAttributeSchemaRepository, groups groupports.GroupRepository,
-	tenantID string, defs []userdomain.UserAttributeDef, now time.Time,
+	tenantID string, defs []userdomain.UserAttributeDef, now time.Time, checks ...func(*userdomain.TenantUserAttributeSchema) error,
 ) (*userdomain.TenantUserAttributeSchema, error) {
 	if groups != nil {
 		if err := protectReferencedUserAttributes(ctx, repo, groups, tenantID, defs); err != nil {
@@ -53,20 +52,24 @@ func UpdateUserAttributeSchema(
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
-	existing, err := repo.FindByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil && !existing.CreatedAt.IsZero() {
-		schema.CreatedAt = existing.CreatedAt
-	}
 	if err := schema.Validate(); err != nil {
 		return nil, errors.Join(ErrInvalidUserAttributeSchema, err)
 	}
-	if err := repo.Save(ctx, schema); err != nil {
-		return nil, err
-	}
-	return schema, nil
+	return repo.Update(ctx, tenantID, func(existing *userdomain.TenantUserAttributeSchema) (*userdomain.TenantUserAttributeSchema, error) {
+		current := existing
+		if current == nil {
+			current = &userdomain.TenantUserAttributeSchema{TenantID: tenantID, Attributes: []userdomain.UserAttributeDef{}}
+		}
+		for _, check := range checks {
+			if err := check(current); err != nil {
+				return nil, err
+			}
+		}
+		if existing != nil && !existing.CreatedAt.IsZero() {
+			schema.CreatedAt = existing.CreatedAt
+		}
+		return schema, nil
+	})
 }
 
 func protectReferencedUserAttributes(

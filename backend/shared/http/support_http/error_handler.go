@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/logging"
 
 	"github.com/labstack/echo/v5"
@@ -40,6 +41,14 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 		// 拒否の応答を書き終えたヘルパーがこのエラーを返す。要求は完全に応答済みなので、
 		// 未処理のエラーとして記録し直さない。
 		if errors.Is(err, ErrResponseWritten) {
+			return
+		}
+		if errors.Is(err, kernel.ErrPreconditionFailed) {
+			_ = WriteProblem(c, http.StatusPreconditionFailed, "precondition_failed", "The resource has changed. Reload it before retrying.")
+			return
+		}
+		if errors.Is(err, ErrInvalidIfMatch) {
+			_ = WriteProblem(c, http.StatusBadRequest, "invalid_request", ErrInvalidIfMatch.Error())
 			return
 		}
 		if handled, _ := WriteAccessTokenError(c, err); handled {

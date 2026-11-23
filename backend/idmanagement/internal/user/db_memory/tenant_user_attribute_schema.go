@@ -37,26 +37,42 @@ func (r *TenantUserAttributeSchemaRepository) FindByTenant(_ context.Context, te
 	return nil, nil
 }
 
-func (r *TenantUserAttributeSchemaRepository) Save(_ context.Context, schema *userdomain.TenantUserAttributeSchema) error {
-	cloned := cloneUserAttributeSchema(schema)
-	sharedmem.DefaultScope(&cloned.TenantID, kernel.DefaultTenantID)
+func (r *TenantUserAttributeSchemaRepository) Save(ctx context.Context, schema *userdomain.TenantUserAttributeSchema) error {
+	_, err := r.Update(ctx, schema.TenantID, func(_ *userdomain.TenantUserAttributeSchema) (*userdomain.TenantUserAttributeSchema, error) {
+		return schema, nil
+	})
+	return err
+}
+
+func (r *TenantUserAttributeSchemaRepository) Update(_ context.Context, tenantID string, change func(*userdomain.TenantUserAttributeSchema) (*userdomain.TenantUserAttributeSchema, error)) (*userdomain.TenantUserAttributeSchema, error) {
+	sharedmem.DefaultScope(&tenantID, kernel.DefaultTenantID)
 	// User の保存と同じく users.mu、r.mu の順に取り、確かめてから保存するまでの間の保存を止める。
 	if r.users != nil {
 		r.users.mu.Lock()
 		defer r.users.mu.Unlock()
-		if err := r.users.firstSharedLocked(cloned.TenantID, cloned.UniqueKeys(), nil, func(key string) error {
-			return &userports.AttributeValuesNotUniqueError{Key: key}
-		}); err != nil {
-			return err
-		}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if existing := r.byTenant[cloned.TenantID]; existing != nil && !existing.CreatedAt.IsZero() {
+	var current *userdomain.TenantUserAttributeSchema
+	if stored := r.byTenant[tenantID]; stored != nil {
+		current = cloneUserAttributeSchema(stored)
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	cloned := cloneUserAttributeSchema(updated)
+	cloned.TenantID = tenantID
+	if r.users != nil {
+		if err := r.users.firstSharedLocked(tenantID, cloned.UniqueKeys(), nil, func(key string) error { return &userports.AttributeValuesNotUniqueError{Key: key} }); err != nil {
+			return nil, err
+		}
+	}
+	if existing := r.byTenant[tenantID]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt
 	}
-	r.byTenant[cloned.TenantID] = cloned
-	return nil
+	r.byTenant[tenantID] = cloned
+	return cloneUserAttributeSchema(cloned), nil
 }
 
 func (r *TenantUserAttributeSchemaRepository) Delete(_ context.Context, tenantID string) error {

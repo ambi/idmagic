@@ -149,12 +149,26 @@ func HandleGetGroup(d Deps, c *echo.Context) error {
 	if err != nil {
 		return writeAdminGroupError(c, err)
 	}
+	view, err := groupDetail(c, d, group, members)
+	if err != nil {
+		return err
+	}
+	return support.ETagJSON(c, http.StatusOK, view)
+}
+
+type groupDetailResponse struct {
+	Group   groupSummaryResponse  `json:"group"`
+	Members []groupMemberResponse `json:"members"`
+}
+
+func groupDetail(c *echo.Context, d Deps, group *groupdomain.Group, members []*groupdomain.GroupMember) (*groupDetailResponse, error) {
 	res := toGroupSummaryResponse(group, len(members))
 	if group.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
-		res.DynamicRule, err = d.GroupRepo.FindDynamicRule(c.Request().Context(), group.TenantID, group.ID)
+		rule, err := d.GroupRepo.FindDynamicRule(c.Request().Context(), group.TenantID, group.ID)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		res.DynamicRule = rule
 	}
 	if d.SCIMGroups != nil {
 		managed, _ := d.SCIMGroups.IsSCIMGroup(c.Request().Context(), group.TenantID, group.ID)
@@ -163,10 +177,41 @@ func HandleGetGroup(d Deps, c *echo.Context) error {
 			res.ScimSource = &src
 		}
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
-		"group":   res,
-		"members": toGroupMemberResponses(c.Request().Context(), d, members),
-	})
+	return &groupDetailResponse{
+		Group: res, Members: toGroupMemberResponses(c.Request().Context(), d, members),
+	}, nil
+}
+
+func groupCondition(c *echo.Context, d Deps) (func(*groupdomain.Group, []*groupdomain.GroupMember, *groupdomain.DynamicGroupRule) error, error) {
+	condition, err := support.ReadIfMatch(c)
+	if err != nil || !condition.Present() {
+		return nil, err
+	}
+	group, members, err := groupusecases.GetGroup(c.Request().Context(), adminGroupDeps(d), c.Param("group_id"))
+	if err != nil {
+		return nil, err
+	}
+	view, err := groupDetail(c, d, group, members)
+	if err != nil {
+		return nil, err
+	}
+	metadata := view.Group
+	names := map[string]string{}
+	for _, member := range view.Members {
+		names[member.UserID] = member.PreferredUsername
+	}
+	return func(current *groupdomain.Group, members []*groupdomain.GroupMember, rule *groupdomain.DynamicGroupRule) error {
+		summary := toGroupSummaryResponse(current, len(members))
+		summary.ScimSource = metadata.ScimSource
+		if current.MembershipType.Effective() == groupdomain.GroupMembershipDynamic {
+			summary.DynamicRule = rule
+		}
+		projected := make([]groupMemberResponse, 0, len(members))
+		for _, member := range members {
+			projected = append(projected, groupMemberResponse{UserID: member.UserID, PreferredUsername: names[member.UserID], Source: member.Source.Effective(), RuleVersion: member.RuleVersion, CreatedAt: member.CreatedAt})
+		}
+		return condition.Check(groupDetailResponse{Group: summary, Members: projected})
+	}, nil
 }
 
 func HandleCreateGroup(d Deps, c *echo.Context) error {
@@ -284,8 +329,13 @@ func HandleUpdateGroup(d Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	check, err := groupCondition(c, d)
+	if err != nil {
+		return err
+	}
 	group, err := groupusecases.UpdateGroup(c.Request().Context(), adminGroupDeps(d), groupusecases.UpdateGroupInput{
-		ActorUserID: actor.ID, ID: c.Param("group_id"),
+		CheckCurrent: check,
+		ActorUserID:  actor.ID, ID: c.Param("group_id"),
 		Name: input.Name, Description: input.Description,
 		Email: input.Email, Attributes: input.Attributes,
 		Roles: input.Roles, Now: time.Now().UTC(),
@@ -293,11 +343,19 @@ func HandleUpdateGroup(d Deps, c *echo.Context) error {
 	if err != nil {
 		return writeAdminGroupError(c, err)
 	}
-	count, err := adminGroupDeps(d).GroupRepo.CountMembers(c.Request().Context(), group.TenantID, group.ID)
+	members, err := d.GroupRepo.ListMembersByGroup(c.Request().Context(), group.TenantID, group.ID)
 	if err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toGroupSummaryResponse(group, count))
+	view, err := groupDetail(c, d, group, members)
+	if err != nil {
+		return err
+	}
+	tag, err := support.EntityTag(view)
+	if err != nil {
+		return err
+	}
+	return support.ETagJSON(c, http.StatusOK, view.Group, tag)
 }
 
 func HandleSetGroupRoleDelegation(d Deps, c *echo.Context) error {
@@ -331,7 +389,15 @@ func HandleDeleteGroup(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := groupusecases.DeleteGroup(c.Request().Context(), adminGroupDeps(d), actor.ID, c.Param("group_id"), time.Now().UTC()); err != nil {
+	check, err := groupCondition(c, d)
+	if err != nil {
+		return err
+	}
+	var checks []func(*groupdomain.Group, []*groupdomain.GroupMember, *groupdomain.DynamicGroupRule) error
+	if check != nil {
+		checks = append(checks, check)
+	}
+	if err := groupusecases.DeleteGroup(c.Request().Context(), adminGroupDeps(d), actor.ID, c.Param("group_id"), time.Now().UTC(), checks...); err != nil {
 		return writeAdminGroupError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")

@@ -5,11 +5,14 @@ import {
   clickElementByAriaLabel,
   navigateAndLogin,
   navigateAndLoginAsSystemAdmin,
+  loginFromCurrentPage,
+  metaPage,
   openWebView,
   setInputValue,
   uiOrigin,
   waitForPage,
   waitForText,
+  waitForAnyText,
 } from './fixtures'
 
 //spec:covers REQ-FRONTEND-005, REQ-TENANCY-004: 管理 API の保存からブラウザーの配色、ロゴ、ポータル、focus とシステム画面の隔離までを観測する。
@@ -136,7 +139,7 @@ test('saved branding themes admin pages and leaves the system console unchanged'
     try {
       if (restore) {
         const response = await fetch(`${uiOrigin}/realms/default/api/admin/v1/tenant/branding`, {
-          method: 'PUT',
+          method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${restore.token}`,
@@ -152,6 +155,56 @@ test('saved branding themes admin pages and leaves the system console unchanged'
       }
     } finally {
       view.close()
+    }
+  }
+}, 120_000)
+
+//spec:covers REQ-SYSTEM-037: 二つの編集画面で古い保存を拒否し、入力を残して最新の読み直しを促す。
+test('two branding editors detect a lost update and keep the rejected draft', async () => {
+  const first = await openWebView({ width: 1280, height: 960 })
+  const second = await openWebView({ width: 1280, height: 960 })
+  let original: Branding | undefined
+  try {
+    for (const view of [first, second]) {
+      await view.navigate(`${uiOrigin}/admin/settings`)
+      await waitForAnyText(view, ['Gathers the settings', 'Sign in'])
+      if ((await metaPage(view)) === 'login') await loginFromCurrentPage(view)
+      await waitForPage(view, 'admin-settings')
+      await clickButtonByText(view, 'Branding')
+      await waitForText(view, 'Product name')
+    }
+    original = await first.evaluate(`(async () => {
+      const api = await import('/src/api.ts')
+      return api.getBranding()
+    })()`)
+    await setInputValue(first, '#branding-product-name', 'Conditional First')
+    await setInputValue(second, '#branding-product-name', 'Conditional Second')
+    await clickButtonByText(first, 'Save')
+    await waitForText(first, 'Updated the branding settings.')
+    await clickButtonByText(second, 'Save')
+    await waitForText(second, 'Your changes were not saved.')
+    expect(await second.evaluate(`document.querySelector('#branding-product-name').value`)).toBe(
+      'Conditional Second',
+    )
+    expect(
+      await second.evaluate(`(async () => {
+      const api = await import('/src/api.ts')
+      return (await api.getBranding()).product_name
+    })()`),
+    ).toBe('Conditional First')
+    await Bun.write('../.verification/branding-edit-conflict.png', await second.screenshot())
+  } finally {
+    try {
+      if (original) {
+        await first.evaluate(`(async () => {
+          const api = await import('/src/api.ts')
+          const account = await api.request('/api/auth/account')
+          return api.updateBranding(account.csrf_token, ${JSON.stringify(original)})
+        })()`)
+      }
+    } finally {
+      first.close()
+      second.close()
     }
   }
 }, 120_000)

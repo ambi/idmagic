@@ -214,7 +214,7 @@ func TestTenancyStateChangingAdminRoutesVerifyBrowserRequests(t *testing.T) {
 		{http.MethodPatch, prefix + "/api/admin/v1/settings"},
 		{http.MethodPut, prefix + "/api/admin/v1/tenant/user-attribute-schema"},
 		{http.MethodPut, prefix + "/api/admin/v1/tenant/group-attribute-schema"},
-		{http.MethodPut, prefix + "/api/admin/v1/tenant/branding"},
+		{http.MethodPatch, prefix + "/api/admin/v1/tenant/branding"},
 		{http.MethodPost, prefix + "/api/admin/v1/tenant/branding/assets/logo"},
 		{http.MethodDelete, prefix + "/api/admin/v1/tenant/branding/assets/logo"},
 		{http.MethodPut, prefix + "/api/admin/v1/tenant/notification-templates/password_reset/ja"},

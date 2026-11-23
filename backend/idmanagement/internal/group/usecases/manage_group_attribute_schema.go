@@ -23,8 +23,7 @@ func GetGroupAttributeSchema(
 		return nil, err
 	}
 	if schema == nil {
-		now := time.Now().UTC()
-		return &groupdomain.TenantGroupAttributeSchema{TenantID: tenantID, Attributes: []groupdomain.GroupAttributeDef{}, CreatedAt: now, UpdatedAt: now}, nil
+		return &groupdomain.TenantGroupAttributeSchema{TenantID: tenantID, Attributes: []groupdomain.GroupAttributeDef{}}, nil
 	}
 	return schema, nil
 }
@@ -33,7 +32,7 @@ func GetGroupAttributeSchema(
 // 検証し、重複 key を拒否したうえで保存する。
 func UpdateGroupAttributeSchema(
 	ctx context.Context, repo groupports.TenantGroupAttributeSchemaRepository,
-	tenantID string, defs []groupdomain.GroupAttributeDef, now time.Time,
+	tenantID string, defs []groupdomain.GroupAttributeDef, now time.Time, checks ...func(*groupdomain.TenantGroupAttributeSchema) error,
 ) (*groupdomain.TenantGroupAttributeSchema, error) {
 	if defs == nil {
 		defs = []groupdomain.GroupAttributeDef{}
@@ -44,18 +43,22 @@ func UpdateGroupAttributeSchema(
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
-	existing, err := repo.FindByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil && !existing.CreatedAt.IsZero() {
-		schema.CreatedAt = existing.CreatedAt
-	}
 	if err := schema.Validate(); err != nil {
 		return nil, errors.Join(ErrInvalidGroupAttributeSchema, err)
 	}
-	if err := repo.Save(ctx, schema); err != nil {
-		return nil, err
-	}
-	return schema, nil
+	return repo.Update(ctx, tenantID, func(existing *groupdomain.TenantGroupAttributeSchema) (*groupdomain.TenantGroupAttributeSchema, error) {
+		current := existing
+		if current == nil {
+			current = &groupdomain.TenantGroupAttributeSchema{TenantID: tenantID, Attributes: []groupdomain.GroupAttributeDef{}}
+		}
+		for _, check := range checks {
+			if err := check(current); err != nil {
+				return nil, err
+			}
+		}
+		if existing != nil && !existing.CreatedAt.IsZero() {
+			schema.CreatedAt = existing.CreatedAt
+		}
+		return schema, nil
+	})
 }

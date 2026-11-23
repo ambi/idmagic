@@ -156,7 +156,7 @@ export function AdminUsersPage({
 
   async function handleDelete(user: AdminUser) {
     await run(async () => {
-      await deleteAdminUser(csrfToken, user.id)
+      await deleteAdminUser(csrfToken, user.id, undefined, user)
       setShowDelete(false)
       await refresh(user.id)
     }, t.userDeleteScheduledNotice)
@@ -164,7 +164,7 @@ export function AdminUsersPage({
 
   async function handlePurge(user: AdminUser) {
     await run(async () => {
-      await deleteAdminUser(csrfToken, user.id, { purge: true })
+      await deleteAdminUser(csrfToken, user.id, { purge: true }, user)
       setShowPurge(false)
       await refresh()
     }, t.userPurgedNotice)

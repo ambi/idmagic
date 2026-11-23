@@ -11,4 +11,5 @@ type TenantRepository interface {
 	FindByRealm(ctx context.Context, realm string) (*tenancydomain.Tenant, error)
 	FindAll(ctx context.Context) ([]*tenancydomain.Tenant, error)
 	Save(ctx context.Context, tenant *tenancydomain.Tenant) error
+	Update(ctx context.Context, id string, change func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error)
 }

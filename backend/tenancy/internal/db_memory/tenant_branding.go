@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
 // =====================================================================
@@ -31,15 +32,35 @@ func (r *TenantBrandingRepository) FindByTenant(_ context.Context, tenantID stri
 	return nil, nil
 }
 
-func (r *TenantBrandingRepository) Save(_ context.Context, branding *tenancydomain.TenantBranding) error {
+func (r *TenantBrandingRepository) Save(ctx context.Context, branding *tenancydomain.TenantBranding) error {
+	_, err := r.Update(ctx, branding.TenantID, func(_ *tenancydomain.TenantBranding) (*tenancydomain.TenantBranding, error) {
+		return branding, nil
+	})
+	return err
+}
+
+func (r *TenantBrandingRepository) Update(_ context.Context, tenantID string, change tenantports.BrandingChange) (*tenancydomain.TenantBranding, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	cloned := *branding
-	if existing := r.byTenant[branding.TenantID]; existing != nil && !existing.CreatedAt.IsZero() {
-		cloned.CreatedAt = existing.CreatedAt
+	var current *tenancydomain.TenantBranding
+	if existing := r.byTenant[tenantID]; existing != nil {
+		cloned := *existing
+		current = &cloned
 	}
-	r.byTenant[branding.TenantID] = &cloned
-	return nil
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, nil
+	}
+	cloned := *updated
+	if current != nil && !current.CreatedAt.IsZero() {
+		cloned.CreatedAt = current.CreatedAt
+	}
+	r.byTenant[tenantID] = &cloned
+	result := cloned
+	return &result, nil
 }
 
 // =====================================================================

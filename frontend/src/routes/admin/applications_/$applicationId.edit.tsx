@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getAdminApplication, listSamlIDPProfiles } from '../../../api/admin'
+import { getAdminApplication, getAppSignInPolicy, listSamlIDPProfiles } from '../../../api/admin'
 import { AdminApplicationEditPage } from '../../../features/admin-applications/AdminApplicationEditPage'
 import { requirePortalAccount } from '../../-guards'
 import { PageMarker } from '../../-page'
@@ -7,10 +7,12 @@ import { PageMarker } from '../../-page'
 export const Route = createFileRoute('/admin/applications_/$applicationId/edit')({
   loader: async ({ location, params }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const [detail, samlIDPProfiles] = await Promise.all([
+    const [detail, samlIDPProfiles, signInPolicy] = await Promise.all([
       getAdminApplication(params.applicationId),
       listSamlIDPProfiles(),
+      getAppSignInPolicy(params.applicationId),
     ])
+    detail.sign_in_policy = signInPolicy
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,

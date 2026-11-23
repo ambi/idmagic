@@ -36,6 +36,10 @@ func (f *fakeTenantRepo) Save(ctx context.Context, tenant *tenancydomain.Tenant)
 	return nil
 }
 
+func (f *fakeTenantRepo) Update(context.Context, string, func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	panic("unexpected mutation in read-only tenant fixture")
+}
+
 // TestListTenantDataKeyHealth_ReportsBootstrappedTenantsAndOmitsUnbootstrapped
 // covers scenario "systemAdminがテナント横断でDEK健全性を一覧する"
 // (docs/modules/data-keys/): each tenant's active_version/status/

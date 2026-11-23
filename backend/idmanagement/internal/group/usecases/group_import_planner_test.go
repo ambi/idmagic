@@ -228,6 +228,10 @@ func TestGroupImportApplyReplansAgainstCurrentState(t *testing.T) {
 // スタブ。CSV 経路の検証対象は式の妥当性であり、スキーマの永続化ではない。
 type ruleSchemaRepo struct{}
 
+func (ruleSchemaRepo) Update(context.Context, string, func(*userdomain.TenantUserAttributeSchema) (*userdomain.TenantUserAttributeSchema, error)) (*userdomain.TenantUserAttributeSchema, error) {
+	panic("unexpected schema mutation in import planner fixture")
+}
+
 func (ruleSchemaRepo) FindByTenant(context.Context, string) (*userdomain.TenantUserAttributeSchema, error) {
 	department := userdomain.UserAttributeDef{Key: "department", Type: idmdomain.AttributeTypeString}
 	return &userdomain.TenantUserAttributeSchema{TenantID: "acme", Attributes: []userdomain.UserAttributeDef{department}}, nil

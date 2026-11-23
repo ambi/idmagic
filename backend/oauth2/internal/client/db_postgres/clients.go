@@ -24,6 +24,31 @@ import (
 // (wi-173); Pool は oauth2pg.DBTX を構造的に満たす。
 type OAuth2ClientRepository struct{ Pool sharedpg.DB }
 
+func (r *OAuth2ClientRepository) Update(ctx context.Context, tenantID, clientID string, change func(*oauthdomain.OAuth2Client) (*oauthdomain.OAuth2Client, error)) (*oauthdomain.OAuth2Client, error) {
+	return sharedpg.InTransaction(ctx, r.Pool, func(tx pgx.Tx) (*oauthdomain.OAuth2Client, error) {
+		_, err := oauth2pg.New(tx).LockClientForSecretIssuance(ctx, clientID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		bound := &OAuth2ClientRepository{Pool: sharedpg.BindTransaction(tx)}
+		current, err := bound.FindByID(ctx, tenantID, clientID)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := change(current)
+		if err != nil {
+			return nil, err
+		}
+		if updated == nil {
+			return nil, bound.Delete(ctx, tenantID, clientID)
+		}
+		if err := bound.Save(ctx, updated); err != nil {
+			return nil, err
+		}
+		return bound.FindByID(ctx, tenantID, clientID)
+	})
+}
+
 func clientFromRow(row *oauth2pg.Oauth2Client) (*oauthdomain.OAuth2Client, error) {
 	c := &oauthdomain.OAuth2Client{
 		TenantID:                           row.TenantID,

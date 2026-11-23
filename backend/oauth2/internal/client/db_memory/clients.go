@@ -2,6 +2,8 @@ package db_memory
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -23,6 +25,35 @@ func NewClientRepository() *OAuth2ClientRepository {
 	return &OAuth2ClientRepository{clients: map[string]*oauthdomain.OAuth2Client{}, credentials: map[string][]oauthdomain.ClientSecretCredential{}}
 }
 
+func cloneClient(client *oauthdomain.OAuth2Client) *oauthdomain.OAuth2Client {
+	if client == nil {
+		return nil
+	}
+	cloned := *client
+	cloned.RedirectURIs = slices.Clone(client.RedirectURIs)
+	cloned.GrantTypes = slices.Clone(client.GrantTypes)
+	cloned.ResponseTypes = slices.Clone(client.ResponseTypes)
+	cloned.JWKS = maps.Clone(client.JWKS)
+	return &cloned
+}
+
+func (r *OAuth2ClientRepository) Update(_ context.Context, tenantID, clientID string, change func(*oauthdomain.OAuth2Client) (*oauthdomain.OAuth2Client, error)) (*oauthdomain.OAuth2Client, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID)
+	updated, err := change(cloneClient(r.clients[key]))
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		delete(r.clients, key)
+		delete(r.credentials, clientID)
+		return nil, nil
+	}
+	r.clients[key] = cloneClient(updated)
+	return cloneClient(updated), nil
+}
+
 func (r *OAuth2ClientRepository) Seed(c *oauthdomain.OAuth2Client) {
 	_ = r.Save(context.Background(), c)
 }
@@ -30,7 +61,7 @@ func (r *OAuth2ClientRepository) Seed(c *oauthdomain.OAuth2Client) {
 func (r *OAuth2ClientRepository) FindByID(_ context.Context, tenantID, clientID string) (*oauthdomain.OAuth2Client, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.clients[sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID)], nil
+	return cloneClient(r.clients[sharedmem.ScopedKey(tenantID, clientID, kernel.DefaultTenantID)]), nil
 }
 
 func (r *OAuth2ClientRepository) LookupBindableClient(ctx context.Context, tenantID, clientID string) (bool, bool, error) {
@@ -45,7 +76,7 @@ func (r *OAuth2ClientRepository) Save(_ context.Context, c *oauthdomain.OAuth2Cl
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	sharedmem.DefaultScope(&c.TenantID, kernel.DefaultTenantID)
-	r.clients[sharedmem.ScopedKey(c.TenantID, c.ClientID, kernel.DefaultTenantID)] = c
+	r.clients[sharedmem.ScopedKey(c.TenantID, c.ClientID, kernel.DefaultTenantID)] = cloneClient(c)
 	return nil
 }
 
@@ -63,7 +94,7 @@ func (r *OAuth2ClientRepository) FindAll(_ context.Context, tenantID string) ([]
 	out := make([]*oauthdomain.OAuth2Client, 0, len(r.clients))
 	for _, c := range r.clients {
 		if c.TenantID == tenantID {
-			out = append(out, c)
+			out = append(out, cloneClient(c))
 		}
 	}
 	return out, nil
@@ -79,7 +110,7 @@ func (r *OAuth2ClientRepository) ListPage(_ context.Context, tenantID, afterClie
 	out := make([]*oauthdomain.OAuth2Client, 0, len(r.clients))
 	for _, c := range r.clients {
 		if c.TenantID == tenantID {
-			out = append(out, c)
+			out = append(out, cloneClient(c))
 		}
 	}
 	key := func(c *oauthdomain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }
@@ -92,7 +123,7 @@ func (r *OAuth2ClientRepository) ListPageBefore(_ context.Context, tenantID, bef
 	out := make([]*oauthdomain.OAuth2Client, 0, len(r.clients))
 	for _, c := range r.clients {
 		if c.TenantID == tenantID {
-			out = append(out, c)
+			out = append(out, cloneClient(c))
 		}
 	}
 	key := func(c *oauthdomain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }

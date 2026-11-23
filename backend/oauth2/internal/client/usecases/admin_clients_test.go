@@ -264,7 +264,7 @@ type repositoryClientDeletion struct {
 	repo clientports.OAuth2ClientRepository
 }
 
-func (d repositoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string) error {
+func (d repositoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string, checks ...func(*oauthdomain.OAuth2Client) error) error {
 	client, err := d.repo.FindByID(ctx, tenantID, clientID)
 	if err != nil {
 		return err
@@ -274,6 +274,11 @@ func (d repositoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID
 	}
 	if err := clientports.StandaloneDeletionRefusal(client.FirstParty, client.ApplicationID != ""); err != nil {
 		return err
+	}
+	for _, check := range checks {
+		if err := check(client); err != nil {
+			return err
+		}
 	}
 	return d.repo.Delete(ctx, tenantID, clientID)
 }

@@ -20,6 +20,11 @@ func (r *ApplicationRepository) DeleteWithRelated(ctx context.Context, app *appd
 		return appports.ErrApplicationNotFound
 	}
 	app = cloneApplication(r.applications[key])
+	if participants.CheckCurrent != nil {
+		if err := participants.CheckCurrent(app); err != nil {
+			return err
+		}
+	}
 	consents := 0
 	if participants.DeleteProtocol != nil {
 		var err error

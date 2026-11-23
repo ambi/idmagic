@@ -489,10 +489,9 @@ func (d Deps) handleThings(c *echo.Context) error {
   })
 
   it('never reports a status the shared error handler can produce', () => {
-    // 401, 403 and 422 reach the client through ErrorHandler on a bare `return
-    // err`, which no reading of the handler's text can rule out.
+    // 共通の ErrorHandler は、ハンドラーがそのまま返すエラーからも 401、403、412、422 を返せる。
     const result = run(
-      document('ListThings', [200, 401, 403, 422, 400]),
+      document('ListThings', [200, 401, 403, 412, 422, 400]),
       `func (d Deps) handleThings(c *echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }`,
@@ -500,6 +499,7 @@ func (d Deps) handleThings(c *echo.Context) error {
     expect(result.findings).toHaveLength(1)
     expect(result.findings[0]?.message).toContain('400')
     expect(result.findings[0]?.message).not.toContain('422')
+    expect(result.findings[0]?.message).not.toContain('412')
   })
 })
 

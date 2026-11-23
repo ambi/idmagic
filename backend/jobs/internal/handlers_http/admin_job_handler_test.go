@@ -75,7 +75,10 @@ func (jobsTenantRepo) FindAll(_ context.Context) ([]*tenancydomain.Tenant, error
 	return []*tenancydomain.Tenant{acmeTenant(), defaultTenant()}, nil
 }
 func (jobsTenantRepo) Save(_ context.Context, _ *tenancydomain.Tenant) error { return nil }
-func (jobsTenantRepo) Delete(_ context.Context, _ string) error              { return nil }
+func (jobsTenantRepo) Update(context.Context, string, func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	panic("unexpected mutation in read-only tenant fixture")
+}
+func (jobsTenantRepo) Delete(_ context.Context, _ string) error { return nil }
 
 func jobsAdminUser(sub, tenantID string, roles []string) *userdomain.User {
 	now := time.Now().UTC()

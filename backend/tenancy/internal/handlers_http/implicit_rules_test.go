@@ -650,11 +650,11 @@ const brandingAdminPath = "/realms/acme/api/admin/v1/tenant/branding"
 func TestBrandingTrimsTextAndEmptyStringUnsets(t *testing.T) {
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
 
-	requireStatus(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]string{"product_name": " Acme ID "}), http.StatusOK)
+	requireStatus(t, s.send(t, http.MethodPatch, brandingAdminPath, map[string]string{"product_name": " Acme ID "}), http.StatusOK)
 	if got := decodeJSON(t, s.get(t, "/realms/acme/api/branding"))["product_name"]; got != "Acme ID" {
 		t.Fatalf("product_name = %v", got)
 	}
-	requireStatus(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]string{"product_name": ""}), http.StatusOK)
+	requireStatus(t, s.send(t, http.MethodPatch, brandingAdminPath, map[string]string{"product_name": ""}), http.StatusOK)
 	if _, ok := decodeJSON(t, s.get(t, "/realms/acme/api/branding"))["product_name"]; ok {
 		t.Fatal("an empty product_name must unset the field")
 	}
@@ -671,7 +671,7 @@ func TestBrandingRefusesLongMultibyteLabelsAndUppercaseSchemes(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
-			assertTenancyProblem(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]any{"footer_link_1": link}),
+			assertTenancyProblem(t, s.send(t, http.MethodPatch, brandingAdminPath, map[string]any{"footer_link_1": link}),
 				http.StatusBadRequest, "invalid_branding")
 			if saved, _ := s.branding.FindByTenant(context.Background(), "acme"); saved != nil {
 				t.Fatalf("branding saved: %+v", saved)
@@ -683,7 +683,7 @@ func TestBrandingRefusesLongMultibyteLabelsAndUppercaseSchemes(t *testing.T) {
 	// 超える URL は受け付ける。
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
 	url := "https://help.example.test/" + strings.Repeat("ヘ", 2048-len("https://help.example.test/"))
-	requireStatus(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]any{
+	requireStatus(t, s.send(t, http.MethodPatch, brandingAdminPath, map[string]any{
 		"footer_link_1": map[string]string{"label": label(80), "url": url},
 	}), http.StatusOK)
 	if saved, _ := s.branding.FindByTenant(context.Background(), "acme"); saved == nil || saved.FooterLink1.Label != label(80) {
@@ -744,7 +744,7 @@ func TestPublicBrandingCarriesAVersionETag(t *testing.T) {
 
 	seen := map[string]bool{`"branding-default"`: true}
 	for _, name := range []string{"Acme", "Acme ID"} {
-		requireStatus(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]string{"product_name": name}), http.StatusOK)
+		requireStatus(t, s.send(t, http.MethodPatch, brandingAdminPath, map[string]string{"product_name": name}), http.StatusOK)
 		etag := s.get(t, "/realms/acme/api/branding").Header().Get("ETag")
 		if seen[etag] {
 			t.Fatalf("ETag %s repeats after an update", etag)
@@ -807,7 +807,7 @@ func TestPreviewFillsBlankFieldsFromTheEffectiveTemplate(t *testing.T) {
 //spec:covers EX-TENANCY-038-02: プレビューの product_name には、サンプル値ではなくテナントのブランド設定の値を使う。
 func TestPreviewUsesTheTenantProductName(t *testing.T) {
 	s := newRulesServer(t, refusalAdmin("acme"), rulesOptions{})
-	requireStatus(t, s.send(t, http.MethodPut, brandingAdminPath, map[string]string{"product_name": "Acme ID"}), http.StatusOK)
+	requireStatus(t, s.send(t, http.MethodPatch, brandingAdminPath, map[string]string{"product_name": "Acme ID"}), http.StatusOK)
 
 	response := s.send(t, http.MethodPost, passwordResetTemplate+"ja/preview", map[string]string{"subject": "{{product_name}} のお知らせ"})
 	requireStatus(t, response, http.StatusOK)

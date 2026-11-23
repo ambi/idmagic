@@ -115,6 +115,33 @@ func (q *Queries) ListAppSignInPoliciesByTenant(ctx context.Context, tenantID st
 	return items, nil
 }
 
+const lockApplicationForPolicy = `-- name: LockApplicationForPolicy :one
+SELECT id FROM applications WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+`
+
+type LockApplicationForPolicyParams struct {
+	TenantID string
+	ID       string
+}
+
+func (q *Queries) LockApplicationForPolicy(ctx context.Context, arg LockApplicationForPolicyParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockApplicationForPolicy, arg.TenantID, arg.ID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lockTenantForDefaultPolicy = `-- name: LockTenantForDefaultPolicy :one
+SELECT id FROM tenants WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockTenantForDefaultPolicy(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockTenantForDefaultPolicy, id)
+	var id_2 string
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const upsertAppSignInPolicy = `-- name: UpsertAppSignInPolicy :exec
 INSERT INTO application_sign_in_policies (application_id, rules, created_at, updated_at)
 VALUES ($1, $2, $3, $4)

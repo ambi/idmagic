@@ -92,6 +92,8 @@ describe('NotificationTemplatesTab', () => {
       .mockResolvedValueOnce(response(200, listBody))
       .mockResolvedValueOnce(response(200, detailBody))
       .mockResolvedValueOnce(response(200, { ...detailBody, customized: true, subject: 'New' }))
+      .mockResolvedValueOnce(response(200, { ...detailBody, customized: true, subject: 'New' }))
+      .mockResolvedValueOnce(response(200, listBody))
     stubGlobal('fetch', fetch)
     renderTab()
 
@@ -100,7 +102,7 @@ describe('NotificationTemplatesTab', () => {
     fireEvent.change(subject, { target: { value: 'New' } })
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(5))
     const [url, init] = fetch.mock.calls[2]
     expect(url).toBe('/api/admin/v1/tenant/notification-templates/password_reset/ja')
     expect(init.method).toBe('PUT')

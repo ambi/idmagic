@@ -9,6 +9,7 @@ import (
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 )
 
 var errInvalidWorkflowCapture = errors.New("workflow runs and steps length mismatch")
@@ -23,7 +24,7 @@ type UserWorkflowCapture struct {
 
 var _ igports.UserWorkflowCapture = (*UserWorkflowCapture)(nil)
 
-func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
+func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep, changes ...userports.UserChange) error {
 	if len(runs) != len(steps) {
 		return errInvalidWorkflowCapture
 	}
@@ -42,10 +43,32 @@ func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdom
 			}
 		}
 	}
-	for i, run := range runs {
-		if _, err := c.Runs.SaveRun(ctx, run, steps[i]); err != nil {
-			return err
+	saveRuns := func() error {
+		for i, run := range runs {
+			if _, err := c.Runs.SaveRun(ctx, run, steps[i]); err != nil {
+				return err
+			}
 		}
+		return nil
+	}
+	if len(changes) > 0 {
+		saved, err := c.Users.Update(ctx, user.ID, func(current *userdomain.User) (bool, error) {
+			changed, err := changes[0](current)
+			if err != nil {
+				return false, err
+			}
+			return changed, saveRuns()
+		})
+		if err == nil && saved != nil {
+			*user = *saved
+		}
+		if err == nil && saved == nil {
+			return kernel.ErrPreconditionFailed
+		}
+		return err
+	}
+	if err := saveRuns(); err != nil {
+		return err
 	}
 	return c.Users.Save(ctx, user)
 }

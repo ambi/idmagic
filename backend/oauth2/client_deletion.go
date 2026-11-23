@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	clientports "github.com/ambi/idmagic/backend/oauth2/client/ports"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	clientpg "github.com/ambi/idmagic/backend/oauth2/internal/client/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/internal/db_postgres"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -65,7 +67,7 @@ type postgresClientDeletion struct {
 	participants PostgresClientDeletionParticipants
 }
 
-func (d postgresClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string) error {
+func (d postgresClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string, checks ...func(*oauthdomain.OAuth2Client) error) error {
 	if d.participants.DeleteBindingsInTx == nil || d.participants.QuotaInTx == nil {
 		return errors.New("client deletion is not wired to its participants")
 	}
@@ -84,6 +86,15 @@ func (d postgresClientDeletion) DeleteStandalone(ctx context.Context, tenantID, 
 	}
 	if err := clientports.StandaloneDeletionRefusal(locked.FirstParty, locked.ApplicationOwned); err != nil {
 		return err
+	}
+	client, err := (&clientpg.OAuth2ClientRepository{Pool: postgres.BindTransaction(tx)}).FindByID(ctx, tenantID, clientID)
+	if err != nil {
+		return err
+	}
+	for _, check := range checks {
+		if err := check(client); err != nil {
+			return err
+		}
 	}
 	consents, err := deleteClientStateInTx(ctx, q, clientID)
 	if err != nil {
@@ -107,27 +118,34 @@ type memoryClientDeletion struct {
 	participants memoryClientDeletionParticipants
 }
 
-func (d memoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string) error {
-	client, err := d.module.ClientRepo.FindByID(ctx, tenantID, clientID)
-	if err != nil {
-		return err
-	}
-	if client == nil {
-		return clientports.ErrCatalogClientNotFound
-	}
-	if err := clientports.StandaloneDeletionRefusal(client.FirstParty, client.ApplicationID != ""); err != nil {
-		return err
-	}
-	consents, err := d.module.deleteApplicationClientState(ctx, tenantID, clientID)
-	if err != nil {
-		return err
-	}
-	if d.participants.deleteBindings != nil {
-		if err := d.participants.deleteBindings(ctx, tenantID, clientID); err != nil {
-			return err
+func (d memoryClientDeletion) DeleteStandalone(ctx context.Context, tenantID, clientID string, checks ...func(*oauthdomain.OAuth2Client) error) error {
+	var consents int
+	_, err := d.module.ClientRepo.Update(ctx, tenantID, clientID, func(client *oauthdomain.OAuth2Client) (*oauthdomain.OAuth2Client, error) {
+		if client == nil {
+			return nil, clientports.ErrCatalogClientNotFound
 		}
-	}
-	if err := d.module.ClientRepo.Delete(ctx, tenantID, clientID); err != nil {
+		if err := clientports.StandaloneDeletionRefusal(client.FirstParty, client.ApplicationID != ""); err != nil {
+			return nil, err
+		}
+		for _, check := range checks {
+			if err := check(client); err != nil {
+				return nil, err
+			}
+		}
+		// メモリの参加者だけを、ルートの排他を保ったまま消す。通知は確定後のユースケースへ残す。
+		var err error
+		consents, err = d.module.deleteApplicationClientState(ctx, tenantID, clientID)
+		if err != nil {
+			return nil, err
+		}
+		if d.participants.deleteBindings != nil {
+			if err := d.participants.deleteBindings(ctx, tenantID, clientID); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil //nolint:nilnil // nil の変更結果は排他したクライアントの削除を表す。
+	})
+	if err != nil {
 		return err
 	}
 	if d.participants.quota == nil {

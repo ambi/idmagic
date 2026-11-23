@@ -54,6 +54,22 @@ func (r *TenantGroupAttributeSchemaRepository) Delete(_ context.Context, tenantI
 	return nil
 }
 
+func (r *TenantGroupAttributeSchemaRepository) Update(_ context.Context, tenantID string, change func(*groupdomain.TenantGroupAttributeSchema) (*groupdomain.TenantGroupAttributeSchema, error)) (*groupdomain.TenantGroupAttributeSchema, error) {
+	sharedmem.DefaultScope(&tenantID, kernel.DefaultTenantID)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var current *groupdomain.TenantGroupAttributeSchema
+	if stored := r.byTenant[tenantID]; stored != nil {
+		current = cloneGroupAttributeSchema(stored)
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	r.byTenant[tenantID] = cloneGroupAttributeSchema(updated)
+	return cloneGroupAttributeSchema(updated), nil
+}
+
 // cloneGroupAttributeSchema は呼び出し側との aliasing を断つための深いコピー。
 func cloneGroupAttributeSchema(s *groupdomain.TenantGroupAttributeSchema) *groupdomain.TenantGroupAttributeSchema {
 	cloned := *s

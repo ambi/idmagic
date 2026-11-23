@@ -3,6 +3,12 @@ SELECT a.tenant_id, p.application_id, p.rules, p.created_at, p.updated_at
 FROM application_sign_in_policies p JOIN applications a ON a.id = p.application_id
 WHERE a.tenant_id = $1 AND p.application_id = $2;
 
+-- name: LockApplicationForPolicy :one
+SELECT id FROM applications WHERE tenant_id = $1 AND id = $2 FOR UPDATE;
+
+-- name: LockTenantForDefaultPolicy :one
+SELECT id FROM tenants WHERE id = $1 FOR UPDATE;
+
 -- name: ListAppSignInPoliciesByTenant :many
 SELECT a.tenant_id, p.application_id, p.rules, p.created_at, p.updated_at
 FROM application_sign_in_policies p JOIN applications a ON a.id = p.application_id

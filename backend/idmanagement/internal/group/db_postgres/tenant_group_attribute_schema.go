@@ -15,6 +15,31 @@ import (
 // DBTX を構造的に満たす。
 type TenantGroupAttributeSchemaRepository struct{ Pool sharedpg.DB }
 
+func (r *TenantGroupAttributeSchemaRepository) Save(ctx context.Context, schema *groupdomain.TenantGroupAttributeSchema) error {
+	_, err := r.Update(ctx, schema.TenantID, func(_ *groupdomain.TenantGroupAttributeSchema) (*groupdomain.TenantGroupAttributeSchema, error) {
+		return schema, nil
+	})
+	return err
+}
+
+func (r *TenantGroupAttributeSchemaRepository) Update(ctx context.Context, tenantID string, change func(*groupdomain.TenantGroupAttributeSchema) (*groupdomain.TenantGroupAttributeSchema, error)) (*groupdomain.TenantGroupAttributeSchema, error) {
+	return sharedpg.InTransaction(ctx, r.Pool, func(tx pgx.Tx) (*groupdomain.TenantGroupAttributeSchema, error) {
+		if _, err := New(tx).LockTenantForGroupAttributeSchema(ctx, tenantID); err != nil {
+			return nil, err
+		}
+		bound := &TenantGroupAttributeSchemaRepository{Pool: sharedpg.BindTransaction(tx)}
+		current, err := bound.FindByTenant(ctx, tenantID)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := change(current)
+		if err != nil {
+			return nil, err
+		}
+		return updated, bound.save(ctx, updated)
+	})
+}
+
 func (r *TenantGroupAttributeSchemaRepository) FindByTenant(
 	ctx context.Context, tenantID string,
 ) (*groupdomain.TenantGroupAttributeSchema, error) {
@@ -38,7 +63,7 @@ func (r *TenantGroupAttributeSchemaRepository) FindByTenant(
 	return s, nil
 }
 
-func (r *TenantGroupAttributeSchemaRepository) Save(ctx context.Context, s *groupdomain.TenantGroupAttributeSchema) error {
+func (r *TenantGroupAttributeSchemaRepository) save(ctx context.Context, s *groupdomain.TenantGroupAttributeSchema) error {
 	attributes, err := json.Marshal(s.Attributes)
 	if err != nil {
 		return err

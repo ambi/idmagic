@@ -81,6 +81,28 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *tenancydomain.Tenan
 	})
 }
 
+func (r *TenantRepository) Update(ctx context.Context, id string, change func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	return sharedpg.InTransaction(ctx, r.Pool, func(tx pgx.Tx) (*tenancydomain.Tenant, error) {
+		q := New(tx)
+		if _, err := q.LockTenantForUpdate(ctx, id); err != nil {
+			return nil, err
+		}
+		bound := &TenantRepository{Pool: sharedpg.BindTransaction(tx)}
+		current, err := bound.FindByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := change(current)
+		if err != nil {
+			return nil, err
+		}
+		if err := bound.Save(ctx, updated); err != nil {
+			return nil, err
+		}
+		return bound.FindByID(ctx, id)
+	})
+}
+
 func tenantFromRow(row *Tenant) (*tenancydomain.Tenant, error) {
 	tenant := &tenancydomain.Tenant{
 		ID:            row.ID,

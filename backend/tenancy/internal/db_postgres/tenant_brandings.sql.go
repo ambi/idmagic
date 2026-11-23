@@ -43,6 +43,18 @@ func (q *Queries) FindTenantBrandingByTenant(ctx context.Context, tenantID strin
 	return &i, err
 }
 
+const lockTenantForUpdate = `-- name: LockTenantForUpdate :one
+SELECT id FROM tenants WHERE id = $1 FOR UPDATE
+`
+
+// 未保存の設定も直列化できるよう、必ず存在する所有テナントの行を固定する。
+func (q *Queries) LockTenantForUpdate(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockTenantForUpdate, id)
+	var id_2 string
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const saveTenantBranding = `-- name: SaveTenantBranding :exec
 INSERT INTO tenant_brandings (
     tenant_id, product_name, logo_object_key, logo_url, favicon_object_key, favicon_url,

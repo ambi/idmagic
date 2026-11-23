@@ -424,7 +424,7 @@ var generatedOperations = map[string]Operation{
 	"UpdateScimUser": {Method: "PUT", Path: "/scim/v2/Users/{id}", Deprecated: false, ApiTokenScopes: nil},
 	"UpdateSsfStream": {Method: "PATCH", Path: "/api/admin/v1/shared-signals/streams/{stream_id}", Deprecated: false, ApiTokenScopes: []string{"shared-signals:write"}},
 	"UpdateTenant": {Method: "PATCH", Path: "/api/admin/v1/tenants/{tenant_id}", Deprecated: false, ApiTokenScopes: []string{"tenants:write"}},
-	"UpdateTenantBranding": {Method: "PUT", Path: "/api/admin/v1/tenant/branding", Deprecated: false, ApiTokenScopes: []string{"settings:write"}},
+	"UpdateTenantBranding": {Method: "PATCH", Path: "/api/admin/v1/tenant/branding", Deprecated: false, ApiTokenScopes: []string{"settings:write"}},
 	"UpdateTenantDefaultSignInPolicy": {Method: "PUT", Path: "/api/admin/v1/default-sign-in-policy", Deprecated: false, ApiTokenScopes: []string{"settings:write"}},
 	"UpdateTenantGroupAttributeSchema": {Method: "PUT", Path: "/api/admin/v1/tenant/group-attribute-schema", Deprecated: false, ApiTokenScopes: []string{"settings:write"}},
 	"UpdateTenantQuota": {Method: "PUT", Path: "/api/admin/v1/tenants/{tenant_id}/quota", Deprecated: false, ApiTokenScopes: []string{"tenants:write"}},

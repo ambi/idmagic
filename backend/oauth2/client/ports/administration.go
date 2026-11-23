@@ -25,7 +25,7 @@ var ErrProtocolOwnedByApplication = errors.New("protocol configuration is owned 
 type ClientDeletion interface {
 	// DeleteStandalone は、存在しなければ ErrCatalogClientNotFound、組み込みなら ErrFirstPartyClientProtected、
 	// Application が所有すれば ErrProtocolOwnedByApplication を返し、何も変えない。
-	DeleteStandalone(ctx context.Context, tenantID, clientID string) error
+	DeleteStandalone(ctx context.Context, tenantID, clientID string, checks ...func(*oauthdomain.OAuth2Client) error) error
 }
 
 // StandaloneDeletionRefusal は、単独の削除を拒否する理由を返す。拒否しなければ nil を返す。
@@ -93,6 +93,7 @@ type CreateAdminOAuth2ClientInput struct {
 }
 
 type UpdateAdminOAuth2ClientInput struct {
+	CheckCurrent                      func(*oauthdomain.OAuth2Client) error
 	ActorUserID                       string
 	ClientID                          string
 	ClientName                        *string

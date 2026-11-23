@@ -313,7 +313,7 @@ func patchBranding(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecor
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(payload))
+	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)

@@ -59,7 +59,7 @@ export function AdminTenantGroupAttributesPage({
     setError('')
     setNotice('')
     try {
-      const result = await updateTenantGroupAttributeSchema(csrfToken, next)
+      const result = await updateTenantGroupAttributeSchema(csrfToken, next, attributes)
       setAttributes(result.attributes)
       setNotice(success)
       return true

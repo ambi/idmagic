@@ -238,7 +238,7 @@ export function AdminApplicationEditPage({
       }
       if (status !== app.status) metaPatch.status = status
       if (Object.keys(metaPatch).length > 0) {
-        await updateAdminApplication(csrfToken, app.id, metaPatch)
+        await updateAdminApplication(csrfToken, app.id, metaPatch, app)
       }
       if (removeIcon && app.icon_object_key) {
         await deleteApplicationIcon(csrfToken, app.id)
@@ -360,7 +360,7 @@ export function AdminApplicationEditPage({
         : []
       const prevSignInRules = signInView?.policy?.rules ?? []
       if (JSON.stringify(nextSignInRules) !== JSON.stringify(prevSignInRules)) {
-        await updateAppSignInPolicy(csrfToken, app.id, nextSignInRules)
+        await updateAppSignInPolicy(csrfToken, app.id, nextSignInRules, signInView ?? undefined)
       }
       window.location.assign(detailURL(app.id))
     } catch (cause) {

@@ -110,6 +110,9 @@ export function apiErrorMessage(
   body: APIError,
   fallback = commonDictionary[getCurrentLocale()].networkError,
 ): string {
+  if (apiErrorCode(body) === 'precondition_failed') {
+    return commonDictionary[getCurrentLocale()].editConflict
+  }
   return body.message ?? body.error_description ?? body.detail ?? body.title ?? fallback
 }
 
@@ -190,8 +193,58 @@ async function doFetch<T>(
 }
 
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const { body } = await doFetch<T>(url, init)
+  const { body, response } = await doFetch<T>(url, init)
+  const tag = response.headers?.get('ETag')
+  if (tag) rememberETag(body, tag)
   return body
+}
+
+// タグは取得した本文に結び付ける。別の GET で進んだタグを、古い編集へ流用しない。
+const resourceTags = new WeakMap<object, string>()
+
+function rememberETag(value: unknown, tag: string) {
+  if (value === null || typeof value !== 'object') return
+  resourceTags.set(value, tag)
+  for (const child of Object.values(value)) rememberETag(child, tag)
+}
+
+export function conditionalAdminRequest(
+  csrfToken: string,
+  method: string,
+  body: unknown,
+  snapshot?: object,
+): RequestInit {
+  const init = adminRequest(csrfToken, method, body)
+  const tag = snapshot && resourceTags.get(snapshot)
+  if (tag) init.headers = { ...init.headers, 'If-Match': tag }
+  return init
+}
+
+// 変換する PUT は検証子を返さない。読み直した本文とタグを一緒に編集の基準にする。
+export async function replaceResource<T>(
+  url: string,
+  csrfToken: string,
+  body: unknown,
+  snapshot?: object,
+): Promise<T> {
+  await request(url, conditionalAdminRequest(csrfToken, 'PUT', body, snapshot))
+  return refreshSavedResource<T>(url)
+}
+
+export async function refreshSavedResource<T>(url: string): Promise<T> {
+  try {
+    return await request<T>(url)
+  } catch {
+    throw new AuthenticationAPIError(commonDictionary[getCurrentLocale()].savedRefreshFailed)
+  }
+}
+
+// 一覧の行から削除する場合も、削除の直前の単一リソースを条件にする。
+export async function readSnapshotIfNeeded(
+  url: string,
+  snapshot?: object,
+): Promise<object | undefined> {
+  return snapshot && resourceTags.has(snapshot) ? snapshot : request<object>(url)
 }
 
 // Page ラップは cursor pagination の応答: body は素のドメインデータのまま、

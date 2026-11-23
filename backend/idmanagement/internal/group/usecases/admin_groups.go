@@ -281,11 +281,12 @@ func createGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput, 
 }
 
 type UpdateGroupInput struct {
-	ActorUserID string
-	ID          string
-	Name        *string
-	Description *string
-	Email       *string
+	CheckCurrent func(*groupdomain.Group, []*groupdomain.GroupMember, *groupdomain.DynamicGroupRule) error
+	ActorUserID  string
+	ID           string
+	Name         *string
+	Description  *string
+	Email        *string
 	// Attributes は指定時に attributes 全体を置換する (実効スキーマで検証)。
 	Attributes *map[string]userdomain.AttributeValue
 	Roles      *[]string
@@ -294,123 +295,138 @@ type UpdateGroupInput struct {
 
 func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) (*groupdomain.Group, error) {
 	tenantID := tenantports.TenantID(ctx)
-	group, err := deps.GroupRepo.FindByID(ctx, tenantID, in.ID)
+	current, err := deps.GroupRepo.FindByID(ctx, tenantID, in.ID)
 	if err != nil {
 		return nil, err
 	}
-	if group == nil {
+	if current == nil {
 		return nil, ErrGroupNotFound
 	}
-	updated := *group
-	changed := []string{}
 	if in.Name != nil {
-		name := strings.TrimSpace(*in.Name)
-		if name == "" {
-			return nil, ErrGroupNameEmpty
-		}
-		if name != group.Name {
-			if err := ensureGroupNameAvailable(ctx, deps, tenantID, name, group.ID); err != nil {
-				return nil, err
-			}
-			updated.Name = name
-			changed = append(changed, "name")
-		}
-	}
-	if in.Description != nil {
-		desc := idmusecases.NormalizeDescription(in.Description)
-		if !idmusecases.EqualOptionalString(group.Description, desc) {
-			updated.Description = desc
-			changed = append(changed, "description")
-		}
-	}
-	if in.Email != nil {
-		email, err := normalizeGroupEmail(in.Email)
-		if err != nil {
+		if err := ensureGroupNameAvailable(ctx, deps, tenantID, strings.TrimSpace(*in.Name), in.ID); err != nil {
 			return nil, err
-		}
-		if !idmusecases.EqualOptionalString(group.Email, email) {
-			updated.Email = email
-			changed = append(changed, "email")
 		}
 	}
 	if in.Attributes != nil {
 		if err := validateGroupAttributesInput(ctx, deps, tenantID, *in.Attributes); err != nil {
 			return nil, err
 		}
-		if !reflect.DeepEqual(group.Attributes, *in.Attributes) {
-			updated.Attributes = *in.Attributes
-			changed = append(changed, "attributes")
-		}
 	}
-	if in.Roles != nil {
-		roles, err := idmusecases.NormalizeRoles(*in.Roles)
-		if err != nil {
-			return nil, err
+	var changed []string
+	updated, err := deps.GroupRepo.Update(ctx, tenantID, in.ID, func(group *groupdomain.Group, members []*groupdomain.GroupMember, rule *groupdomain.DynamicGroupRule) (*groupdomain.Group, error) {
+		if group == nil {
+			return nil, ErrGroupNotFound
 		}
-		if err := idmusecases.ValidateRoleAssignment(group.TenantID, group.Roles, roles); err != nil {
-			return nil, err
-		}
-		if !slices.Equal(roles, group.Roles) {
-			updated.Roles = roles
-			if err := updated.ValidateAutomaticRoles(); err != nil {
-				return nil, errors.Join(idmusecases.ErrInvalidRole, err)
+		if in.CheckCurrent != nil {
+			if err := in.CheckCurrent(group, members, rule); err != nil {
+				return nil, err
 			}
-			changed = append(changed, "roles")
 		}
+		updated := *group
+		changed = []string{}
+		if in.Name != nil {
+			name := strings.TrimSpace(*in.Name)
+			if name == "" {
+				return nil, ErrGroupNameEmpty
+			}
+			if name != group.Name {
+				updated.Name = name
+				changed = append(changed, "name")
+			}
+		}
+		if in.Description != nil {
+			desc := idmusecases.NormalizeDescription(in.Description)
+			if !idmusecases.EqualOptionalString(group.Description, desc) {
+				updated.Description = desc
+				changed = append(changed, "description")
+			}
+		}
+		if in.Email != nil {
+			email, err := normalizeGroupEmail(in.Email)
+			if err != nil {
+				return nil, err
+			}
+			if !idmusecases.EqualOptionalString(group.Email, email) {
+				updated.Email = email
+				changed = append(changed, "email")
+			}
+		}
+		if in.Attributes != nil {
+			if !reflect.DeepEqual(group.Attributes, *in.Attributes) {
+				updated.Attributes = *in.Attributes
+				changed = append(changed, "attributes")
+			}
+		}
+		if in.Roles != nil {
+			roles, err := idmusecases.NormalizeRoles(*in.Roles)
+			if err != nil {
+				return nil, err
+			}
+			if err := idmusecases.ValidateRoleAssignment(group.TenantID, group.Roles, roles); err != nil {
+				return nil, err
+			}
+			if !slices.Equal(roles, group.Roles) {
+				updated.Roles = roles
+				if err := updated.ValidateAutomaticRoles(); err != nil {
+					return nil, errors.Join(idmusecases.ErrInvalidRole, err)
+				}
+				changed = append(changed, "roles")
+			}
+		}
+		if len(changed) == 0 {
+			return &updated, nil
+		}
+		now := idmusecases.NormalizedNow(in.Now)
+		updated.UpdatedAt = now
+		if err := updated.Validate(); err != nil {
+			return nil, err
+		}
+		return &updated, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	if len(changed) == 0 {
-		return &updated, nil
-	}
-	now := idmusecases.NormalizedNow(in.Now)
-	updated.UpdatedAt = now
-	if err := updated.Validate(); err != nil {
-		return nil, err
-	}
-	if err := deps.GroupRepo.Save(ctx, &updated); err != nil {
-		return nil, err
+		return updated, nil
 	}
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupUpdated{
-		At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID, ChangedFields: changed,
+		At: updated.UpdatedAt, TenantID: updated.TenantID, ActorUserID: in.ActorUserID, GroupID: updated.ID, ChangedFields: changed,
 	}); err != nil {
 		return nil, err
 	}
-	if err := notifyProvisioning(ctx, deps, group.TenantID, group.ID, groupports.ProvisioningGroupChanged, now); err != nil {
+	if err := notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, groupports.ProvisioningGroupChanged, updated.UpdatedAt); err != nil {
 		return nil, err
 	}
-	return &updated, nil
+	return updated, nil
 }
 
 // DeleteGroup はグループを物理削除し、所属 membership を cascade で解除する。
 // 解除メンバーごとに GroupMemberRemoved を emit し、最後に GroupDeleted を emit する。
-func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id string, now time.Time) error {
+func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id string, now time.Time, checks ...func(*groupdomain.Group, []*groupdomain.GroupMember, *groupdomain.DynamicGroupRule) error) error {
 	tenantID := tenantports.TenantID(ctx)
-	group, err := deps.GroupRepo.FindByID(ctx, tenantID, id)
-	if err != nil {
-		return err
-	}
-	if group == nil {
-		return ErrGroupNotFound
-	}
-	members, err := deps.GroupRepo.ListMembersByGroup(ctx, tenantID, id)
+	var members []*groupdomain.GroupMember
+	_, err := deps.GroupRepo.Update(ctx, tenantID, id, func(group *groupdomain.Group, currentMembers []*groupdomain.GroupMember, rule *groupdomain.DynamicGroupRule) (*groupdomain.Group, error) {
+		if group == nil {
+			return nil, ErrGroupNotFound
+		}
+		for _, check := range checks {
+			if err := check(group, currentMembers, rule); err != nil {
+				return nil, err
+			}
+		}
+		members = currentMembers
+		return nil, nil
+	})
 	if err != nil {
 		return err
 	}
 	now = idmusecases.NormalizedNow(now)
 	for _, member := range members {
-		removed, err := deps.GroupRepo.RemoveMember(ctx, tenantID, id, member.UserID)
-		if err != nil {
+		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
+			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id, UserID: member.UserID,
+		}); err != nil {
 			return err
 		}
-		if removed {
-			if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
-				At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id, UserID: member.UserID,
-			}); err != nil {
-				return err
-			}
-		}
-	}
-	if err := deps.GroupRepo.Delete(ctx, tenantID, id); err != nil {
-		return err
 	}
 	if deps.QuotaRepo != nil {
 		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceGroups, 1); err != nil {

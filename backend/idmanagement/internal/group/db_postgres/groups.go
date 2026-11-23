@@ -9,6 +9,7 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
@@ -195,6 +196,39 @@ func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) er
 
 func (r *GroupRepository) Delete(ctx context.Context, tenantID, id string) error {
 	return New(r.Pool).DeleteGroup(ctx, DeleteGroupParams{TenantID: tenantID, ID: id})
+}
+
+func (r *GroupRepository) Update(ctx context.Context, tenantID, id string, change groupports.GroupChange) (*groupdomain.Group, error) {
+	return sharedpg.InTransaction(ctx, r.Pool, func(tx pgx.Tx) (*groupdomain.Group, error) {
+		_, err := New(tx).LockGroupForUpdate(ctx, LockGroupForUpdateParams{TenantID: tenantID, ID: id})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		bound := &GroupRepository{Pool: sharedpg.BindTransaction(tx)}
+		current, err := bound.FindByID(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		members, err := bound.ListMembersByGroup(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		rule, err := bound.FindDynamicRule(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := change(current, members, rule)
+		if err != nil {
+			return nil, err
+		}
+		if updated == nil {
+			return nil, bound.Delete(ctx, tenantID, id)
+		}
+		if err := bound.Save(ctx, updated); err != nil {
+			return nil, err
+		}
+		return bound.FindByID(ctx, tenantID, id)
+	})
 }
 
 func (r *GroupRepository) ListMembersByGroup(ctx context.Context, tenantID, groupID string) ([]*groupdomain.GroupMember, error) {

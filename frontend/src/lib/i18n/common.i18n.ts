@@ -7,6 +7,10 @@ export const commonDictionary = defineDictionary(
     japanese: '日本語',
     english: 'English',
     networkError: '認証サービスに接続できませんでした。',
+    editConflict:
+      'ほかの操作で更新されています。ページを再読み込みし、最新の内容を確認してから編集してください。入力した変更は保存していません。',
+    savedRefreshFailed:
+      '保存は完了しましたが、最新の内容を取得できませんでした。再保存せず、ページを再読み込みしてください。',
     invalidCredentials: '認証情報が正しくありません。',
     passwordPolicy: 'パスワードがポリシーを満たしていません。',
     passwordReuse: '以前使用したパスワードは使用できません。',
@@ -73,6 +77,10 @@ export const commonDictionary = defineDictionary(
     japanese: '日本語',
     english: 'English',
     networkError: 'Could not connect to the authentication service.',
+    editConflict:
+      'This resource has changed. Reload the page and review the latest values before editing. Your changes were not saved.',
+    savedRefreshFailed:
+      'Your changes were saved, but the latest values could not be loaded. Reload the page before saving again.',
     invalidCredentials: 'The credentials are invalid.',
     passwordPolicy: 'The password does not meet the policy.',
     passwordReuse: 'You cannot reuse a previous password.',

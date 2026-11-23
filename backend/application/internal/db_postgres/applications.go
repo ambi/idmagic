@@ -189,6 +189,30 @@ func (r *ApplicationRepository) Save(ctx context.Context, app *appdomain.Applica
 	return saveApplication(ctx, New(r.Pool), app)
 }
 
+func (r *ApplicationRepository) Update(ctx context.Context, tenantID, applicationID string, change func(*appdomain.Application) (*appdomain.Application, error)) (*appdomain.Application, error) {
+	return sharedpg.InTransaction(ctx, r.Pool, func(tx pgx.Tx) (*appdomain.Application, error) {
+		if _, err := New(tx).LockApplicationForDeletion(ctx, LockApplicationForDeletionParams{TenantID: tenantID, ID: applicationID}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, appports.ErrApplicationNotFound
+			}
+			return nil, err
+		}
+		bound := &ApplicationRepository{Pool: sharedpg.BindTransaction(tx), ProtocolLinkers: r.ProtocolLinkers}
+		current, err := bound.FindByID(ctx, tenantID, applicationID)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := change(current)
+		if err != nil {
+			return nil, err
+		}
+		if err := saveApplication(ctx, New(tx), updated); err != nil {
+			return nil, err
+		}
+		return bound.FindByID(ctx, tenantID, applicationID)
+	})
+}
+
 func saveApplication(ctx context.Context, queries *Queries, app *appdomain.Application) error {
 	var protocolType pgtype.Text
 	if app.Protocol != nil {

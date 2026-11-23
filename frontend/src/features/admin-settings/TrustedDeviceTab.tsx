@@ -76,9 +76,13 @@ export function TrustedDeviceTab({
 
     setSaving(true)
     try {
-      const next = await updateAdminSettings(csrfToken, {
-        trusted_device_max_age_seconds: requested,
-      })
+      const next = await updateAdminSettings(
+        csrfToken,
+        {
+          trusted_device_max_age_seconds: requested,
+        },
+        settings,
+      )
       onSaved(next)
       setSavedSeconds(next.trusted_device_max_age_seconds ?? 0)
       setDays(String(daysFromSeconds(next.trusted_device_max_age_seconds)))

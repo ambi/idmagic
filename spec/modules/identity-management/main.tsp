@@ -324,6 +324,7 @@ op ListAdminUsers(
 ): ListAdminUsersSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminUsersError403 | ListAdminUsersError400;
 
 model GetAdminUserSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminUserResponse;
 }
@@ -1611,6 +1612,7 @@ op GetAdminGroupMemberImport(
 ): GetAdminGroupMemberImportSuccess_200 | GetAdminGroupMemberImportError400 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminGroupMemberImportError403 | GetAdminGroupMemberImportError404;
 
 model UpdateAdminUserSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminUserResponse;
 }
@@ -1667,9 +1669,10 @@ model UpdateAdminUserError422 {
 @route("/api/admin/v1/users/{user_id}")
 @patch
 op UpdateAdminUser(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path user_id: string,
   @body body: IdMagic.Contract.AdminUserUpdateRequest
-): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminUserError403 | UpdateAdminUserError409 | UpdateAdminUserError422;
+): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminUserError403 | UpdateAdminUserError409 | UpdateAdminUserError422 | IdMagic.Contract.PreconditionFailedResponse;
 
 model DisableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -1821,11 +1824,12 @@ model DeleteAdminUserError422 {
 @route("/api/admin/v1/users/{user_id}")
 @delete
 op DeleteAdminUser(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path user_id: string,
   @doc("`true` は論理削除を飛ばして即座に匿名化する。ボディの `force` と同じである。ボディ自体は任意である。")
   @query purge?: boolean,
   @body body: DeleteAdminUserHttpRequest
-): DeleteAdminUserSuccess_204 | DeleteAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminUserError403 | DeleteAdminUserError422;
+): DeleteAdminUserSuccess_204 | DeleteAdminUserError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminUserError403 | DeleteAdminUserError422 | IdMagic.Contract.PreconditionFailedResponse;
 
 model RestoreAdminUserSuccess_200 {
   @statusCode statusCode: 200;
@@ -2003,6 +2007,7 @@ model GetGroupHttpResponse {
 }
 
 model GetGroupSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: GetGroupHttpResponse;
 }
@@ -2100,6 +2105,7 @@ op CreateGroup(
 ): CreateGroupSuccess_201 | CreateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateGroupError403 | CreateGroupError409 | CreateGroupError422;
 
 model UpdateGroupSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.GroupSummaryResponse;
 }
@@ -2156,9 +2162,10 @@ model UpdateGroupError422 {
 @route("/api/admin/v1/groups/{group_id}")
 @patch
 op UpdateGroup(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path group_id: string,
   @body body: IdMagic.Contract.GroupUpdateRequest
-): UpdateGroupSuccess_200 | UpdateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateGroupError403 | UpdateGroupError409 | UpdateGroupError422;
+): UpdateGroupSuccess_200 | UpdateGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateGroupError403 | UpdateGroupError409 | UpdateGroupError422 | IdMagic.Contract.PreconditionFailedResponse;
 
 model DeleteGroupSuccess_204 {
   @statusCode statusCode: 204;
@@ -2209,8 +2216,9 @@ model DeleteGroupError403 {
 @route("/api/admin/v1/groups/{group_id}")
 @delete
 op DeleteGroup(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path group_id: string
-): DeleteGroupSuccess_204 | DeleteGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteGroupError403;
+): DeleteGroupSuccess_204 | DeleteGroupError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteGroupError403 | IdMagic.Contract.PreconditionFailedResponse;
 
 model AddGroupMemberSuccess_204 {
   @statusCode statusCode: 204;

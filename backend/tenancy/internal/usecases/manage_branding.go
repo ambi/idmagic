@@ -29,6 +29,7 @@ var (
 // フィールドは現状維持。空文字列を含む非 nil 値はそのフィールドを更新し、空文字列は
 // 未設定に戻すことを意味する (TenantBrandingUpdateRequest の SCL 記述通り)。
 type BrandingUpdateInput struct {
+	CheckCurrent func(*tenancydomain.TenantBranding) error
 	ProductName  *string
 	PrimaryColor *string
 	AccentColor  *string
@@ -57,16 +58,23 @@ func UpdateBranding(
 	ctx context.Context, repo tenantports.TenantBrandingRepository,
 	tenantID string, input BrandingUpdateInput, now time.Time,
 ) (*tenancydomain.TenantBranding, error) {
-	existing, err := repo.FindByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
+	return repo.Update(ctx, tenantID, func(existing *tenancydomain.TenantBranding) (*tenancydomain.TenantBranding, error) {
+		return updateBranding(existing, tenantID, input, now)
+	})
+}
+
+func updateBranding(existing *tenancydomain.TenantBranding, tenantID string, input BrandingUpdateInput, now time.Time) (*tenancydomain.TenantBranding, error) {
 	branding := &tenancydomain.TenantBranding{TenantID: tenantID}
 	if existing != nil {
 		branding = &tenancydomain.TenantBranding{}
 		*branding = *existing
 	}
 	branding.TenantID = tenantID
+	if input.CheckCurrent != nil {
+		if err := input.CheckCurrent(branding); err != nil {
+			return nil, err
+		}
+	}
 	if input.ProductName != nil {
 		branding.ProductName = strings.TrimSpace(*input.ProductName)
 	}
@@ -92,9 +100,6 @@ func UpdateBranding(
 	}
 	if err := branding.Validate(); err != nil {
 		return nil, errors.Join(ErrInvalidBranding, err)
-	}
-	if err := repo.Save(ctx, branding); err != nil {
-		return nil, err
 	}
 	return branding, nil
 }
@@ -160,35 +165,30 @@ func UploadBrandingAsset(
 		return nil, err
 	}
 
-	existing, err := brandingRepo.FindByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	branding := &tenancydomain.TenantBranding{TenantID: tenantID}
-	if existing != nil {
-		branding = &tenancydomain.TenantBranding{}
-		*branding = *existing
-	}
-	branding.TenantID = tenantID
-	switch in.Kind {
-	case tenancydomain.TenantBrandingAssetKindLogo:
-		branding.LogoObjectKey = objectKey
-		branding.LogoURL = in.URL
-	case tenancydomain.TenantBrandingAssetKindFavicon:
-		branding.FaviconObjectKey = objectKey
-		branding.FaviconURL = in.URL
-	}
-	if existing == nil || existing.CreatedAt.IsZero() {
-		branding.CreatedAt = now
-	}
-	branding.UpdatedAt = now
-	if err := branding.Validate(); err != nil {
-		return nil, errors.Join(ErrInvalidBranding, err)
-	}
-	if err := brandingRepo.Save(ctx, branding); err != nil {
-		return nil, err
-	}
-	return branding, nil
+	return brandingRepo.Update(ctx, tenantID, func(existing *tenancydomain.TenantBranding) (*tenancydomain.TenantBranding, error) {
+		branding := &tenancydomain.TenantBranding{TenantID: tenantID}
+		if existing != nil {
+			branding = &tenancydomain.TenantBranding{}
+			*branding = *existing
+		}
+		branding.TenantID = tenantID
+		switch in.Kind {
+		case tenancydomain.TenantBrandingAssetKindLogo:
+			branding.LogoObjectKey = objectKey
+			branding.LogoURL = in.URL
+		case tenancydomain.TenantBrandingAssetKindFavicon:
+			branding.FaviconObjectKey = objectKey
+			branding.FaviconURL = in.URL
+		}
+		if existing == nil || existing.CreatedAt.IsZero() {
+			branding.CreatedAt = now
+		}
+		branding.UpdatedAt = now
+		if err := branding.Validate(); err != nil {
+			return nil, errors.Join(ErrInvalidBranding, err)
+		}
+		return branding, nil
+	})
 }
 
 // DeleteBrandingAsset は branding の保存済みロゴまたは favicon を削除し、TenantBranding
@@ -204,26 +204,25 @@ func DeleteBrandingAsset(
 	if err := assetStore.DeleteByTenant(ctx, tenantID, kind); err != nil {
 		return nil, err
 	}
-	existing, err := brandingRepo.FindByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if existing == nil {
+	result, err := brandingRepo.Update(ctx, tenantID, func(existing *tenancydomain.TenantBranding) (*tenancydomain.TenantBranding, error) {
+		if existing == nil {
+			return nil, nil //nolint:nilnil // nil は未設定のままで保存しない結果である。
+		}
+		updated := *existing
+		updated.TenantID = tenantID
+		switch kind {
+		case tenancydomain.TenantBrandingAssetKindLogo:
+			updated.LogoObjectKey = ""
+			updated.LogoURL = ""
+		case tenancydomain.TenantBrandingAssetKindFavicon:
+			updated.FaviconObjectKey = ""
+			updated.FaviconURL = ""
+		}
+		updated.UpdatedAt = normalizeNow(now)
+		return &updated, nil
+	})
+	if err == nil && result == nil {
 		return &tenancydomain.TenantBranding{TenantID: tenantID}, nil
 	}
-	updated := *existing
-	updated.TenantID = tenantID
-	switch kind {
-	case tenancydomain.TenantBrandingAssetKindLogo:
-		updated.LogoObjectKey = ""
-		updated.LogoURL = ""
-	case tenancydomain.TenantBrandingAssetKindFavicon:
-		updated.FaviconObjectKey = ""
-		updated.FaviconURL = ""
-	}
-	updated.UpdatedAt = normalizeNow(now)
-	if err := brandingRepo.Save(ctx, &updated); err != nil {
-		return nil, err
-	}
-	return &updated, nil
+	return result, err
 }

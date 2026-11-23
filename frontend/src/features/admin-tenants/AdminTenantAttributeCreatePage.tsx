@@ -47,10 +47,11 @@ export function AdminTenantAttributeCreatePage({
     setSaving(true)
     setError('')
     try {
-      await updateTenantUserAttributeSchema(csrfToken, [
-        ...existingAttributes,
-        normalizeAttribute(draft),
-      ])
+      await updateTenantUserAttributeSchema(
+        csrfToken,
+        [...existingAttributes, normalizeAttribute(draft)],
+        existingAttributes,
+      )
       window.location.assign(listURL())
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailedError)

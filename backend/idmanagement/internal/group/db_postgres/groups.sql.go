@@ -504,6 +504,22 @@ func (q *Queries) ListGroupsByUser(ctx context.Context, arg ListGroupsByUserPara
 	return items, nil
 }
 
+const lockGroupForUpdate = `-- name: LockGroupForUpdate :one
+SELECT id FROM groups WHERE tenant_id = $1 AND id = $2 FOR UPDATE
+`
+
+type LockGroupForUpdateParams struct {
+	TenantID string
+	ID       string
+}
+
+func (q *Queries) LockGroupForUpdate(ctx context.Context, arg LockGroupForUpdateParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockGroupForUpdate, arg.TenantID, arg.ID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const removeGroupMember = `-- name: RemoveGroupMember :execrows
 DELETE FROM group_members
 WHERE group_id=$2 AND user_id=$3

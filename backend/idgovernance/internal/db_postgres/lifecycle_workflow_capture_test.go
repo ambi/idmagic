@@ -2,17 +2,21 @@ package db_postgres_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/idmanagement"
 
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/internal/db_postgres"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/internal/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/testing/fixtures_postgres"
 )
 
 //spec:covers EX-IDGOVERNANCE-004-01: User の変更と queued の WorkflowRun と pending のステップは 1 つのトランザクションで確定し、WorkflowRun の保存が失敗すれば User の変更も残らないこと、同じ重複排除キーの再配信は既存の WorkflowRun に収束してステップを作らないことを、PostgreSQL の保存先で固定する。
+//spec:covers REQ-SYSTEM-037: 条件が一致しない User の変更から WorkflowRun を保存しない。
 func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	pool := pgtest.Require(t)
 	ctx := context.Background()
@@ -52,6 +56,15 @@ func TestUserWorkflowCaptureCommitsUserAndRunsTogether(t *testing.T) {
 	}
 
 	run, steps := planned(pgfixtures.NewUUID(t), workflow.ID)
+	if err := capture.SaveUserAndRuns(ctx, &renamed, []*igdomain.WorkflowRun{run}, [][]igdomain.WorkflowStep{steps}, func(*userdomain.User) (bool, error) { return false, kernel.ErrPreconditionFailed }); !errors.Is(err, kernel.ErrPreconditionFailed) {
+		t.Fatalf("refused capture error=%v", err)
+	}
+	if stored, err := runs.FindRun(ctx, tenant.ID, run.ID); err != nil || stored != nil {
+		t.Fatalf("refused capture left run=%+v error=%v", stored, err)
+	}
+	if stored, err := users.FindBySub(ctx, user.ID); err != nil || stored.PreferredUsername != user.PreferredUsername {
+		t.Fatalf("refused capture changed user=%+v error=%v", stored, err)
+	}
 	if err := capture.SaveUserAndRuns(ctx, &renamed, []*igdomain.WorkflowRun{run}, [][]igdomain.WorkflowStep{steps}); err != nil {
 		t.Fatal(err)
 	}

@@ -141,7 +141,7 @@ export function GroupDetailCard({
               disabled={busy || localBusy}
               onClick={() =>
                 void withLocal(async () => {
-                  await deleteAdminGroup(csrfToken, activeGroup.id)
+                  await deleteAdminGroup(csrfToken, activeGroup.id, activeGroup)
                   onDeleted()
                 })
               }

@@ -36,6 +36,17 @@ func (q *Queries) FindTenantGroupAttributeSchemaByTenant(ctx context.Context, te
 	return &i, err
 }
 
+const lockTenantForGroupAttributeSchema = `-- name: LockTenantForGroupAttributeSchema :one
+SELECT id FROM tenants WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockTenantForGroupAttributeSchema(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockTenantForGroupAttributeSchema, id)
+	var id_2 string
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const saveTenantGroupAttributeSchema = `-- name: SaveTenantGroupAttributeSchema :exec
 INSERT INTO tenant_group_attribute_schemas (tenant_id,attributes,created_at,updated_at)
 VALUES ($1,$2,$3,$4)

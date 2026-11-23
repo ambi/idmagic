@@ -1,3 +1,6 @@
+-- name: LockTenantForGroupAttributeSchema :one
+SELECT id FROM tenants WHERE id = $1 FOR UPDATE;
+
 -- name: FindTenantGroupAttributeSchemaByTenant :one
 SELECT tenant_id,attributes,created_at,updated_at FROM tenant_group_attribute_schemas
 WHERE tenant_id=$1;

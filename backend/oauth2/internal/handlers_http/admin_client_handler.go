@@ -115,7 +115,7 @@ func (d Deps) handleGetAdminOAuth2Client(c *echo.Context) error {
 	if client == nil {
 		return d.writeAdminOAuth2ClientError(c, clientusecases.ErrClientNotFound)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toAdminOAuth2ClientResponse(client))
+	return support.ETagJSON(c, http.StatusOK, toAdminOAuth2ClientResponse(client))
 }
 
 func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
@@ -181,7 +181,14 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
 	client, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.UpdateAdminOAuth2ClientInput{
+		CheckCurrent: func(current *oauthdomain.OAuth2Client) error {
+			return condition.Check(toAdminOAuth2ClientResponse(current))
+		},
 		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
@@ -193,7 +200,7 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 	if err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toAdminOAuth2ClientResponse(client))
+	return support.ETagJSON(c, http.StatusOK, toAdminOAuth2ClientResponse(client))
 }
 
 func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
@@ -204,8 +211,15 @@ func (d Deps) handleDeleteAdminOAuth2Client(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
 	if err := clientusecases.DeleteAdminOAuth2Client(
 		c.Request().Context(), d.adminClientDeps(), actor.ID, c.Param("client_id"), time.Now().UTC(),
+		func(current *oauthdomain.OAuth2Client) error {
+			return condition.Check(toAdminOAuth2ClientResponse(current))
+		},
 	); err != nil {
 		return d.writeAdminOAuth2ClientError(c, err)
 	}

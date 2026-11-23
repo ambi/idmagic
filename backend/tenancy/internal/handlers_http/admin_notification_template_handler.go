@@ -129,7 +129,7 @@ func (d Deps) handleGetNotificationTemplate(c *echo.Context) error {
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toNotificationTemplateDetailResponse(detail))
+	return support.ETagJSON(c, http.StatusOK, toNotificationTemplateDetailResponse(detail))
 }
 
 func (d Deps) handleUpdateNotificationTemplate(c *echo.Context) error {
@@ -146,8 +146,16 @@ func (d Deps) handleUpdateNotificationTemplate(c *echo.Context) error {
 	}
 	key, locale := notificationTemplateKeyParam(c), c.Param("locale")
 	now := time.Now().UTC()
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
+	update := input.toInput()
+	update.CheckCurrent = func(current *tenancyusecases.NotificationTemplateDetail) error {
+		return condition.Check(toNotificationTemplateDetailResponse(current))
+	}
 	detail, err := tenancyusecases.UpdateNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
-		actor.TenantID, key, locale, input.toInput(), now)
+		actor.TenantID, key, locale, update, now)
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
 	}
@@ -157,7 +165,7 @@ func (d Deps) handleUpdateNotificationTemplate(c *echo.Context) error {
 			TemplateKey: string(key), Locale: locale,
 		})
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toNotificationTemplateDetailResponse(detail))
+	return support.ETagJSON(c, http.StatusOK, toNotificationTemplateDetailResponse(detail))
 }
 
 func (d Deps) handleResetNotificationTemplate(c *echo.Context) error {
@@ -169,8 +177,14 @@ func (d Deps) handleResetNotificationTemplate(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	key, locale := notificationTemplateKeyParam(c), c.Param("locale")
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
 	detail, err := tenancyusecases.ResetNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
-		actor.TenantID, key, locale)
+		actor.TenantID, key, locale, func(current *tenancyusecases.NotificationTemplateDetail) error {
+			return condition.Check(toNotificationTemplateDetailResponse(current))
+		})
 	if err != nil {
 		return d.writeNotificationTemplateError(c, err)
 	}
@@ -180,7 +194,7 @@ func (d Deps) handleResetNotificationTemplate(c *echo.Context) error {
 			TemplateKey: string(key), Locale: locale,
 		})
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toNotificationTemplateDetailResponse(detail))
+	return support.ETagJSON(c, http.StatusOK, toNotificationTemplateDetailResponse(detail))
 }
 
 func (d Deps) handlePreviewNotificationTemplate(c *echo.Context) error {

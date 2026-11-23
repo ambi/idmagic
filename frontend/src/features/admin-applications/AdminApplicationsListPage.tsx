@@ -169,7 +169,7 @@ export function AdminApplicationsPage({
           busy={busy}
           onDelete={(id) =>
             run(async () => {
-              await deleteAdminApplication(csrfToken, id)
+              await deleteAdminApplication(csrfToken, id, selected ?? undefined)
               await refresh()
             }, t.applicationDeletedNotice)
           }

@@ -198,6 +198,22 @@ func (r *ApplicationRepository) Create(ctx context.Context, app *appdomain.Appli
 	return r.Save(ctx, app)
 }
 
+func (r *ApplicationRepository) Update(_ context.Context, tenantID, applicationID string, change func(*appdomain.Application) (*appdomain.Application, error)) (*appdomain.Application, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, applicationID, kernel.DefaultTenantID)
+	var current *appdomain.Application
+	if stored := r.applications[key]; stored != nil {
+		current = cloneApplication(stored)
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	r.applications[key] = cloneApplication(updated)
+	return cloneApplication(updated), nil
+}
+
 func (r *ApplicationRepository) Delete(_ context.Context, tenantID, applicationID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

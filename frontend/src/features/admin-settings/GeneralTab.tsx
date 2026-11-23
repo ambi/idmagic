@@ -66,10 +66,14 @@ export function GeneralTab({
         setNotice(t.noChangesNotice)
         return
       }
-      const next = await updateAdminSettings(csrfToken, {
-        ...(displayNameChanged ? { display_name: trimmed } : {}),
-        ...(localeChanged ? { default_locale: defaultLocale } : {}),
-      })
+      const next = await updateAdminSettings(
+        csrfToken,
+        {
+          ...(displayNameChanged ? { display_name: trimmed } : {}),
+          ...(localeChanged ? { default_locale: defaultLocale } : {}),
+        },
+        settings,
+      )
       onSaved(next)
       setDisplayName(next.display_name)
       setDefaultLocale(next.default_locale ?? '')

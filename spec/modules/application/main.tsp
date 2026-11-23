@@ -46,6 +46,7 @@ op ListAdminApplications(
 ): ListAdminApplicationsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminApplicationsError403 | ListAdminApplicationsError400;
 
 model GetAdminApplicationSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminApplicationDetailResponse;
 }
@@ -145,6 +146,7 @@ op CreateAdminApplication(
 ): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminApplicationError403 | CreateAdminApplicationError409 | CreateAdminApplicationError422 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model UpdateAdminApplicationSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminApplicationResponse;
 }
@@ -188,9 +190,10 @@ model UpdateAdminApplicationError404 {
 @route("/api/admin/v1/applications/{id}")
 @patch
 op UpdateAdminApplication(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path id: string,
   @body body: IdMagic.Contract.AdminApplicationUpdateRequest
-): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminApplicationError403 | UpdateAdminApplicationError404;
+): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminApplicationError403 | UpdateAdminApplicationError404 | IdMagic.Contract.PreconditionFailedResponse;
 
 model UploadApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
@@ -369,8 +372,9 @@ model DeleteAdminApplicationError409 {
 @route("/api/admin/v1/applications/{id}")
 @delete
 op DeleteAdminApplication(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path id: string
-): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403 | DeleteAdminApplicationError404 | DeleteAdminApplicationError409;
+): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminApplicationError403 | DeleteAdminApplicationError404 | DeleteAdminApplicationError409 | IdMagic.Contract.PreconditionFailedResponse;
 
 model UpdateApplicationOidcConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -807,6 +811,7 @@ op UnassignApplication(
 ): UnassignApplicationSuccess_204 | UnassignApplicationError400 | IdMagic.Contract.AuthenticationRequiredResponse | UnassignApplicationError403;
 
 model GetAppSignInPolicySuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AppSignInPolicyResponse;
 }
@@ -896,11 +901,13 @@ model UpdateAppSignInPolicyError404 {
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
 @put
 op UpdateAppSignInPolicy(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path id: string,
   @body body: IdMagic.Contract.AppSignInPolicyRequest
-): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAppSignInPolicyError403 | UpdateAppSignInPolicyError404;
+): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAppSignInPolicyError403 | UpdateAppSignInPolicyError404 | IdMagic.Contract.PreconditionFailedResponse;
 
 model GetTenantDefaultSignInPolicySuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantDefaultSignInPolicyResponse;
 }
@@ -960,8 +967,9 @@ model UpdateTenantDefaultSignInPolicyError403 {
 @route("/api/admin/v1/default-sign-in-policy")
 @put
 op UpdateTenantDefaultSignInPolicy(
+  ...IdMagic.Contract.IfMatchHeaders,
   @body body: IdMagic.Contract.TenantDefaultSignInPolicyRequest
-): UpdateTenantDefaultSignInPolicySuccess_200 | UpdateTenantDefaultSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantDefaultSignInPolicyError403;
+): UpdateTenantDefaultSignInPolicySuccess_200 | UpdateTenantDefaultSignInPolicyError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantDefaultSignInPolicyError403 | IdMagic.Contract.PreconditionFailedResponse;
 
 model ListApplicationCategoriesSuccess_200 {
   @statusCode statusCode: 200;

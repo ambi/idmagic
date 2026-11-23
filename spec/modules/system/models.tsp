@@ -67,6 +67,23 @@ model ProblemDetails {
 @doc("リクエストに必須のパラメーターがないか不正な値を含む、または対象が他のテナントに属しており存在しないものとして扱う。RFC 9457 の Problem Details で、`type` は `urn:idmagic:error:invalid_request` である。OAuth 2.0 のエンドポイントは、同じ条件を代わりに OAuthInvalidRequestError として報告する。")
 model InvalidRequestError is ProblemDetails;
 
+@doc("現在の表現の強い ETag と一致しない If-Match。type は urn:idmagic:error:precondition_failed。")
+model PreconditionFailedError is ProblemDetails;
+
+model IfMatchHeaders {
+  @header("If-Match") ifMatch?: string;
+}
+
+model ETagHeaders {
+  @header("ETag") etag: string;
+}
+
+model PreconditionFailedResponse {
+  @statusCode statusCode: 412;
+  @header contentType: "application/problem+json";
+  @body body: PreconditionFailedError;
+}
+
 @doc("任意の冪等キー。IETF draft-09 の Structured Field の文字列形式で指定する。受付から 24 時間は同じテナントと主体の要求を識別する。")
 model IdempotencyHeaders {
   @header("Idempotency-Key") idempotencyKey?: string;

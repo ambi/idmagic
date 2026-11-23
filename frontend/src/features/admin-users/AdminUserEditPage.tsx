@@ -124,7 +124,7 @@ export function AdminUserEditPage({
     setBusy(true)
     setError('')
     try {
-      await updateAdminUser(csrfToken, user.id, input)
+      await updateAdminUser(csrfToken, user.id, input, user)
       window.location.assign(detailPath)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.updateFailed)

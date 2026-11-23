@@ -63,3 +63,20 @@ func (r *TenantRepository) Save(_ context.Context, tenant *tenancydomain.Tenant)
 	r.tenants[tenant.ID] = &cloned
 	return nil
 }
+
+func (r *TenantRepository) Update(_ context.Context, id string, change func(*tenancydomain.Tenant) (*tenancydomain.Tenant, error)) (*tenancydomain.Tenant, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var current *tenancydomain.Tenant
+	if stored := r.tenants[id]; stored != nil {
+		cloned := *stored
+		current = &cloned
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	cloned := *updated
+	r.tenants[id] = &cloned
+	return updated, nil
+}

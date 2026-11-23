@@ -57,7 +57,7 @@ export function AdminApplicationDetailPage({
     setBusy(true)
     setError('')
     try {
-      await deleteAdminApplication(csrfToken, app.id)
+      await deleteAdminApplication(csrfToken, app.id, app)
       window.location.assign(listURL())
     } catch (cause) {
       setError(messageOf(cause, t.applicationDeleteFailedError))

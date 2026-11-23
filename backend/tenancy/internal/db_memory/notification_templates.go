@@ -84,3 +84,29 @@ func (r *NotificationTemplateRepository) Delete(
 	delete(r.overrides, storageKey)
 	return true, nil
 }
+
+func (r *NotificationTemplateRepository) Update(_ context.Context, tenantID string, key notificationports.TemplateKey, locale string, change func(*notificationports.TemplateOverride) (*notificationports.TemplateOverride, error)) (*notificationports.TemplateOverride, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	storageKey := notificationTemplateKey(tenantID, key, locale)
+	var current *notificationports.TemplateOverride
+	if stored := r.overrides[storageKey]; stored != nil {
+		cloned := *stored
+		current = &cloned
+	}
+	updated, err := change(current)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		delete(r.overrides, storageKey)
+		return nil, nil
+	}
+	cloned := *updated
+	if current != nil && !current.CreatedAt.IsZero() {
+		cloned.CreatedAt = current.CreatedAt
+	}
+	r.overrides[storageKey] = &cloned
+	result := cloned
+	return &result, nil
+}

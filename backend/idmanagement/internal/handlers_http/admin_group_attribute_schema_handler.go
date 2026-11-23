@@ -47,7 +47,7 @@ func handleGetGroupAttributeSchema(d Deps, c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toGroupAttributeSchemaResponse(schema))
+	return support.ETagJSON(c, http.StatusOK, toGroupAttributeSchemaResponse(schema))
 }
 
 func handleUpdateGroupAttributeSchema(d Deps, c *echo.Context) error {
@@ -62,8 +62,15 @@ func handleUpdateGroupAttributeSchema(d Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
 	schema, err := groupusecases.UpdateGroupAttributeSchema(
 		c.Request().Context(), d.GroupAttrSchemaRepo, actor.TenantID, input.Attributes, time.Now().UTC(),
+		func(current *groupdomain.TenantGroupAttributeSchema) error {
+			return condition.Check(toGroupAttributeSchemaResponse(current))
+		},
 	)
 	if err != nil {
 		if errors.Is(err, groupusecases.ErrInvalidGroupAttributeSchema) {
@@ -80,5 +87,5 @@ func handleUpdateGroupAttributeSchema(d Deps, c *echo.Context) error {
 			At: time.Now().UTC(), ActorUserID: actor.ID, TenantID: actor.TenantID, AttributeKeys: keys,
 		})
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toGroupAttributeSchemaResponse(schema))
+	return support.ETagJSON(c, http.StatusOK, toGroupAttributeSchemaResponse(schema))
 }

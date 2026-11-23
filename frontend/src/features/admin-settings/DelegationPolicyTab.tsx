@@ -52,7 +52,11 @@ export function DelegationPolicyTab({
 
     setSaving(true)
     try {
-      const next = await updateAdminSettings(csrfToken, { max_delegation_depth: requested })
+      const next = await updateAdminSettings(
+        csrfToken,
+        { max_delegation_depth: requested },
+        settings,
+      )
       onSaved(next)
       setSavedDepth(next.max_delegation_depth)
       setDepth(next.max_delegation_depth?.toString() ?? '')

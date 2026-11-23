@@ -294,7 +294,11 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	if policy["application_id"] != created.Application.ID {
 		t.Fatalf("app policy=%v", policy)
 	}
-	assertApplicationTime(t, policy, "created_at", "updated_at")
+	for _, field := range []string{"created_at", "updated_at"} {
+		if policy[field] != "0001-01-01T00:00:00Z" {
+			t.Fatalf("unset policy %s=%v", field, policy[field])
+		}
+	}
 	var appView struct {
 		Policy struct {
 			Rules []map[string]any `json:"rules"`

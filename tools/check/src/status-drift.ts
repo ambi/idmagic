@@ -162,7 +162,7 @@ const PIPELINE = new Set([500])
  * of the handler's text, so S2 never calls these over-declared. S1 still reports
  * them where the handler itself writes one.
  */
-const ERROR_HANDLER = new Set([401, 403, 422, 500])
+const ERROR_HANDLER = new Set([401, 403, 412, 422, 500])
 
 /** The text between `source[open]` and its matching brace, braces excluded. */
 function sliceBalanced(source: string, open: number, pair = '{}'): string | undefined {

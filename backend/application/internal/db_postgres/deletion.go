@@ -33,6 +33,11 @@ func (r *ApplicationRepository) DeleteWithRelated(ctx context.Context, app *appd
 	if app == nil {
 		return appports.ErrApplicationNotFound
 	}
+	if participants.CheckCurrent != nil {
+		if err := participants.CheckCurrent(app); err != nil {
+			return err
+		}
+	}
 	consents := 0
 	if app.Protocol != nil && app.Protocol.Type == appdomain.ApplicationProtocolOIDC {
 		if r.ProtocolLinkers.DeleteOIDC == nil {

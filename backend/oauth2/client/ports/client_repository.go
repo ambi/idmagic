@@ -17,6 +17,8 @@ type OAuth2ClientRepository interface {
 	// 存在と、Agent に束縛できる認証方式か (OAuth2Client.AgentClientAuthMethodAllowed) を調べる。
 	LookupBindableClient(ctx context.Context, tenantID, clientID string) (exists, agentAuthMethodAllowed bool, err error)
 	Save(ctx context.Context, c *oauthdomain.OAuth2Client) error
+	// Update は最新のクライアントを排他して変更する。nil の結果は削除を表す。
+	Update(ctx context.Context, tenantID, clientID string, change func(*oauthdomain.OAuth2Client) (*oauthdomain.OAuth2Client, error)) (*oauthdomain.OAuth2Client, error)
 	Delete(ctx context.Context, tenantID, clientID string) error
 	FindAll(ctx context.Context, tenantID string) ([]*oauthdomain.OAuth2Client, error)
 	// ListPage returns up to limit clients for tenantID ordered by client_id

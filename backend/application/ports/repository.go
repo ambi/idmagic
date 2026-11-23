@@ -29,6 +29,7 @@ type ApplicationRepository interface {
 	FindByProtocol(ctx context.Context, tenantID string, protocolType appdomain.ApplicationProtocolType, key string) (*appdomain.Application, error)
 	// Save は Application を upsert する。
 	Save(ctx context.Context, app *appdomain.Application) error
+	Update(ctx context.Context, tenantID, applicationID string, change func(*appdomain.Application) (*appdomain.Application, error)) (*appdomain.Application, error)
 	// Create は Application 行と protocol row.application_id を原子的に作成する。
 	Create(ctx context.Context, app *appdomain.Application) error
 	// Delete は application_id に一致する Application を削除する (冪等)。
@@ -42,6 +43,7 @@ type ApplicationRepository interface {
 
 // DeletionParticipants は、削除に伴って同じ確定境界へ参加する操作である。
 type DeletionParticipants struct {
+	CheckCurrent   func(*appdomain.Application) error
 	Assignments    AssignmentRepository
 	Policy         SignInPolicyDeleter
 	Icons          ApplicationIconStore

@@ -20,6 +20,8 @@ type GroupRepository interface {
 	Count(ctx context.Context, tenantID string) (int64, error)
 	FindByID(ctx context.Context, tenantID, id string) (*groupdomain.Group, error)
 	Save(ctx context.Context, group *groupdomain.Group) error
+	// Update は最新の集約を排他して変更する。nil の結果は集約の削除を表す。
+	Update(ctx context.Context, tenantID, id string, change GroupChange) (*groupdomain.Group, error)
 	// SetRoleDelegation だけが既存の承認を変更する。Save は承認を保ち、上流管理の印を解除しない。
 	SetRoleDelegation(ctx context.Context, tenantID, groupID string, delegation *groupdomain.GroupRoleDelegation, now time.Time) error
 	Delete(ctx context.Context, tenantID, id string) error
@@ -41,3 +43,6 @@ type GroupRepository interface {
 	ListDynamicRules(ctx context.Context, tenantID string) ([]*groupdomain.DynamicGroupRule, error)
 	SaveDynamicRule(ctx context.Context, rule *groupdomain.DynamicGroupRule) error
 }
+
+// GroupChange は外部への作用を行わず、排他した集約を検査して変更する。
+type GroupChange func(*groupdomain.Group, []*groupdomain.GroupMember, *groupdomain.DynamicGroupRule) (*groupdomain.Group, error)

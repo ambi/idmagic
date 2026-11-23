@@ -28,6 +28,7 @@ var (
 // UpdateInput はテナント設定の部分更新を表す。nil のフィールドは現状維持。
 // PasswordPolicyOverride にゼロ値を渡すと override を解除する (global default 継承)。
 type UpdateInput struct {
+	CheckCurrent           func(*tenancydomain.Tenant) error
 	DisplayName            *string
 	PasswordPolicyOverride *tenancydomain.PasswordPolicyOverride
 	// MaxDelegationDepth は Token Exchange の act チェーン深さ上限の上書き。
@@ -123,12 +124,19 @@ func Update(
 	floor PolicyFloor,
 	now time.Time,
 ) (*tenancydomain.Tenant, error) {
-	tenant, err := repo.FindByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+	return repo.Update(ctx, id, func(tenant *tenancydomain.Tenant) (*tenancydomain.Tenant, error) {
+		return updateTenant(tenant, input, floor, now)
+	})
+}
+
+func updateTenant(tenant *tenancydomain.Tenant, input UpdateInput, floor PolicyFloor, now time.Time) (*tenancydomain.Tenant, error) {
 	if tenant == nil {
 		return nil, ErrTenantNotFound
+	}
+	if input.CheckCurrent != nil {
+		if err := input.CheckCurrent(tenant); err != nil {
+			return nil, err
+		}
 	}
 	updated := *tenant
 	if input.DisplayName != nil {
@@ -193,9 +201,6 @@ func Update(
 	}
 	t := normalizeNow(now)
 	updated.UpdatedAt = t
-	if err := repo.Save(ctx, &updated); err != nil {
-		return nil, err
-	}
 	return &updated, nil
 }
 

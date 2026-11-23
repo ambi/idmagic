@@ -156,6 +156,7 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
           body_html: draft.bodyHtml,
           from_display_name: draft.fromDisplayName,
         },
+        detail,
       )
       applyDetail(saved)
       setNotice(t.savedNotice)
@@ -173,7 +174,9 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
     setNotice('')
     setBusy(true)
     try {
-      applyDetail(await resetNotificationTemplate(csrfToken, detail.template_key, detail.locale))
+      applyDetail(
+        await resetNotificationTemplate(csrfToken, detail.template_key, detail.locale, detail),
+      )
       setNotice(t.resetNotice)
       setConfirmReset(false)
       await loadList()

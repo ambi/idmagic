@@ -112,14 +112,18 @@ export function BrandingTab({ csrfToken }: { csrfToken: string }) {
     setError('')
     setNotice('')
     try {
-      const next = await updateBranding(csrfToken, {
-        product_name: productName.trim(),
-        primary_color: primaryColor.trim(),
-        accent_color: accentColor.trim(),
-        footer_link_1: { label: footerLink1Label.trim(), url: footerLink1URL.trim() },
-        footer_link_2: { label: footerLink2Label.trim(), url: footerLink2URL.trim() },
-        footer_text: footerText.trim(),
-      })
+      const next = await updateBranding(
+        csrfToken,
+        {
+          product_name: productName.trim(),
+          primary_color: primaryColor.trim(),
+          accent_color: accentColor.trim(),
+          footer_link_1: { label: footerLink1Label.trim(), url: footerLink1URL.trim() },
+          footer_link_2: { label: footerLink2Label.trim(), url: footerLink2URL.trim() },
+          footer_text: footerText.trim(),
+        },
+        branding ?? undefined,
+      )
       applyBranding(next)
       setNotice(t.brandingUpdatedNotice)
     } catch (cause) {

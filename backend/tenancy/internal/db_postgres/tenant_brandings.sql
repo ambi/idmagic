@@ -5,6 +5,10 @@ SELECT tenant_id, product_name, logo_object_key, logo_url, favicon_object_key, f
 FROM tenant_brandings
 WHERE tenant_id = $1;
 
+-- name: LockTenantForUpdate :one
+-- 未保存の設定も直列化できるよう、必ず存在する所有テナントの行を固定する。
+SELECT id FROM tenants WHERE id = $1 FOR UPDATE;
+
 -- name: SaveTenantBranding :exec
 INSERT INTO tenant_brandings (
     tenant_id, product_name, logo_object_key, logo_url, favicon_object_key, favicon_url,

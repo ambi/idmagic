@@ -24,15 +24,19 @@ export function AdminTenantGroupAttributeCreatePage({
     setError('')
     try {
       const schema = await getTenantGroupAttributeSchema()
-      await updateTenantGroupAttributeSchema(csrfToken, [
-        ...schema.attributes,
-        {
-          ...draft,
-          key: draft.key.trim(),
-          label: draft.label?.trim() || undefined,
-          multi_valued: draft.type === 'string_array',
-        },
-      ])
+      await updateTenantGroupAttributeSchema(
+        csrfToken,
+        [
+          ...schema.attributes,
+          {
+            ...draft,
+            key: draft.key.trim(),
+            label: draft.label?.trim() || undefined,
+            multi_valued: draft.type === 'string_array',
+          },
+        ],
+        schema,
+      )
       back()
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailedError)

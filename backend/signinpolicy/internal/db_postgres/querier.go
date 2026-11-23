@@ -13,6 +13,8 @@ type Querier interface {
 	GetAppSignInPolicy(ctx context.Context, arg GetAppSignInPolicyParams) (*GetAppSignInPolicyRow, error)
 	GetTenantDefaultSignInPolicy(ctx context.Context, tenantID string) (*TenantDefaultSignInPolicy, error)
 	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
+	LockApplicationForPolicy(ctx context.Context, arg LockApplicationForPolicyParams) (string, error)
+	LockTenantForDefaultPolicy(ctx context.Context, id string) (string, error)
 	UpsertAppSignInPolicy(ctx context.Context, arg UpsertAppSignInPolicyParams) error
 	UpsertTenantDefaultSignInPolicy(ctx context.Context, arg UpsertTenantDefaultSignInPolicyParams) error
 }

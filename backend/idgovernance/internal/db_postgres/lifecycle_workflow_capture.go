@@ -10,6 +10,7 @@ import (
 	igports "github.com/ambi/idmagic/backend/idgovernance/internal/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
@@ -30,7 +31,7 @@ func NewUserWorkflowCapture(pool sharedpg.DB, usersInTx func(pgx.Tx) userports.U
 
 var _ igports.UserWorkflowCapture = (*UserWorkflowCapture)(nil)
 
-func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep) error {
+func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdomain.User, runs []*igdomain.WorkflowRun, steps [][]igdomain.WorkflowStep, changes ...userports.UserChange) error {
 	if len(runs) != len(steps) {
 		return ErrInvalidWorkflowCapture
 	}
@@ -39,8 +40,19 @@ func (c *UserWorkflowCapture) SaveUserAndRuns(ctx context.Context, user *userdom
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := c.usersInTx(tx).Save(ctx, user); err != nil {
-		return err
+	if len(changes) > 0 {
+		saved, err := c.usersInTx(tx).Update(ctx, user.ID, changes[0])
+		if err != nil {
+			return err
+		}
+		if saved == nil {
+			return kernel.ErrPreconditionFailed
+		}
+		*user = *saved
+	} else {
+		if err := c.usersInTx(tx).Save(ctx, user); err != nil {
+			return err
+		}
 	}
 	for i, run := range runs {
 		if _, err := saveWorkflowRun(ctx, tx, run, steps[i]); err != nil {

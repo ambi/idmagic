@@ -328,6 +328,7 @@ op UpdateTenantQuota(
 ): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | IdMagic.Contract.StepUpAuthenticationRequiredResponse | UpdateTenantQuotaError403 | UpdateTenantQuotaError404;
 
 model GetAdminSettingsSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminSettingsResponse;
 }
@@ -398,6 +399,7 @@ op GetAdminIntegrationEndpoints(
 ): GetAdminIntegrationEndpointsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | GetAdminIntegrationEndpointsError403 | GetAdminIntegrationEndpointsError503;
 
 model UpdateAdminSettingsSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminSettingsResponse;
 }
@@ -431,10 +433,12 @@ model UpdateAdminSettingsError403 {
 @route("/api/admin/v1/settings")
 @patch
 op UpdateAdminSettings(
+  ...IdMagic.Contract.IfMatchHeaders,
   @body body: IdMagic.Contract.AdminSettingsUpdateRequest
-): UpdateAdminSettingsSuccess_200 | UpdateAdminSettingsError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminSettingsError403;
+): UpdateAdminSettingsSuccess_200 | UpdateAdminSettingsError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminSettingsError403 | IdMagic.Contract.PreconditionFailedResponse;
 
 model GetTenantUserAttributeSchemaSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantUserAttributeSchemaResponse;
 }
@@ -514,10 +518,12 @@ model UpdateTenantUserAttributeSchemaError409 {
 @route("/api/admin/v1/tenant/user-attribute-schema")
 @put
 op UpdateTenantUserAttributeSchema(
+  ...IdMagic.Contract.IfMatchHeaders,
   @body body: IdMagic.Contract.TenantUserAttributeSchemaUpdateRequest
-): UpdateTenantUserAttributeSchemaSuccess_200 | UpdateTenantUserAttributeSchemaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantUserAttributeSchemaError403 | UpdateTenantUserAttributeSchemaError409 | UpdateTenantUserAttributeSchemaError422;
+): UpdateTenantUserAttributeSchemaSuccess_200 | UpdateTenantUserAttributeSchemaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantUserAttributeSchemaError403 | UpdateTenantUserAttributeSchemaError409 | UpdateTenantUserAttributeSchemaError422 | IdMagic.Contract.PreconditionFailedResponse;
 
 model GetTenantGroupAttributeSchemaSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
 }
@@ -586,15 +592,18 @@ model UpdateTenantGroupAttributeSchemaError422 {
 @route("/api/admin/v1/tenant/group-attribute-schema")
 @put
 op UpdateTenantGroupAttributeSchema(
+  ...IdMagic.Contract.IfMatchHeaders,
   @body body: IdMagic.Contract.TenantGroupAttributeSchemaUpdateRequest
-): UpdateTenantGroupAttributeSchemaSuccess_200 | UpdateTenantGroupAttributeSchemaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantGroupAttributeSchemaError403 | UpdateTenantGroupAttributeSchemaError422;
+): UpdateTenantGroupAttributeSchemaSuccess_200 | UpdateTenantGroupAttributeSchemaError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantGroupAttributeSchemaError403 | UpdateTenantGroupAttributeSchemaError422 | IdMagic.Contract.PreconditionFailedResponse;
 
 model GetTenantBrandingSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantBrandingResponse;
 }
 
 model GetTenantBrandingSuccess_304 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 304;
 }
 
@@ -608,6 +617,7 @@ op GetTenantBranding(
 ): GetTenantBrandingSuccess_200 | GetTenantBrandingSuccess_304;
 
 model UpdateTenantBrandingSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.TenantBrandingResponse;
 }
@@ -640,10 +650,11 @@ model UpdateTenantBrandingError403 {
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantBranding")
 @route("/api/admin/v1/tenant/branding")
-@put
+@patch
 op UpdateTenantBranding(
+  ...IdMagic.Contract.IfMatchHeaders,
   @body body: IdMagic.Contract.TenantBrandingUpdateRequest
-): UpdateTenantBrandingSuccess_200 | UpdateTenantBrandingError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantBrandingError403;
+): UpdateTenantBrandingSuccess_200 | UpdateTenantBrandingError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateTenantBrandingError403 | IdMagic.Contract.PreconditionFailedResponse;
 
 model UploadTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
@@ -750,6 +761,7 @@ op ListNotificationTemplates(
 ): ListNotificationTemplatesSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListNotificationTemplatesError403;
 
 model GetNotificationTemplateSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.NotificationTemplateDetail;
 }
@@ -820,12 +832,14 @@ model UpdateNotificationTemplateError403 {
 @route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}")
 @put
 op UpdateNotificationTemplate(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string,
   @body body: IdMagic.Contract.NotificationTemplateUpdateRequest
-): UpdateNotificationTemplateSuccess_200 | UpdateNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateNotificationTemplateError403;
+): UpdateNotificationTemplateSuccess_200 | UpdateNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateNotificationTemplateError403 | IdMagic.Contract.PreconditionFailedResponse;
 
 model ResetNotificationTemplateSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.NotificationTemplateDetail;
 }
@@ -859,9 +873,10 @@ model ResetNotificationTemplateError403 {
 @route("/api/admin/v1/tenant/notification-templates/{template_key}/{locale}")
 @delete
 op ResetNotificationTemplate(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string
-): ResetNotificationTemplateSuccess_200 | ResetNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | ResetNotificationTemplateError403;
+): ResetNotificationTemplateSuccess_200 | ResetNotificationTemplateError400 | IdMagic.Contract.AuthenticationRequiredResponse | ResetNotificationTemplateError403 | IdMagic.Contract.PreconditionFailedResponse;
 
 model PreviewNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;

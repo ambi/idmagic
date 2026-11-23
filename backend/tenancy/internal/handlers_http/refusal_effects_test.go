@@ -312,7 +312,7 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 	// 未設定のテナントは組込みデフォルトを使う。拒否の後もここへ戻ることを確かめる。
 	server.assertNoBrandingStoredAndSystemDefault(t)
 
-	refusedLink := server.send(t, http.MethodPut, path, map[string]any{
+	refusedLink := server.send(t, http.MethodPatch, path, map[string]any{
 		"footer_link_1": map[string]any{"label": "ヘルプ", "url": "javascript:alert(1)"},
 	})
 	if refusedLink.Code != http.StatusBadRequest {
@@ -337,7 +337,7 @@ func TestUpdateBrandingRefusesUnsafeInputAndKeepsTheSystemDefault(t *testing.T) 
 
 	// 対照: 同じ入口で、低コントラストという理由では拒否しない。branding の検証は
 	// 安全でない入力だけを止め、好みの問題には踏み込まない。
-	accepted := server.send(t, http.MethodPut, path, map[string]any{"primary_color": "#eeeeee"})
+	accepted := server.send(t, http.MethodPatch, path, map[string]any{"primary_color": "#eeeeee"})
 	if accepted.Code != http.StatusOK {
 		t.Fatalf("対照 status=%d body=%s, want 200", accepted.Code, accepted.Body.String())
 	}
@@ -358,7 +358,7 @@ func TestUpdateBrandingRefusesIncompleteFooterLinkAndSavesNothing(t *testing.T) 
 	server := newRefusalServer(t, refusalAdmin("acme"))
 	const path = "/realms/acme/api/admin/v1/tenant/branding"
 
-	refused := server.send(t, http.MethodPut, path, map[string]any{
+	refused := server.send(t, http.MethodPatch, path, map[string]any{
 		"footer_link_1": map[string]any{"label": "ヘルプ"},
 	})
 	if refused.Code != http.StatusBadRequest {
@@ -370,7 +370,7 @@ func TestUpdateBrandingRefusesIncompleteFooterLinkAndSavesNothing(t *testing.T) 
 	server.assertNoBrandingStoredAndSystemDefault(t)
 
 	// 対照: label と url が揃えば同じ入口で保存され、公開 branding にも出る。
-	accepted := server.send(t, http.MethodPut, path, map[string]any{
+	accepted := server.send(t, http.MethodPatch, path, map[string]any{
 		"footer_link_1": map[string]any{"label": "ヘルプ", "url": "https://support.example.com"},
 	})
 	if accepted.Code != http.StatusOK {

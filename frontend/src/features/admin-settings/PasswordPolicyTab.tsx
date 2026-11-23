@@ -80,9 +80,13 @@ export function PasswordPolicyTab({
       if (data.maxLength !== undefined) policy.max_length = data.maxLength
       if (data.historyDepth !== undefined) policy.history_depth = data.historyDepth
       if (data.maxAgeDays !== undefined) policy.max_age_days = data.maxAgeDays
-      const next = await updateAdminSettings(csrfToken, {
-        password_policy_override: policy,
-      })
+      const next = await updateAdminSettings(
+        csrfToken,
+        {
+          password_policy_override: policy,
+        },
+        settings,
+      )
       onSaved(next)
       setMinLength(next.password_policy_override?.min_length?.toString() ?? '')
       setMaxLength(next.password_policy_override?.max_length?.toString() ?? '')

@@ -128,6 +128,9 @@ func TestIssueClientSecretRejectsNonSecretClient(t *testing.T) {
 	repo := oauthmemory.NewClientRepository()
 	client := secretClient(ctx, t, repo, now)
 	client.TokenEndpointAuthMethod = oauthdomain.AuthMethodPrivateKeyJwt
+	if err := repo.Save(ctx, client); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := IssueClientSecret(ctx, AdminOAuth2ClientDeps{ClientRepo: repo}, IssueClientSecretInput{
 		ClientID: client.ClientID, ExpiresInDays: 90, Now: now,

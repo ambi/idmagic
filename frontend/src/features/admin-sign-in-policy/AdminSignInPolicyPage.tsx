@@ -25,6 +25,7 @@ import type {
   RequiredAuthnStrength,
   SignInRule,
   TenantDefaultSignInPolicy,
+  TenantDefaultSignInPolicyView,
 } from '../../types'
 import {
   adminSignInPolicyDictionary,
@@ -119,6 +120,8 @@ function DefaultPolicyCard({
   unenrolledUserCount: number
 }) {
   const [rule, setRule] = useState<SignInRule | undefined>(initial.rules?.[0])
+  const [snapshot, setSnapshot] = useState(initial)
+  const [currentUnenrolledCount, setCurrentUnenrolledCount] = useState(unenrolledUserCount)
   const [editing, setEditing] = useState(false)
   const t = useDictionary(adminSignInPolicyDictionary)
 
@@ -141,9 +144,9 @@ function DefaultPolicyCard({
         ) : null}
       </header>
       <div className="mt-5">
-        {unenrolledUserCount > 0 ? (
+        {currentUnenrolledCount > 0 ? (
           <Alert variant="destructive" className="mb-4">
-            {t.unenrolledWarning.replace('{count}', String(unenrolledUserCount))}
+            {t.unenrolledWarning.replace('{count}', String(currentUnenrolledCount))}
           </Alert>
         ) : null}
         {!editing ? (
@@ -167,11 +170,14 @@ function DefaultPolicyCard({
           </dl>
         ) : (
           <DefaultPolicyForm
+            snapshot={snapshot}
             csrfToken={csrfToken}
             rule={rule}
             onCancel={() => setEditing(false)}
             onSaved={(next) => {
-              setRule(next.rules?.[0])
+              setSnapshot(next.policy)
+              setRule(next.policy.rules?.[0])
+              setCurrentUnenrolledCount(next.unenrolled_user_count)
               setEditing(false)
             }}
           />
@@ -365,14 +371,16 @@ export function DefaultPolicyFormPresentation({
 
 function DefaultPolicyForm({
   csrfToken,
+  snapshot,
   rule,
   onCancel,
   onSaved,
 }: {
   csrfToken: string
+  snapshot: TenantDefaultSignInPolicy
   rule?: SignInRule
   onCancel: () => void
-  onSaved: (next: TenantDefaultSignInPolicy) => void
+  onSaved: (next: TenantDefaultSignInPolicyView) => void
 }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -382,7 +390,7 @@ function DefaultPolicyForm({
     setSaving(true)
     setError('')
     try {
-      const next = await updateTenantDefaultSignInPolicy(csrfToken, rules)
+      const next = await updateTenantDefaultSignInPolicy(csrfToken, rules, snapshot)
       onSaved(next)
     } catch (cause) {
       setError(

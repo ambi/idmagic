@@ -45,7 +45,7 @@ export function AdminTenantAttributesPage({
     setError('')
     setNotice('')
     try {
-      const result = await updateTenantUserAttributeSchema(csrfToken, next)
+      const result = await updateTenantUserAttributeSchema(csrfToken, next, attributes)
       setAttributes(result.attributes)
       setNotice(success)
       return true

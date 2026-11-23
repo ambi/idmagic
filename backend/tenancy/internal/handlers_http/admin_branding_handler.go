@@ -76,7 +76,14 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
 	branding, err := tenancyusecases.UpdateBranding(c.Request().Context(), d.BrandingRepo, actor.TenantID, tenancyusecases.BrandingUpdateInput{
+		CheckCurrent: func(current *tenancydomain.TenantBranding) error {
+			return condition.Match(brandingETag(current), true)
+		},
 		ProductName:  input.ProductName,
 		PrimaryColor: input.PrimaryColor,
 		AccentColor:  input.AccentColor,
@@ -93,7 +100,7 @@ func (d Deps) handleUpdateBranding(c *echo.Context) error {
 			ChangedFields: brandingChangedFields(input),
 		})
 	}
-	return support.NoStoreJSON(c, http.StatusOK, toBrandingResponse(branding))
+	return support.ETagJSON(c, http.StatusOK, toBrandingResponse(branding), brandingETag(branding))
 }
 
 func (d Deps) handleUploadBrandingAsset(c *echo.Context) error {

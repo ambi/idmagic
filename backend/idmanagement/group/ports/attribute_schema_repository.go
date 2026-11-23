@@ -10,5 +10,6 @@ import (
 type TenantGroupAttributeSchemaRepository interface {
 	FindByTenant(ctx context.Context, tenantID string) (*groupdomain.TenantGroupAttributeSchema, error)
 	Save(ctx context.Context, schema *groupdomain.TenantGroupAttributeSchema) error
+	Update(ctx context.Context, tenantID string, change func(*groupdomain.TenantGroupAttributeSchema) (*groupdomain.TenantGroupAttributeSchema, error)) (*groupdomain.TenantGroupAttributeSchema, error)
 	Delete(ctx context.Context, tenantID string) error
 }

@@ -33,7 +33,6 @@ import type {
   ApplicationAssignment,
   ApplicationStatus,
   AppSignInPolicyView,
-  TenantDefaultSignInPolicy,
   TenantDefaultSignInPolicyView,
   SignInRule,
   SamlIDPProfileMode,
@@ -108,7 +107,16 @@ import type {
   RelationTupleWriteResult,
   ResourceTypeDefinition,
 } from '../types'
-import { AuthenticationAPIError, adminRequest, request, requestPage, tenantURL } from './core'
+import {
+  AuthenticationAPIError,
+  adminRequest,
+  conditionalAdminRequest,
+  readSnapshotIfNeeded,
+  replaceResource,
+  request,
+  requestPage,
+  tenantURL,
+} from './core'
 
 type AdminUserListResponse = { users: AdminUser[]; total_users: number }
 type AdminConsentListResponse = { consents: AdminConsent[] }
@@ -237,10 +245,11 @@ export async function updateAdminUser(
   csrfToken: string,
   id: string,
   input: UpdateAdminUserInput,
+  snapshot?: object,
 ): Promise<AdminUser> {
   return request(
     `/api/admin/v1/users/${encodeURIComponent(id)}`,
-    adminRequest(csrfToken, 'PATCH', input),
+    conditionalAdminRequest(csrfToken, 'PATCH', input, snapshot),
   )
 }
 
@@ -294,11 +303,13 @@ export async function deleteAdminUser(
   csrfToken: string,
   id: string,
   options?: { purge?: boolean },
+  snapshot?: object,
 ): Promise<void> {
+  snapshot = await readSnapshotIfNeeded(`/api/admin/v1/users/${encodeURIComponent(id)}`, snapshot)
   const query = options?.purge ? '?purge=true' : ''
   await request(
     `/api/admin/v1/users/${encodeURIComponent(id)}${query}`,
-    adminRequest(csrfToken, 'DELETE'),
+    conditionalAdminRequest(csrfToken, 'DELETE', undefined, snapshot),
   )
 }
 
@@ -1188,8 +1199,12 @@ export async function getAdminIntegrationEndpoints(): Promise<AdminIntegrationEn
 export async function updateAdminSettings(
   csrfToken: string,
   input: UpdateAdminSettingsInput,
+  snapshot?: object,
 ): Promise<AdminSettings> {
-  return request('/api/admin/v1/settings', adminRequest(csrfToken, 'PATCH', input))
+  return request(
+    '/api/admin/v1/settings',
+    conditionalAdminRequest(csrfToken, 'PATCH', input, snapshot),
+  )
 }
 
 export type IdentityProviderConnection = {
@@ -1363,19 +1378,21 @@ export async function updateNotificationTemplate(
   templateKey: string,
   locale: string,
   input: NotificationTemplateInput,
+  snapshot?: object,
 ): Promise<NotificationTemplateDetail> {
-  return request(
-    notificationTemplatePath(templateKey, locale),
-    adminRequest(csrfToken, 'PUT', input),
-  )
+  return replaceResource(notificationTemplatePath(templateKey, locale), csrfToken, input, snapshot)
 }
 
 export async function resetNotificationTemplate(
   csrfToken: string,
   templateKey: string,
   locale: string,
+  snapshot?: object,
 ): Promise<NotificationTemplateDetail> {
-  return request(notificationTemplatePath(templateKey, locale), adminRequest(csrfToken, 'DELETE'))
+  return request(
+    notificationTemplatePath(templateKey, locale),
+    conditionalAdminRequest(csrfToken, 'DELETE', undefined, snapshot),
+  )
 }
 
 export async function previewNotificationTemplate(
@@ -1409,10 +1426,13 @@ export async function getTenantUserAttributeSchema(): Promise<TenantUserAttribut
 export async function updateTenantUserAttributeSchema(
   csrfToken: string,
   attributes: UserAttributeDef[],
+  snapshot?: object,
 ): Promise<TenantUserAttributeSchema> {
-  return request(
+  return replaceResource(
     '/api/admin/v1/tenant/user-attribute-schema',
-    adminRequest(csrfToken, 'PUT', { attributes }),
+    csrfToken,
+    { attributes },
+    snapshot,
   )
 }
 
@@ -1423,10 +1443,13 @@ export async function getTenantGroupAttributeSchema(): Promise<TenantGroupAttrib
 export async function updateTenantGroupAttributeSchema(
   csrfToken: string,
   attributes: GroupAttributeDef[],
+  snapshot?: object,
 ): Promise<TenantGroupAttributeSchema> {
-  return request(
+  return replaceResource(
     '/api/admin/v1/tenant/group-attribute-schema',
-    adminRequest(csrfToken, 'PUT', { attributes }),
+    csrfToken,
+    { attributes },
+    snapshot,
   )
 }
 
@@ -1580,15 +1603,24 @@ export async function updateAdminGroup(
   csrfToken: string,
   id: string,
   input: UpdateAdminGroupInput,
+  snapshot?: object,
 ): Promise<AdminGroup> {
   return request(
     `/api/admin/v1/groups/${encodeURIComponent(id)}`,
-    adminRequest(csrfToken, 'PATCH', input),
+    conditionalAdminRequest(csrfToken, 'PATCH', input, snapshot),
   )
 }
 
-export async function deleteAdminGroup(csrfToken: string, id: string): Promise<void> {
-  await request(`/api/admin/v1/groups/${encodeURIComponent(id)}`, adminRequest(csrfToken, 'DELETE'))
+export async function deleteAdminGroup(
+  csrfToken: string,
+  id: string,
+  snapshot?: object,
+): Promise<void> {
+  snapshot = await readSnapshotIfNeeded(`/api/admin/v1/groups/${encodeURIComponent(id)}`, snapshot)
+  await request(
+    `/api/admin/v1/groups/${encodeURIComponent(id)}`,
+    conditionalAdminRequest(csrfToken, 'DELETE', undefined, snapshot),
+  )
 }
 
 export async function setAdminGroupRoleDelegation(
@@ -2070,10 +2102,11 @@ export async function updateAdminApplication(
   csrfToken: string,
   id: string,
   input: UpdateAdminApplicationInput,
+  snapshot?: object,
 ): Promise<AdminApplication> {
   return request(
     `/api/admin/v1/applications/${encodeURIComponent(id)}`,
-    adminRequest(csrfToken, 'PATCH', input),
+    conditionalAdminRequest(csrfToken, 'PATCH', input, snapshot),
   )
 }
 
@@ -2107,10 +2140,18 @@ export async function deleteApplicationIcon(
   ).application
 }
 
-export async function deleteAdminApplication(csrfToken: string, id: string): Promise<void> {
+export async function deleteAdminApplication(
+  csrfToken: string,
+  id: string,
+  snapshot?: object,
+): Promise<void> {
+  snapshot = await readSnapshotIfNeeded(
+    `/api/admin/v1/applications/${encodeURIComponent(id)}`,
+    snapshot,
+  )
   await request(
     `/api/admin/v1/applications/${encodeURIComponent(id)}`,
-    adminRequest(csrfToken, 'DELETE'),
+    conditionalAdminRequest(csrfToken, 'DELETE', undefined, snapshot),
   )
 }
 
@@ -2163,10 +2204,13 @@ export async function updateAppSignInPolicy(
   csrfToken: string,
   id: string,
   rules: SignInRule[],
+  snapshot?: object,
 ): Promise<AppSignInPolicyView> {
-  return await request<AppSignInPolicyView>(
+  return replaceResource<AppSignInPolicyView>(
     `/api/admin/v1/applications/${encodeURIComponent(id)}/sign-in-policy`,
-    adminRequest(csrfToken, 'PUT', { rules }),
+    csrfToken,
+    { rules },
+    snapshot,
   )
 }
 
@@ -2178,13 +2222,14 @@ export async function getTenantDefaultSignInPolicy(): Promise<TenantDefaultSignI
 export async function updateTenantDefaultSignInPolicy(
   csrfToken: string,
   rules: SignInRule[],
-): Promise<TenantDefaultSignInPolicy> {
-  return (
-    await request<{ policy: TenantDefaultSignInPolicy }>(
-      '/api/admin/v1/default-sign-in-policy',
-      adminRequest(csrfToken, 'PUT', { rules }),
-    )
-  ).policy
+  snapshot?: object,
+): Promise<TenantDefaultSignInPolicyView> {
+  return replaceResource<TenantDefaultSignInPolicyView>(
+    '/api/admin/v1/default-sign-in-policy',
+    csrfToken,
+    { rules },
+    snapshot,
+  )
 }
 
 export type MfaEnrollmentBypass = {

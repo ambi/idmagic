@@ -72,13 +72,18 @@ export function AdminGroupEditPage({
     setSaving(true)
     setError('')
     try {
-      await updateAdminGroup(csrfToken, group.id, {
-        name: nameChanged ? data.name : undefined,
-        description: descriptionChanged ? data.description : undefined,
-        email: emailChanged ? data.email : undefined,
-        attributes: attributesChanged ? nextAttributes : undefined,
-        roles: rolesChanged ? data.roles : undefined,
-      })
+      await updateAdminGroup(
+        csrfToken,
+        group.id,
+        {
+          name: nameChanged ? data.name : undefined,
+          description: descriptionChanged ? data.description : undefined,
+          email: emailChanged ? data.email : undefined,
+          attributes: attributesChanged ? nextAttributes : undefined,
+          roles: rolesChanged ? data.roles : undefined,
+        },
+        group,
+      )
       window.location.assign(detailPath)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.groupUpdateFailedError)

@@ -42,7 +42,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/integration-endpoints", d.handleGetAdminIntegrationEndpoints)
 	g.PATCH("/api/admin/v1/settings", d.handleUpdateAdminSettings)
 	g.GET("/api/branding", d.handleGetBranding)
-	g.PUT("/api/admin/v1/tenant/branding", d.handleUpdateBranding)
+	g.PATCH("/api/admin/v1/tenant/branding", d.handleUpdateBranding)
 	g.POST("/api/admin/v1/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)
 	g.DELETE("/api/admin/v1/tenant/branding/assets/:kind", d.handleDeleteBrandingAsset)
 	g.GET("/tenant-branding-assets/:kind/:id", d.handleGetBrandingAsset)

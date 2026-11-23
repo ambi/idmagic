@@ -522,6 +522,10 @@ func (e errorAppRepo) Create(ctx context.Context, app *appdomain.Application) er
 	return errors.New("database error")
 }
 
+func (e errorAppRepo) Update(context.Context, string, string, func(*appdomain.Application) (*appdomain.Application, error)) (*appdomain.Application, error) {
+	return nil, errors.New("database error")
+}
+
 func (e errorAppRepo) Delete(ctx context.Context, tenantID, id string) error {
 	return errors.New("database error")
 }

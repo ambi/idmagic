@@ -46,6 +46,7 @@ type NotificationTemplateDeps struct {
 // NotificationTemplateInput は上書きの保存とプレビューの入力。プレビューでは空の
 // フィールドが「現在有効な文面を使う」を意味し、保存では 3 点セットが必須。
 type NotificationTemplateInput struct {
+	CheckCurrent    func(*NotificationTemplateDetail) error
 	Subject         string
 	BodyText        string
 	BodyHTML        string
@@ -153,7 +154,7 @@ func UpdateNotificationTemplate(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
 	key notificationports.TemplateKey, locale string, input NotificationTemplateInput, now time.Time,
 ) (*NotificationTemplateDetail, error) {
-	builtin, existing, err := resolveTemplate(ctx, deps, tenantID, key, locale)
+	builtin, _, err := resolveTemplate(ctx, deps, tenantID, key, locale)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +174,18 @@ func UpdateNotificationTemplate(
 		FromDisplayName: def.FromDisplayName,
 		CreatedAt:       normalizeNow(now), UpdatedAt: normalizeNow(now),
 	}
-	if existing != nil && !existing.CreatedAt.IsZero() {
-		override.CreatedAt = existing.CreatedAt
-	}
-	if err := deps.Repo.Save(ctx, override); err != nil {
+	override, err = deps.Repo.Update(ctx, tenantID, key, locale, func(existing *notificationports.TemplateOverride) (*notificationports.TemplateOverride, error) {
+		if input.CheckCurrent != nil {
+			if err := input.CheckCurrent(newTemplateDetail(key, locale, builtin, existing)); err != nil {
+				return nil, err
+			}
+		}
+		if existing != nil && !existing.CreatedAt.IsZero() {
+			override.CreatedAt = existing.CreatedAt
+		}
+		return override, nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return newTemplateDetail(key, locale, builtin, override), nil
@@ -186,13 +195,20 @@ func UpdateNotificationTemplate(
 // 成功する冪等操作。
 func ResetNotificationTemplate(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
-	key notificationports.TemplateKey, locale string,
+	key notificationports.TemplateKey, locale string, checks ...func(*NotificationTemplateDetail) error,
 ) (*NotificationTemplateDetail, error) {
 	builtin, _, err := resolveTemplate(ctx, deps, tenantID, key, locale)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := deps.Repo.Delete(ctx, tenantID, key, locale); err != nil {
+	if _, err := deps.Repo.Update(ctx, tenantID, key, locale, func(current *notificationports.TemplateOverride) (*notificationports.TemplateOverride, error) {
+		for _, check := range checks {
+			if err := check(newTemplateDetail(key, locale, builtin, current)); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+	}); err != nil {
 		return nil, err
 	}
 	return newTemplateDetail(key, locale, builtin, nil), nil

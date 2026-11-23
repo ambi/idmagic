@@ -1083,6 +1083,7 @@ op ListAdminOAuth2Clients(
 ): ListAdminOAuth2ClientsSuccess_200 | IdMagic.Contract.AuthenticationRequiredResponse | ListAdminOAuth2ClientsError403 | ListAdminOAuth2ClientsError400;
 
 model GetAdminOAuth2ClientSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminOAuth2ClientResponse;
 }
@@ -1176,6 +1177,7 @@ op CreateAdminOAuth2Client(
 ): CreateAdminOAuth2ClientSuccess_201 | CreateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | CreateAdminOAuth2ClientError403 | CreateAdminOAuth2ClientError422 | IdMagic.Contract.IdempotencyInvalidRequestResponse | IdMagic.Contract.IdempotencyInProgressResponse | IdMagic.Contract.IdempotencyReusedResponse;
 
 model UpdateAdminOAuth2ClientSuccess_200 {
+  ...IdMagic.Contract.ETagHeaders;
   @statusCode statusCode: 200;
   @body body: IdMagic.Contract.AdminOAuth2ClientResponse;
 }
@@ -1219,9 +1221,10 @@ model UpdateAdminOAuth2ClientError404 {
 @route("/api/admin/v1/clients/{client_id}")
 @patch
 op UpdateAdminOAuth2Client(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path client_id: string,
   @body body: IdMagic.Contract.AdminOAuth2ClientUpdateRequest
-): UpdateAdminOAuth2ClientSuccess_200 | UpdateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminOAuth2ClientError403 | UpdateAdminOAuth2ClientError404;
+): UpdateAdminOAuth2ClientSuccess_200 | UpdateAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | UpdateAdminOAuth2ClientError403 | UpdateAdminOAuth2ClientError404 | IdMagic.Contract.PreconditionFailedResponse;
 
 model DeleteAdminOAuth2ClientSuccess_204 {
   @statusCode statusCode: 204;
@@ -1277,8 +1280,9 @@ model DeleteAdminOAuth2ClientError409 {
 @route("/api/admin/v1/clients/{client_id}")
 @delete
 op DeleteAdminOAuth2Client(
+  ...IdMagic.Contract.IfMatchHeaders,
   @path client_id: string
-): DeleteAdminOAuth2ClientSuccess_204 | DeleteAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminOAuth2ClientError403 | DeleteAdminOAuth2ClientError404 | DeleteAdminOAuth2ClientError409;
+): DeleteAdminOAuth2ClientSuccess_204 | DeleteAdminOAuth2ClientError400 | IdMagic.Contract.AuthenticationRequiredResponse | DeleteAdminOAuth2ClientError403 | DeleteAdminOAuth2ClientError404 | DeleteAdminOAuth2ClientError409 | IdMagic.Contract.PreconditionFailedResponse;
 
 model ListAdminMcpResourceServersSuccess_200 {
   @statusCode statusCode: 200;

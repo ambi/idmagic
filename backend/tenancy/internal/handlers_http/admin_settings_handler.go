@@ -98,7 +98,7 @@ func (d Deps) handleGetAdminSettings(c *echo.Context) error {
 	resp := d.toAdminSettingsResponse(tenant)
 	resp.Quota = tenant.Quota
 	resp.Usage = tenant.Usage
-	return support.NoStoreJSON(c, http.StatusOK, resp)
+	return support.ETagJSON(c, http.StatusOK, resp)
 }
 
 func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
@@ -113,10 +113,32 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	condition, err := support.ReadIfMatch(c)
+	if err != nil {
+		return err
+	}
+	var quota *tenancydomain.TenantQuota
+	var usage *tenancydomain.TenantUsage
+	if d.QuotaRepo != nil {
+		quota, _ = d.QuotaRepo.GetQuota(c.Request().Context(), actor.TenantID)
+		usage, _ = d.QuotaRepo.GetUsage(c.Request().Context(), actor.TenantID)
+	}
+	view := func(current *tenancydomain.Tenant) AdminSettingsResponse {
+		response := d.toAdminSettingsResponse(current)
+		response.Quota, response.Usage = quota, usage
+		return response
+	}
 	now := time.Now().UTC()
 	tenant, err := tenancyusecases.Update(
 		c.Request().Context(), d.TenantRepo, actor.TenantID,
 		tenancyusecases.UpdateInput{
+			CheckCurrent: func(current *tenancydomain.Tenant) error {
+				tag, err := support.EntityTag(view(current))
+				if err != nil {
+					return err
+				}
+				return condition.Match(tag, true)
+			},
 			DisplayName:                input.DisplayName,
 			PasswordPolicyOverride:     input.PasswordPolicyOverride,
 			MaxDelegationDepth:         input.MaxDelegationDepth,
@@ -135,7 +157,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 			ChangedFields: adminSettingsChangedFields(input),
 		})
 	}
-	return support.NoStoreJSON(c, http.StatusOK, d.toAdminSettingsResponse(tenant))
+	return support.ETagJSON(c, http.StatusOK, view(tenant))
 }
 
 func (d Deps) toAdminSettingsResponse(t *tenancydomain.Tenant) AdminSettingsResponse {

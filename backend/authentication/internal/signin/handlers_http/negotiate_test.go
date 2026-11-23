@@ -101,6 +101,10 @@ func newNegotiateFixture(t *testing.T, options ...func(*authentication.RouteDeps
 
 type negotiateMfaPolicy struct{}
 
+func (negotiateMfaPolicy) Update(context.Context, string, func(*policydomain.TenantDefaultSignInPolicy) (*policydomain.TenantDefaultSignInPolicy, error)) (*policydomain.TenantDefaultSignInPolicy, error) {
+	panic("unexpected policy mutation in sign-in fixture")
+}
+
 func (negotiateMfaPolicy) Get(_ context.Context, tenantID string) (*policydomain.TenantDefaultSignInPolicy, error) {
 	return &policydomain.TenantDefaultSignInPolicy{TenantID: tenantID, Rules: []policydomain.SignInRule{{Enabled: true, RequiredAuthn: policydomain.RequiredAuthnLevel{Strength: policydomain.RequiredAuthnMfa}}}}, nil
 }

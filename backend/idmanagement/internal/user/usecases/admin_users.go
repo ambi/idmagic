@@ -20,6 +20,7 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/internal/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -155,14 +156,67 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 // (lifecycle workflow runs) atomically. When a UserMutationCommitter is wired,
 // IdGovernance owns the transactional capture; the nil fallback keeps
 // lightweight unit-test wiring usable (wi-237).
-func captureUserMutation(ctx context.Context, deps AdminUserDeps, before, after *userdomain.User, changed []string, now time.Time) error {
+func captureUserMutation(ctx context.Context, deps AdminUserDeps, before, after *userdomain.User, changed []string, now time.Time, checks ...func(*userdomain.User) error) error {
+	var apply userports.UserChange
+	if len(checks) > 0 && checks[0] != nil {
+		apply = func(current *userdomain.User) (bool, error) {
+			if current.TenantID != after.TenantID {
+				return false, idmusecases.ErrUserNotFound
+			}
+			if err := checks[0](current); err != nil {
+				return false, err
+			}
+			if before.PreferredUsername != after.PreferredUsername {
+				current.PreferredUsername = after.PreferredUsername
+			}
+			if !idmusecases.EqualOptionalString(before.Name, after.Name) {
+				current.Name = after.Name
+			}
+			if !idmusecases.EqualOptionalString(before.GivenName, after.GivenName) {
+				current.GivenName = after.GivenName
+			}
+			if !idmusecases.EqualOptionalString(before.FamilyName, after.FamilyName) {
+				current.FamilyName = after.FamilyName
+			}
+			if !idmusecases.EqualOptionalString(before.Email, after.Email) {
+				current.Email = after.Email
+			}
+			if before.EmailVerified != after.EmailVerified {
+				current.EmailVerified = after.EmailVerified
+			}
+			if !slices.Equal(before.Roles, after.Roles) {
+				current.Roles = after.Roles
+			}
+			if !reflect.DeepEqual(before.Attributes, after.Attributes) {
+				current.Attributes = after.Attributes
+			}
+			if before.Lifecycle.Status != after.Lifecycle.Status {
+				current.Lifecycle.Status = after.Lifecycle.Status
+				current.Lifecycle.StatusChangedAt = after.Lifecycle.StatusChangedAt
+			}
+			current.UpdatedAt = after.UpdatedAt
+			*after = *current
+			return true, after.Validate()
+		}
+	}
 	if deps.UserMutationCommitter == nil {
+		if apply != nil {
+			current, err := deps.UserRepo.Update(ctx, after.ID, apply)
+			if err == nil && current == nil {
+				return kernel.ErrPreconditionFailed
+			}
+			if err == nil {
+				*after = *current
+			}
+			return err
+		}
 		return deps.UserRepo.Save(ctx, after)
 	}
-	return deps.UserMutationCommitter.CommitUserMutation(ctx, userports.UserMutation{Before: before, After: after, Changed: changed, Now: now})
+	return deps.UserMutationCommitter.CommitUserMutation(ctx, userports.UserMutation{Apply: apply, Before: before, After: after, Changed: changed, Now: now})
 }
 
 type UpdateUserInput struct {
+	CheckCurrent      func(*userdomain.User) error
 	ActorUserID       string
 	Sub               string
 	PreferredUsername *string
@@ -264,6 +318,13 @@ func updateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput, fro
 		}
 	}
 	if len(changed) == 0 {
+		if in.CheckCurrent != nil {
+			current, err := deps.UserRepo.Update(ctx, user.ID, func(current *userdomain.User) (bool, error) { return false, in.CheckCurrent(current) })
+			if err == nil && current == nil {
+				return nil, kernel.ErrPreconditionFailed
+			}
+			return current, err
+		}
 		return &updated, nil
 	}
 	now := idmusecases.NormalizedNow(in.Now)
@@ -271,7 +332,7 @@ func updateUser(ctx context.Context, deps AdminUserDeps, in UpdateUserInput, fro
 	if err := updated.Validate(); err != nil {
 		return nil, err
 	}
-	if err := captureUserMutation(ctx, deps, user, &updated, changed, now); err != nil {
+	if err := captureUserMutation(ctx, deps, user, &updated, changed, now, in.CheckCurrent); err != nil {
 		return nil, err
 	}
 	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {
@@ -509,10 +570,11 @@ func changedAttributeFields(before, after map[string]userdomain.AttributeValue) 
 
 // DeleteUserInput は DeleteUser use case 入力。
 type DeleteUserInput struct {
-	ActorUserID string
-	Sub         string
-	Reason      string
-	Now         time.Time
+	CheckCurrent func(*userdomain.User) error
+	ActorUserID  string
+	Sub          string
+	Reason       string
+	Now          time.Time
 }
 
 // DeleteUser は User を Tombstone へ匿名化し、関連する記録を消し、使用量を減らし、UserDeleted を発行する。
@@ -533,6 +595,9 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 		return idmusecases.ErrUserNotFound
 	}
 	now := idmusecases.NormalizedNow(in.Now)
+	if user.IsDeleted() && in.CheckCurrent != nil {
+		return kernel.ErrPreconditionFailed
+	}
 	if user.IsDeleted() {
 		if user.Lifecycle.PendingPurge == nil {
 			return nil
@@ -552,12 +617,23 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 	if err := tombstone.Validate(); err != nil {
 		return err
 	}
-	// Agent の無効化を Tombstone より先に行う。途中で失敗しても User は残り、完全削除の再実行で回収できる。
-	if err := disableOwnedAgents(ctx, deps, user.TenantID, user.ID, in.ActorUserID, now); err != nil {
+	stored, err := deps.UserRepo.Update(ctx, user.ID, func(current *userdomain.User) (bool, error) {
+		if in.CheckCurrent != nil {
+			if err := in.CheckCurrent(current); err != nil {
+				return false, err
+			}
+		}
+		*current = *tombstone
+		return true, nil
+	})
+	if err != nil {
 		return err
 	}
-	if err := deps.UserRepo.Save(ctx, tombstone); err != nil {
-		return err
+	if stored == nil {
+		if in.CheckCurrent != nil {
+			return kernel.ErrPreconditionFailed
+		}
+		return idmusecases.ErrUserNotFound
 	}
 	return finishPurge(ctx, deps, tombstone, now)
 }
@@ -568,6 +644,9 @@ func DeleteUser(ctx context.Context, deps AdminUserDeps, in DeleteUserInput) err
 func finishPurge(ctx context.Context, deps AdminUserDeps, tombstone *userdomain.User, now time.Time) error {
 	pending := *tombstone.Lifecycle.PendingPurge
 	if pending.Step == userdomain.PurgeStepReleaseUsage {
+		if err := disableOwnedAgents(ctx, deps, tombstone.TenantID, tombstone.ID, pending.ActorUserID, now); err != nil {
+			return err
+		}
 		if err := cascadeDeleteForSub(ctx, deps, tombstone.TenantID, tombstone.ID); err != nil {
 			return err
 		}
@@ -625,10 +704,11 @@ var (
 
 // SoftDeleteUserInput は soft-delete (削除予約) の入力。
 type SoftDeleteUserInput struct {
-	ActorUserID string
-	Sub         string
-	Reason      string
-	Now         time.Time
+	CheckCurrent func(*userdomain.User) error
+	ActorUserID  string
+	Sub          string
+	Reason       string
+	Now          time.Time
 }
 
 // SoftDeleteUser は user を PendingDeletion に遷移させ UserSoftDeleted を emit する。
@@ -646,6 +726,15 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	}
 	now := idmusecases.NormalizedNow(in.Now)
 	if user.Lifecycle.EffectiveStatus() == idmdomain.UserStatusPendingDeletion {
+		if in.CheckCurrent != nil {
+			current, err := deps.UserRepo.Update(ctx, user.ID, func(current *userdomain.User) (bool, error) { return false, in.CheckCurrent(current) })
+			if err != nil {
+				return err
+			}
+			if current == nil {
+				return kernel.ErrPreconditionFailed
+			}
+		}
 		// 前回の伝播が途中で失敗していても、削除の予約の再実行で残った端末と Agent を止める。
 		return stopUserEffects(ctx, deps, user.TenantID, user.ID, in.ActorUserID, now)
 	}
@@ -656,7 +745,7 @@ func SoftDeleteUser(ctx context.Context, deps AdminUserDeps, in SoftDeleteUserIn
 	if err := updated.Validate(); err != nil {
 		return err
 	}
-	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now); err != nil {
+	if err := captureUserMutation(ctx, deps, user, &updated, []string{"status"}, now, in.CheckCurrent); err != nil {
 		return err
 	}
 	if err := syncDynamicGroups(ctx, deps, &updated, now); err != nil {

@@ -43,6 +43,8 @@ type Querier interface {
 	IncrementTenantUsageSsfStreams(ctx context.Context, arg IncrementTenantUsageSsfStreamsParams) (int32, error)
 	IncrementTenantUsageUsers(ctx context.Context, arg IncrementTenantUsageUsersParams) (int32, error)
 	ListNotificationTemplatesByTenant(ctx context.Context, tenantID string) ([]*NotificationTemplate, error)
+	// 未保存の設定も直列化できるよう、必ず存在する所有テナントの行を固定する。
+	LockTenantForUpdate(ctx context.Context, id string) (string, error)
 	// 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。
 	LockTenantUsageActiveSessions(ctx context.Context, tenantID string) (int32, error)
 	// 再集計が置き換えるまで、同じテナントの使用量の加算と減算を待たせる。

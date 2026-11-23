@@ -11,6 +11,9 @@ import (
 // 表す。Before は作成時 nil、Changed は属性変更で実際に変わった field 名。IdManagement は
 // LifecycleWorkflow の型を知らずにこの値だけを渡す (wi-237)。
 type UserMutation struct {
+	// Apply は、最新の User を排他して条件を確かめ、保存する変更を当てる。
+	// nil のときは、作成など従来どおり After を保存する。
+	Apply   UserChange
 	Before  *userdomain.User
 	After   *userdomain.User
 	Changed []string

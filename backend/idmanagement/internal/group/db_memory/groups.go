@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/kernel"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
@@ -128,6 +129,34 @@ func (r *GroupRepository) Delete(_ context.Context, tenantID, id string) error {
 	delete(r.members, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	delete(r.rules, sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID))
 	return nil
+}
+
+func (r *GroupRepository) Update(_ context.Context, tenantID, id string, change groupports.GroupChange) (*groupdomain.Group, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := sharedmem.ScopedKey(tenantID, id, kernel.DefaultTenantID)
+	var current *groupdomain.Group
+	if stored := r.groups[key]; stored != nil {
+		current = cloneGroup(stored)
+	}
+	members := make([]*groupdomain.GroupMember, 0, len(r.members[key]))
+	for _, member := range r.members[key] {
+		cloned := *member
+		members = append(members, &cloned)
+	}
+	slices.SortFunc(members, func(a, b *groupdomain.GroupMember) int { return strings.Compare(a.UserID, b.UserID) })
+	updated, err := change(current, members, cloneDynamicRule(r.rules[key]))
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		delete(r.groups, key)
+		delete(r.members, key)
+		delete(r.rules, key)
+		return nil, nil
+	}
+	r.groups[key] = cloneGroup(updated)
+	return cloneGroup(updated), nil
 }
 
 func (r *GroupRepository) SetRoleDelegation(_ context.Context, tenantID, groupID string, delegation *groupdomain.GroupRoleDelegation, now time.Time) error {

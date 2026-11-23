@@ -18,6 +18,7 @@ type NotificationTemplateRepository interface {
 	// 知っているため、ここでは存在する行だけを返す。
 	ListAll(ctx context.Context, tenantID string) ([]*notificationports.TemplateOverride, error)
 	Save(ctx context.Context, override *notificationports.TemplateOverride) error
+	Update(ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string, change func(*notificationports.TemplateOverride) (*notificationports.TemplateOverride, error)) (*notificationports.TemplateOverride, error)
 	// Delete は上書きを削除し、削除した行があったかを返す。上書きが無い場合も成功する
 	// (冪等)。
 	Delete(ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string) (bool, error)

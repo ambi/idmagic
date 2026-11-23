@@ -47,7 +47,7 @@ describe('BrandingTab color reset', () => {
     expect(fetch.mock.calls[1]).toEqual([
       '/api/admin/v1/tenant/branding',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify({
           product_name: '',
           primary_color: '',

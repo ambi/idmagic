@@ -344,6 +344,10 @@ type failingClientDeletion struct {
 
 func (r failingClientDeletion) Delete(context.Context, string, string) error { return r.err }
 
+func (r failingClientDeletion) Update(context.Context, string, string, func(*oauthdomain.OAuth2Client) (*oauthdomain.OAuth2Client, error)) (*oauthdomain.OAuth2Client, error) {
+	return nil, r.err
+}
+
 //spec:covers REQ-SYSTEM-023: 保存先から返る内部障害を、クライアント削除の実経路が公開しない。
 //verify:operation DeleteAdminOAuth2Client: 未分類の保存障害は 500 の Problem Details となり、クライアントとイベントを変えない。
 func TestClientDeletionDoesNotDiscloseDependencyErrors(t *testing.T) {
