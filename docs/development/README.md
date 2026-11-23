@@ -14,7 +14,8 @@
 | AGENTS.md と skills の置き場所、書く内容、skill の書き方 | [エージェント向けの指示](agent-guidance.md) | 参照 |
 | リポジトリの最上位のディレクトリと、開発工程ごとの置き場所 | [リポジトリ構成](repository-layout.md) | 参照 |
 | 開発環境、起動、ビルド、生成 | [ローカル開発](local-development.md) | 手順 |
-| AI エージェントの統制を、管理画面の設定だけで見せる | [AI エージェントの統制のデモ](ai-agent-demo.md) | 手引き |
+| AI エージェントの ID 管理、認証、委任、認可、外部接続、停止を理解して動かす | [AI エージェントのガイド](ai-agent-demo.md) | 手引き |
+| 管理画面で、文書操作の許可と対象別制限、承認、停止を実演する | [社内文書アシスタントのデモ](ai-agent-demo-walkthrough.md) | 手引き |
 | CI の一次情報と失敗時の切り分け | [継続的インテグレーション](continuous-integration.md) | 参照、解説 |
 | テスト水準、主要ユースケースの境界選択、作用の観測、race 検査、プロパティテスト、ミューテーションテスト、テストダブル | [テスト方針](testing.md) | 参照 |
 | ブラウザー E2E の実行基盤（Bun.WebView と Playwright Test）の比較 | [ブラウザー E2E の実行基盤の比較](e2e-runner-comparison.md) | 解説 |
