@@ -1,10 +1,5 @@
 # 依存脆弱性の抑止。`mise run audit-dependencies` が --config でこのファイルを渡す。
 #
-# 各項目は reason と ignoreUntil を必ず持つ。OSV-Scanner はどちらも任意として扱うが、
-# ignoreUntil の無い抑止は永久に見直されないので、`mise run check-vulnerability-suppressions`
+# 各項目は reason と effectiveUntil を必ず持つ。OSV-Scanner はどちらも任意として扱うが、
+# effectiveUntil の無い抑止は永久に見直されないので、`mise run check-vulnerability-suppressions`
 # が両方を必須にして期限切れを拒否する。運用は SECURITY.md に書いてある。
-
-[[IgnoredVulns]]
-id = "GHSA-gcqx-w48m-w2h4"
-ignoreUntil = 2026-11-28
-reason = "deepmerge 4.3.1 は開発用の shadcn 4.23.0 と @shadcn/registry 0.2.1 の推移依存である。通常のビルドは shadcn/tailwind.css だけを参照し、CLI と deepmerge の JavaScript は配信しないため、本番の利用者入力からは到達しない。部品追加 CLI がレジストリ情報をマージする際の開発時リスクは、信頼するレジストリの利用と生成差分のレビューを前提に受容する。2026-10-29 時点で修正版はない。修正済み安定版が利用可能になるか、この推移依存が不要になったら更新して再監査し、抑止を削除する。実行時の依存として使う場合も再評価する。https://github.com/advisories/GHSA-gcqx-w48m-w2h4"
