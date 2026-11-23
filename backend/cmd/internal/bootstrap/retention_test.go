@@ -90,8 +90,7 @@ func TestRetentionSweepPurgesExpiredCSVArtifacts(t *testing.T) {
 	if stored, err := deps.Jobs.Repo.Get(ctx, job.ID); err != nil || stored.Status != jobsdomain.StatusCanceled {
 		t.Fatalf("期限切れ入力のジョブ=%+v err=%v", stored, err)
 	}
-	// Jobs の既存の送信表現は TenantID を使う。テナント別検索の是正は wi-98158 が扱う。
-	if events, err := deps.Audit.AuditEventRepo.List(ctx, auditports.AuditEventQuery{AllTenants: true, Type: "JobCanceled"}); err != nil || len(events) != 1 || events[0].Payload["JobID"] != job.ID || events[0].Payload["TenantID"] != "tenant-a" {
+	if events, err := deps.Audit.AuditEventRepo.List(ctx, auditports.AuditEventQuery{TenantID: "tenant-a", Type: "JobCanceled"}); err != nil || len(events) != 1 || events[0].Payload["jobId"] != job.ID {
 		t.Fatalf("JobCanceled=%v err=%v", events, err)
 	}
 	if usage, err := deps.Tenancy.QuotaRepo.GetUsage(ctx, "tenant-a"); err != nil || usage.ActiveJobs != 0 {
