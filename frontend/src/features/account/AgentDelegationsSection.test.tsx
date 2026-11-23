@@ -25,6 +25,24 @@ const response = (status: number, body: unknown = {}) => ({
 })
 
 describe('AgentDelegationsSection', () => {
+  //spec:covers REQ-OAUTH2-098: 入力したスコープの登録値と未登録の注意を、付与を送信する前に示す。
+  it('shows impact for typed scopes before granting', async () => {
+    await renderWithRouter(
+      <AgentDelegationsSection
+        csrfToken="csrf"
+        delegations={[]}
+        delegableAgents={[]}
+        scopeHints={{ read: { changes: 'none', personal_data: false } }}
+      />,
+    )
+    fireEvent.change(document.getElementById('delegation-scopes')!, {
+      target: { value: 'read unknown' },
+    })
+    expect(screen.getByText('変更なし')).toBeInTheDocument()
+    expect(screen.getByText('個人データを扱わない')).toBeInTheDocument()
+    expect(screen.getByText('影響度未登録')).toBeInTheDocument()
+    expect(screen.getByText('取り消せない変更と同じ注意が必要です。')).toBeInTheDocument()
+  })
   afterEach(() => restoreGlobals())
 
   it('shows the owner, the scopes, the expiry, and that the grant is unused', async () => {

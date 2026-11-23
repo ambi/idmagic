@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { ImpactDisclaimer } from '../../components/PermissionImpact'
+import { PermissionImpactFields } from '../../components/PermissionImpactFields'
 import { tenantURL } from '../../api'
 import { FieldError } from '../../components/FieldError'
 import { Label } from '../../components/ui/label'
@@ -16,6 +18,7 @@ import type { adminAuthorizationDetailTypesDictionary } from './AdminAuthorizati
 type Dictionary = (typeof adminAuthorizationDetailTypesDictionary)['en']
 
 export type FormState = {
+  impact: AuthorizationDetailType['impact'] | null
   type: string
   description: string
   displayTemplate: string
@@ -31,6 +34,7 @@ export const sampleSchema = `{
 }`
 
 export const emptyForm: FormState = {
+  impact: null,
   type: '',
   description: '',
   displayTemplate: '',
@@ -40,6 +44,7 @@ export const emptyForm: FormState = {
 
 export function toForm(t: AuthorizationDetailType): FormState {
   return {
+    impact: t.impact ?? null,
     type: t.type,
     description: t.description ?? '',
     displayTemplate: t.display_template,
@@ -114,6 +119,14 @@ export function AuthorizationDetailTypeFormFields({
 }) {
   return (
     <>
+      <div className="grid gap-2 md:col-span-2">
+        <PermissionImpactFields
+          id="detail-impact"
+          value={form.impact}
+          onChange={(impact) => onChange({ ...form, impact })}
+        />
+        <ImpactDisclaimer />
+      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="type" required>
           {t.typeIdLabel}

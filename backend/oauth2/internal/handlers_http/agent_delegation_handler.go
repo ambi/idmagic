@@ -116,7 +116,7 @@ func (d Deps) handleListMyAgentDelegations(c *echo.Context) error {
 			return err
 		}
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"delegations": response})
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"delegations": response, "scope_hints": d.scopeHints(c, "")})
 }
 
 func (d Deps) handleGrantMyAgentDelegation(c *echo.Context) error {

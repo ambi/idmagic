@@ -207,6 +207,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
       resource: 'https://mcp.example.com',
       name: 'Example MCP',
       scopes: ['mcp.read', 'mcp.write', 'profile'],
+      scope_hints: {},
       state: 'active',
     })
   })
@@ -232,6 +233,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
       name: 'Example MCP',
       scopes: ['mcp'],
       client_id: 'new-client',
+      scope_hints: {},
       state: 'active',
     })
     expect(document.querySelector('#result-client-secret')).toHaveTextContent('new-secret')

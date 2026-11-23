@@ -124,6 +124,11 @@ export function AdminMcpResourceServerCreatePage({
         resource: data.resource,
         name: data.name,
         scopes: data.scopes,
+        scope_hints: Object.fromEntries(
+          data.scopes.flatMap((scope) =>
+            form.scopeHints[scope] ? [[scope, form.scopeHints[scope]]] : [],
+          ),
+        ),
         ...(clientId ? { client_id: clientId } : {}),
         ...(accessRules.length > 0 ? { access_rules: accessRules } : {}),
         state: form.state,

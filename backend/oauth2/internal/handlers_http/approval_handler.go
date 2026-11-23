@@ -8,6 +8,7 @@ import (
 	"time"
 
 	mfadomain "github.com/ambi/idmagic/backend/authentication/mfa/domain"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/internal/approval/usecases"
 	oauthusecases "github.com/ambi/idmagic/backend/oauth2/internal/usecases"
@@ -58,10 +59,14 @@ func (d Deps) handleBackchannelAuthenticate(c *echo.Context) error {
 }
 
 type accountApprovalResponse struct {
-	ID         string `json:"id"`
-	ClientID   string `json:"client_id"`
-	ClientName string `json:"client_name"`
-	AgentName  string `json:"agent_name,omitempty"`
+	ScopeHints    map[string]*oauthdomain.PermissionImpact `json:"scope_hints,omitempty"`
+	DetailImpacts map[string]*oauthdomain.PermissionImpact `json:"detail_impacts,omitempty"`
+	ToolName      string                                   `json:"tool_name,omitempty"`
+	ToolImpact    *oauthdomain.PermissionImpact            `json:"tool_impact,omitempty"`
+	ID            string                                   `json:"id"`
+	ClientID      string                                   `json:"client_id"`
+	ClientName    string                                   `json:"client_name"`
+	AgentName     string                                   `json:"agent_name,omitempty"`
 	// ResourceServerName は評価で起票した登録の表示名である (REQ-OAUTH2-043)。
 	ResourceServerName   string                     `json:"resource_server_name,omitempty"`
 	Scopes               []string                   `json:"scopes"`
@@ -92,6 +97,7 @@ func (d Deps) handleListMyApprovalRequests(c *echo.Context) error {
 		names = d.ClientDisplayNameResolver.ResolveAll(c.Request().Context(), support.RequestTenantID(c), clientIDs)
 	}
 	response := make([]accountApprovalResponse, 0, len(records))
+	scopeHints := d.scopeHints(c, "")
 	for _, rec := range records {
 		clientName := names[rec.ClientID]
 		if clientName == "" {
@@ -106,6 +112,7 @@ func (d Deps) handleListMyApprovalRequests(c *echo.Context) error {
 			}
 		}
 		resourceServerName := ""
+		var toolImpact *oauthdomain.PermissionImpact
 		if rec.ResourceServerID != nil && d.McpResourceServerRepo != nil {
 			server, findErr := d.McpResourceServerRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), *rec.ResourceServerID)
 			if findErr != nil {
@@ -113,9 +120,13 @@ func (d Deps) handleListMyApprovalRequests(c *echo.Context) error {
 			}
 			if server != nil {
 				resourceServerName = server.Name
+				if rule, ok := server.ToolRuleFor(rec.ToolName); ok && rec.ToolID != "" && rule.Tool.ID == rec.ToolID && rule.Tool.Impact.Validate() == nil {
+					toolImpact = rule.Tool.Impact
+				}
 			}
 		}
 		response = append(response, accountApprovalResponse{
+			ScopeHints: scopeHints, DetailImpacts: d.detailImpacts(c, rec.AuthorizationDetails), ToolName: rec.ToolName, ToolImpact: toolImpact,
 			ID: rec.ID, ClientID: rec.ClientID, ClientName: clientName, AgentName: agentName, ResourceServerName: resourceServerName,
 			Scopes: append([]string{}, rec.Scopes...), AuthorizationDetails: append([]spec.AuthorizationDetail(nil), rec.AuthorizationDetails...),
 			BindingMessage: rec.BindingMessage, RequestedAt: rec.RequestedAt, ExpiresAt: rec.ExpiresAt,

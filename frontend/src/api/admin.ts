@@ -532,6 +532,7 @@ export async function retryLifecycleWorkflowRun(
 
 // authorization_details type (RFC 9396) の管理 API クライアント。
 export type AuthorizationDetailTypeInput = {
+  impact?: AuthorizationDetailType['impact'] | null
   type?: string
   description?: string
   display_template: string
@@ -575,6 +576,7 @@ export async function deleteAuthorizationDetailType(
 
 // MCP resource server (RFC 9728 / RFC 8707) の管理 API クライアント。
 export type McpResourceServerInput = {
+  scope_hints?: McpResourceServer['scope_hints']
   resource?: string
   name: string
   scopes: string[]

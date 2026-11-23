@@ -35,13 +35,13 @@ model McpResourceServerPages {
     @transition(#{event: "編集"}, McpResourceServerPages.edit) edit: unknown;
     @transition(#{event: "Agent のアクセス"}, McpResourceServerPages.access) access: unknown;
   }, ListStates>;
-  @page(#{...adminContext, id: "admin-mcp-resource-server-create", name: "MCP リソースサーバーを登録", entry: "リソースサーバー一覧", purpose: "接続先と認証・アクセス規則を登録する", content: #["既存アプリケーションの利用または新規作成", "接続 URL、リソース識別子と認証", "ツールとアクセスの規則", "登録結果と初期資格情報の表示", "作成途中の失敗時は作成済みの対象を保持"]}) @category(Category.agents)
+  @page(#{...adminContext, id: "admin-mcp-resource-server-create", name: "MCP リソースサーバーを登録", entry: "リソースサーバー一覧", purpose: "接続先と認証・アクセス規則を登録する", content: #["既存アプリケーションの利用または新規作成", "接続 URL、リソース識別子と認証", "ツールとアクセスの規則", "スコープとツールの変更度、個人データの扱いと申告の説明", "登録結果と初期資格情報の表示", "作成途中の失敗時は作成済みの対象を保持"]}) @category(Category.agents)
   create: PageData<{
     @transition(#{...update, event: "登録", result: "必要なアプリケーションと接続先を登録し結果を表示する", toState: "success"}, McpResourceServerPages.create) @uses(IdMagic.Application.Operations.CreateAdminApplication, IdMagic.Application.Operations.UpdateApplicationOidcConfig, IdMagic.OAuth2.Operations.CreateAdminMcpResourceServer) save: unknown;
     @transition(#{event: "ツールを設定", from: "success"}, McpResourceServerPages.edit) edit: unknown;
     @transition(#{event: "キャンセルまたは一覧へ"}, McpResourceServerPages.list) cancel: unknown;
   }>;
-  @page(#{...adminContext, id: "admin-mcp-resource-server-edit", name: "MCP リソースサーバーを編集", entry: "リソースサーバー一覧", purpose: "接続先とツール・アクセス規則を更新する", content: #["現在の接続設定と規則", "ツールの取得とカタログ", "保存とキャンセル"]}) @category(Category.agents)
+  @page(#{...adminContext, id: "admin-mcp-resource-server-edit", name: "MCP リソースサーバーを編集", entry: "リソースサーバー一覧", purpose: "接続先とツール・アクセス規則を更新する", content: #["現在の接続設定と規則", "ツールの取得とカタログ", "スコープとツールの変更度、個人データの扱いと申告の説明", "保存とキャンセル"]}) @category(Category.agents)
   edit: PageData<{
     @transition(#{...update, event: "ツールを取得", result: "発見したツールを編集候補として表示する"}, McpResourceServerPages.edit) @uses(IdMagic.OAuth2.Operations.DiscoverAdminMcpResourceServerTools) discover: unknown;
     @transition(#{event: "保存", condition: "更新が成功", result: "一覧へ戻る"}, McpResourceServerPages.list) @uses(IdMagic.OAuth2.Operations.UpdateAdminMcpResourceServer) save: unknown;
@@ -85,12 +85,12 @@ model AuthorizationDetailTypePages {
     @transition(#{...update, event: "再取得または削除を確認", result: "型の一覧を更新する"}, AuthorizationDetailTypePages.list) @uses(IdMagic.OAuth2.Operations.ListAuthorizationDetailTypes, IdMagic.OAuth2.Operations.DeleteAuthorizationDetailType) refresh: unknown;
     @transition(#{event: "アプリケーションへ"}, AdminApplicationPages.list) applications: unknown;
   }, ListStates>;
-  @page(#{...adminContext, id: "admin-authz-detail-type-create", name: "認可詳細の型を作成", entry: "認可詳細の型一覧", purpose: "型の識別子と JSON Schema を登録する", content: #["型、説明と JSON Schema", "作成とキャンセル"]}) @category(Category.authorization)
+  @page(#{...adminContext, id: "admin-authz-detail-type-create", name: "認可詳細の型を作成", entry: "認可詳細の型一覧", purpose: "型の識別子と JSON Schema を登録する", content: #["型、説明と JSON Schema", "変更度、個人データの扱いと申告の説明", "作成とキャンセル"]}) @category(Category.authorization)
   create: PageData<{
     @transition(#{event: "作成", condition: "登録が成功", result: "型の一覧へ戻る"}, AuthorizationDetailTypePages.list) @uses(IdMagic.OAuth2.Operations.CreateAuthorizationDetailType) save: unknown;
     @transition(#{event: "キャンセル"}, AuthorizationDetailTypePages.list) cancel: unknown;
   }>;
-  @page(#{...adminContext, id: "admin-authz-detail-type-edit", name: "認可詳細の型を編集", entry: "認可詳細の型一覧", purpose: "既存の型の説明とスキーマを変更する", content: #["現在の型、説明と JSON Schema", "保存とキャンセル"]}) @category(Category.authorization)
+  @page(#{...adminContext, id: "admin-authz-detail-type-edit", name: "認可詳細の型を編集", entry: "認可詳細の型一覧", purpose: "既存の型の説明とスキーマを変更する", content: #["現在の型、説明と JSON Schema", "変更度、個人データの扱いと申告の説明", "保存とキャンセル"]}) @category(Category.authorization)
   edit: PageData<{
     @transition(#{event: "保存", condition: "更新が成功", result: "型の一覧へ戻る"}, AuthorizationDetailTypePages.list) @uses(IdMagic.OAuth2.Operations.UpdateAuthorizationDetailType) save: unknown;
     @transition(#{event: "キャンセル"}, AuthorizationDetailTypePages.list) cancel: unknown;
@@ -99,7 +99,7 @@ model AuthorizationDetailTypePages {
 
 model OAuthPages {
   // 経路は kind を認可トランザクションから決めるため、route を明示する。
-  @page(#{...browserContext, id: "consent", name: "アプリケーションへの同意", route: "/consent", entry: "認可トランザクション", purpose: "開示する情報と認可詳細を確認して許可または拒否する", content: #["要求元アプリケーション", "スコープごとの説明", "認可詳細", "許可と拒否"]}) @category(Category.consent)
+  @page(#{...browserContext, id: "consent", name: "アプリケーションへの同意", route: "/consent", entry: "認可トランザクション", purpose: "開示する情報と認可詳細を確認して許可または拒否する", content: #["要求元アプリケーション", "スコープごとの説明", "認可詳細", "権限ごとの変更度と個人データの扱い、未登録の注意と申告の説明", "許可と拒否"]}) @category(Category.consent)
   consent: PageData<{
     @transition(#{...update, event: "許可・拒否", condition: "判断の記録成功", result: "認可トランザクションの結果を呼び出し元へ返す", toState: "external"}, Destinations.client) @uses(IdMagic.OAuth2.Operations.SubmitBrowserConsent) decide: unknown;
     @transition(#{...update, event: "送信", condition: "拒否または通信失敗", result: "判断が完了していないことを表示し再試行できる", toState: "error"}, OAuthPages.consent) failure: unknown;
@@ -110,14 +110,14 @@ model OAuthPages {
     @transition(#{...navigation, event: "送信", condition: "authentication_required", result: "認証が必要なことを案内する"}, FrontendPages.status) expired: unknown;
     @transition(#{...update, event: "送信", condition: "コードまたは通信の問題", result: "コードを保持して問題を表示する", toState: "error"}, OAuthPages.device) failure: unknown;
   }>;
-  @page(#{...accountContext, id: "account-applications", name: "本人の同意と Agent への委任", entry: "本人のポータル", purpose: "アプリケーションへの同意を取り消し、Agent の委任を管理する", content: #["同意したアプリケーションとスコープ", "Agent ごとの委任・期限・利用履歴", "委任の追加"]}) @category(Category.consent)
+  @page(#{...accountContext, id: "account-applications", name: "本人の同意と Agent への委任", entry: "本人のポータル", purpose: "アプリケーションへの同意を取り消し、Agent の委任を管理する", content: #["同意したアプリケーションとスコープ", "Agent ごとの委任・期限・利用履歴", "委任の追加と、確定前のスコープの変更度、個人データの扱い、未登録の注意と申告の説明"]}) @category(Category.consent)
   applications: PageData<{
     @transition(#{...update, event: "同意を取り消す", condition: "取り消し成功", result: "アプリケーションを同意一覧から除く"}, OAuthPages.applications) @uses(IdMagic.OAuth2.Operations.RevokeMyConsent) revokeConsent: unknown;
     @transition(#{...update, event: "Agent に委任", condition: "付与成功", result: "委任を一覧へ反映し入力を消す"}, OAuthPages.applications) @uses(IdMagic.OAuth2.Operations.GrantMyAgentDelegation) grant: unknown;
     @transition(#{...update, event: "委任を取り消す", condition: "取り消し成功", result: "委任を一覧から除く"}, OAuthPages.applications) @uses(IdMagic.OAuth2.Operations.RevokeMyAgentDelegation) revokeDelegation: unknown;
     @transition(#{...update, event: "更新", condition: "API の拒否または通信失敗", result: "問題を表示して未確定の操作を残す", toState: "error"}, OAuthPages.applications) failure: unknown;
   }>;
-  @page(#{...accountContext, id: "account-approvals", name: "本人宛ての承認依頼", entry: "本人のポータル", purpose: "Agent の実行や認可の依頼を確認して承認または拒否する", content: #["要求元、対象、要求内容と期限", "承認と拒否", "判断の完了通知"]}) @category(Category.consent)
+  @page(#{...accountContext, id: "account-approvals", name: "本人宛ての承認依頼", entry: "本人のポータル", purpose: "Agent の実行や認可の依頼を確認して承認または拒否する", content: #["要求元、対象、要求内容と期限", "権限と対象ツールの変更度、個人データの扱い、未登録の注意と申告の説明", "承認と拒否", "判断の完了通知"]}) @category(Category.consent)
   approvals: PageData<{
     @transition(#{...update, event: "承認・拒否", condition: "再認証と判断の記録成功", result: "対象を一覧から除き、判断を通知する"}, OAuthPages.approvals) @uses(IdMagic.OAuth2.Operations.DecideMyApprovalRequest) decide: unknown;
     @transition(#{...update, event: "判断", condition: "再認証の中止、期限切れまたは API の拒否", result: "判断を確定せず理由を表示する", toState: "error"}, OAuthPages.approvals) failure: unknown;

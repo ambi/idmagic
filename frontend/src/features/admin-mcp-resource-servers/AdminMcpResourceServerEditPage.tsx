@@ -68,6 +68,11 @@ export function AdminMcpResourceServerEditPage({
       await updateMcpResourceServer(csrfToken, resourceServer.id, {
         name: data.name,
         scopes: data.scopes,
+        scope_hints: Object.fromEntries(
+          data.scopes.flatMap((scope) =>
+            form.scopeHints[scope] ? [[scope, form.scopeHints[scope]]] : [],
+          ),
+        ),
         client_id: form.clientId,
         access_rules: accessRules,
         state: form.state,

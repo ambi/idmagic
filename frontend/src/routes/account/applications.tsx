@@ -20,7 +20,8 @@ export const Route = createFileRoute('/account/applications')({
       csrfToken: account.csrf_token,
       username: account.preferred_username ?? 'account',
       consents,
-      delegations,
+      delegations: delegations.delegations,
+      scopeHints: delegations.scope_hints,
       delegableAgents,
       isAdmin: hasAdminRole(account.roles),
     }

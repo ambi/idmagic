@@ -28,11 +28,12 @@ func (s McpResourceServerState) Valid() bool {
 }
 
 type McpResourceServer struct {
-	TenantID string   `json:"tenant_id"`
-	ID       string   `json:"id"`
-	Resource string   `json:"resource"`
-	Name     string   `json:"name"`
-	Scopes   []string `json:"scopes"`
+	ScopeHints map[string]*PermissionImpact `json:"scope_hints,omitempty"`
+	TenantID   string                       `json:"tenant_id"`
+	ID         string                       `json:"id"`
+	Resource   string                       `json:"resource"`
+	Name       string                       `json:"name"`
+	Scopes     []string                     `json:"scopes"`
 	// ClientID は /resource-access/evaluate を呼べるクライアント。空なら評価できない。
 	ClientID string                  `json:"client_id,omitempty"`
 	Hosting  *HostedMcpConfiguration `json:"hosting,omitempty"`
@@ -54,6 +55,9 @@ func isAbsoluteURIWithoutFragment(value string) bool {
 }
 
 func (m McpResourceServer) Validate() error {
+	if err := m.validateScopeHints(); err != nil {
+		return err
+	}
 	if m.Hosting != nil {
 		if m.ClientID == "" {
 			return errors.New("client_id is required for a managed gateway")

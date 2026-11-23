@@ -31,6 +31,25 @@ const baseProps = {
 }
 
 describe('AccountApprovalsPresentation', () => {
+  //spec:covers REQ-OAUTH2-098: スコープ、種類、対象ツールの影響度を本人が承認する前にそれぞれ示す。
+  it('shows scope, detail and tool impact before deciding', async () => {
+    const request: AccountApprovalRequest = {
+      ...approvalRequest,
+      scopes: ['read'],
+      scope_hints: { read: { changes: 'none', personal_data: false } },
+      detail_impacts: { payment_initiation: { changes: 'reversible', personal_data: true } },
+      tool_name: 'pay',
+      tool_impact: { changes: 'irreversible', personal_data: true },
+    }
+    await renderWithRouter(
+      <AccountApprovalsPresentation {...baseProps} approvalRequests={[request]} />,
+    )
+    expect(screen.getByText('変更なし')).toBeInTheDocument()
+    expect(screen.getByText('個人データを扱わない')).toBeInTheDocument()
+    expect(screen.getByText('取り消せる変更')).toBeInTheDocument()
+    expect(screen.getByText('取り消せない変更')).toBeInTheDocument()
+    expect(screen.getByText('pay')).toBeInTheDocument()
+  })
   //spec:covers CIBA-CORE-BINDING-MESSAGE: binding_message を承認画面が実際に描き、クライアント、
   // 要求スコープ、authorization_details と併せて示すことを固定する。API が 4 つを
   // 返すことは backend/shared/http/server_http/non_interactive_grant_standards_test.go が
@@ -42,7 +61,7 @@ describe('AccountApprovalsPresentation', () => {
     expect(screen.getByText(/Travel Assistant/)).toBeInTheDocument()
     expect(screen.getByText('payments.write')).toBeInTheDocument()
     expect(screen.getByText('Trip W-123')).toBeInTheDocument()
-    expect(screen.getByText(/payment_initiation/)).toBeInTheDocument()
+    expect(screen.getByText('payment_initiation')).toBeInTheDocument()
   })
 
   it('passes an explicit approve or deny decision', async () => {

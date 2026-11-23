@@ -27,7 +27,7 @@ func (q *Queries) DeleteAuthorizationDetailType(ctx context.Context, arg DeleteA
 }
 
 const getAuthorizationDetailType = `-- name: GetAuthorizationDetailType :one
-SELECT tenant_id, type, description, schema, display_template, state, created_at, updated_at
+SELECT tenant_id, type, description, schema, display_template, state, created_at, updated_at, impact
 FROM authorization_detail_types
 WHERE tenant_id = $1 AND type = $2
 `
@@ -49,12 +49,13 @@ func (q *Queries) GetAuthorizationDetailType(ctx context.Context, arg GetAuthori
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Impact,
 	)
 	return &i, err
 }
 
 const listAuthorizationDetailTypesByTenant = `-- name: ListAuthorizationDetailTypesByTenant :many
-SELECT tenant_id, type, description, schema, display_template, state, created_at, updated_at
+SELECT tenant_id, type, description, schema, display_template, state, created_at, updated_at, impact
 FROM authorization_detail_types
 WHERE tenant_id = $1
 ORDER BY type
@@ -78,6 +79,7 @@ func (q *Queries) ListAuthorizationDetailTypesByTenant(ctx context.Context, tena
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Impact,
 		); err != nil {
 			return nil, err
 		}
@@ -90,13 +92,14 @@ func (q *Queries) ListAuthorizationDetailTypesByTenant(ctx context.Context, tena
 }
 
 const upsertAuthorizationDetailType = `-- name: UpsertAuthorizationDetailType :exec
-INSERT INTO authorization_detail_types (tenant_id, type, description, schema, display_template, state, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO authorization_detail_types (tenant_id, type, description, schema, display_template, state, created_at, updated_at, impact)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (tenant_id, type) DO UPDATE SET
   description = EXCLUDED.description,
   schema = EXCLUDED.schema,
   display_template = EXCLUDED.display_template,
   state = EXCLUDED.state,
+  impact = EXCLUDED.impact,
   updated_at = EXCLUDED.updated_at
 `
 
@@ -109,6 +112,7 @@ type UpsertAuthorizationDetailTypeParams struct {
 	State           string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	Impact          []byte
 }
 
 func (q *Queries) UpsertAuthorizationDetailType(ctx context.Context, arg UpsertAuthorizationDetailTypeParams) error {
@@ -121,6 +125,7 @@ func (q *Queries) UpsertAuthorizationDetailType(ctx context.Context, arg UpsertA
 		arg.State,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.Impact,
 	)
 	return err
 }

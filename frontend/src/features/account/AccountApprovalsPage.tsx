@@ -6,6 +6,7 @@ import {
   type AccountApprovalRequest,
 } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
+import { ImpactDisclaimer, PermissionImpact } from '../../components/PermissionImpact'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -170,12 +171,13 @@ export function AccountApprovalsPresentation({
                   <p className="text-xs font-semibold text-slate-700">{t.scopes}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {request.scopes.map((scope) => (
-                      <span
+                      <div
                         key={scope}
                         className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700"
                       >
                         {scope}
-                      </span>
+                        <PermissionImpact impact={request.scope_hints?.[scope]} />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -184,12 +186,27 @@ export function AccountApprovalsPresentation({
               {request.authorization_details?.length ? (
                 <div>
                   <p className="text-xs font-semibold text-slate-700">{t.details}</p>
+                  {Array.from(
+                    new Set(request.authorization_details.map((detail) => detail.type)),
+                  ).map((type) => (
+                    <div key={type}>
+                      <p>{type}</p>
+                      <PermissionImpact impact={request.detail_impacts?.[type]} />
+                    </div>
+                  ))}
                   <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {JSON.stringify(request.authorization_details, null, 2)}
                   </pre>
                 </div>
               ) : null}
 
+              {request.tool_name ? (
+                <div>
+                  <p>{request.tool_name}</p>
+                  <PermissionImpact impact={request.tool_impact} />
+                </div>
+              ) : null}
+              <ImpactDisclaimer />
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
                 <Button
                   type="button"

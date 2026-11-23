@@ -3,6 +3,8 @@ package handlers_http
 import (
 	"net/http"
 
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/labstack/echo/v5"
 )
@@ -17,11 +19,12 @@ type browserFlowResponse struct {
 }
 
 type transactionResponse struct {
-	Kind                 string              `json:"kind"`
-	CSRFToken            string              `json:"csrf_token"`
-	ClientName           string              `json:"client_name,omitempty"`
-	Scopes               []string            `json:"scopes,omitempty"`
-	AuthorizationDetails []consentDetailView `json:"authorization_details,omitempty"`
+	ScopeHints           map[string]*oauthdomain.PermissionImpact `json:"scope_hints,omitempty"`
+	Kind                 string                                   `json:"kind"`
+	CSRFToken            string                                   `json:"csrf_token"`
+	ClientName           string                                   `json:"client_name,omitempty"`
+	Scopes               []string                                 `json:"scopes,omitempty"`
+	AuthorizationDetails []consentDetailView                      `json:"authorization_details,omitempty"`
 	// SecondFactorMethods は kind=totp (第二要素待ち) のときに利用できる method 一覧
 	// (totp / webauthn / recovery_code)。UI が第二要素選択画面の選択肢に使う (wi-26)。
 	SecondFactorMethods []string `json:"second_factor_methods,omitempty"`
@@ -32,10 +35,11 @@ type transactionResponse struct {
 
 // consentDetailView は同意画面に提示する authorization_details の人間可読表現。
 type consentDetailView struct {
-	Type        string   `json:"type"`
-	Description string   `json:"description,omitempty"`
-	Summary     string   `json:"summary"`
-	Lines       []string `json:"lines,omitempty"`
+	Impact      *oauthdomain.PermissionImpact `json:"impact,omitempty"`
+	Type        string                        `json:"type"`
+	Description string                        `json:"description,omitempty"`
+	Summary     string                        `json:"summary"`
+	Lines       []string                      `json:"lines,omitempty"`
 }
 
 type authorizationNext struct {

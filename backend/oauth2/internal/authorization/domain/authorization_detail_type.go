@@ -63,6 +63,7 @@ type AuthorizationDetailsSchema struct {
 
 // AuthorizationDetailType はテナントが登録する authorization_details の type 定義。
 type AuthorizationDetailType struct {
+	Impact          *PermissionImpact            `json:"impact,omitempty"`
 	TenantID        string                       `json:"tenant_id"`
 	Type            string                       `json:"type"`
 	Description     string                       `json:"description,omitempty"`
@@ -74,6 +75,9 @@ type AuthorizationDetailType struct {
 }
 
 func (t AuthorizationDetailType) Validate() error {
+	if err := t.Impact.Validate(); err != nil {
+		return err
+	}
 	return spec.All(
 		spec.Required("TenantID", t.TenantID),
 		spec.Required("Type", t.Type),

@@ -6,23 +6,26 @@ import {
   revokeAccountAgentDelegation,
 } from '../../api'
 import { Alert } from '../../components/ui/alert'
+import { ImpactDisclaimer, PermissionImpact } from '../../components/PermissionImpact'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useFormatters } from '../../lib/i18n'
-import type { AccountAgentDelegation, DelegableAgent } from '../../types'
+import type { AccountAgentDelegation, DelegableAgent, ScopeHints } from '../../types'
 import { agentDelegationsDictionary } from './AgentDelegationsSection.i18n'
 
 export function AgentDelegationsSection({
   csrfToken,
   delegations: initial,
   delegableAgents,
+  scopeHints = {},
 }: {
   csrfToken: string
   delegations: AccountAgentDelegation[]
   delegableAgents: DelegableAgent[]
+  scopeHints?: ScopeHints
 }) {
   const t = useDictionary(agentDelegationsDictionary)
   const { formatDate } = useFormatters()
@@ -110,12 +113,13 @@ export function AgentDelegationsSection({
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {delegation.scopes.map((scope) => (
-                  <span
+                  <div
                     key={scope}
                     className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"
                   >
                     {scope}
-                  </span>
+                    <PermissionImpact impact={scopeHints[scope]} />
+                  </div>
                 ))}
               </div>
             </div>
@@ -155,12 +159,19 @@ export function AgentDelegationsSection({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="delegation-scopes">{t.scopesLabel}</Label>
+            <ImpactDisclaimer />
             <Input
               id="delegation-scopes"
               value={scopes}
               required
               onChange={(event) => setScopes(event.target.value)}
             />
+            {Array.from(new Set(scopes.split(/\s+/).filter(Boolean))).map((scope) => (
+              <div key={scope}>
+                <p className="font-mono text-xs">{scope}</p>
+                <PermissionImpact impact={scopeHints[scope]} />
+              </div>
+            ))}
           </div>
           <div>
             <Button type="submit" disabled={pending === 'grant'}>

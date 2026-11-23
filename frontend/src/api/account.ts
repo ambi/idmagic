@@ -9,6 +9,8 @@ import type {
   DelegableAgent,
   MyApplication,
   PortalCategory,
+  ScopeHints,
+  PermissionImpact,
   TokenVaultMyConnection,
   TotpEnrollmentStart,
 } from '../types'
@@ -53,6 +55,10 @@ export async function listAccountConsents(): Promise<AccountConsent[]> {
 }
 
 export type AccountApprovalRequest = {
+  scope_hints?: ScopeHints
+  detail_impacts?: ScopeHints
+  tool_name?: string
+  tool_impact?: PermissionImpact
   id: string
   client_id: string
   client_name: string
@@ -333,10 +339,11 @@ export async function updateNotificationPreferences(
   )
 }
 
-export async function listAccountAgentDelegations(): Promise<AccountAgentDelegation[]> {
-  return (
-    await request<{ delegations: AccountAgentDelegation[] }>('/api/account/v1/agent-delegations')
-  ).delegations
+export async function listAccountAgentDelegations(): Promise<{
+  delegations: AccountAgentDelegation[]
+  scope_hints: ScopeHints
+}> {
+  return request('/api/account/v1/agent-delegations')
 }
 
 export async function listDelegableAgents(): Promise<DelegableAgent[]> {

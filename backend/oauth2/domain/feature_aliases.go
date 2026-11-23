@@ -46,6 +46,7 @@ type (
 	AuthorizationCodeRecord           = authorizationdomain.AuthorizationCodeRecord
 	AuthorizationCodeInput            = authorizationdomain.AuthorizationCodeInput
 	AuthorizationDetailType           = authorizationdomain.AuthorizationDetailType
+	PermissionImpact                  = authorizationdomain.PermissionImpact
 	AuthorizationDetailTypeState      = authorizationdomain.AuthorizationDetailTypeState
 	AuthorizationDetailFieldSemantics = authorizationdomain.AuthorizationDetailFieldSemantics
 	AuthorizationDetailFieldRule      = authorizationdomain.AuthorizationDetailFieldRule

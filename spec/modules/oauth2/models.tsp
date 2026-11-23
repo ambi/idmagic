@@ -303,6 +303,12 @@ model AuthorizationDetailsSchema {
 }
 
 
+@doc("登録者が申告した権限の影響度。省略と personal_data=false を区別する。")
+model PermissionImpact {
+  changes: "none" | "reversible" | "irreversible";
+  personal_data: boolean;
+}
+
 @doc("テナントが登録する `authorization_details` の種類の定義。種類の識別子、検証のスキーマ、同意の UI のための表示のテンプレートをまとめる。受け付けるのは `enabled` の種類だけである。管理は AdminAuthorizationDetailTypesManage が守る。")
 model AuthorizationDetailType {
   @doc("属するテナント。")
@@ -314,6 +320,7 @@ model AuthorizationDetailType {
   schema: AuthorizationDetailsSchema;
   @doc("同意の UI で詳細を人に示すテンプレート。たとえば `up to {fields.instructedAmount} to {identifier}`。")
   display_template: string;
+  impact?: PermissionImpact;
   state: AuthorizationDetailTypeState = AuthorizationDetailTypeState.Enabled;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -342,6 +349,7 @@ model McpResourceServer {
   name: string;
   @doc("このリソースにアクセスするときに許すスコープの許可リスト。`resource` とともに求めるスコープは、その部分集合でなければならない。")
   scopes: string[];
+  scope_hints?: Record<PermissionImpact>;
   @doc("`/resource-access/evaluate` を呼べるクライアント。テナントの中で一つの登録だけに束縛できる。なければ評価できない。")
   client_id?: string;
   @doc("評価できる操作の規則。")
@@ -382,6 +390,8 @@ model McpResourceServerRequest {
   name: string;
   @doc("作成で省くか空にすると `mcp` だけを登録する。更新で省くと変えない。")
   scopes?: string[];
+  @doc("省略は維持、空のオブジェクトは解除。登録したスコープだけを指定できる。")
+  scope_hints?: Record<PermissionImpact>;
   @doc("更新で省くと変えない。")
   client_id?: string;
   @doc("更新で省くと変えない。")
@@ -401,6 +411,7 @@ model McpResourceServerResponse {
   resource: url;
   name: string;
   scopes: string[];
+  scope_hints?: Record<PermissionImpact>;
   client_id?: string;
   access_rules: ResourceAccessRule[];
   state: McpResourceServerState;
@@ -598,6 +609,8 @@ model DeviceAuthorization {
 
 @doc("人が確定するまでクライアントのリクエストを保留する承認のリクエスト。判断の状態と内容は CIBA のトランスポートの管理情報とは分けて保持するが、競合する判断と問い合わせが一つのストアの境界の中で直列化するように、同じ記録に置く。`id` は UUID で、`auth_req_id` は SHA-256 のハッシュだけを索引として保存する。")
 model ApprovalRequest {
+  tool_id?: string;
+  tool_name?: string;
   id: string;
   @doc("属するテナント。")
   tenant_id: string = "default";
@@ -837,6 +850,7 @@ model AuthorizationDetailTypeRequest {
   @minLength(1)
   @maxLength(500)
   display_template: string;
+  impact?: PermissionImpact | null;
   state?: AuthorizationDetailTypeState;
 }
 
@@ -849,6 +863,8 @@ model UpdateAuthorizationDetailTypeRequest {
   @minLength(1)
   @maxLength(500)
   display_template: string;
+  @doc("省略は維持、null は解除。")
+  impact?: PermissionImpact | null;
   state?: AuthorizationDetailTypeState;
 }
 
@@ -860,6 +876,7 @@ model AuthorizationDetailTypeResponse {
   description?: string;
   schema: AuthorizationDetailsSchema;
   display_template: string;
+  impact?: PermissionImpact;
   state: AuthorizationDetailTypeState;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -1063,6 +1080,7 @@ model AccountAgentDelegationResponse {
 @doc("本人の `Granted` の代行の付与の一覧。")
 model AccountAgentDelegationListResponse {
   delegations: AccountAgentDelegationResponse[];
+  scope_hints: Record<PermissionImpact>;
 }
 
 
@@ -1292,6 +1310,7 @@ model ResourceAccessLimit {
 
 @doc("接続先で公開する MCP ツールと表示名。対象別の規則では対象 ID を読む引数を宣言する。")
 model ResourceAccessTool {
+  impact?: PermissionImpact;
   @doc("サーバーが発行する操作の識別子。入力された値は使わず、削除後の再登録には新しい値を発行する。")
   id?: string;
   @doc("応答に含む不透明な割当先の参照。入力された値は使わない。")
@@ -1410,6 +1429,10 @@ model BackchannelAuthenticationResponse {
 
 @doc("エンドユーザーのアカウントポータルが返す、保留中の承認のリクエストの一つ（セルフサービス）。呼び出し元宛てのリクエストに固定されるので、`user_id` は現れない。`binding_message` を内容の代わりにはせず、誰が何を求めたかを並べて返す。")
 model AccountApprovalRequest {
+  scope_hints?: Record<PermissionImpact>;
+  detail_impacts?: Record<PermissionImpact>;
+  tool_name?: string;
+  tool_impact?: PermissionImpact;
   id: string;
   client_id: string;
   @doc("client_id から解決した表示名。`OAuth2Client.client_name`、Application のカタログの名前の順に解決し、どちらもなければ client_id そのものを使う。")
@@ -1481,12 +1504,33 @@ model BrowserDeviceRequest {
 
 @doc("SPA が現在のブラウザーの認可のトランザクションを描画するのに使う、no-store の JSON。")
 model BrowserTransactionResponse {
+  scope_hints?: Record<PermissionImpact>;
+  authorization_details?: ConsentDetailView[];
   @doc("描画する画面。login、totp、consent、device で、要素が加わればさらに増える。")
   kind: string;
   csrf_token: string;
   @doc("同意の画面に示すクライアントの読める名前。`OAuth2Client.client_name`、Application のカタログの名前、client_id の順に解決する。client_id は UUID なので、そのままの形では示さないようにする。")
   client_name?: string;
   scopes?: string[];
+}
+
+model ConsentDetailView {
+  type: string;
+  description?: string;
+  summary: string;
+  lines?: string[];
+  impact?: PermissionImpact;
+}
+
+@doc("登録者の申告した影響度が変更された。before と after はスコープ名、ツール名、種類名に対応する変更前後の値である。")
+model PermissionImpactChanged {
+  occurredAt: utcDateTime;
+  tenantId: string;
+  actorUserId: string;
+  targetKind: string;
+  targetId: string;
+  before: Record<PermissionImpact>;
+  after: Record<PermissionImpact>;
 }
 
 

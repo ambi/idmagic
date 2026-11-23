@@ -40,6 +40,11 @@ func authorizationDetailTypeFromRow(row *AuthorizationDetailType) (*oauthdomain.
 			return nil, err
 		}
 	}
+	if len(row.Impact) > 0 {
+		if err := json.Unmarshal(row.Impact, &t.Impact); err != nil {
+			return nil, err
+		}
+	}
 	return t, t.Validate()
 }
 
@@ -73,11 +78,16 @@ func (r *AuthorizationDetailTypeRepository) FindByType(ctx context.Context, tena
 }
 
 func (r *AuthorizationDetailTypeRepository) Save(ctx context.Context, t *oauthdomain.AuthorizationDetailType) error {
+	impact, err := json.Marshal(t.Impact)
+	if err != nil {
+		return err
+	}
 	schema, err := json.Marshal(t.Schema)
 	if err != nil {
 		return err
 	}
 	return New(r.Pool).UpsertAuthorizationDetailType(ctx, UpsertAuthorizationDetailTypeParams{
+		Impact:          impact,
 		TenantID:        t.TenantID,
 		Type:            t.Type,
 		Description:     textOrNil(&t.Description),

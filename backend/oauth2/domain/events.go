@@ -481,3 +481,17 @@ type McpToolDiscoveryAttempted struct {
 
 func (e *McpToolDiscoveryAttempted) EventType() string     { return "McpToolDiscoveryAttempted" }
 func (e *McpToolDiscoveryAttempted) OccurredAt() time.Time { return e.At }
+
+// PermissionImpactChanged は登録者による影響度の申告の変更前後である。
+type PermissionImpactChanged struct {
+	At          time.Time                    `json:"-"`
+	TenantID    string                       `json:"tenantId"`
+	ActorUserID string                       `json:"actorUserId"`
+	TargetKind  string                       `json:"targetKind"`
+	TargetID    string                       `json:"targetId"`
+	Before      map[string]*PermissionImpact `json:"before"`
+	After       map[string]*PermissionImpact `json:"after"`
+}
+
+func (e *PermissionImpactChanged) EventType() string     { return "PermissionImpactChanged" }
+func (e *PermissionImpactChanged) OccurredAt() time.Time { return e.At }

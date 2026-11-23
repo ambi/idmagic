@@ -33,6 +33,11 @@ func mcpResourceServerFromRow(row *McpResourceServer) (*oauthdomain.McpResourceS
 			return nil, err
 		}
 	}
+	if len(row.ScopeHints) > 0 {
+		if err := json.Unmarshal(row.ScopeHints, &m.ScopeHints); err != nil {
+			return nil, err
+		}
+	}
 	if len(row.AccessRules) > 0 {
 		if err := json.Unmarshal(row.AccessRules, &m.AccessRules); err != nil {
 			return nil, err
@@ -102,6 +107,10 @@ func (r *McpResourceServerRepository) FindByClientID(ctx context.Context, tenant
 }
 
 func (r *McpResourceServerRepository) Save(ctx context.Context, m *oauthdomain.McpResourceServer) error {
+	hints, err := json.Marshal(m.ScopeHints)
+	if err != nil {
+		return err
+	}
 	hosting, err := json.Marshal(m.Hosting)
 	if err != nil {
 		return err
@@ -119,6 +128,7 @@ func (r *McpResourceServerRepository) Save(ctx context.Context, m *oauthdomain.M
 		return err
 	}
 	return New(r.Pool).UpsertMcpResourceServer(ctx, UpsertMcpResourceServerParams{
+		ScopeHints:  hints,
 		TenantID:    m.TenantID,
 		ID:          m.ID,
 		Resource:    m.Resource,
@@ -140,6 +150,10 @@ func (r *McpResourceServerRepository) Delete(ctx context.Context, tenantID, reso
 }
 
 func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *oauthdomain.McpResourceServer, expectedUpdatedAt time.Time) (bool, error) {
+	hints, err := json.Marshal(m.ScopeHints)
+	if err != nil {
+		return false, err
+	}
 	hosting, err := json.Marshal(m.Hosting)
 	if err != nil {
 		return false, err
@@ -157,7 +171,8 @@ func (r *McpResourceServerRepository) SaveIfUnchanged(ctx context.Context, m *oa
 		return false, err
 	}
 	rows, err := New(r.Pool).UpdateMcpResourceServerIfUnchanged(ctx, UpdateMcpResourceServerIfUnchangedParams{
-		TenantID: m.TenantID, ID: m.ID, Name: m.Name, Scopes: scopes, ClientID: pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""}, AccessRules: accessRules, Hosting: hosting, State: string(m.State), UpdatedAt: m.UpdatedAt, ExpectedUpdatedAt: expectedUpdatedAt,
+		ScopeHints: hints,
+		TenantID:   m.TenantID, ID: m.ID, Name: m.Name, Scopes: scopes, ClientID: pgtype.Text{String: m.ClientID, Valid: m.ClientID != ""}, AccessRules: accessRules, Hosting: hosting, State: string(m.State), UpdatedAt: m.UpdatedAt, ExpectedUpdatedAt: expectedUpdatedAt,
 	})
 	return rows == 1, err
 }

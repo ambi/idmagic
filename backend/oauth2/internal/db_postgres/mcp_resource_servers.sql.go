@@ -27,7 +27,7 @@ func (q *Queries) DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpReso
 }
 
 const getMcpResourceServer = `-- name: GetMcpResourceServer :one
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at, scope_hints
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND id = $2
 `
@@ -52,12 +52,13 @@ func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceSe
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ScopeHints,
 	)
 	return &i, err
 }
 
 const getMcpResourceServerByClientID = `-- name: GetMcpResourceServerByClientID :one
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at, scope_hints
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND client_id = $2
 `
@@ -82,12 +83,13 @@ func (q *Queries) GetMcpResourceServerByClientID(ctx context.Context, arg GetMcp
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ScopeHints,
 	)
 	return &i, err
 }
 
 const getMcpResourceServerByResource = `-- name: GetMcpResourceServerByResource :one
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at, scope_hints
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND resource = $2
 `
@@ -112,12 +114,13 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ScopeHints,
 	)
 	return &i, err
 }
 
 const listMcpResourceServersByTenant = `-- name: ListMcpResourceServersByTenant :many
-SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, client_id, access_rules, hosting, state, created_at, updated_at, scope_hints
 FROM mcp_resource_servers
 WHERE tenant_id = $1
 ORDER BY resource
@@ -144,6 +147,7 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ScopeHints,
 		); err != nil {
 			return nil, err
 		}
@@ -158,14 +162,16 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 const updateMcpResourceServerIfUnchanged = `-- name: UpdateMcpResourceServerIfUnchanged :execrows
 UPDATE mcp_resource_servers SET
   name = $1, scopes = $2, client_id = $3,
-  access_rules = $4, hosting = $5, state = $6, updated_at = $7
-WHERE tenant_id = $8 AND id = $9 AND updated_at = $10
+  scope_hints = $4,
+  access_rules = $5, hosting = $6, state = $7, updated_at = $8
+WHERE tenant_id = $9 AND id = $10 AND updated_at = $11
 `
 
 type UpdateMcpResourceServerIfUnchangedParams struct {
 	Name              string
 	Scopes            []byte
 	ClientID          pgtype.Text
+	ScopeHints        []byte
 	AccessRules       []byte
 	Hosting           []byte
 	State             string
@@ -180,6 +186,7 @@ func (q *Queries) UpdateMcpResourceServerIfUnchanged(ctx context.Context, arg Up
 		arg.Name,
 		arg.Scopes,
 		arg.ClientID,
+		arg.ScopeHints,
 		arg.AccessRules,
 		arg.Hosting,
 		arg.State,
@@ -195,11 +202,12 @@ func (q *Queries) UpdateMcpResourceServerIfUnchanged(ctx context.Context, arg Up
 }
 
 const upsertMcpResourceServer = `-- name: UpsertMcpResourceServer :exec
-INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at, hosting)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, client_id, access_rules, state, created_at, updated_at, hosting, scope_hints)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   scopes = EXCLUDED.scopes,
+  scope_hints = EXCLUDED.scope_hints,
   client_id = EXCLUDED.client_id,
   access_rules = EXCLUDED.access_rules,
   hosting = EXCLUDED.hosting,
@@ -219,6 +227,7 @@ type UpsertMcpResourceServerParams struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Hosting     []byte
+	ScopeHints  []byte
 }
 
 func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error {
@@ -234,6 +243,7 @@ func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpReso
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.Hosting,
+		arg.ScopeHints,
 	)
 	return err
 }

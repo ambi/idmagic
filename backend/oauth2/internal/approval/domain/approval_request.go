@@ -44,6 +44,8 @@ const MaxPendingResourceServerApprovals = 10
 
 // ApprovalRequest holds the human decision for one requested action.
 type ApprovalRequest struct {
+	ToolName string `json:"tool_name,omitempty"`
+	ToolID   string `json:"tool_id,omitempty"`
 	ID       string `json:"id"`
 	TenantID string `json:"tenant_id"`
 	ClientID string `json:"client_id"`

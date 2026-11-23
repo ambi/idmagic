@@ -6,7 +6,12 @@ import { Alert } from '../../components/ui/alert'
 import { Toast } from '../../components/ui/toast'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import type { AccountAgentDelegation, AccountConsent, DelegableAgent } from '../../types'
+import type {
+  AccountAgentDelegation,
+  AccountConsent,
+  DelegableAgent,
+  ScopeHints,
+} from '../../types'
 import { createFormatters, useDictionary, useFormatters } from '../../lib/i18n'
 import { accountApplicationsDictionary } from './AccountApplicationsPage.i18n'
 import { AgentDelegationsSection } from './AgentDelegationsSection'
@@ -26,6 +31,7 @@ export function AccountApplicationsPage({
   isAdmin,
   delegations = [],
   delegableAgents = [],
+  scopeHints = {},
 }: {
   csrfToken: string
   username: string
@@ -33,6 +39,7 @@ export function AccountApplicationsPage({
   isAdmin: boolean
   delegations?: AccountAgentDelegation[]
   delegableAgents?: DelegableAgent[]
+  scopeHints?: ScopeHints
 }) {
   const t = useDictionary(accountApplicationsDictionary)
   const [consents, setConsents] = useState<AccountConsent[]>(initial)
@@ -68,6 +75,7 @@ export function AccountApplicationsPage({
       onRevoke={handleRevoke}
     >
       <AgentDelegationsSection
+        scopeHints={scopeHints}
         csrfToken={csrfToken}
         delegations={delegations}
         delegableAgents={delegableAgents}

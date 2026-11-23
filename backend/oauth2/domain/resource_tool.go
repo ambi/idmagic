@@ -11,15 +11,19 @@ import (
 // ResourceAccessTool は接続定義が承認したツールと業務操作の対応である。
 // ResourceIDArgument があれば、既存の型と関係による対象別判定も必要になる。
 type ResourceAccessTool struct {
-	ID                   string `json:"id,omitempty"`
-	AssignmentResourceID string `json:"assignment_resource_id,omitempty"`
-	Name                 string `json:"name"`
-	DisplayName          string `json:"display_name"`
-	ResourceIDArgument   string `json:"resource_id_argument,omitempty"`
+	Impact               *PermissionImpact `json:"impact,omitempty"`
+	ID                   string            `json:"id,omitempty"`
+	AssignmentResourceID string            `json:"assignment_resource_id,omitempty"`
+	Name                 string            `json:"name"`
+	DisplayName          string            `json:"display_name"`
+	ResourceIDArgument   string            `json:"resource_id_argument,omitempty"`
 }
 
 func (r ResourceAccessRule) validateTool() error {
 	tool := r.Tool
+	if err := tool.Impact.Validate(); err != nil {
+		return err
+	}
 	if tool.ID == "" || tool.Name == "" || utf8.RuneCountInString(tool.Name) > 128 || strings.ContainsAny(tool.Name, ":#") || strings.TrimSpace(tool.DisplayName) == "" || utf8.RuneCountInString(tool.DisplayName) > 256 || utf8.RuneCountInString(tool.ResourceIDArgument) > 128 {
 		return errors.New("invalid tool name, display name or target argument")
 	}

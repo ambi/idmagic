@@ -30,6 +30,7 @@ func (r *AuthorizationDetailTypeRepository) Seed(t *oauthdomain.AuthorizationDet
 
 func cloneDetailType(t *oauthdomain.AuthorizationDetailType) *oauthdomain.AuthorizationDetailType {
 	cloned := *t
+	cloned.Impact = t.Impact.Clone()
 	cloned.Schema.Rules = slices.Clone(t.Schema.Rules)
 	for i := range cloned.Schema.Rules {
 		cloned.Schema.Rules[i].Allowed = slices.Clone(t.Schema.Rules[i].Allowed)

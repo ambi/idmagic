@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ImpactDisclaimer } from '../../components/PermissionImpact'
+import { PermissionImpactFields } from '../../components/PermissionImpactFields'
 import {
   AuthenticationAPIError,
   discoverMcpTools,
@@ -39,6 +41,7 @@ import { accessRuleProblems, constraintsRepresentable, hasProblems } from './acc
 type Dictionary = (typeof adminMcpResourceServersDictionary)['en']
 
 export type FormState = {
+  scopeHints: NonNullable<McpResourceServer['scope_hints']>
   hostingMode: 'managed' | 'self_hosted'
   upstreamURL: string
   upstreamAuthentication: 'token_exchange' | 'token_vault'
@@ -60,6 +63,7 @@ export const NEW_EVALUATOR = '__new__'
 export const DEFAULT_SCOPE = 'mcp'
 
 export const emptyForm: FormState = {
+  scopeHints: {},
   hostingMode: 'self_hosted',
   upstreamURL: '',
   upstreamAuthentication: 'token_exchange',
@@ -93,6 +97,7 @@ export function publishCatalogTool(form: FormState, tool: CatalogTool): FormStat
 export function toForm(resourceServer: McpResourceServer): FormState {
   const rules = resourceServer.access_rules ?? []
   return {
+    scopeHints: resourceServer.scope_hints ?? {},
     hostingMode: resourceServer.hosting ? 'managed' : 'self_hosted',
     upstreamURL: resourceServer.hosting?.upstream_url ?? '',
     upstreamAuthentication: resourceServer.hosting?.authentication ?? 'token_exchange',
@@ -245,6 +250,13 @@ function AccessRuleRows({
         <div key={index} className="flex flex-wrap items-end gap-3 rounded-md border p-3">
           {rule.tool ? (
             <>
+              <PermissionImpactFields
+                id={`tool-impact-${index}`}
+                value={rule.tool.impact}
+                onChange={(impact) =>
+                  update(index, { tool: { ...rule.tool!, impact: impact ?? undefined } })
+                }
+              />
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`tool-name-${index}`}>{t.toolName}</Label>
                 <Input
@@ -547,6 +559,21 @@ export function McpResourceServerFormFields({
             {...validation.fieldProps('scopes')}
           />
           <FieldError form={validation} name="scopes" />
+          {parseScopes(form.scopes).map((scope, index) => (
+            <PermissionImpactFields
+              key={scope}
+              id={`scope-impact-${index}`}
+              label={scope}
+              value={form.scopeHints[scope]}
+              onChange={(impact) => {
+                const hints = { ...form.scopeHints }
+                if (impact) hints[scope] = impact
+                else delete hints[scope]
+                onChange({ ...form, scopeHints: hints })
+              }}
+            />
+          ))}
+          <ImpactDisclaimer />
           <p className="text-xs leading-5 text-slate-500">{t.scopesHelp}</p>
         </div>
       </details>

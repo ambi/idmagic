@@ -1,5 +1,5 @@
 import { request, tenantURL, validReturnTo } from '../api/core'
-import type { ConsentDetailView } from '../types'
+import type { ConsentDetailView, ScopeHints } from '../types'
 import { PageMarker } from './-page'
 import { ConsentPage as ConsentPageComponent } from '../features/auth-flow/ConsentPage'
 import { LoginPage as LoginPageComponent } from '../features/auth-flow/LoginPage'
@@ -11,6 +11,7 @@ type TransactionResponse = {
   csrf_token: string
   client_name?: string
   scopes?: string[]
+  scope_hints?: ScopeHints
   authorization_details?: ConsentDetailView[]
   second_factor_methods?: string[]
   can_remember_device?: boolean
@@ -34,6 +35,7 @@ export type BrowserFlowPage =
       csrfToken: string
       clientName: string
       scopes: string[]
+      scopeHints: ScopeHints
       authorizationDetails: ConsentDetailView[]
     }
   | {
@@ -63,6 +65,7 @@ export async function loadBrowserFlowData(path: string, search: string): Promise
       clientName: data.client_name ?? '',
       scopes: data.scopes ?? [],
       authorizationDetails: data.authorization_details ?? [],
+      scopeHints: data.scope_hints ?? {},
     }
   }
   if (data.kind === 'totp') {

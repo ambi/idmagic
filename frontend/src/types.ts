@@ -1,6 +1,14 @@
 import type { DomainLabelsDictionary } from './lib/i18n/domainLabels.i18n'
 
+export type PermissionImpact = {
+  changes: 'none' | 'reversible' | 'irreversible'
+  personal_data: boolean
+}
+
+export type ScopeHints = Record<string, PermissionImpact>
+
 export type ConsentDetailView = {
+  impact?: PermissionImpact
   type: string
   description?: string
   summary: string
@@ -581,6 +589,7 @@ export type AuthorizationDetailFieldRule = {
 }
 
 export type AuthorizationDetailType = {
+  impact?: PermissionImpact
   tenant_id: string
   type: string
   description?: string
@@ -606,6 +615,7 @@ export type ResourceAccessLimit = {
 
 export type ResourceAccessRule = {
   tool?: {
+    impact?: PermissionImpact
     name: string
     display_name: string
     resource_id_argument?: string
@@ -630,6 +640,7 @@ export type HostedMcpConfiguration = {
 }
 
 export type McpResourceServer = {
+  scope_hints?: ScopeHints
   tenant_id: string
   id: string
   resource: string

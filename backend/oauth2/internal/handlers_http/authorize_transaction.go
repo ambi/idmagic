@@ -68,8 +68,13 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	name := d.ClientDisplayNameResolver.Resolve(
 		c.Request().Context(), support.RequestTenantID(c), req.ClientID,
 	)
+	resource := ""
+	if req.Resource != nil {
+		resource = *req.Resource
+	}
 	return support.NoStoreJSON(c, http.StatusOK, transactionResponse{
 		Kind: "consent", CSRFToken: csrf, ClientName: name, Scopes: strings.Fields(req.Scope),
+		ScopeHints:           d.scopeHints(c, resource),
 		AuthorizationDetails: d.renderConsentDetails(c, req.AuthorizationDetails),
 	})
 }

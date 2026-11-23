@@ -19,6 +19,7 @@ type AuthorizationDetailType struct {
 	State           string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	Impact          []byte
 }
 
 type CrossAppAccessIssuePolicy struct {
@@ -56,6 +57,7 @@ type McpResourceServer struct {
 	State       string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	ScopeHints  []byte
 }
 
 type Oauth2Client struct {

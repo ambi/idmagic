@@ -58,6 +58,26 @@ func newStartFixture(t *testing.T) *startFixture {
 	return f
 }
 
+//spec:covers REQ-OAUTH2-098: 評価が選んだツールの名前と識別子を、承認の表示で使えるように起票時に保持する。
+func TestStartedApprovalKeepsToolIdentity(t *testing.T) {
+	f := newStartFixture(t)
+	f.rule.ResourceType = spec.ResourceTypeMcpOperation
+	f.rule.Relation = spec.RelationMcpInvoke
+	f.rule.Tool = &oauthdomain.ResourceAccessTool{ID: "tool-1", Name: "delete", DisplayName: "Delete"}
+	f.servers = evalServer(t, f.rule)
+	in := startRequest("tool-key", `{"amount":100}`)
+	in.ResourceType, in.Relation, in.ResourceID = spec.ResourceTypeMcpOperation, spec.RelationMcpInvoke, "delete"
+	decision := f.evaluate(startUserToken(), in)
+	requireReason(t, decision, oauthdomain.ReasonApprovalPending)
+	if decision.StartedApproval == nil {
+		t.Fatal("承認が起票されない")
+	}
+	rec := f.stored(decision.StartedApproval.ID)
+	if rec.ToolName != "delete" || rec.ToolID != "tool-1" {
+		t.Fatalf("対象ツール=%q %q", rec.ToolName, rec.ToolID)
+	}
+}
+
 func startUserToken() *oauthports.IntrospectionResult {
 	return &oauthports.IntrospectionResult{
 		Active: true, JTI: "jti-user", Sub: "alice", ClientID: "generic-client", Scope: "docs:read", Aud: []string{evalResource},

@@ -3,6 +3,7 @@
 package handlers_http
 
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"strings"
@@ -16,6 +17,7 @@ import (
 )
 
 type authorizationDetailTypeRequest struct {
+	Impact          *oauthdomain.PermissionImpact            `json:"impact"`
 	Type            string                                   `json:"type"`
 	Description     string                                   `json:"description"`
 	Schema          oauthdomain.AuthorizationDetailsSchema   `json:"schema"`
@@ -28,6 +30,7 @@ type authorizationDetailTypeRequest struct {
 // create struct declared the same name twice for one request and left a field
 // the handler never reads.
 type updateAuthorizationDetailTypeRequest struct {
+	Impact          json.RawMessage                          `json:"impact"`
 	Description     string                                   `json:"description"`
 	Schema          oauthdomain.AuthorizationDetailsSchema   `json:"schema"`
 	DisplayTemplate string                                   `json:"display_template"`
@@ -35,7 +38,7 @@ type updateAuthorizationDetailTypeRequest struct {
 }
 
 func toAuthorizationDetailTypeResponse(t *oauthdomain.AuthorizationDetailType) map[string]any {
-	return map[string]any{
+	response := map[string]any{
 		"tenant_id":        t.TenantID,
 		"type":             t.Type,
 		"description":      t.Description,
@@ -45,6 +48,10 @@ func toAuthorizationDetailTypeResponse(t *oauthdomain.AuthorizationDetailType) m
 		"created_at":       t.CreatedAt,
 		"updated_at":       t.UpdatedAt,
 	}
+	if t.Impact != nil {
+		response["impact"] = t.Impact
+	}
+	return response
 }
 
 func (d Deps) handleListAuthorizationDetailTypes(c *echo.Context) error {
@@ -81,9 +88,11 @@ func (d Deps) handleCreateAuthorizationDetailType(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+
 	var req authorizationDetailTypeRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
@@ -105,6 +114,7 @@ func (d Deps) handleCreateAuthorizationDetailType(c *echo.Context) error {
 		state = oauthdomain.DetailTypeEnabled
 	}
 	t := &oauthdomain.AuthorizationDetailType{
+		Impact:   req.Impact,
 		TenantID: tenantID, Type: req.Type, Description: req.Description,
 		Schema: req.Schema, DisplayTemplate: req.DisplayTemplate, State: state,
 		CreatedAt: now, UpdatedAt: now,
@@ -112,6 +122,7 @@ func (d Deps) handleCreateAuthorizationDetailType(c *echo.Context) error {
 	if err := d.saveValidatedType(c, t); err != nil {
 		return err
 	}
+	d.emitPermissionImpact(c, actor.ID, "authorization_detail_type", t.Type, nil, detailImpact(t))
 	return support.NoStoreJSON(c, http.StatusCreated, toAuthorizationDetailTypeResponse(t))
 }
 
@@ -119,9 +130,11 @@ func (d Deps) handleUpdateAuthorizationDetailType(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+
 	tenantID := support.RequestTenantID(c)
 	existing, err := d.AuthzDetailTypeRepo.FindByType(c.Request().Context(), tenantID, c.Param("type"))
 	if err != nil {
@@ -134,6 +147,13 @@ func (d Deps) handleUpdateAuthorizationDetailType(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	before := detailImpact(existing)
+	if req.Impact != nil {
+		existing.Impact = nil
+		if err := json.Unmarshal(req.Impact, &existing.Impact); err != nil {
+			return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_type", "The permission impact is invalid.")
+		}
+	}
 	existing.Description = req.Description
 	existing.Schema = req.Schema
 	existing.DisplayTemplate = req.DisplayTemplate
@@ -144,6 +164,7 @@ func (d Deps) handleUpdateAuthorizationDetailType(c *echo.Context) error {
 	if err := d.saveValidatedType(c, existing); err != nil {
 		return err
 	}
+	d.emitPermissionImpact(c, actor.ID, "authorization_detail_type", existing.Type, before, detailImpact(existing))
 	return support.NoStoreJSON(c, http.StatusOK, toAuthorizationDetailTypeResponse(existing))
 }
 
@@ -151,12 +172,19 @@ func (d Deps) handleDeleteAuthorizationDetailType(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
+	}
+
+	existing, err := d.AuthzDetailTypeRepo.FindByType(c.Request().Context(), support.RequestTenantID(c), c.Param("type"))
+	if err != nil {
+		return err
 	}
 	if err := d.AuthzDetailTypeRepo.Delete(c.Request().Context(), support.RequestTenantID(c), c.Param("type")); err != nil {
 		return err
 	}
+	d.emitPermissionImpact(c, actor.ID, "authorization_detail_type", c.Param("type"), detailImpact(existing), nil)
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }

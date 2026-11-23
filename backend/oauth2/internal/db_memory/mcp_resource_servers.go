@@ -35,6 +35,7 @@ func (r *McpResourceServerRepository) Seed(m *oauthdomain.McpResourceServer) {
 
 func cloneMcpResourceServer(m *oauthdomain.McpResourceServer) *oauthdomain.McpResourceServer {
 	cloned := *m
+	cloned.ScopeHints = oauthdomain.CloneScopeHints(m.ScopeHints)
 	cloned.Scopes = slices.Clone(m.Scopes)
 	if m.Hosting != nil {
 		hosting := *m.Hosting
@@ -52,6 +53,7 @@ func cloneMcpResourceServer(m *oauthdomain.McpResourceServer) *oauthdomain.McpRe
 		}
 		if rule.Tool != nil {
 			tool := *rule.Tool
+			tool.Impact = rule.Tool.Impact.Clone()
 			rule.Tool = &tool
 		}
 		if rule.Condition != nil {

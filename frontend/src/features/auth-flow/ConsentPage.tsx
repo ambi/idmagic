@@ -12,10 +12,11 @@ import {
 import { useState } from 'react'
 import { AuthenticationAPIError, continueBrowserFlow, submitConsent } from '../../api'
 import { AuthShell } from '../../components/AuthShell'
+import { ImpactDisclaimer, PermissionImpact } from '../../components/PermissionImpact'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
-import type { ConsentDetailView } from '../../types'
+import type { ConsentDetailView, ScopeHints } from '../../types'
 import { consentPageDictionary } from './ConsentPage.i18n'
 
 export function ConsentPage({
@@ -23,11 +24,13 @@ export function ConsentPage({
   clientName,
   scopes,
   authorizationDetails = [],
+  scopeHints = {},
 }: {
   csrfToken: string
   clientName: string
   scopes: string[]
   authorizationDetails?: ConsentDetailView[]
+  scopeHints?: ScopeHints
 }) {
   const t = useDictionary(consentPageDictionary)
   const scopeDetails: Record<string, { label: string; description: string; icon: typeof IconId }> =
@@ -115,6 +118,7 @@ export function ConsentPage({
                       <p className="mt-0.5 text-xs leading-5 text-slate-500">
                         {detail.description}
                       </p>
+                      <PermissionImpact impact={scopeHints[scopeName]} />
                     </div>
                   </div>
                 )
@@ -123,6 +127,7 @@ export function ConsentPage({
           </div>
         </Card>
 
+        <ImpactDisclaimer />
         {authorizationDetails.length > 0 ? (
           <Card className="overflow-hidden border-blue-200/70">
             <div className="border-b border-slate-200 bg-blue-50/50 p-4">
@@ -147,6 +152,7 @@ export function ConsentPage({
                       {detail.description || detail.type}
                     </p>
                     <p className="mt-0.5 text-xs leading-5 text-slate-700">{detail.summary}</p>
+                    <PermissionImpact impact={detail.impact} />
                     {detail.lines && detail.lines.length > 0 ? (
                       <ul className="mt-1.5 flex flex-col gap-0.5 text-[0.7rem] leading-5 text-slate-500">
                         {detail.lines.map((line) => (

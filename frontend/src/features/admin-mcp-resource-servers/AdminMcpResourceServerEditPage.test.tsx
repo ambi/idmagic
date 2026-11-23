@@ -118,6 +118,7 @@ describe('AdminMcpResourceServerEditPage', () => {
         {
           name: resourceServer.name,
           scopes: resourceServer.scopes,
+          scope_hints: {},
           client_id: 'rs-client',
           access_rules: rules,
           state: 'active',

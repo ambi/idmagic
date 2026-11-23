@@ -100,6 +100,7 @@ CIBA の配信のモードは `poll` だけを実装する。
 
 #### REQ-OAUTH2-043 承認リクエストを判断できるのは対象ユーザー本人のステップアップ認証済みセッションだけである
 
+- 承認リクエストを返すとき、OAuth2 は、REQ-OAUTH2-098 に従ってスコープ、認可詳細の種類、対象の公開ツールの影響度を返して画面に示す。
 - **上位の要件**：[REQ-AUTHENTICATION-039](../../authentication/features/account-portal.md#本人によるステップアップ認証)
 - 本人が保留中の承認リクエストを一覧したとき、OAuth2 は、200 と、本人宛の期限内の `Pending` の承認リクエストだけを、クライアントの表示名、Agent の名前、要求したスコープ、`authorization_details`、`binding_message` とともに返す。
 - リソースサーバーが起票した承認リクエストを一覧で返すとき、OAuth2 は、起票した登録の表示名を `resource_server_name` に含め、スコープを空の配列にする。

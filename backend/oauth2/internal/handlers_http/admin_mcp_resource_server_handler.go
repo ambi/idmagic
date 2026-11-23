@@ -18,9 +18,10 @@ import (
 )
 
 type mcpResourceServerRequest struct {
-	Resource string   `json:"resource"`
-	Name     string   `json:"name"`
-	Scopes   []string `json:"scopes"`
+	ScopeHints map[string]*oauthdomain.PermissionImpact `json:"scope_hints"`
+	Resource   string                                   `json:"resource"`
+	Name       string                                   `json:"name"`
+	Scopes     []string                                 `json:"scopes"`
 	// ClientID と AccessRules は、更新で省くと変えない (REQ-OAUTH2-064)。
 	ClientID    *string                             `json:"client_id"`
 	AccessRules []oauthdomain.ResourceAccessRule    `json:"access_rules"`
@@ -52,6 +53,9 @@ func toMcpResourceServerResponse(m *oauthdomain.McpResourceServer) map[string]an
 		"state":        m.State,
 		"created_at":   m.CreatedAt,
 		"updated_at":   m.UpdatedAt,
+	}
+	if len(m.ScopeHints) > 0 {
+		response["scope_hints"] = m.ScopeHints
 	}
 	if m.ClientID != "" {
 		response["client_id"] = m.ClientID
@@ -153,9 +157,11 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+
 	var req mcpResourceServerRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
@@ -188,7 +194,8 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 		scopes = []string{defaultMcpScope}
 	}
 	m := &oauthdomain.McpResourceServer{
-		TenantID: tenantID, ID: id, Resource: req.Resource,
+		ScopeHints: req.ScopeHints,
+		TenantID:   tenantID, ID: id, Resource: req.Resource,
 		Name: req.Name, Scopes: scopes, AccessRules: req.AccessRules, State: state, Hosting: req.Hosting,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -201,6 +208,7 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.saveValidatedMcpResourceServer(c, m, nil); err != nil {
 		return err
 	}
+	d.emitPermissionImpact(c, actor.ID, "mcp_resource_server", m.ID, nil, resourceImpact(m))
 	return d.writeMcpResourceServer(c, http.StatusCreated, m)
 }
 
@@ -208,9 +216,11 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+
 	tenantID := support.RequestTenantID(c)
 	existing, err := d.McpResourceServerRepo.FindByID(c.Request().Context(), tenantID, c.Param("id"))
 	if err != nil {
@@ -222,6 +232,10 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 	var req mcpResourceServerRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	before := resourceImpact(existing)
+	if req.ScopeHints != nil {
+		existing.ScopeHints = req.ScopeHints
 	}
 	if req.Hosting != nil && existing.Hosting == nil || (existing.Hosting != nil && req.Resource != "" && req.Resource != existing.Resource) {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", "The hosting mode and public URL are immutable.")
@@ -256,6 +270,7 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.saveValidatedMcpResourceServer(c, existing, &expectedUpdatedAt); err != nil {
 		return err
 	}
+	d.emitPermissionImpact(c, actor.ID, "mcp_resource_server", existing.ID, before, resourceImpact(existing))
 	return d.writeMcpResourceServer(c, http.StatusOK, existing)
 }
 
@@ -290,13 +305,20 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
+
 	ctx, tenantID := c.Request().Context(), support.RequestTenantID(c)
+	existing, err := d.McpResourceServerRepo.FindByID(ctx, tenantID, c.Param("id"))
+	if err != nil {
+		return err
+	}
 	if err := d.McpResourceServerRepo.Delete(ctx, tenantID, c.Param("id")); err != nil {
 		return err
 	}
+	d.emitPermissionImpact(c, actor.ID, "mcp_resource_server", c.Param("id"), resourceImpact(existing), nil)
 	// PostgreSQL は外部キーで消すが、メモリの保存先にも同じ結果を保証する。
 	// カタログの保存先を配線しない構成には消すカタログもない。
 	if d.McpToolCatalogRepo != nil {

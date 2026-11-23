@@ -46,6 +46,7 @@ export function AdminAuthorizationDetailTypeEditPage({
         type: data.type,
         description: form.description,
         display_template: data.displayTemplate,
+        impact: form.impact,
         state: form.state,
         schema: parseSchemaObject(data.schemaJSON)!,
       })

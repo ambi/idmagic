@@ -774,6 +774,7 @@ CREATE TABLE authorization_detail_types (
         CHECK (state IN ('disabled', 'enabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    impact JSONB,
     PRIMARY KEY (tenant_id, type),
     CONSTRAINT authorization_detail_types_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
@@ -795,6 +796,7 @@ CREATE TABLE mcp_resource_servers (
         CHECK (state IN ('active', 'disabled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    scope_hints JSONB,
     CONSTRAINT mcp_resource_servers_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT mcp_resource_servers_tenant_resource_unique

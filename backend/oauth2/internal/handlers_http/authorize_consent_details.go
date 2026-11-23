@@ -24,6 +24,9 @@ func (d Deps) renderConsentDetails(c *echo.Context, details []spec.Authorization
 		if d.AuthzDetailTypeRepo != nil {
 			if t, err := d.AuthzDetailTypeRepo.FindByType(c.Request().Context(), tenantID, detail.Type); err == nil && t != nil {
 				view.Description = t.Description
+				if t.Impact.Validate() == nil {
+					view.Impact = t.Impact
+				}
 				view.Summary = fillDisplayTemplate(t.DisplayTemplate, detail)
 			}
 		}

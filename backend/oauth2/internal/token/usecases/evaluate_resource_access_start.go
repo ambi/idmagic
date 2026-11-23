@@ -90,7 +90,13 @@ func resolveStartedApproval(
 	if subject.Type == oauthdomain.PrincipalTypeAgent {
 		return deny(oauthdomain.ReasonApprovalRequired)
 	}
-	return startApproval(ctx, deps, server, detailType, token, binding, digest, in, now)
+	toolName := ""
+	toolID := ""
+	if rule.Tool != nil {
+		toolName = rule.Tool.Name
+		toolID = rule.Tool.ID
+	}
+	return startApproval(ctx, deps, server, detailType, token, binding, digest, in, now, toolName, toolID)
 }
 
 // referable は、参照した承認が評価した登録の、同じ利用者、クライアント、Agent の評価で起票したものかを返す。
@@ -102,7 +108,7 @@ func referable(rec *approvaldomain.ApprovalRequest, server *oauthdomain.McpResou
 
 func startApproval(
 	ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, detailType string,
-	token *oauthports.IntrospectionResult, binding approvaldomain.OperationBinding, digest string, in ResourceAccessRequest, now time.Time,
+	token *oauthports.IntrospectionResult, binding approvaldomain.OperationBinding, digest string, in ResourceAccessRequest, now time.Time, toolName, toolID string,
 ) (startedApprovalOutcome, error) {
 	if deps.ApprovalURL == "" {
 		return startedApprovalOutcome{}, ErrResourceAccessNotConfigured
@@ -115,7 +121,9 @@ func startApproval(
 	details := approvalRemediation(server, oauthdomain.ResourceAccessRule{}, detailType, in)
 	operationDigest := approvaldomain.OperationStartDigest(binding, digest)
 	rec := &approvaldomain.ApprovalRequest{
-		ID: id, TenantID: tenantports.TenantID(ctx), ClientID: token.ClientID, AgentID: optionalPointer(token.AgentID), UserID: token.Sub,
+		ToolName: toolName,
+		ToolID:   toolID,
+		ID:       id, TenantID: tenantports.TenantID(ctx), ClientID: token.ClientID, AgentID: optionalPointer(token.AgentID), UserID: token.Sub,
 		AuthorizationDetails: details, State: spec.ApprovalPending,
 		Initiator: approvaldomain.InitiatedByResourceServer, ResourceServerID: &server.ID, OperationDigest: &operationDigest,
 		RequestedAt: now, ExpiresAt: now.Add(approvaldomain.ResourceServerApprovalTTL),
