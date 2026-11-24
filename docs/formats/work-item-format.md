@@ -42,6 +42,7 @@ primary_use_cases: # feature、bugfix、standards.md の変更では着手後に
     boundary: acceptance
     test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go }
     fault_model: ユースケースが開始コマンドを発行しない。
+    setup: { state: 実行できるタスクの定義がある。, entry_points: 公開のタスク定義の登録操作。, fixtures: なし }
 maturity_evidence: # 成熟度を昇格する場合は完了前に必須。告知パスは公開後に必須
   - feature: start-task-v1
     from: preview
@@ -201,13 +202,14 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 
 [主要ユースケースの証拠契約](../development/specification-first-workflow.md#主要ユースケースの証拠)に該当する作業では、実装前に `primary_use_cases` を追加する。
 各項目には次のフィールドを記す。
+記入の形は[基本形式](#基本形式)のテンプレートの例に従う。
 中心となる利用経路の定義と、故障からの境界選択は[テスト方針](../development/testing.md#主要ユースケース)に従う。
 同じ利用経路の内部判断と外部配線が別の故障なら、同じ要件を引く別の項目にする。
 
 | フィールド | 記入する内容 |
 | --- | --- |
 | `id` | 安定したケバブケースの識別子 |
-| `requirement` | 正確な `REQ-*` または標準要件 |
+| `requirement` | 正確な `REQ-*` または標準要件。同じ記録の `affected_spec` に挙げた要件から選ぶ |
 | `observable_result` | 利用者、永続状態、外部境界から見える最終結果 |
 | `boundary` | `unit`、`adapter`、`acceptance`、`contract`、`property`、`e2e` |
 | `test` | 一つのテストへの参照 |
@@ -217,7 +219,11 @@ Domain、Use Cases、Adapters の各タスクには、自己証明となる対�
 | `setup.fixtures` | fixture や直接保存で省略する準備と理由。なければ「なし」 |
 | `reason` | `e2e` の場合、下位境界で同じ故障を検出できない理由 |
 
-テストへの参照には、リポジトリ相対の `path`、安定した `name`、必要な `mise` または CI の `task` を含める。
+テストへの参照には、リポジトリ相対の `path`、安定した `name`、そのテストを実行する `task` を含める。
+`task` には、`mise.toml` の `verify` が依存として実行するタスクか、`.github/workflows` が `mise run` で呼ぶタスクを書く。
+Go のテストなら `test-go` である。
+`test-go-one` や `test-go-package` のような局所検査のタスクは、完了時の検査が拒否する。
+`setup` の三つのフィールドと、`requirement` が `affected_spec` にあることは、`in_progress` の間から `mise run check-work-items` が検査する。
 作業項目が `in_progress` の間は、予定したテストがまだ存在しなくてもよい。
 完了の直前に `move-work-item` が、テストの参照と標準タスクからの実行を確認する。
 Go では、指定した関数が要件を引用し、最終編集後の `.verification/*.json` に成功が記録されている必要がある。
