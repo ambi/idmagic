@@ -10,6 +10,7 @@ RFC 6749 — https://www.rfc-editor.org/rfc/rfc6749.html
 | RFC6749-REDIRECT-URI-OPTIONAL | required | MUST | 登録した `redirect_uri` が一件のクライアントが、`openid` を含まない認可要求で `redirect_uri` を省いたら、登録値を配送先として受け入れる。`openid` を含む要求と、登録が一件でないクライアントの要求で省いたら、リダイレクトせずに `invalid_request` で拒否する。値のない `redirect_uri=` は省いたものとして扱う。 |
 | RFC6749-TOKEN-REDIRECT-URI | required | MUST | 認可要求で `redirect_uri` を示したコードの交換では、`redirect_uri` を省いた要求を `invalid_request`、異なる値を `invalid_grant` で拒否する。認可要求で省いたコードは、`redirect_uri` を省いた交換を受け入れ、送られた値は登録値と一致を検査する。拒否した交換はコードを消費しない。 |
 | RFC6749-CLIENT-CREDENTIALS | optional | MAY | Client Credentials Grant は `confidential` クライアントに限って許可する。 |
+| RFC6749-CLIENT-CREDENTIALS-SCOPE | optional | MUST | §4.4.2 の `client_credentials` の要求で `scope` を省けば拒否せず、クライアントに登録したスコープを要求したものとして扱い、そのスコープのアクセストークンを発行する。 |
 | RFC6749-REFRESH-SCOPE | required | MUST | §6 のリフレッシュ要求で `scope` を省けば元の付与のスコープを使い、指定すればその部分集合だけをアクセストークンへ載せ、超えた要求を `invalid_scope` で拒否する。新しく発行するリフレッシュトークンのスコープは親と同じに保つ。 |
 | RFC6749-IMPLICIT | excluded | MAY | Implicit Grant を提供する。 |
 | RFC6749-PASSWORD-GRANT | excluded | MAY | Resource Owner Password Credentials Grant を提供する。 |
@@ -40,6 +41,7 @@ RFC 7009 — https://www.rfc-editor.org/rfc/rfc7009.html
 |---|---|---|---|
 | RFC7009-REVOCATION-ENDPOINT | required | MUST | 認証済みクライアントへトークン失効エンドポイントを提供する。 |
 | RFC7009-UNKNOWN-TOKEN | required | MUST | 無効または他クライアント所有のトークンに対しても成功応答を返し情報を漏らさない。 |
+| RFC7009-TOKEN-TYPE-HINT | required | MUST | `token_type_hint` で探すトークンの種類を絞らない。ヒントを省いた要求も、トークンと異なる種類のヒントや未知の値のヒントを付けた要求も拒否せず、アクセストークンとリフレッシュトークンの両方から探して失効する。 |
 
 ## JSON Web Key
 
@@ -71,7 +73,7 @@ RFC 7521 — https://www.rfc-editor.org/rfc/rfc7521.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC7521-CLIENT-ID-OPTIONAL | optional | MUST | クライアントアサーションによる認証では、`client_id` を省いた要求を受け入れ、アサーションの `sub` でクライアントを識別する。`client_id` を送った要求では、その値がアサーションのクライアントと異なれば `invalid_client` で拒否する。 |
+| RFC7521-CLIENT-ID-OPTIONAL | optional | MUST | クライアントアサーションによる認証では、トークン、PAR、イントロスペクション、失効、デバイス認可、CIBA のバックチャネル認証のどの入口でも、`client_id` を省いた要求を受け入れ、アサーションの `sub` でクライアントを識別する。`client_id` を送った要求では、その値がアサーションのクライアントと異なれば `invalid_client` で拒否する。 |
 
 ## JSON Web Token Profile for OAuth 2.0 Client Authentication and Authorization Grants
 
@@ -80,6 +82,7 @@ RFC 7523 — https://www.rfc-editor.org/rfc/rfc7523.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC7523-CLIENT-ASSERTION | optional | MAY | クライアントアサーションの署名、発行者、subject、audience、有効期限、`jti` を検証する。 |
+| RFC7523-OPTIONAL-CLAIMS | optional | MUST | §3 が任意とする `iat` と `nbf` を省いたクライアントアサーションを受け入れる。`nbf` があれば、許容する時計のずれを超えて未来の値を拒否する。`aud` が配列なら、受け入れる audience を一つでも含めば受け入れる。 |
 
 ## OAuth 2.0 Dynamic Client Registration Protocol
 
@@ -168,6 +171,7 @@ RFC 8628 — https://www.rfc-editor.org/rfc/rfc8628.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC8628-DEVICE-AUTHORIZATION | optional | MUST | `device_code`、`user_code`、`verification_uri` を発行し、ResourceOwner の判断を受け付ける。 |
+| RFC8628-SCOPE-DEFAULT | optional | MUST | §3.1 のデバイス認可要求で `scope` を省けば、`openid` を要求したものとして扱う。クライアントの登録が `openid` を含まなければ `invalid_scope` で拒否し、デバイスコードを発行しない。 |
 | RFC8628-POLLING | required | MUST | `authorization_pending`、`slow_down`、`expired_token` のポーリングセマンティクスを守る。 |
 
 ## OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens
@@ -267,6 +271,8 @@ RFC 9449 — https://www.rfc-editor.org/rfc/rfc9449.html
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | RFC9449-PROOF | optional | MAY | DPoP proof の署名、`htm`、`htu`、`iat`、`jti` を検証する。 |
+| RFC9449-HTU-NORMALIZATION | partial | SHOULD | DPoP proof の `htu` を、クエリとフラグメントを除いた要求の URI と、RFC 3986 §6.2.2 と §6.2.3 の正規化をせずに文字列として比べる。スキームやホストの大文字と小文字、デフォルトのポートの明示、パーセント符号化だけが異なる `htu` の proof も拒否する。 |
+| RFC9449-SERVER-NONCE | excluded | MAY | §8 と §9 のサーバーが与える nonce を使わない。`DPoP-Nonce` を発行せず、`nonce` を持たない proof を受け入れる。 |
 | RFC9449-TOKEN-BINDING | optional | MUST | DPoP 利用時はアクセストークンに `jkt` を含め、提示された proof の鍵と照合する。 |
 | RFC9449-ATH | optional | MUST | 保護リソースへ提示する DPoP proof は `ath` を含み、`base64url(SHA-256(access_token))` と一致しなければ拒否する。 |
 

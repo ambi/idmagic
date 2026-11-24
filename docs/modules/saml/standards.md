@@ -7,6 +7,7 @@
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | SAML2Core-BearerAssertion | required | MUST | AuthnRequest は Version 2.0 と許容範囲内の IssueInstant を持たなければならない。発行する Assertion の Audience / Recipient / InResponseTo は、検証済みのリクエストと一致させる。同じテナント、SP、リクエスト ID の組み合わせに対して Assertion を発行できるのは一度だけとする |
+| SAML2CORE-AUTHNREQUEST-OMITTED-ATTRIBUTES | required | MUST | §3.4.1 が任意とする AuthnRequest の `Destination`、`AssertionConsumerServiceURL`、`ProtocolBinding`、`NameIDPolicy` を省いた要求を受け入れ、SP のデフォルトの ACS URL へ HTTP-POST で、SP に構成した NameID 形式の Assertion を返す。`NameIDPolicy` の `Format` が `unspecified` なら、省いた要求と同じに扱う |
 | SAML2Core-EncryptedAssertion | excluded | MAY | 暗号化された Assertion |
 
 ## Bindings for the OASIS Security Assertion Markup Language (SAML) V2.0

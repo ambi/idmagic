@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -58,6 +59,7 @@ const (
 	tiClientSecret    = "token-issuance-client-secret"
 	tiPublicClientID  = "token-issuance-public-client"
 	tiAssertionClient = "token-issuance-assertion-client"
+	tiM2MClientID     = "token-issuance-m2m-client"
 	tiRedirectURI     = "https://app.example/cb"
 	tiUsername        = "alice"
 	tiUserID          = "user_alice"
@@ -116,6 +118,19 @@ func newTokenIssuanceFixture(t *testing.T) *tiFixture {
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodNone,
 		Scope:                    "openid read",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              oauthdomain.FapiNone,
+		CreatedAt:                now,
+	})
+	// client_credentials だけを使うクライアント。利用者の主体を要るスコープを登録しないので、
+	// 登録したスコープ全体をそのまま要求として扱える。
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: tiM2MClientID, ClientSecretHash: &secretHash,
+		ClientType:               spec.ClientConfidential,
+		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		Scope:                    "read write",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
@@ -447,6 +462,52 @@ func TestClientCredentialsIsConfidentialOnlyAndPasswordGrantIsNotOffered(t *test
 		t.Fatalf("password グラントが受理された: %s", body)
 	}
 	assertNoTokenInBody(t, "password グラント", body)
+}
+
+// RFC 6749 §4.4.2 は `client_credentials` の `scope` を OPTIONAL とし、§3.3 は省略時に既定値で
+// 処理するか拒否するかを認可サーバーに委ねる。製品の既定値はクライアントに登録したスコープである。
+//
+// 既定値は応答の `scope` だけでなく、発行したアクセストークンの `scope` クレームでも読む。
+// 応答だけを登録値で埋め、トークンを空のスコープで発行する実装を区別するためである。
+// 対照として、`scope` を一つに絞った要求ではそのスコープだけが載ることを先に確かめる。
+// 登録値を常に載せる実装は、省略の試験だけでは見分けられない。
+//
+//spec:covers RFC6749-CLIENT-CREDENTIALS-SCOPE (optional): scope を省いた client_credentials は、登録したスコープを応答とアクセストークンの両方に載せる。
+func TestClientCredentialsWithoutScopeUsesTheRegisteredScope(t *testing.T) {
+	fixture := newTokenIssuanceFixture(t)
+	issue := func(t *testing.T, form url.Values) tiTokenResponse {
+		t.Helper()
+		form.Set("grant_type", "client_credentials")
+		status, body := fixture.postToken(t, form, func(request *http.Request) {
+			request.SetBasicAuth(tiM2MClientID, tiClientSecret)
+		})
+		if status != http.StatusOK {
+			t.Fatalf("client_credentials status=%d body=%s", status, body)
+		}
+		var parsed tiTokenResponse
+		if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+			t.Fatalf("/token 応答が JSON ではない: %v body=%s", err, body)
+		}
+		return parsed
+	}
+	scopes := func(issued tiTokenResponse) (response, token []string) {
+		claim, _ := accessTokenClaims(t, issued.AccessToken)["scope"].(string)
+		response, token = strings.Fields(issued.Scope), strings.Fields(claim)
+		slices.Sort(response)
+		slices.Sort(token)
+		return response, token
+	}
+
+	narrowed := issue(t, url.Values{"scope": {"read"}})
+	if response, token := scopes(narrowed); !slices.Equal(response, []string{"read"}) || !slices.Equal(token, []string{"read"}) {
+		t.Fatalf("前提が壊れている: scope=read の要求の応答=%v トークン=%v", response, token)
+	}
+
+	omitted := issue(t, url.Values{})
+	want := []string{"read", "write"}
+	if response, token := scopes(omitted); !slices.Equal(response, want) || !slices.Equal(token, want) {
+		t.Fatalf("scope を省いた要求の応答=%v トークン=%v, want 登録した %v", response, token, want)
+	}
 }
 
 // RFC9068-CLAIMS / RFC9068-ASYMMETRIC-SIGNATURE / RFC7518-SIGNATURE-ALGORITHMS /
@@ -1055,6 +1116,52 @@ func TestClientAssertionIdentifiesTheClientWithoutClientID(t *testing.T) {
 			assertNoTokenInBody(t, name, body)
 		})
 	}
+}
+
+// RFC 7523 §3 は、クライアントアサーションの `iat` と `nbf` を任意とし、`aud` に配列を許す。
+// assertionClaims は `iat` を持ち `nbf` を持たないので、`iat` を省いた形と、`aud` を配列にした
+// 形をそれぞれ一つだけ変えて送る。
+//
+// `nbf` を受け入れることは、未来の `nbf` の拒否と過去の `nbf` の受け入れを対にして読む。
+// 拒否だけを見ると、`nbf` があれば常に拒否する実装と区別できない。未来の値は、許容する
+// 時計のずれ（60 秒）より十分に先へ置く。
+//
+//spec:covers RFC7523-OPTIONAL-CLAIMS (optional): iat を省いたアサーションと aud が配列のアサーションでトークンを発行し、過去の nbf は受け入れ、未来の nbf は拒否する。
+func TestClientAssertionAcceptsOmittedOptionalClaimsAndAnAudienceArray(t *testing.T) {
+	fixture := newTokenIssuanceFixture(t)
+	post := func(t *testing.T, mutate func(map[string]any)) (int, string) {
+		t.Helper()
+		claims := fixture.assertionClaims(t)
+		mutate(claims)
+		return fixture.postToken(t, url.Values{
+			"grant_type": {"client_credentials"}, "scope": {"read"},
+			"client_id":             {tiAssertionClient},
+			"client_assertion_type": {"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"},
+			"client_assertion":      {signAssertion(t, fixture.assertionKey, claims)},
+		}, func(*http.Request) {})
+	}
+
+	for name, mutate := range map[string]func(map[string]any){
+		"iat を省く": func(c map[string]any) { delete(c, "iat") },
+		"aud を受け入れる値を含む配列にする": func(c map[string]any) {
+			c["aud"] = []any{"https://other.example/token", c["aud"]}
+		},
+		"過去の nbf を付ける": func(c map[string]any) { c["nbf"] = time.Now().Add(-time.Minute).Unix() },
+	} {
+		t.Run(name+"と受け入れる", func(t *testing.T) {
+			if status, body := post(t, mutate); status != http.StatusOK || !strings.Contains(body, `"access_token"`) {
+				t.Fatalf("status=%d body=%s, want 200 with an access token", status, body)
+			}
+		})
+	}
+
+	t.Run("未来の nbf は拒否する", func(t *testing.T) {
+		status, body := post(t, func(c map[string]any) { c["nbf"] = time.Now().Add(10 * time.Minute).Unix() })
+		if status == http.StatusOK {
+			t.Fatalf("未来の nbf のアサーションが受理された: %s", body)
+		}
+		assertNoTokenInBody(t, "未来の nbf", body)
+	})
 }
 
 // assertionClaims は、アサーションのクライアントの正しいクレームを返す。

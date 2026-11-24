@@ -44,6 +44,9 @@ type authnRequestOptions struct {
 	protocolBinding string
 	isPassive       bool
 	destination     string
+	// omitDestination は Destination 属性を付けない。destination の空は既定値を意味するので、
+	// 省略は別の項目で指す。
+	omitDestination bool
 	// version と issueInstant は、空なら受理される既定値を使う。未対応の値を 1 つだけ
 	// 差し替えるための入口である。
 	version      string
@@ -72,8 +75,10 @@ func buildAuthnRequestXML(options authnRequestOptions) string {
 	request := `<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ` +
 		`xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ` +
 		`ID="_req-std-` + strconv.FormatInt(authnRequestSequence.Add(1), 10) + `" Version="` + version + `" ` +
-		`IssueInstant="` + issueInstant + `" ` +
-		`Destination="` + destination + `"`
+		`IssueInstant="` + issueInstant + `"`
+	if !options.omitDestination {
+		request += ` Destination="` + destination + `"`
+	}
 	if options.acsURL != "" {
 		request += ` AssertionConsumerServiceURL="` + options.acsURL + `"`
 	}
@@ -383,6 +388,58 @@ func TestSamlDoesNotOfferEncryptedAssertions(t *testing.T) {
 		if strings.Contains(listed.Body.String(), "encrypt") {
 			t.Fatalf("暗号化の設定が SP 登録に入っている: %s", listed.Body.String())
 		}
+	}
+}
+
+// =====================================================================
+// SAML2Core — AuthnRequest の任意属性の省略
+// =====================================================================
+
+// SAML 2.0 Core §3.4.1 は、AuthnRequest の Destination、AssertionConsumerServiceURL、
+// ProtocolBinding、NameIDPolicy をどれも任意とする。四つを省いた要求には、SP の既定の ACS へ
+// HTTP-POST で、SP に構成した NameID 形式の Assertion を返す。
+//
+// 既定値は応答の中身で読む。発行されたことだけでは、別の ACS や別の NameID 形式を既定に
+// する実装と区別できない。テストの SP は ACS を一つ、NameID 形式を persistent に構成している。
+// `unspecified` の NameIDPolicy を省略と同じに扱うことも、同じ観測で読む。
+//
+//spec:covers SAML2CORE-AUTHNREQUEST-OMITTED-ATTRIBUTES: Destination、AssertionConsumerServiceURL、ProtocolBinding、NameIDPolicy を省いた AuthnRequest と unspecified の NameIDPolicy に、既定の ACS へ HTTP-POST で、SP の NameID 形式の Assertion を返す。
+func TestSamlAcceptsAuthnRequestWithoutOptionalAttributes(t *testing.T) {
+	authn := &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix(), AMR: []string{"pwd"}}
+
+	for _, tc := range []struct {
+		name    string
+		options authnRequestOptions
+	}{
+		{name: "四つの任意属性を省く", options: authnRequestOptions{omitDestination: true}},
+		{
+			name:    "NameIDPolicy の Format が unspecified",
+			options: authnRequestOptions{omitDestination: true, nameIDFormat: samldomain.SamlNameIDFormatUnspecified},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e, _ := newServer(t, authn)
+			recorder := redirectSSO(t, e, tc.options)
+			if !issuedAnAssertion(t, recorder) {
+				t.Fatalf("任意属性を省いた AuthnRequest で Assertion が発行されない: status=%d body=%s",
+					recorder.Code, recorder.Body.String())
+			}
+			body := recorder.Body.String()
+			if !strings.Contains(body, `action="https://sp.example.com/acs"`) {
+				t.Fatalf("自動 POST フォームの送信先が SP の既定の ACS ではない: %s", body)
+			}
+			document := etree.NewDocument()
+			if err := document.ReadFromBytes(samlResponseFromPostForm(t, body)); err != nil {
+				t.Fatalf("parse SAMLResponse: %v", err)
+			}
+			nameID := document.FindElement("//Assertion/Subject/NameID")
+			if nameID == nil {
+				t.Fatalf("Assertion に NameID がない: %s", body)
+			}
+			if format := nameID.SelectAttrValue("Format", ""); format != samldomain.SamlNameIDFormatPersistent {
+				t.Fatalf("NameID の Format = %q, want SP に構成した %q", format, samldomain.SamlNameIDFormatPersistent)
+			}
+		})
 	}
 }
 

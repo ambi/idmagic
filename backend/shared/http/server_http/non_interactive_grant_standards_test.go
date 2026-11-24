@@ -1,7 +1,7 @@
 package server_http_test
 
 // docs/modules/oauth2/standards.md のうち、ブラウザーのリダイレクトを使わずに承認を
-// 取る 2 つのグラントが持つ 8 件の標準要件を観測する。
+// 取る 2 つのグラントが持つ 9 件の標準要件を観測する。
 //
 // 入口は Register が組み立てたスタックへの HTTP である。デバイス認可も CIBA も、
 // 「機械が要求を起こし、人が別の画面で決め、機械が繰り返し取りに来る」という 3 者に
@@ -42,6 +42,7 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/testing_clientauth"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/testing_passwords"
 
@@ -57,12 +58,16 @@ const (
 	nigIssuer       = "http://test"
 	nigClientID     = "non-interactive-client"
 	nigClientSecret = "non-interactive-client-secret"
-	nigRedirectURI  = "https://console.example/cb"
-	nigUsername     = "alice"
-	nigPassword     = "non-interactive-password-1234"
-	nigScope        = "openid profile payments"
-	nigDetailType   = "payment_initiation"
-	nigVerifier     = "non-interactive-grant-standards-pkce-verifier-0123456789"
+	// nigAssertionClientID は private_key_jwt で認証するクライアントである。
+	nigAssertionClientID = "non-interactive-assertion-client"
+	// nigNoOpenIDClientID は `openid` を登録していないデバイス認可のクライアントである。
+	nigNoOpenIDClientID = "non-interactive-no-openid-client"
+	nigRedirectURI      = "https://console.example/cb"
+	nigUsername         = "alice"
+	nigPassword         = "non-interactive-password-1234"
+	nigScope            = "openid profile payments"
+	nigDetailType       = "payment_initiation"
+	nigVerifier         = "non-interactive-grant-standards-pkce-verifier-0123456789"
 )
 
 // countingApprovalStore は保存された承認要求を数える。「拒否した要求は起票しない」を、
@@ -109,12 +114,13 @@ func (r *eventRecorder) assertEmitted(t *testing.T, eventTypes ...string) {
 }
 
 type nigFixture struct {
-	server    *httptest.Server
-	base      string
-	devices   oauthports.DeviceCodeStore
-	approvals oauthports.ApprovalRequestStore
-	counted   *countingApprovalStore
-	events    *eventRecorder
+	server       *httptest.Server
+	base         string
+	assertionKey *testing_clientauth.PrivateKeyJWT
+	devices      oauthports.DeviceCodeStore
+	approvals    oauthports.ApprovalRequestStore
+	counted      *countingApprovalStore
+	events       *eventRecorder
 }
 
 // newNonInteractiveGrantFixture は本番と同じ Register でデバイス認可、CIBA、トークン、
@@ -138,6 +144,33 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
 		Scope:                    nigScope,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              oauthdomain.FapiNone,
+		CreatedAt:                now,
+	})
+	assertionKey := testing_clientauth.NewPrivateKeyJWT(t, nigAssertionClientID)
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: nigAssertionClientID, ClientType: spec.ClientConfidential,
+		RedirectURIs: []string{nigRedirectURI},
+		GrantTypes: []spec.GrantType{
+			spec.GrantAuthorizationCode, spec.GrantDeviceCode, spec.GrantCiba,
+		},
+		ResponseTypes:            []spec.ResponseType{spec.ResponseTypeCode},
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodPrivateKeyJwt,
+		JWKS:                     assertionKey.JWKS(),
+		Scope:                    "openid profile",
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
+		FapiProfile:              oauthdomain.FapiNone,
+		CreatedAt:                now,
+	})
+	_ = clients.Save(context.Background(), &oauthdomain.OAuth2Client{
+		TenantID: tenancydomain.DefaultTenantID,
+		ClientID: nigNoOpenIDClientID, ClientSecretHash: &secretHash,
+		ClientType:               spec.ClientConfidential,
+		GrantTypes:               []spec.GrantType{spec.GrantDeviceCode},
+		TokenEndpointAuthMethod:  oauthdomain.AuthMethodClientSecretBasic,
+		Scope:                    "profile",
 		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile:              oauthdomain.FapiNone,
 		CreatedAt:                now,
@@ -212,7 +245,8 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 			PARStore:        oauth2.NewMemoryModule().PARStore,
 			RefreshStore:    oauth2.NewMemoryModule().RefreshStore,
 			DeviceCodeStore: devices, ApprovalRequestStore: counted,
-			AuthzDetailTypeRepo: detailTypes,
+			AuthzDetailTypeRepo:        detailTypes,
+			ClientAssertionReplayStore: oauth2.NewMemoryModule().ClientAssertionReplayStore,
 			// 本番の組み立て (cmd/idmagic/server.go) と同じく、id_token_hint の
 			// 検証器はトークン署名器そのものである。
 			IDTokenHintVerifier: signer,
@@ -228,7 +262,7 @@ func newNonInteractiveGrantFixture(t *testing.T) *nigFixture {
 	server := httptest.NewServer(e)
 	t.Cleanup(server.Close)
 	return &nigFixture{
-		server: server, base: server.URL + "/realms/default",
+		server: server, base: server.URL + "/realms/default", assertionKey: assertionKey,
 		devices: devices, approvals: approvals, counted: counted, events: events,
 	}
 }
@@ -247,14 +281,22 @@ func (f *nigFixture) tenantContext() context.Context {
 // トークンエンドポイントもデバイス認可も CIBA も、この 1 つの形しか使わない。
 func (f *nigFixture) postForm(t *testing.T, path string, form url.Values, authenticate bool) (int, map[string]any) {
 	t.Helper()
+	return f.postFormWith(t, path, form, func(request *http.Request) {
+		if authenticate {
+			request.SetBasicAuth(nigClientID, nigClientSecret)
+		}
+	})
+}
+
+// postFormWith は postForm と同じ 1 リクエストを、decorate が付けるクライアント認証で送る。
+func (f *nigFixture) postFormWith(t *testing.T, path string, form url.Values, decorate func(*http.Request)) (int, map[string]any) {
+	t.Helper()
 	request, err := http.NewRequest(http.MethodPost, f.base+path, strings.NewReader(form.Encode()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if authenticate {
-		request.SetBasicAuth(nigClientID, nigClientSecret)
-	}
+	decorate(request)
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		t.Fatalf("POST %s: %v", path, err)
@@ -566,6 +608,36 @@ func TestDeviceAuthorizationIssuesCodesAndTakesTheResourceOwnerDecision(t *testi
 	fixture.decideUserCode(t, browser, deniedUserCode, "deny")
 	status, body = fixture.exchangeDeviceCode(t, deniedCode)
 	assertOAuthError(t, "拒否された device_code", status, body, "access_denied")
+}
+
+// RFC 8628 §3.1 は `scope` を OPTIONAL とし、RFC 6749 §3.3 は省略時に既定値で処理するか
+// 拒否するかを認可サーバーに委ねる。製品の既定値は `openid` である。
+//
+// 既定値が実際に `openid` であることは、保存されたデバイス認可の記録で読む。応答の成功だけ
+// では、空のスコープで記録する実装と区別できない。既定値も登録の範囲で検査することは、
+// `openid` を登録していないクライアントの省略が拒否され、デバイスコードが返らないことで読む。
+//
+//spec:covers RFC8628-SCOPE-DEFAULT: scope を省いたデバイス認可は openid の記録を作り、openid を登録していないクライアントの省略は invalid_scope でデバイスコードを返さない。
+func TestDeviceAuthorizationDefaultsAnOmittedScopeToOpenID(t *testing.T) {
+	fixture := newNonInteractiveGrantFixture(t)
+
+	status, body := fixture.postForm(t, "/device_authorization", url.Values{}, true)
+	if status != http.StatusOK {
+		t.Fatalf("scope を省いたデバイス認可 status=%d body=%v", status, body)
+	}
+	userCode, _ := body["user_code"].(string)
+	record, err := fixture.devices.FindByUserCode(fixture.tenantContext(), oauthdomain.NormalizeUserCode(userCode))
+	if err != nil || record == nil {
+		t.Fatalf("デバイス認可の記録が見つからない: record=%v err=%v", record, err)
+	}
+	if !slices.Equal(record.Scopes, []string{"openid"}) {
+		t.Fatalf("scope を省いた記録のスコープ = %v, want [openid]", record.Scopes)
+	}
+
+	status, body = fixture.postFormWith(t, "/device_authorization", url.Values{}, func(request *http.Request) {
+		request.SetBasicAuth(nigNoOpenIDClientID, nigClientSecret)
+	})
+	assertOAuthError(t, "openid を登録していないクライアントの省略", status, body, "invalid_scope")
 }
 
 // authorization_pending、slow_down、expired_token のポーリングセマンティクスを守る。

@@ -416,7 +416,18 @@ func (f *tpFixture) revoke(
 	t *testing.T, token string, decorate ...func(*http.Request),
 ) (int, string) {
 	t.Helper()
+	return f.revokeWithHint(t, token, "", decorate...)
+}
+
+// revokeWithHint は revoke と同じ要求に、hint が空でなければ `token_type_hint` を付ける。
+func (f *tpFixture) revokeWithHint(
+	t *testing.T, token, hint string, decorate ...func(*http.Request),
+) (int, string) {
+	t.Helper()
 	form := url.Values{"token": {token}}
+	if hint != "" {
+		form.Set("token_type_hint", hint)
+	}
 	request, err := http.NewRequest(
 		http.MethodPost, f.base+tpRevokePath, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -971,6 +982,54 @@ func TestRevokingAnUnknownOrForeignTokenIsAnIndistinguishableNoOp(t *testing.T) 
 	}
 }
 
+// RFC 7009 §2.1 は `token_type_hint` を OPTIONAL とし、ヒントで見つからなければ認可サーバーが
+// ほかの種類も探すことを許す。製品はヒントで探す種類を絞らない。
+//
+// 失効の要求は、見つからないトークンにも成功応答を返す（RFC7009-UNKNOWN-TOKEN）。応答だけを
+// 読むと、ヒントの種類だけを探して何も失効しない実装と区別できないので、失効の効果で読む。
+// アクセストークンは保護リソースへ届かなくなること、リフレッシュトークンは新しいトークンが
+// 出なくなることである。アクセストークンの失効が同じ付与のリフレッシュトークンを巻き込む
+// 実装でもリフレッシュトークンの失効を独立に読めるように、二つの種類は別々の付与から取る。
+//
+//spec:covers RFC7009-TOKEN-TYPE-HINT (required): ヒントの省略、種類と異なるヒント、未知のヒントのどれでも、アクセストークンとリフレッシュトークンを失効する。
+func TestRevocationFindsTheTokenRegardlessOfTheTypeHint(t *testing.T) {
+	fixture := newTokenPresentationFixture(t)
+
+	for _, tc := range []struct {
+		name                    string
+		accessHint, refreshHint string
+	}{
+		{name: "ヒントを省く"},
+		{name: "種類と異なるヒント", accessHint: "refresh_token", refreshHint: "access_token"},
+		{name: "未知のヒント", accessHint: "unknown_type", refreshHint: "unknown_type"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			access := fixture.userToken(t, "openid profile").AccessToken
+			if status, body := fixture.userInfo(t, "Bearer "+access, nil, nil); !reachedUserInfo(status, body) {
+				t.Fatalf("前提が壊れている: 失効前のアクセストークンが通らない status=%d body=%v", status, body)
+			}
+			if status, body := fixture.revokeWithHint(t, access, tc.accessHint); status != http.StatusOK {
+				t.Fatalf("アクセストークンの失効 status=%d body=%s", status, body)
+			}
+			if status, body := fixture.userInfo(t, "Bearer "+access, nil, nil); reachedUserInfo(status, body) {
+				t.Fatalf("hint=%q で失効させたアクセストークンが保護リソースへ到達した", tc.accessHint)
+			}
+
+			refresh := fixture.userToken(t, "openid profile offline_access").RefreshToken
+			if status, body := fixture.revokeWithHint(t, refresh, tc.refreshHint); status != http.StatusOK {
+				t.Fatalf("リフレッシュトークンの失効 status=%d body=%s", status, body)
+			}
+			status, body := fixture.postToken(t, url.Values{
+				"grant_type": {"refresh_token"}, "refresh_token": {refresh},
+			})
+			if status == http.StatusOK {
+				t.Fatalf("hint=%q で失効させたリフレッシュトークンで新しいトークンが出た: %s", tc.refreshHint, body)
+			}
+			assertNoTokenInBody(t, "失効させたリフレッシュトークン", body)
+		})
+	}
+}
+
 // =====================================================================
 // RFC 7800 / RFC 9700 — 確認鍵と送信者制約
 // =====================================================================
@@ -1296,5 +1355,82 @@ func TestDPoPProofElementsAreVerifiedAtTheTokenEndpointAndTheProtectedResource(t
 				t.Fatalf("status=%d, want 401 (body=%v)", status, body)
 			}
 		})
+	}
+}
+
+// RFC 9449 §4.3 は、`htu` を要求の URI と比べる前に RFC 3986 §6.2.2 と §6.2.3 の正規化を
+// することを SHOULD とする。製品は正規化せず、文字列として比べる。
+//
+// 表記だけが異なる `htu` の proof は、正規化すれば一致する値である。それぞれを、無傷の proof が
+// 通ることと対にして送る。拒否だけを見ると、`htu` を読まずに常に拒否する実装と区別できない。
+// 一つの proof で変えるのは一つの表記だけにし、拒否の理由をその表記に限る。
+//
+//spec:covers RFC9449-HTU-NORMALIZATION (partial): 要求の URI と文字列で一致する htu の proof だけが通り、スキームやホストの大文字、既定のポートの明示、パーセント符号化だけが異なる htu の proof は拒否する。
+func TestDPoPHTUIsComparedWithoutNormalization(t *testing.T) {
+	fixture := newTokenPresentationFixture(t)
+	key, jwk, _ := tpDPoPKey(t)
+	present := func(t *testing.T, htu string) (int, string) {
+		t.Helper()
+		proof := tpDPoPProof(t, key, jwk, tpDPoPProofInput{
+			htm: http.MethodPost, htu: htu, jti: "htu-" + t.Name(), iat: time.Now().UTC(),
+		})
+		return fixture.postToken(t, url.Values{"grant_type": {"client_credentials"}, "scope": {"read"}},
+			func(request *http.Request) {
+				request.SetBasicAuth(tpClientID, tpClientSecret)
+				request.Header.Set("DPoP", proof)
+			})
+	}
+
+	if status, body := present(t, tpHTU(tpTokenPath)); status != http.StatusOK {
+		t.Fatalf("前提が壊れている: 要求の URI と一致する htu の proof が通らない status=%d body=%s", status, body)
+	}
+	for name, htu := range map[string]string{
+		"大文字のスキーム":  "HTTP://test/realms/default/token",
+		"大文字のホスト":   "http://TEST/realms/default/token",
+		"既定のポートの明示": "http://test:80/realms/default/token",
+		"パーセント符号化":  "http://test/realms/default/%74oken",
+	} {
+		t.Run(name, func(t *testing.T) {
+			status, body := present(t, htu)
+			if status == http.StatusOK {
+				t.Fatalf("htu=%q の proof でトークンが出た: %s", htu, body)
+			}
+			assertNoTokenInBody(t, name, body)
+		})
+	}
+}
+
+// RFC 9449 §8 と §9 は、認可サーバーとリソースサーバーが `DPoP-Nonce` で nonce を与え、
+// proof に `nonce` を要求できるとする。製品はこの仕組みを使わない。
+//
+// 使わないことは、`nonce` を持たない proof でトークンが出ることと、応答が `DPoP-Nonce` を
+// 付けないことの両方で読む。前者だけでは、成功応答に nonce を付けて次の proof から要求する
+// 実装と区別できない。
+//
+//spec:covers RFC9449-SERVER-NONCE (excluded): nonce を持たない proof でトークンを発行し、応答に DPoP-Nonce を付けない。
+func TestDPoPProofWithoutNonceIsAcceptedAndNoNonceIsIssued(t *testing.T) {
+	fixture := newTokenPresentationFixture(t)
+	key, jwk, _ := tpDPoPKey(t)
+	form := url.Values{"grant_type": {"client_credentials"}, "scope": {"read"}}
+	request, err := http.NewRequest(http.MethodPost, fixture.base+tpTokenPath, strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.SetBasicAuth(tpClientID, tpClientSecret)
+	request.Header.Set("DPoP", tpDPoPProof(t, key, jwk, tpDPoPProofInput{
+		htm: http.MethodPost, htu: tpHTU(tpTokenPath), jti: "without-nonce", iat: time.Now().UTC(),
+	}))
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("POST /token: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	body, _ := io.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK || !strings.Contains(string(body), `"access_token"`) {
+		t.Fatalf("nonce のない proof の要求 status=%d body=%s, want 200 with an access token", response.StatusCode, body)
+	}
+	if nonce := response.Header.Get("DPoP-Nonce"); nonce != "" {
+		t.Fatalf("応答が DPoP-Nonce=%q を付けた", nonce)
 	}
 }

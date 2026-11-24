@@ -77,6 +77,7 @@ MSAL の手順は、MSAL.NET の `UsernamePasswordRequest` と `CommonNonInterac
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | WSFED-PASSIVE-SIGN-IN | required | MUST | wsignin1.0 で登録済み wtrealm と許可済み wreply にだけトークンを返す |
+| WSFED-PASSIVE-OMITTED-PARAMETERS | required | MUST | wsignin1.0 が任意の `wreply`、`wctx`、`wfresh` を省いた要求を受け入れる。`wreply` を省けば RP の最初の許可済みの返信先へトークンを返し、`wctx` を省けば応答に `wctx` を付けず、`wfresh` を省けば認証からの経過時間で再認証を求めない |
 | WSFED-SILENT-SIGN-IN | excluded | MAY | silent sign-in / prompt=none 相当の無音認証 |
 
 ## WS-Trust 1.3

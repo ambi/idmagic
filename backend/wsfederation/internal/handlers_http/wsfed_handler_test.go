@@ -375,6 +375,39 @@ func TestWsFedPassiveSignIn_IssuesOnlyToTheRegisteredRealmAndAllowedReply(t *tes
 	})
 }
 
+// WS-Federation 1.2 は wsignin1.0 の wreply、wctx、wfresh をどれも任意とする。三つを省いた
+// 要求に、RP の最初の許可済みの返信先へ、wctx を付けずにトークンを返す。
+//
+// 既定値は応答の中身で読む。テストの RP は二つの返信先を持つので、送信先が最初の返信先で
+// あることが既定の選択の証拠になる。wfresh の省略が再認証を求めないことは、認証から 30 分
+// 経ったセッションで発行されることで読む。同じセッションに wfresh=0 を付けた要求はログインへ
+// 誘導される（TestWsFedSignIn_StaleSessionWithWfreshRedirectsToLogin）ので、差は wfresh の
+// 有無だけである。
+//
+//spec:covers WSFED-PASSIVE-OMITTED-PARAMETERS: wreply、wctx、wfresh を省いた wsignin1.0 に、最初の許可済みの返信先へ wctx のない自動 POST フォームでトークンを返し、認証から時間の経ったセッションでも再認証へ誘導しない。
+func TestWsFedPassiveSignIn_AcceptsOmittedOptionalParameters(t *testing.T) {
+	staleAuthTime := time.Now().Add(-30 * time.Minute).Unix()
+	e, events := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: staleAuthTime, AMR: []string{"pwd"}})
+
+	rec := get(e, "/wsfed?wa=wsignin1.0&wtrealm=urn:idmagic:demo-rp")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d location=%q body=%s, want 200 with a passive form", rec.Code, rec.Header().Get("Location"), rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `action="https://rp.example/wsfed"`) {
+		t.Fatalf("token was not posted to the first allowed reply URL: %s", body)
+	}
+	if strings.Contains(body, `name="wctx"`) {
+		t.Fatalf("passive form carries wctx although the request omitted it: %s", body)
+	}
+	if !strings.Contains(wresultFromPassiveForm(t, body), "RequestSecurityTokenResponse") {
+		t.Fatalf("wresult does not carry an RSTR: %s", body)
+	}
+	if !hasEvent(*events, "WsFedSignInIssued") {
+		t.Fatal("WsFedSignInIssued not emitted")
+	}
+}
+
 // excluded の標準要件なので、観測は標準要件の Statement を満たすことではなく満たさないことになる。無音を求める入力が
 // 正式な入口へ届いたとき、(1) 無音でトークンが出ないこと、(2) 利用者に何も見せない失敗応答にも化けず、
 // 対話的なログインへ誘導するか明示的に拒否することの 2 つを観測する。この 2 つを分けないと、「無音の
