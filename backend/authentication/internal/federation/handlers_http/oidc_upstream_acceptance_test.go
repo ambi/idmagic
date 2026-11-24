@@ -237,3 +237,40 @@ func TestOIDCCallbackRejectsAnIDTokenSignedWithES256(t *testing.T) {
 		t.Fatalf("ES256 の ID Token でセッションが発行された: %+v", authn)
 	}
 }
+
+// RFC 7517 §4.4 は JWK の `alg` を任意とする。製品は RS256 だけを検証するので、`alg` を
+// 省いた RSA の署名鍵は RS256 の鍵として候補に入れ、`kid` の一致で選んだ鍵で検証する。
+//
+// JWK Set には `alg` を省いた鍵だけを置く。`alg` が `RS256` の鍵だけを候補にする実装は
+// 検証の候補を持てず、セッションを発行しない。
+//
+//spec:covers OIDC-CORE-ID-TOKEN-KID-OPTIONAL: alg を省いた RSA の署名鍵だけを公開する上流で、kid が一致する ID Token から callback が連携済みの User の federated セッションを発行する。
+func TestOIDCCallbackAcceptsAJWKWithoutAlg(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutAlg := rsaJWK(key, "signing")
+	delete(withoutAlg, "alg")
+	completed, authn := federatedCallback(t, upstreamIdP{
+		tokenResponse: func(t *testing.T, nonce string) map[string]any {
+			t.Helper()
+			signed := signJWS(t, map[string]any{"alg": "RS256", "kid": "signing", "typ": "JWT"}, upstreamClaims(nonce),
+				func(digest []byte) []byte {
+					signature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, digest)
+					if err != nil {
+						t.Fatal(err)
+					}
+					return signature
+				})
+			return map[string]any{"id_token": signed, "token_type": "Bearer"}
+		},
+		jwks: map[string]any{"keys": []any{withoutAlg}},
+	})
+	if completed.Code != http.StatusSeeOther || completed.Header().Get("Location") != "/authorize/resume" {
+		t.Fatalf("callback status=%d headers=%v body=%s", completed.Code, completed.Header(), completed.Body.String())
+	}
+	if authn == nil || authn.UserID != "user-alice" {
+		t.Fatalf("authn=%+v, want the linked user-alice", authn)
+	}
+}

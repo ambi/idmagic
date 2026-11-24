@@ -32,6 +32,14 @@ func TestVerifyUpstreamIDTokenSelectsOnlyAnUnambiguousSigningKey(t *testing.T) {
 	unnamed := publicJWK(key, "", "sig")
 	unspecifiedUse := publicJWK(key, "signing", "")
 	encryptionWithSigningMaterial := publicJWK(key, "encryption", "enc")
+	withAlg := func(key jwk, alg string) jwk {
+		key.Alg = alg
+		return key
+	}
+	unspecifiedAlg := withAlg(signing, "")
+	otherAlg := withAlg(signing, "RS384")
+	lowercaseAlg := withAlg(signing, "rs256")
+	encryptionWithoutAlg := withAlg(encryptionWithSigningMaterial, "")
 	for _, tc := range []struct {
 		name   string
 		kid    any
@@ -42,6 +50,13 @@ func TestVerifyUpstreamIDTokenSelectsOnlyAnUnambiguousSigningKey(t *testing.T) {
 		{name: "single signing key", keys: []jwk{signing}, accept: true},
 		{name: "unspecified key use", keys: []jwk{unspecifiedUse}, accept: true},
 		{name: "single unnamed key", keys: []jwk{unnamed}, accept: true},
+		{name: "unspecified algorithm", keys: []jwk{unspecifiedAlg}, accept: true},
+		{name: "explicit key with unspecified algorithm", kid: "signing", keys: []jwk{second, unspecifiedAlg}, accept: true},
+		{name: "other RSA algorithm", keys: []jwk{otherAlg}},
+		{name: "explicit key with other RSA algorithm", kid: "signing", keys: []jwk{otherAlg}},
+		{name: "lowercase algorithm", keys: []jwk{lowercaseAlg}},
+		{name: "encryption without algorithm", keys: []jwk{encryptionWithoutAlg}},
+		{name: "unspecified algorithm among multiple", keys: []jwk{unspecifiedAlg, second}},
 		{name: "encryption key is excluded", keys: []jwk{signing, encryption}, accept: true},
 		{name: "encryption key first", keys: []jwk{encryption, signing}, accept: true},
 		{name: "no key"},

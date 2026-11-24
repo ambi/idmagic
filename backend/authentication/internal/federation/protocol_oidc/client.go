@@ -285,7 +285,8 @@ type rsaSigningKey struct {
 func (d jwksDocument) rsaKeys() ([]rsaSigningKey, error) {
 	var out []rsaSigningKey
 	for _, key := range d.Keys {
-		if key.KTY != "RSA" || key.Alg != "RS256" || (key.Use != "" && key.Use != "sig") {
+		// alg は RFC 7517 §4.4 で任意なので、省いた RSA 鍵も RS256 の鍵として扱う。
+		if key.KTY != "RSA" || (key.Alg != "" && key.Alg != "RS256") || (key.Use != "" && key.Use != "sig") {
 			continue
 		}
 		n, err := base64.RawURLEncoding.DecodeString(key.N)
