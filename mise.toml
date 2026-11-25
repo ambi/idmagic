@@ -1126,6 +1126,16 @@ set -eu
 bun run spec-diff/src/main.ts "${1:-main}"
 '''
 
+[tasks.report-agent-friction]
+description = "Count Agent-Friction commit trailers by target to find guidance agents keep tripping over"
+# 繰り返しの判断材料を示す報告であり、ゲートにしない。引数は git log のリビジョン範囲。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run agent-friction/src/main.ts "$@"
+'''
+
 [tasks.spec-review-candidates]
 description = "List production Go code that no specification-citing test executes, as candidates to review"
 # 仕様漏れの判定ではなく、既存コードを書き起こすときの着手点を報告する。ゲートにはしない。

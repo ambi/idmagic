@@ -27,6 +27,7 @@ description: 仕様先行の作業項目を work-items/active/ に起票し、�
    ADR は作らない。
    モジュールの追加、分割と統合、公開パッケージの拡大、モジュール間の依存の追加、テーブル所有者または組み立て地点の変更を含む項目では、`docs/design/application/design-guidelines.md` の境界を選ぶ判断手順を適用し、その記録を設計に書く。
 9. `mise run check-work-items` を通す。
+10. 起票をコミットするときは、[作業中の妨げの記録](../../../docs/development/agent-guidance.md#作業中の妨げの記録)に従って振り返り、妨げがあればコミットのメッセージにトレーラーを書く。
 
 完了時は `## 要約` を書いて `mise run move-work-item -- <id>` を実行する。
 コマンドが縮約前の仕様影響の照合、完了時の検査、要約への縮約、`work-items/done/` への移動、リンクの更新を行う。

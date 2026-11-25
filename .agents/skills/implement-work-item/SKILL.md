@@ -132,6 +132,7 @@ Go のテストの race の扱いは[通常テストと race 検査](../../../do
 正式コミットの前に `mise run move-work-item -- <id>` を実行し、縮約前の仕様影響の照合と完了時の検査を通す。
 移動後に `mise run check-work-items` と `mise run check-links` を通す。
 [チェックポイントと最終コミット](../../../docs/development/specification-first-workflow.md#チェックポイントと最終コミット)に従って折り畳み、完了の変更もすべてステージして、`commit` スキルで実装と要約だけの完了記録を一つの正式コミットにする。
+コミットの前に[作業中の妨げの記録](../../../docs/development/agent-guidance.md#作業中の妨げの記録)に従って振り返り、妨げがあれば正式コミットのメッセージにトレーラーを書く。
 
 最終報告には、ブランチ、コミット、対象外、残した未実施事項を示す。
 明示された場合だけ push する。
