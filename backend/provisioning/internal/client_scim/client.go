@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	provisioningdomain "github.com/ambi/idmagic/backend/provisioning/internal/domain"
@@ -305,10 +306,20 @@ func (c *Client) updateResource(ctx context.Context, path string, doc map[string
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
+	if !updateSucceeded(method, resp.StatusCode) {
 		return nil, classify(resp, data)
 	}
 	return etagFromHeader(resp), nil
+}
+
+// updateSucceeded は更新の要求に対する成功の応答を判定する。
+// PUT の成功は 200 だけである (RFC 7644 §3.5.1)。PATCH は本文を返さない 204 No Content も
+// 成功に数える (RFC 7644 §3.5.2)。
+func updateSucceeded(method string, status int) bool {
+	if status == http.StatusOK {
+		return true
+	}
+	return method == http.MethodPatch && status == http.StatusNoContent
 }
 
 // PatchGroupMembers sends a single add/remove Operation against a Group's
@@ -331,7 +342,7 @@ func (c *Client) PatchGroupMembers(ctx context.Context, remoteGroupID, op string
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
+	if !updateSucceeded(http.MethodPatch, resp.StatusCode) {
 		return classify(resp, data)
 	}
 	return nil
@@ -374,8 +385,25 @@ func (c *Client) SearchGroupByAttribute(ctx context.Context, attribute, value st
 	return c.searchResource(ctx, "/Groups", attribute, value)
 }
 
+// jsonString はフィルターの比較値を JSON の文字列として符号化する (RFC 7644 §3.4.2.2 の compValue)。
+// Go の引用符付けは `\x01` や `\v` のような JSON にない逃がし方を使うので使わない。
+// HTML の特殊文字は SCIM の相手にとって意味を持たないので `\u` で逃がさない。
+func jsonString(value string) (string, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(value); err != nil {
+		return "", fmt.Errorf("provisioning/scim: encode filter value: %w", err)
+	}
+	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
+
 func (c *Client) searchResource(ctx context.Context, path, attribute, value string) (string, bool, error) {
-	filter := fmt.Sprintf("%s eq %q", attribute, value)
+	literal, err := jsonString(value)
+	if err != nil {
+		return "", false, err
+	}
+	filter := attribute + " eq " + literal
 	resp, data, err := c.do(ctx, http.MethodGet, path+"?filter="+url.QueryEscape(filter), nil) //nolint:bodyclose // do() already reads and closes resp.Body before returning
 	if err != nil {
 		return "", false, err

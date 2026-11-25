@@ -3,10 +3,10 @@ package domain
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf16"
 )
 
 // Resource limits guard the RFC 7644 §3.4.2.2 filter parser against
@@ -52,6 +52,8 @@ const (
 type AttributeSpec struct {
 	Kind AttributeKind
 	Ops  map[string]bool
+	// CaseExact は文字列の比較で大文字と小文字を区別するかである (RFC 7643 §2.2 の caseExact)。
+	CaseExact bool
 }
 
 // AttributeAllowlist maps a lower-cased attribute path (e.g. "username",
@@ -65,6 +67,13 @@ func stringAttr(ops ...string) AttributeSpec {
 		set[op] = true
 	}
 	return AttributeSpec{Kind: AttrString, Ops: set}
+}
+
+// caseExactStringAttr は RFC 7643 が caseExact を真とする文字列の属性である。
+func caseExactStringAttr(ops ...string) AttributeSpec {
+	spec := stringAttr(ops...)
+	spec.CaseExact = true
+	return spec
 }
 
 func boolAttr(ops ...string) AttributeSpec {
@@ -92,7 +101,7 @@ var UserFilterAttributes = AttributeAllowlist{
 	"name.givenname":    stringAttr("eq", "ne", "co", "sw", "ew"),
 	"name.familyname":   stringAttr("eq", "ne", "co", "sw", "ew"),
 	"emails.value":      stringAttr("eq", "ne", "co", "sw", "ew"),
-	"id":                stringAttr("eq", "ne"),
+	"id":                caseExactStringAttr("eq", "ne"),
 	"meta.created":      dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
 	"meta.lastmodified": dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
 }
@@ -101,7 +110,7 @@ var UserFilterAttributes = AttributeAllowlist{
 // (SCL interfaces.ListScimGroups).
 var GroupFilterAttributes = AttributeAllowlist{
 	"displayname":       stringAttr("eq", "ne", "co", "sw", "ew"),
-	"id":                stringAttr("eq", "ne"),
+	"id":                caseExactStringAttr("eq", "ne"),
 	"meta.created":      dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
 	"meta.lastmodified": dateTimeAttr("eq", "ne", "gt", "ge", "lt", "le"),
 }
@@ -145,12 +154,13 @@ func (e *presenceExpr) Matches(attrs map[string]any) bool {
 }
 
 type compareExpr struct {
-	attr string
-	op   string
-	kind AttributeKind
-	str  string
-	b    bool
-	t    time.Time
+	attr      string
+	op        string
+	kind      AttributeKind
+	caseExact bool
+	str       string
+	b         bool
+	t         time.Time
 }
 
 func (e *compareExpr) Matches(attrs map[string]any) bool {
@@ -201,8 +211,10 @@ func (e *compareExpr) Matches(attrs map[string]any) bool {
 	if !isStr {
 		return false
 	}
-	lsv := strings.ToLower(sv)
-	lref := strings.ToLower(e.str)
+	lsv, lref := sv, e.str
+	if !e.caseExact {
+		lsv, lref = strings.ToLower(sv), strings.ToLower(e.str)
+	}
 	switch e.op {
 	case "eq":
 		return lsv == lref
@@ -355,25 +367,71 @@ func (l *lexer) lexString() (token, error) {
 			case 't':
 				sb.WriteRune('\t')
 			case 'u':
-				if l.pos+4 >= len(l.input) {
+				r, ok := l.unicodeEscape()
+				if !ok {
 					return token{}, newFilterError("invalid unicode escape in filter")
 				}
-				hex := string(l.input[l.pos+1 : l.pos+5])
-				n, err := strconv.ParseInt(hex, 16, 32)
-				if err != nil {
-					return token{}, newFilterError("invalid unicode escape in filter")
-				}
-				sb.WriteRune(rune(n))
-				l.pos += 4
+				sb.WriteRune(r)
+				continue
 			default:
 				return token{}, newFilterError("invalid escape sequence \\%c in filter", esc)
 			}
 			l.pos++
 			continue
 		}
+		if c < 0x20 {
+			// RFC 7159 §7: U+0000 から U+001F は逃がさなければ文字列に書けない。
+			return token{}, newFilterError("unescaped control character in filter string")
+		}
 		sb.WriteRune(c)
 		l.pos++
 	}
+}
+
+// unicodeEscape は l.pos の `u` から始まる `\u` の逃がしを読み、続く文字の位置へ進む。
+// RFC 7159 §7 に従い、`u` の後は 16 進の 4 桁であり、上位と下位のサロゲートの組は一つの文字になる。
+// 組にならないサロゲートは encoding/json と同じく U+FFFD にする。
+func (l *lexer) unicodeEscape() (rune, bool) {
+	r, ok := l.hex4(l.pos + 1)
+	if !ok {
+		return 0, false
+	}
+	l.pos += 5
+	if !utf16.IsSurrogate(r) {
+		return r, true
+	}
+	if l.pos+1 < len(l.input) && l.input[l.pos] == '\\' && l.input[l.pos+1] == 'u' {
+		if low, ok := l.hex4(l.pos + 2); ok {
+			if pair := utf16.DecodeRune(r, low); pair != unicode.ReplacementChar {
+				l.pos += 6
+				return pair, true
+			}
+		}
+	}
+	return unicode.ReplacementChar, true
+}
+
+// hex4 は at から 4 文字の 16 進数を読む。
+func (l *lexer) hex4(at int) (rune, bool) {
+	if at+4 > len(l.input) {
+		return 0, false
+	}
+	var r rune
+	for _, c := range l.input[at : at+4] {
+		var d rune
+		switch {
+		case c >= '0' && c <= '9':
+			d = c - '0'
+		case c >= 'a' && c <= 'f':
+			d = c - 'a' + 10
+		case c >= 'A' && c <= 'F':
+			d = c - 'A' + 10
+		default:
+			return 0, false
+		}
+		r = r<<4 | d
+	}
+	return r, true
 }
 
 func isIdentStart(c rune) bool {
@@ -569,7 +627,7 @@ func (p *parser) parseAttrExpr() (FilterExpr, error) {
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
-		return &compareExpr{attr: attr, op: op, kind: AttrString, str: val}, nil
+		return &compareExpr{attr: attr, op: op, kind: AttrString, caseExact: spec.CaseExact, str: val}, nil
 	}
 }
 
