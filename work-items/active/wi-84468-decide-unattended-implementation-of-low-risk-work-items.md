@@ -62,7 +62,7 @@ wi-11123 を先に完了させる。
 | 出典 | 読んだ範囲 | 調査日 | 使う知見 |
 | --- | --- | --- | --- |
 | Thoughtworks Technology Radar Vol.35、Techniques（thoughtworks.com/radar/techniques） | 本文 | 2026-11-25 | unattended overnight agentic builds（Trial）とその前提、risk-tiered human oversight（Trial）、human-in-the-loop theater（Caution）、coding agent swarms（Caution） |
-| Simon Willison「Software factory」（simonwillison.net、2026-02-07）と StrongDM の公表 | 検索結果の要約 | 2026-11-25 | 仕様とシナリオからエージェントが人のレビューなしに収束させる。シナリオをコードの外に置いて holdout にする。要約しか読んでいないので、採らない案の説明にだけ使う |
+| Simon Willison「How StrongDM's AI team build serious software without even looking at the code」（simonwillison.net、2026-02-07） | 本文の前半 | 2026-11-25 | 仕様とシナリオからエージェントが人のレビューなしに収束させる。シナリオをコードの外に置いて holdout にし、エージェントが常に真を返すテストで通すことを防ぐ |
 | Addy Osmani「Software Factories, Light and Dark」、O'Reilly Radar の論考 | 検索結果の要約 | 2026-11-25 | 人が読まないコードを機械だけで検証して出す構成と、独立した検査なしに人を外すことへの反論。用語の説明にだけ使う |
 
 ## 計画
