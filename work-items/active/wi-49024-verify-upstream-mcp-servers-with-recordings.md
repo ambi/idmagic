@@ -25,7 +25,7 @@ MCP の仕様は版の更新が速く、ほかの外部の相手より前提が�
 
 - MCP の仕様の版ごとの要求と応答の例（初期化、`tools/list`、ページング、変更通知、エラー）と、RFC 9728 の Protected Resource Metadata の例を転記した記録と、MCP Gateway と OAuth2 の取得の再生の検査。記録の相手の版には MCP の仕様の版を書く。
 - 状態を持つ MCP サーバーの模倣。ツールの追加と削除、変更通知、ページング、未対応の版、`401`、`5xx`、不正な本文を返せる。記録の再生と同じ応答を返すことを検査する。
-- 記録と模倣の部品は [wi-27706](wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の置き場所のものを使う。
+- 記録と模倣の部品は [wi-27706](../done/wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の置き場所のものを使う。
 - 見つかった誤りの修正。製品の結果を変えるものは、着手後に利用者に確かめてから `affected_spec` を宣言する。
 
 ## 対象外

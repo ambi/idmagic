@@ -17,6 +17,23 @@ const (
 // RefreshSkew は、これより期限が近いアクセストークンを送る前に更新する余裕である (REQ-TOKENVAULT-012)。
 const RefreshSkew = 60 * time.Second
 
+// MaxTokenLifetime は上流が申告するアクセストークンの有効期間の上限である (REQ-TOKENVAULT-012)。
+const MaxTokenLifetime = 365 * 24 * time.Hour
+
+// TokenLifetime は上流の `expires_in` の秒数を、接続に保存する有効期間にする (REQ-TOKENVAULT-012)。
+// 0 以下は欠落と同じく期限なし (nil) とし、上限を超える値は上限で切る。
+// 上限との比較は秒のまま行う。time.Duration へ先に変換すると、大きな値がナノ秒で溢れて負に回り込む。
+func TokenLifetime(seconds int64) *time.Duration {
+	if seconds <= 0 {
+		return nil
+	}
+	lifetime := MaxTokenLifetime
+	if seconds < int64(MaxTokenLifetime/time.Second) {
+		lifetime = time.Duration(seconds) * time.Second
+	}
+	return &lifetime
+}
+
 // AttemptTTL は連携の開始からコールバックまでの期限である (REQ-TOKENVAULT-005)。
 const AttemptTTL = 10 * time.Minute
 

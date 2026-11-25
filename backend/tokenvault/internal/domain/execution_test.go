@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -165,6 +166,24 @@ func TestClassifyRefreshFailure(t *testing.T) {
 	for _, code := range []string{"", "invalid_client", "unauthorized_client", "temporarily_unavailable", "server_error"} {
 		if ClassifyRefreshFailure(code) != RefreshTransient {
 			t.Errorf("%q must be transient", code)
+		}
+	}
+}
+
+//spec:covers REQ-TOKENVAULT-012: expires_in の 0 以下を期限なしに、365 日を超える値を 365 日にすること
+func TestTokenLifetime(t *testing.T) {
+	maxSeconds := int64(MaxTokenLifetime / time.Second)
+	for _, seconds := range []int64{0, -1, -1 << 63} {
+		if got := TokenLifetime(seconds); got != nil {
+			t.Errorf("TokenLifetime(%d) = %v, want nil", seconds, *got)
+		}
+	}
+	for seconds, want := range map[int64]time.Duration{
+		1: time.Second, 3600: time.Hour, maxSeconds - 1: MaxTokenLifetime - time.Second,
+		maxSeconds: MaxTokenLifetime, maxSeconds + 1: MaxTokenLifetime, 1 << 40: MaxTokenLifetime, 1<<63 - 1: MaxTokenLifetime,
+	} {
+		if got := TokenLifetime(seconds); got == nil || *got != want {
+			t.Errorf("TokenLifetime(%d) = %v, want %v", seconds, got, want)
 		}
 	}
 }

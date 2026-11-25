@@ -253,7 +253,7 @@ func TestTokenGrant_NormalizesExpiry(t *testing.T) {
 	base := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
 
 	t.Run("expires_in があれば失効時刻を計算する", func(t *testing.T) {
-		grant, err := tokenGrant(tokenResponse{AccessToken: "t", ExpiresIn: 3600}, base)
+		grant, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: "Bearer", ExpiresIn: 3600}, base)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,7 +266,7 @@ func TestTokenGrant_NormalizesExpiry(t *testing.T) {
 	})
 
 	t.Run("安全余裕の内側では使えないと判定する", func(t *testing.T) {
-		grant, err := tokenGrant(tokenResponse{AccessToken: "t", ExpiresIn: 120}, base)
+		grant, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: "Bearer", ExpiresIn: 120}, base)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -279,7 +279,7 @@ func TestTokenGrant_NormalizesExpiry(t *testing.T) {
 	})
 
 	t.Run("expires_in が無ければ 1 度きりのトークンとして扱う", func(t *testing.T) {
-		grant, err := tokenGrant(tokenResponse{AccessToken: "t"}, base)
+		grant, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: "Bearer"}, base)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -290,7 +290,7 @@ func TestTokenGrant_NormalizesExpiry(t *testing.T) {
 
 	t.Run("expires_in が 0 以下なら 1 度きりのトークンとして扱う", func(t *testing.T) {
 		for _, seconds := range []int64{0, -1, -3600} {
-			grant, err := tokenGrant(tokenResponse{AccessToken: "t", ExpiresIn: seconds}, base)
+			grant, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: "Bearer", ExpiresIn: seconds}, base)
 			if err != nil {
 				t.Fatalf("expires_in=%d: %v", seconds, err)
 			}
@@ -310,7 +310,7 @@ func TestTokenGrant_NormalizesExpiry(t *testing.T) {
 			1 << 40,            // time.Duration のナノ秒では溢れる大きさ。
 			1<<63 - 1,          // int64 の最大値。
 		} {
-			grant, err := tokenGrant(tokenResponse{AccessToken: "t", ExpiresIn: seconds}, base)
+			grant, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: "Bearer", ExpiresIn: seconds}, base)
 			if err != nil {
 				t.Fatalf("expires_in=%d: %v", seconds, err)
 			}
@@ -325,6 +325,19 @@ func TestTokenGrant_NormalizesExpiry(t *testing.T) {
 		// fail-closed: 空のトークンを Authorization に載せない。
 		if _, err := tokenGrant(tokenResponse{ExpiresIn: 3600}, base); err == nil {
 			t.Fatal("access_token が空の応答を受理してはならない")
+		}
+	})
+
+	t.Run("token_type は大文字小文字を区別せず Bearer だけを受ける", func(t *testing.T) {
+		for _, tokenType := range []string{"Bearer", "bearer", "BEARER"} {
+			if _, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: tokenType, ExpiresIn: 3600}, base); err != nil {
+				t.Errorf("token_type=%q: %v", tokenType, err)
+			}
+		}
+		for _, tokenType := range []string{"", "example", "DPoP", "mac", "Bearer "} {
+			if _, err := tokenGrant(tokenResponse{AccessToken: "t", TokenType: tokenType, ExpiresIn: 3600}, base); err == nil {
+				t.Errorf("token_type=%q を受理してはならない", tokenType)
+			}
 		}
 	})
 }

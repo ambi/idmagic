@@ -178,8 +178,7 @@ func parseTokenResponse(response *http.Response, body []byte) (tokenvaultports.T
 		result.Scopes = strings.Fields(parsed.Scope)
 	}
 	if parsed.ExpiresIn != nil {
-		lifetime := time.Duration(*parsed.ExpiresIn) * time.Second
-		result.ExpiresIn = &lifetime
+		result.ExpiresIn = tokenvaultdomain.TokenLifetime(*parsed.ExpiresIn)
 	}
 	return result, nil
 }

@@ -39,6 +39,10 @@ description = "Directory Connector の統合テストが起動し、テストの
 paths = ['''^backend/directoryconnector/internal/testing_openldap/server\.go$''']
 
 [[allowlists]]
+description = "RFC 6749 と RFC 6750 の要求と応答の例を転記したトークンエンドポイントの記録と、その例のクライアント資格情報の定数。値は RFC の本文に公開された例示であり、どの認可サーバーに対しても何の権限も持たない。"
+paths = ['''^backend/shared/testing_oauthtwin/(recording\.go|testdata/rfc6749\.json)$''']
+
+[[allowlists]]
 description = "デモスクリプトが自分で起動したローカルサーバーに対して使う Basic 認証。demo.sh の手順そのものが公開の説明であり、値はデモ用のクライアント資格情報である。"
 paths = ['''^demo\.sh$''']
 

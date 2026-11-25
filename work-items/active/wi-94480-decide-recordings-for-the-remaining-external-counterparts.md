@@ -34,7 +34,7 @@ Directory Connector から Sourcing への呼び出しと、MCP Gateway から�
 ## 対象範囲
 
 - 上の相手ごとに、前提にしている振る舞い、吸収している層、既存の検査を書き出し、記録と模倣の採否と理由を決める。
-- 採ったものに、[wi-27706](wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の部品で記録の再生と模倣を置く。
+- 採ったものに、[wi-27706](../done/wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の部品で記録の再生と模倣を置く。
 - 採らなかったものは、理由をこの記録の要約に残す。
 
 ## 対象外

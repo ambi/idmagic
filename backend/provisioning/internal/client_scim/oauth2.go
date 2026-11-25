@@ -74,12 +74,18 @@ func (g grant) usableAt(now time.Time) bool {
 }
 
 // tokenGrant はトークン応答と取得時刻から grant を決める純関数である。
+// `token_type` は大文字小文字を区別せず Bearer だけを受ける (RFC 6749 §5.1、§7.1)。
 // RFC 6749 §5.1 は `expires_in` を推奨に留めるので、欠落や 0 以下は
 // 「1 度きり」として扱い、次の要求で取り直させる。極端に大きい値は頭打ちにする。
 func tokenGrant(response tokenResponse, now time.Time) (grant, error) {
 	if response.AccessToken == "" {
 		// fail-closed: 空のトークンを Authorization に載せない。
 		return grant{}, errors.New("provisioning/scim: token response has no access_token")
+	}
+	if !strings.EqualFold(response.TokenType, "Bearer") {
+		// RFC 6749 §7.1: 種類を理解できないトークンを使ってはならない。下流へは Bearer としてしか
+		// 載せないので、ほかの種類や種類のない値を載せると、送信者の制約などを無視して提示することになる。
+		return grant{}, errors.New("provisioning/scim: token response is not a Bearer token")
 	}
 	// 上限との比較は秒のまま行う。time.Duration へ先に変換すると、下流が申告した
 	// 大きな値 (2^40 秒など) が int64 のナノ秒で溢れて負に回り込み、上限で切る

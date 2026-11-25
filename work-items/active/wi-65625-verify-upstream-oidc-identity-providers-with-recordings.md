@@ -29,7 +29,7 @@ IdMagic を OP とする適合試験は [wi-33](wi-33-protocol-conformance-ci.md
 
 - OpenID Connect Core 1.0 と OpenID Connect Discovery 1.0 の要求と応答の例を転記した記録と、Discovery、コードの交換、JWKS の取得の再生の検査。
 - 状態を持つ OIDC IdP の模倣。Discovery、認可コードの発行と交換、ID トークンの署名、鍵の回転、`kid` の欠落、`5xx`、不正な本文を返せる。記録の再生と同じ応答を返すことを検査する。
-- 記録と模倣の部品は [wi-27706](wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の置き場所のものを使う。
+- 記録と模倣の部品は [wi-27706](../done/wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の置き場所のものを使う。
 - 見つかった誤りの修正。製品の結果を変えるものは、着手後に利用者に確かめてから `affected_spec` を宣言する。
 
 ## 対象外

@@ -29,7 +29,7 @@ Transit では実物の往復を記録でき、製品の版ごとの差まで固
 - Vault と OpenBao の開発用サーバーから往復を記録する手順。手順は `mise` のタスクにし、記録には取得日、サーバーの版、取得方法を載せる。
 - 署名、検証、鍵の作成と回転、暗号化と復号、データ鍵の生成の再生の検査。
 - 状態を持つ Transit の模倣。鍵の版の回転、`min_decryption_version`、存在しない鍵、権限のない要求、`5xx`、不正な本文を返せる。記録の再生と同じ応答を返すことを検査する。
-- 記録と模倣の部品は [wi-27706](wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の置き場所のものを使う。
+- 記録と模倣の部品は [wi-27706](../done/wi-27706-verify-upstream-oauth-token-endpoints-with-recordings.md) が決めた共有の置き場所のものを使う。
 - 見つかった誤りの修正。製品の結果を変えるものは、着手後に利用者に確かめてから `affected_spec` を宣言する。
 
 ## 対象外

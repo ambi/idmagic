@@ -67,6 +67,7 @@
 
 - 開始した本人のセッションで、有効な `state` と `code` を受けたとき、TokenVault は、`state` を消費し、PKCE の検証子でコードを交換し、接続を `active` で保存し、`TokenVaultConnectionLinked` を発行し、アカウントポータルへ `result=linked` で戻す。
 - トークンの応答が `scope` を持たないとき、TokenVault は、要求したスコープを付与スコープとして保存する。
+- トークンの応答の `expires_in` から接続の期限を決めるとき、TokenVault は、[REQ-TOKENVAULT-012](execution.md#req-tokenvault-012-更新は単一飛行で回転した更新トークンを保存する) と同じ規則に従う。
 - すでに接続があるとき、TokenVault は、同じ接続のトークンと付与スコープを置き換える。
 - `state` が未知、消費済み、期限切れ、別のコネクタのものである場合、TokenVault は、接続を変えず、`result=invalid_state` で戻す。
 - セッションの本人が開始した本人と異なるかセッションがない場合、TokenVault は、`state` を消費せず、接続を変えず、`result=invalid_state` で戻す。
