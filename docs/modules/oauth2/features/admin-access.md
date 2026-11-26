@@ -176,7 +176,7 @@
 - メタデータの URL がすべて 404 を返した場合、OAuth2 は、`status` を `not_found` にする。
 - メタデータの応答が 200 と 404 以外か、JSON オブジェクトでないか、`authorization_servers` が文字列の配列でない場合、OAuth2 は、`status` を `invalid` にする。
 - メタデータへ接続できない場合、OAuth2 は、`status` を `unreachable` にする。
-- メタデータが `found` で `authorization_servers` がテナントの issuer を含むとき、OAuth2 は、[REQ-OAUTH2-096](#req-oauth2-096-一覧取得用のトークンは登録の資源だけを宛先とし-idmagic-のどの入口でも受け付けない) のトークンを付けて、登録の `resource` へ 2026-07-28 版の `tools/list` を送り、`nextCursor` をたどる。
+- メタデータが `found` で `authorization_servers` がテナントの issuer を含むとき、OAuth2 は、[REQ-OAUTH2-096](#req-oauth2-096-一覧取得用のトークンは登録の資源だけを宛先とし-idmagic-のどの入口でも受け付けない) のトークンを付けて、登録の `resource` へ 2026-07-28 版の `tools/list` を送り、REQ-MCPGATEWAY-011 と同じく、空文字列を含む文字列の `nextCursor` をたどり、`nextCursor` がないか `null` のページで一覧を終える。
 - メタデータが `found` でないか、`authorization_servers` がテナントの issuer を含まない場合、OAuth2 は、トークンを発行せず、`tools/list` を送らず、一覧の `status` を `skipped` にする。
 - 一覧の一ページ目が成功したとき、OAuth2 は、[REQ-MCPGATEWAY-011](../../mcp-gateway/features/runtime.md#req-mcpgateway-011-カタログを参照する構成は起動後に上流のツールカタログを-idmagic-へ送る) と同じ項目、切り詰め、`complete` の規則で、取得したツールを登録の最新のカタログとして [REQ-OAUTH2-086](resource-access.md#req-oauth2-086-リソースサーバーはツールのカタログを送信できカタログは公開設定を変えない) と同じく保存し、一覧の `status` を `fetched` にして件数と `complete` を返す。
 - 一ページ目が 401 を返した場合、OAuth2 は、一覧の `status` を `unauthorized` にし、カタログを変えない。

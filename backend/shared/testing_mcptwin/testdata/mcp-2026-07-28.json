@@ -1,0 +1,700 @@
+{
+  "counterpart": "MCP server (Streamable HTTP)",
+  "counterpart_version": "MCP 2026-07-28",
+  "retrieved_at": "2026-11-27",
+  "method": "https://modelcontextprotocol.io/specification/2026-07-28/ の server/tools、server/utilities/pagination、basic/transports/streamable-http、basic/lifecycle、basic/patterns/subscriptions、basic/authorization の例を転記した。要求の Host は省き、折り返したヘッダーは一行に連結した。仕様の要求の例が _meta を省くときは basic/authorization「Token Requirements」の _meta を補った。仕様は SSE の転送の例を持たないので、subscriptions/listen の応答は仕様の JSON の例を WHATWG の SSE の data 行と空行で区切って並べた。往復ごとに要求と応答の出どころを source に書く。保証するのは仕様の例を解釈できることまでで、特定の製品の癖（追加のフィールド、通知の順序）は含まない。",
+  "exchanges": [
+    {
+      "name": "tools-list-first-page",
+      "source": "要求は basic/authorization「Token Requirements」（Authorization を除く）、応答は server/tools「Listing Tools」",
+      "setup": {
+        "tools": [
+          {
+            "name": "get_weather",
+            "title": "Weather Information Provider",
+            "description": "Get current weather information for a location",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "City name or zip code"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            },
+            "icons": [
+              {
+                "src": "https://example.com/weather-icon.png",
+                "mimeType": "image/png",
+                "sizes": [
+                  "48x48"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "get_current_time",
+            "description": "Returns the current server time",
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        ],
+        "page_size": 1,
+        "cursors": [
+          "next-page-cursor"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "get_weather",
+                "title": "Weather Information Provider",
+                "description": "Get current weather information for a location",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "location": {
+                      "type": "string",
+                      "description": "City name or zip code"
+                    }
+                  },
+                  "required": [
+                    "location"
+                  ]
+                },
+                "icons": [
+                  {
+                    "src": "https://example.com/weather-icon.png",
+                    "mimeType": "image/png",
+                    "sizes": [
+                      "48x48"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "nextCursor": "next-page-cursor",
+            "ttlMs": 300000,
+            "cacheScope": "public"
+          }
+        }
+      }
+    },
+    {
+      "name": "tools-list-last-page",
+      "source": "要求は server/tools「Listing Tools」の cursor を一ページ目の nextCursor にしたもの、応答は「Listing Tools」の形に「Schema Examples」の引数のないツールを載せ、server/utilities/pagination「Response Format」に従い終わりのページとして nextCursor を除いたもの",
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "cursor": "next-page-cursor",
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "get_current_time",
+                "description": "Returns the current server time",
+                "inputSchema": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              }
+            ],
+            "ttlMs": 300000,
+            "cacheScope": "public"
+          }
+        }
+      }
+    },
+    {
+      "name": "tools-list-empty-cursor",
+      "source": "要求は tools-list-first-page と同じ、応答は server/tools「Listing Tools」の nextCursor を空文字列にしたもの。server/utilities/pagination は空文字列を有効なカーソルとし、終わりとして扱ってはならないと定める",
+      "setup": {
+        "tools": [
+          {
+            "name": "get_weather",
+            "title": "Weather Information Provider",
+            "description": "Get current weather information for a location",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "City name or zip code"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            },
+            "icons": [
+              {
+                "src": "https://example.com/weather-icon.png",
+                "mimeType": "image/png",
+                "sizes": [
+                  "48x48"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "get_current_time",
+            "description": "Returns the current server time",
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        ],
+        "page_size": 1,
+        "cursors": [
+          ""
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "get_weather",
+                "title": "Weather Information Provider",
+                "description": "Get current weather information for a location",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "location": {
+                      "type": "string",
+                      "description": "City name or zip code"
+                    }
+                  },
+                  "required": [
+                    "location"
+                  ]
+                },
+                "icons": [
+                  {
+                    "src": "https://example.com/weather-icon.png",
+                    "mimeType": "image/png",
+                    "sizes": [
+                      "48x48"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "nextCursor": "",
+            "ttlMs": 300000,
+            "cacheScope": "public"
+          }
+        }
+      }
+    },
+    {
+      "name": "tools-list-after-empty-cursor",
+      "source": "要求は server/tools「Listing Tools」の cursor を空文字列にしたもの、応答は tools-list-last-page と同じ",
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "cursor": "",
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "resultType": "complete",
+            "tools": [
+              {
+                "name": "get_current_time",
+                "description": "Returns the current server time",
+                "inputSchema": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              }
+            ],
+            "ttlMs": 300000,
+            "cacheScope": "public"
+          }
+        }
+      }
+    },
+    {
+      "name": "tools-list-unauthorized",
+      "source": "要求は basic/authorization「Token Requirements」（Authorization を除く）、応答は basic/authorization「Scope Selection Strategy」",
+      "setup": {
+        "tools": [
+          {
+            "name": "get_weather",
+            "title": "Weather Information Provider",
+            "description": "Get current weather information for a location",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "City name or zip code"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            },
+            "icons": [
+              {
+                "src": "https://example.com/weather-icon.png",
+                "mimeType": "image/png",
+                "sizes": [
+                  "48x48"
+                ]
+              }
+            ]
+          }
+        ],
+        "tokens": {
+          "eyJhbGciOiJIUzI1NiIs...": [
+            "files:read"
+          ]
+        },
+        "required_scope": "files:read"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "WWW-Authenticate": "Bearer resource_metadata=\"https://mcp.example.com/.well-known/oauth-protected-resource\", scope=\"files:read\""
+        }
+      }
+    },
+    {
+      "name": "tools-list-insufficient-scope",
+      "source": "要求は basic/authorization「Token Requirements」、応答は basic/authorization「Runtime Insufficient Scope Errors」",
+      "setup": {
+        "tools": [
+          {
+            "name": "get_weather",
+            "title": "Weather Information Provider",
+            "description": "Get current weather information for a location",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "City name or zip code"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            },
+            "icons": [
+              {
+                "src": "https://example.com/weather-icon.png",
+                "mimeType": "image/png",
+                "sizes": [
+                  "48x48"
+                ]
+              }
+            ]
+          }
+        ],
+        "tokens": {
+          "eyJhbGciOiJIUzI1NiIs...": [
+            "files:read"
+          ]
+        },
+        "required_scope": "files:write"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "WWW-Authenticate": "Bearer error=\"insufficient_scope\", scope=\"files:write\", resource_metadata=\"https://mcp.example.com/.well-known/oauth-protected-resource\", error_description=\"File write permission required for this operation\""
+        }
+      }
+    },
+    {
+      "name": "unsupported-protocol-version",
+      "source": "要求は tools-list-first-page の版を応答の例の requested に合わせたもの、応答の本文は basic/lifecycle「Protocol Version Negotiation」、状態コードは basic/transports/streamable-http「Protocol Version Header」の 400",
+      "setup": {
+        "tools": [
+          {
+            "name": "get_weather",
+            "title": "Weather Information Provider",
+            "description": "Get current weather information for a location",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "City name or zip code"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            },
+            "icons": [
+              {
+                "src": "https://example.com/weather-icon.png",
+                "mimeType": "image/png",
+                "sizes": [
+                  "48x48"
+                ]
+              }
+            ]
+          }
+        ],
+        "supported": [
+          "2026-07-28",
+          "2025-11-25"
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "1900-01-01",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "1900-01-01",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "error": {
+            "code": -32022,
+            "message": "Unsupported protocol version",
+            "data": {
+              "supported": [
+                "2026-07-28",
+                "2025-11-25"
+              ],
+              "requested": "1900-01-01"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "subscriptions-listen",
+      "source": "要求は basic/patterns/subscriptions「Opening a Stream」から resourceSubscriptions を除いたもの。応答は同じ節の「Acknowledgment」（同じく resourceSubscriptions を除く）、server/tools「List Changed Notification」の subscriptionId を「Receiving Notifications」に従い要求の id の 1 にしたもの、「Graceful Closure」の順",
+      "setup": {
+        "list_changes": 1,
+        "end": true
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "subscriptions/listen"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "subscriptions/listen",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
+            "notifications": {
+              "toolsListChanged": true
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/subscriptions/acknowledged\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1},\"notifications\":{\"toolsListChanged\":true}}}\n\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/tools/list_changed\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1}}}\n\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1}}}\n\n"
+      }
+    },
+    {
+      "name": "subscriptions-listen-without-tools",
+      "source": "要求は subscriptions-listen と同じ。応答は basic/patterns/subscriptions「Acknowledgment」の notifications を空にしたもの（toolsListChanged を受け付けない上流）と「Graceful Closure」",
+      "setup": {
+        "list_changed": false,
+        "end": true
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "subscriptions/listen"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "subscriptions/listen",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
+            "notifications": {
+              "toolsListChanged": true
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/subscriptions/acknowledged\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1},\"notifications\":{}}}\n\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1}}}\n\n"
+      }
+    },
+    {
+      "name": "subscriptions-listen-other-subscription",
+      "source": "要求は subscriptions-listen と同じ。応答は「Acknowledgment」、server/tools「List Changed Notification」をそのまま（subscriptionId は \"listen-1\"）、「Graceful Closure」の順。別の購読の通知として無視されることの検査に使い、模倣とは照合しない",
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "subscriptions/listen"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "subscriptions/listen",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "ExampleClient",
+                "version": "1.0.0"
+              },
+              "io.modelcontextprotocol/clientCapabilities": {}
+            },
+            "notifications": {
+              "toolsListChanged": true
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream"
+        },
+        "body": "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/subscriptions/acknowledged\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1},\"notifications\":{\"toolsListChanged\":true}}}\n\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/tools/list_changed\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":\"listen-1\"}}}\n\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/subscriptionId\":1}}}\n\n"
+      }
+    }
+  ]
+}

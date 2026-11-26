@@ -267,11 +267,13 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 #### REQ-MCPGATEWAY-011 カタログを参照する構成は、起動後に上流のツールカタログを IdMagic へ送る
 
 - `proxy` の構成で `mapping.catalog` が有効なとき、McpGateway は、起動後に上流へ `tools/list` を送り、`nextCursor` をたどって集めたツールをカタログとして `/resource-access/tools` へ送る。
+- ページの応答が文字列の `nextCursor` を持つとき、McpGateway は、空文字列であってもその値を `cursor` に載せて次のページを要求し、`nextCursor` がないか `null` のページで一覧を終える。
 - 送信するとき、McpGateway は、ツールの `name`、`title`、`description`、`inputSchema.properties` のキーだけを送り、`title` を256文字、`description` を2048文字、キーを32件までに切り詰める。
 - ツールが100件を超えるか、10ページを超えるか、二ページ目以降の取得が失敗した場合、McpGateway は、取得できたツールを `complete=false` で送信する。
 - 最初のページを取得できないか、カタログの送信が失敗した場合、McpGateway は、ログに理由を残してその回のカタログの送信をやめ、要求の執行を続ける。
 - `envoy_ext_authz` の構成と、`mapping.catalog` が無効な構成では、McpGateway は、カタログを送らない。
 - ログを書くとき、McpGateway は、クライアントシークレットとツールの説明を含めない。
+- **判断**：一覧の終わりを `nextCursor` の有無で決める。MCP の 2026-07-28 版の[ページング](https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination)は、空文字列を有効なカーソルとし、終わりとして扱うことを禁じるためである。
 
 #### REQ-MCPGATEWAY-012 カタログを参照する構成は、上流の変更通知を受けてツールカタログを再送する
 

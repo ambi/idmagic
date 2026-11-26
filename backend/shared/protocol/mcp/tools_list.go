@@ -20,21 +20,22 @@ type ListedTool struct {
 	Arguments   []string
 }
 
-// ToolsListRequest は一ページ分の tools/list の要求の本文を作る。cursor が空なら最初のページである。
-func ToolsListRequest(cursor string) ([]byte, error) {
+// ToolsListRequest は一ページ分の tools/list の要求の本文を作る。cursor が nil なら最初のページで、
+// 空文字列は有効なカーソルとして送る（MCP 2026-07-28 の server/utilities/pagination）。
+func ToolsListRequest(cursor *string) ([]byte, error) {
 	params := map[string]any{"_meta": map[string]any{
 		protocolVersionMetaKey:                       ProtocolVersion,
 		"io.modelcontextprotocol/clientCapabilities": map[string]any{},
 	}}
-	if cursor != "" {
-		params["cursor"] = cursor
+	if cursor != nil {
+		params["cursor"] = *cursor
 	}
 	return json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": MethodToolsList, "params": params})
 }
 
 // ParseToolsListPage は JSON-RPC の応答か、SSE の data 行のうち最後の応答から、ツールと nextCursor を読む。
-// エラーの応答と result のない応答は失敗にする。
-func ParseToolsListPage(raw []byte) ([]ListedTool, string, error) {
+// エラーの応答と result のない応答は失敗にする。nextCursor がないか null なら、一覧の終わりとして nil を返す。
+func ParseToolsListPage(raw []byte) ([]ListedTool, *string, error) {
 	text := strings.TrimSpace(string(raw))
 	for line := range strings.SplitSeq(text, "\n") {
 		if data, ok := strings.CutPrefix(strings.TrimSpace(line), "data:"); ok {
@@ -51,15 +52,15 @@ func ParseToolsListPage(raw []byte) ([]ListedTool, string, error) {
 					Properties map[string]json.RawMessage `json:"properties"`
 				} `json:"inputSchema"`
 			} `json:"tools"`
-			NextCursor string `json:"nextCursor"`
+			NextCursor *string `json:"nextCursor"`
 		} `json:"result"`
 		Error json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal([]byte(text), &message); err != nil {
-		return nil, "", fmt.Errorf("tools/list response is not JSON-RPC: %w", err)
+		return nil, nil, fmt.Errorf("tools/list response is not JSON-RPC: %w", err)
 	}
 	if len(message.Error) > 0 || message.Result == nil {
-		return nil, "", errors.New("tools/list returned no result")
+		return nil, nil, errors.New("tools/list returned no result")
 	}
 	tools := make([]ListedTool, 0, len(message.Result.Tools))
 	for _, listed := range message.Result.Tools {

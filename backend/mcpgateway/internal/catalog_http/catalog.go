@@ -67,9 +67,12 @@ func (r Publisher) SendCatalog(ctx context.Context) (Result, error) {
 }
 
 // collect は nextCursor をたどる。二ページ目以降の失敗と上限の超過は、取得できた分を不完全として返す。
+// 空文字列も有効なカーソルなので、nextCursor がないページだけを終わりとする。
 func (r Publisher) collect(ctx context.Context) ([]Tool, bool, error) {
-	var tools []Tool
-	cursor := ""
+	var (
+		tools  []Tool
+		cursor *string
+	)
 	for page := range maxPages {
 		listed, next, err := r.fetchPage(ctx, cursor)
 		if err != nil {
@@ -84,7 +87,7 @@ func (r Publisher) collect(ctx context.Context) ([]Tool, bool, error) {
 			}
 			tools = append(tools, tool)
 		}
-		if next == "" {
+		if next == nil {
 			return tools, true, nil
 		}
 		cursor = next
@@ -101,21 +104,22 @@ type listedTool struct {
 	} `json:"inputSchema"`
 }
 
-func (r Publisher) fetchPage(ctx context.Context, cursor string) ([]Tool, string, error) {
+// fetchPage は cursor が nil なら最初のページを、そうでなければ cursor の値（空文字列を含む）のページを取得する。
+func (r Publisher) fetchPage(ctx context.Context, cursor *string) ([]Tool, *string, error) {
 	params := map[string]any{"_meta": map[string]any{
 		"io.modelcontextprotocol/protocolVersion":    mcpgatewaydomain.ProtocolVersion,
 		"io.modelcontextprotocol/clientCapabilities": map[string]any{},
 	}}
-	if cursor != "" {
-		params["cursor"] = cursor
+	if cursor != nil {
+		params["cursor"] = *cursor
 	}
 	body, err := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": params})
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, r.Upstream, bytes.NewReader(body))
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
@@ -123,21 +127,21 @@ func (r Publisher) fetchPage(ctx context.Context, cursor string) ([]Tool, string
 	request.Header.Set("Mcp-Method", "tools/list")
 	response, err := r.UpstreamClient.Do(request)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	defer func() { _ = response.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, maxPageBytes))
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("tools/list returned HTTP %d", response.StatusCode)
+		return nil, nil, fmt.Errorf("tools/list returned HTTP %d", response.StatusCode)
 	}
 	return parsePage(raw)
 }
 
-// parsePage は JSON-RPC の応答か、SSE の data 行の最後の応答を読む。
-func parsePage(raw []byte) ([]Tool, string, error) {
+// parsePage は JSON-RPC の応答か、SSE の data 行の最後の応答を読む。nextCursor がないか null なら次のカーソルを nil にする。
+func parsePage(raw []byte) ([]Tool, *string, error) {
 	text := strings.TrimSpace(string(raw))
 	for line := range strings.SplitSeq(text, "\n") {
 		if data, ok := strings.CutPrefix(strings.TrimSpace(line), "data:"); ok {
@@ -147,17 +151,17 @@ func parsePage(raw []byte) ([]Tool, string, error) {
 	var message struct {
 		Result *struct {
 			Tools      []listedTool `json:"tools"`
-			NextCursor string       `json:"nextCursor"`
+			NextCursor *string      `json:"nextCursor"`
 		} `json:"result"`
 		Error *struct {
 			Code int `json:"code"`
 		} `json:"error"`
 	}
 	if err := json.Unmarshal([]byte(text), &message); err != nil {
-		return nil, "", fmt.Errorf("tools/list response is not JSON-RPC: %w", err)
+		return nil, nil, fmt.Errorf("tools/list response is not JSON-RPC: %w", err)
 	}
 	if message.Error != nil || message.Result == nil {
-		return nil, "", errors.New("tools/list returned no result")
+		return nil, nil, errors.New("tools/list returned no result")
 	}
 	tools := make([]Tool, 0, len(message.Result.Tools))
 	for _, listed := range message.Result.Tools {

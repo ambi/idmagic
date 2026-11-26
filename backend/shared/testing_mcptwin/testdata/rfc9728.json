@@ -1,0 +1,57 @@
+{
+  "counterpart": "OAuth 2.0 protected resource metadata endpoint",
+  "counterpart_version": "RFC 9728 (April 2025)",
+  "retrieved_at": "2026-11-27",
+  "method": "https://www.rfc-editor.org/rfc/rfc9728.txt の 3.1 節の要求と 3.2 節の応答の例を転記した。要求の Host は省き、折り返した本文の行は連結した。",
+  "exchanges": [
+    {
+      "name": "protected-resource-metadata",
+      "source": "要求は RFC 9728 §3.1 の path を持たない資源の例、応答は §3.2",
+      "setup": {
+        "resource": "https://resource.example.com",
+        "authorization_servers": [
+          "https://as1.example.com",
+          "https://as2.example.net"
+        ],
+        "bearer_methods_supported": [
+          "header",
+          "body"
+        ],
+        "scopes_supported": [
+          "profile",
+          "email",
+          "phone"
+        ],
+        "resource_documentation": "https://resource.example.com/resource_documentation.html"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/.well-known/oauth-protected-resource",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "resource": "https://resource.example.com",
+          "authorization_servers": [
+            "https://as1.example.com",
+            "https://as2.example.net"
+          ],
+          "bearer_methods_supported": [
+            "header",
+            "body"
+          ],
+          "scopes_supported": [
+            "profile",
+            "email",
+            "phone"
+          ],
+          "resource_documentation": "https://resource.example.com/resource_documentation.html"
+        }
+      }
+    }
+  ]
+}

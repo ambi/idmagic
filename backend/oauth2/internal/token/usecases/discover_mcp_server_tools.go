@@ -174,15 +174,18 @@ func fetchMetadata(ctx context.Context, fetcher oauthports.McpServerFetcher, res
 	return nil
 }
 
-// fetchTools は一覧取得用のトークンで nextCursor をたどる。一ページ目の失敗だけを状態として返し、
+// fetchTools は一覧取得用のトークンで、空文字列を含む nextCursor をたどる。一ページ目の失敗だけを状態として返し、
 // 二ページ目以降の失敗と上限は REQ-MCPGATEWAY-011 と同じく取得できた分を不完全にする。
 func fetchTools(ctx context.Context, deps McpToolDiscoveryDeps, server *oauthdomain.McpResourceServer, useDPoP bool, now time.Time) (*oauthdomain.McpToolCatalog, oauthdomain.ToolsStatus, error) {
 	presenter, err := newDiscoveryPresenter(ctx, deps.Tokens, server, useDPoP, now)
 	if err != nil {
 		return nil, "", err
 	}
-	var listed []mcp.ListedTool
-	complete, cursor := false, ""
+	var (
+		listed   []mcp.ListedTool
+		complete bool
+		cursor   *string
+	)
 	for page := range discoveryMaxPages {
 		tools, next, status := fetchToolsPage(ctx, deps.Fetcher, presenter, server.Resource, cursor)
 		if status != "" {
@@ -192,7 +195,7 @@ func fetchTools(ctx context.Context, deps McpToolDiscoveryDeps, server *oauthdom
 			break
 		}
 		listed = append(listed, tools...)
-		if next == "" {
+		if next == nil {
 			complete = true
 			break
 		}
@@ -207,38 +210,40 @@ func fetchTools(ctx context.Context, deps McpToolDiscoveryDeps, server *oauthdom
 	}, oauthdomain.ToolsFetched, nil
 }
 
-func fetchToolsPage(ctx context.Context, fetcher oauthports.McpServerFetcher, presenter *discoveryPresenter, resource, cursor string) ([]mcp.ListedTool, string, oauthdomain.ToolsStatus) {
+// fetchToolsPage は cursor が nil なら一ページ目を、そうでなければ cursor の値（空文字列を含む）のページを取得する。
+// 次のカーソルは、nextCursor がないか null なら nil である。
+func fetchToolsPage(ctx context.Context, fetcher oauthports.McpServerFetcher, presenter *discoveryPresenter, resource string, cursor *string) ([]mcp.ListedTool, *string, oauthdomain.ToolsStatus) {
 	body, err := mcp.ToolsListRequest(cursor)
 	if err != nil {
-		return nil, "", oauthdomain.ToolsInvalidResponse
+		return nil, nil, oauthdomain.ToolsInvalidResponse
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, resource, bytes.NewReader(body))
 	if err != nil {
-		return nil, "", oauthdomain.ToolsInvalidResponse
+		return nil, nil, oauthdomain.ToolsInvalidResponse
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
 	request.Header.Set("Mcp-Protocol-Version", mcp.ProtocolVersion)
 	request.Header.Set("Mcp-Method", mcp.MethodToolsList)
 	if err := presenter.present(request); err != nil {
-		return nil, "", oauthdomain.ToolsInvalidResponse
+		return nil, nil, oauthdomain.ToolsInvalidResponse
 	}
 	status, raw, err := fetcher.Do(request, discoveryPageLimit)
 	switch {
 	case errors.Is(err, oauthports.ErrMcpResponseTooLarge):
-		return nil, "", oauthdomain.ToolsInvalidResponse
+		return nil, nil, oauthdomain.ToolsInvalidResponse
 	case err != nil:
-		return nil, "", oauthdomain.ToolsUnreachable
+		return nil, nil, oauthdomain.ToolsUnreachable
 	case status == http.StatusUnauthorized:
-		return nil, "", oauthdomain.ToolsUnauthorized
+		return nil, nil, oauthdomain.ToolsUnauthorized
 	case status == http.StatusForbidden:
-		return nil, "", oauthdomain.ToolsForbidden
+		return nil, nil, oauthdomain.ToolsForbidden
 	case status != http.StatusOK:
-		return nil, "", oauthdomain.ToolsInvalidResponse
+		return nil, nil, oauthdomain.ToolsInvalidResponse
 	}
 	tools, next, err := mcp.ParseToolsListPage(raw)
 	if err != nil {
-		return nil, "", oauthdomain.ToolsInvalidResponse
+		return nil, nil, oauthdomain.ToolsInvalidResponse
 	}
 	return tools, next, ""
 }
