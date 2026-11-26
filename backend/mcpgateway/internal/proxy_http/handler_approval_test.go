@@ -57,6 +57,27 @@ func sealFor(t *testing.T, expires time.Time) string {
 	return sealed
 }
 
+// tamperSealed は封じた状態の末尾から 2 文字目を、元と必ず違う文字に置き換える。
+// base64url の最後の文字は余りのビットを持ち、置き換えても復号後のバイトが変わらないことがあるので、その一つ前を変える。
+// 決まった文字への置き換えは、元の文字と同じなら改ざんにならない。
+func tamperSealed(sealed string) string {
+	at := len(sealed) - 2
+	replacement := byte('A')
+	if sealed[at] == replacement {
+		replacement = 'B'
+	}
+	return sealed[:at] + string(replacement) + sealed[at+1:]
+}
+
+// 改ざんは、置き換える位置の元の文字が A でもそうでなくても値を変える。元の末尾が AA の値で改ざんが空振りしないためである。
+func TestTamperSealedAlwaysChangesTheValue(t *testing.T) {
+	for _, sealed := range []string{"prefix.xyzAA", "prefix.xyzQA", "prefix.xyzAQ"} {
+		if got := tamperSealed(sealed); got == sealed || len(got) != len(sealed) {
+			t.Errorf("tamperSealed(%q) = %q, want a different value of the same length", sealed, got)
+		}
+	}
+}
+
 func retryWith(state, action string) string {
 	return `,"requestState":"` + state + `","inputResponses":{"idmagic_approval":{"action":"` + action + `"},"upstream_question":{"action":"accept"}}`
 }
@@ -150,7 +171,7 @@ func TestRetryStateIsCheckedBeforeEvaluation(t *testing.T) {
 		evaluated bool
 		reference string
 	}{
-		{name: "tampered", arguments: `{"amount":100}`, retry: retryWith(valid[:len(valid)-2]+"AA", "accept")},
+		{name: "tampered", arguments: `{"amount":100}`, retry: retryWith(tamperSealed(valid), "accept")},
 		{name: "another key", arguments: `{"amount":100}`, retry: retryWith(func() string {
 			sealed, _ := mcpgatewaydomain.SealRequestState(mcpgatewaydomain.RequestStateKey("other"), resourceURL, mcpgatewaydomain.RequestState{ApprovalRequestID: "a1", OperationDigest: "d", ExpiresAt: time.Now().Add(time.Minute)}, rand.Reader)
 			return sealed
