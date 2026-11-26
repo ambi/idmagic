@@ -3,6 +3,7 @@ package testing_httprecord
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -75,5 +76,36 @@ func TestFidelity_ReportsDivergence(t *testing.T) {
 		if !strings.Contains(strings.Join(diffs, "\n"), want) {
 			t.Errorf("Diverge() = %q, want a line %q", diffs, want)
 		}
+	}
+}
+
+// Decode を指定すると、記録と模倣の本文をその読み方で比べる。JSON でない本文（SSE など）を比べるために使う。
+func TestFidelity_DecodesBodiesWithTheGivenReader(t *testing.T) {
+	rec := Recording{Exchanges: []Exchange{{
+		Name:     "stream",
+		Request:  RecordedRequest{Method: http.MethodPost, Path: "/mcp"},
+		Response: RecordedResponse{Status: 200, Headers: map[string]string{"Content-Type": "text/plain"}, Body: json.RawMessage(`"a=1\nb=2"`)},
+	}}}
+	var contentTypes []string
+	fidelity := Fidelity{Decode: func(contentType string, body []byte) (any, error) {
+		contentTypes = append(contentTypes, contentType)
+		fields := map[string]any{}
+		for line := range strings.SplitSeq(string(body), "\n") {
+			key, value, _ := strings.Cut(line, "=")
+			fields[key] = value
+		}
+		return fields, nil
+	}}
+	twin := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("a=1\nb=3"))
+	})
+
+	diffs := fidelity.Diverge(twin, rec)
+	if want := "stream: body.b = 3, recorded 2"; strings.Join(diffs, "\n") != want {
+		t.Errorf("Diverge() = %q, want %q", diffs, want)
+	}
+	if want := []string{"text/plain", "text/plain; charset=utf-8"}; !slices.Equal(contentTypes, want) {
+		t.Errorf("Decode got content types %q, want %q", contentTypes, want)
 	}
 }

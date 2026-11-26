@@ -26,8 +26,20 @@ type Fidelity struct {
 	Setup func(ex Exchange)
 	// Rewrite は、送る前に要求のパスと本文を書き換える。記録の識別子を模倣が割り当てたものへ読み替えるのに使う。
 	Rewrite func(s string) string
-	// Learn は、本文が JSON の応答を受けるたびに、記録の本文と模倣の本文を受け取る。読み替えの対応を覚えるのに使う。
+	// Learn は、本文のある応答を受けるたびに、Decode で読んだ記録の本文と模倣の本文を受け取る。読み替えの対応を覚えるのに使う。
 	Learn func(want, got any)
+	// Decode は、応答の Content-Type と本文から、比べる値を作る。記録の本文と模倣の本文の両方に使う。
+	// nil なら本文を JSON として読む。SSE のように JSON でない本文を、メッセージの並びとして比べるのに使う。
+	Decode func(contentType string, body []byte) (any, error)
+}
+
+func (f Fidelity) decode(contentType string, body []byte) (any, error) {
+	if f.Decode != nil {
+		return f.Decode(contentType, body)
+	}
+	var value any
+	err := json.Unmarshal(body, &value)
+	return value, err
 }
 
 // Diverge は記録の往復を順に模倣へ送り、模倣の応答が記録と食い違う点を返す。
@@ -77,12 +89,13 @@ func (f Fidelity) Diverge(twin http.Handler, rec Recording) []string {
 			}
 			continue
 		}
-		var want, got any
-		if err := json.Unmarshal(recorded, &want); err != nil {
+		want, err := f.decode(ex.Response.Headers["Content-Type"], recorded)
+		if err != nil {
 			return append(diffs, fmt.Sprintf("%s: recorded body: %v", ex.Name, err))
 		}
-		if err := json.Unmarshal(body, &got); err != nil {
-			diffs = append(diffs, fmt.Sprintf("%s: body is not JSON: %v", ex.Name, err))
+		got, err := f.decode(resp.Header.Get("Content-Type"), body)
+		if err != nil {
+			diffs = append(diffs, fmt.Sprintf("%s: body cannot be decoded: %v", ex.Name, err))
 			continue
 		}
 		diffs = append(diffs, f.compareJSON(ex.Name, "", want, got)...)
