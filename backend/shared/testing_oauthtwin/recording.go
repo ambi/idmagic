@@ -12,8 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
-	"net/url"
-	"slices"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/shared/testing_httprecord"
@@ -72,32 +70,8 @@ func NewReplayServer(tb testing.TB, exchanges ...Exchange) *httptest.Server {
 	tb.Helper()
 	return testing_httprecord.Replay{
 		Headers:   []string{"Accept", "Content-Type", "Authorization"},
-		CheckBody: compareForm,
+		CheckBody: testing_httprecord.CompareForm,
 	}.Serve(tb, exchanges...)
-}
-
-// compareForm は記録したフォームの欄がすべて、同じ値で受け取ったフォームにあることを確かめる。
-func compareForm(recorded, got []byte) []string {
-	want, err := url.ParseQuery(string(recorded))
-	if err != nil {
-		return []string{fmt.Sprintf("recorded form: %v", err)}
-	}
-	have, err := url.ParseQuery(string(got))
-	if err != nil {
-		return []string{fmt.Sprintf("form is not urlencoded: %v", err)}
-	}
-	keys := make([]string, 0, len(want))
-	for key := range want {
-		keys = append(keys, key)
-	}
-	slices.Sort(keys)
-	var diffs []string
-	for _, key := range keys {
-		if !slices.Equal(have[key], want[key]) {
-			diffs = append(diffs, fmt.Sprintf("%s = %q, recorded %q", key, have[key], want[key]))
-		}
-	}
-	return diffs
 }
 
 // Diverge は記録の往復を順に模倣へ送り、模倣の応答が記録と食い違う点を返す。

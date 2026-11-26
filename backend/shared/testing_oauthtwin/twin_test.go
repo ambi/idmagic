@@ -121,19 +121,3 @@ func TestTwin_RefusesOutsideTheRecording(t *testing.T) {
 		t.Errorf("client credentials = %d %v, want 200 without refresh_token", status, body)
 	}
 }
-
-// 再生は記録した要求とフォームの値が食い違う要求を報告し、記録にない欄は許す。
-func TestCompareForm(t *testing.T) {
-	recorded := []byte("grant_type=refresh_token&refresh_token=tGzv3JOkF0XG5Qx2TlKWIA")
-	if diffs := compareForm(recorded, []byte("refresh_token=tGzv3JOkF0XG5Qx2TlKWIA&grant_type=refresh_token&scope=x")); len(diffs) != 0 {
-		t.Errorf("compareForm() = %q for a matching form", diffs)
-	}
-	diffs := compareForm(recorded, []byte("grant_type=authorization_code"))
-	want := []string{
-		`grant_type = ["authorization_code"], recorded ["refresh_token"]`,
-		`refresh_token = [], recorded ["tGzv3JOkF0XG5Qx2TlKWIA"]`,
-	}
-	if strings.Join(diffs, "\n") != strings.Join(want, "\n") {
-		t.Errorf("compareForm() = %q, want %q", diffs, want)
-	}
-}
