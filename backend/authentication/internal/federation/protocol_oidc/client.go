@@ -164,19 +164,24 @@ func (c Client) ExchangeAndValidate(
 	}
 	values := url.Values{
 		"grant_type":    {"authorization_code"},
-		"client_id":     {connection.ClientID},
 		"code":          {code},
 		"redirect_uri":  {redirectURI},
 		"code_verifier": {attempt.PKCEVerifier},
 	}
-	if secret != "" {
-		values.Set("client_secret", secret)
+	if secret == "" {
+		// 公開クライアントは認証せず、client_id を本文で示す（RFC 6749 §4.1.3）。
+		values.Set("client_id", connection.ClientID)
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, connection.TokenEndpoint, strings.NewReader(values.Encode()))
 	if err != nil {
 		return empty, err
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if secret != "" {
+		// client_secret_basic は Discovery §3 のデフォルトで、認可サーバーが必ず受け付ける方式である（RFC 6749 §2.3.1）。
+		// 資格情報は付録 B の form-urlencoded で符号化してから Basic にする (OIDC-CORE-CLIENT-SECRET-BASIC)。
+		request.SetBasicAuth(url.QueryEscape(connection.ClientID), url.QueryEscape(secret))
+	}
 	var tokenResponse struct {
 		IDToken string `json:"id_token"`
 	}

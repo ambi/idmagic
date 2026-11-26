@@ -148,7 +148,7 @@ IdManagement は JIT のために資格情報を持たないユーザーを作�
 
 | プロトコル | 検証 |
 | --- | --- |
-| OIDC | 保存済みの HTTPS の discovery のエンドポイント、PKCE 付きの Authorization Code、`state`、`nonce`、issuer と audience と時刻の検査、制限した JWK のアルゴリズム |
+| OIDC | 保存済みの HTTPS の discovery のエンドポイント、PKCE 付きの Authorization Code、`client_secret_basic` によるトークン要求の認証、`state`、`nonce`、issuer と audience と時刻の検査、制限した JWK のアルゴリズム |
 | SAML | 相関の取れた AuthnRequest、XML の署名、issuer、destination、audience、subject confirmation、時刻、再送。要求していない IdP 起点のレスポンスと暗号化した Assertion は範囲の外とする |
 
 上流の ID Token の検証は HTTP から切り離してあり、鍵の集合と時刻を引数で受け取る。

@@ -1,0 +1,158 @@
+{
+  "counterpart": "OpenID Connect OpenID Provider (Discovery, token endpoint, JWK Set)",
+  "counterpart_version": "OpenID Connect Core 1.0 incorporating errata set 2 (2023-12-15), OpenID Connect Discovery 1.0 incorporating errata set 2 (2023-12-15), RFC 7517 (May 2015)",
+  "retrieved_at": "2026-11-27",
+  "method": "https://openid.net/specs/openid-connect-core-1_0.txt の 3.1.3.1、3.1.3.3、3.1.3.4 節と付録 A.2、A.7、https://openid.net/specs/openid-connect-discovery-1_0.txt の 4.1、4.2 節、https://www.rfc-editor.org/rfc/rfc7517.txt の 5 節と付録 A.1 の例を転記した。要求の Host は省き、折り返した値は連結した。一次資料に JWK Set の HTTP の例はないので、JWK Set の応答の Content-Type は Discovery 4.2 節の応答と同じ application/json にした。往復ごとに要求と応答の出どころを source に書く。",
+  "exchanges": [
+    {
+      "name": "discovery",
+      "source": "要求は Discovery §4.1 の一つ目の例（issuer にパスがない場合）、応答は §4.2",
+      "request": {
+        "method": "GET",
+        "path": "/.well-known/openid-configuration",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": {
+          "issuer": "https://server.example.com",
+          "authorization_endpoint": "https://server.example.com/connect/authorize",
+          "token_endpoint": "https://server.example.com/connect/token",
+          "token_endpoint_auth_methods_supported": ["client_secret_basic", "private_key_jwt"],
+          "token_endpoint_auth_signing_alg_values_supported": ["RS256", "ES256"],
+          "userinfo_endpoint": "https://server.example.com/connect/userinfo",
+          "check_session_iframe": "https://server.example.com/connect/check_session",
+          "end_session_endpoint": "https://server.example.com/connect/end_session",
+          "jwks_uri": "https://server.example.com/jwks.json",
+          "registration_endpoint": "https://server.example.com/connect/register",
+          "scopes_supported": ["openid", "profile", "email", "address", "phone", "offline_access"],
+          "response_types_supported": ["code", "code id_token", "id_token", "id_token token"],
+          "acr_values_supported": ["urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze"],
+          "subject_types_supported": ["public", "pairwise"],
+          "userinfo_signing_alg_values_supported": ["RS256", "ES256", "HS256"],
+          "userinfo_encryption_alg_values_supported": ["RSA-OAEP-256", "A128KW"],
+          "userinfo_encryption_enc_values_supported": ["A128CBC-HS256", "A128GCM"],
+          "id_token_signing_alg_values_supported": ["RS256", "ES256", "HS256"],
+          "id_token_encryption_alg_values_supported": ["RSA-OAEP-256", "A128KW"],
+          "id_token_encryption_enc_values_supported": ["A128CBC-HS256", "A128GCM"],
+          "request_object_signing_alg_values_supported": ["none", "RS256", "ES256"],
+          "display_values_supported": ["page", "popup"],
+          "claim_types_supported": ["normal", "distributed"],
+          "claims_supported": ["sub", "iss", "auth_time", "acr", "name", "given_name", "family_name", "nickname", "profile", "picture", "website", "email", "email_verified", "locale", "zoneinfo", "http://example.info/claims/groups"],
+          "claims_parameter_supported": true,
+          "service_documentation": "http://server.example.com/connect/service_documentation.html",
+          "ui_locales_supported": ["en-US", "en-GB", "en-CA", "fr-FR", "fr-CA"]
+        }
+      }
+    },
+    {
+      "name": "jwks",
+      "source": "要求のパスは Discovery §4.2 の jwks_uri、本文は Core 付録 A.7 の鍵を RFC 7517 §5 の JWK Set に入れたもの",
+      "request": {
+        "method": "GET",
+        "path": "/jwks.json",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": {"keys": [{
+          "kty": "RSA",
+          "kid": "1e9gdk7",
+          "n": "w7Zdfmece8iaB0kiTY8pCtiBtzbptJmP28nSWwtdjRu0f2GFpajvWE4VhfJAjEsOcwYzay7XGN0b-X84BfC8hmCTOj2b2eHT7NsZegFPKRUQzJ9wW8ipn_aDJWMGDuB1XyqT1E7DYqjUCEOD1b4FLpy_xPn6oV_TYOfQ9fZdbE5HGxJUzekuGcOKqOQ8M7wfYHhHHLxGpQVgL0apWuP2gDDOdTtpuld4D2LK1MZK99s9gaSjRHE8JDb1Z4IGhEcEyzkxswVdPndUWzfvWBBWXWxtSUvQGBRkuy1BHOa4sP6FKjWEeeF7gm7UMs2Nm2QUgNZw6xvEDGaLk4KASdIxRQ",
+          "e": "AQAB"
+        }]}
+      }
+    },
+    {
+      "name": "jwks-encryption-and-signing-keys",
+      "source": "要求のパスは Discovery §4.2 の jwks_uri、本文は RFC 7517 付録 A.1（暗号化用の EC 鍵と RS256 の RSA 鍵）",
+      "request": {
+        "method": "GET",
+        "path": "/jwks.json",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": {"keys": [
+          {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
+            "y": "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM",
+            "use": "enc",
+            "kid": "1"
+          },
+          {
+            "kty": "RSA",
+            "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+            "e": "AQAB",
+            "alg": "RS256",
+            "kid": "2011-04-29"
+          }
+        ]}
+      }
+    },
+    {
+      "name": "token-authorization-code",
+      "source": "要求は Core §3.1.3.1、応答は §3.1.3.3（ID トークンの iss は http://server.example.com）",
+      "setup": {"authorization_codes": [{"code": "SplxlOBeZQQYbYS6WxSbIA", "redirect_uri": "https://client.example.org/cb", "subject": "248289761001", "nonce": "n-0S6_WzA2Mj"}]},
+      "request": {
+        "method": "POST",
+        "path": "/token",
+        "headers": {"Authorization": "Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW", "Content-Type": "application/x-www-form-urlencoded"},
+        "body": "grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA&redirect_uri=https%3A%2F%2Fclient.example.org%2Fcb"
+      },
+      "response": {
+        "status": 200,
+        "headers": {"Content-Type": "application/json", "Cache-Control": "no-store"},
+        "body": {
+          "access_token": "SlAV32hkKG",
+          "token_type": "Bearer",
+          "refresh_token": "8xLOxBtZp8",
+          "expires_in": 3600,
+          "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ.ewogImlzcyI6ICJodHRwOi8vc2VydmVyLmV4YW1wbGUuY29tIiwKICJzdWIiOiAiMjQ4Mjg5NzYxMDAxIiwKICJhdWQiOiAiczZCaGRSa3F0MyIsCiAibm9uY2UiOiAibi0wUzZfV3pBMk1qIiwKICJleHAiOiAxMzExMjgxOTcwLAogImlhdCI6IDEzMTEyODA5NzAKfQ.ggW8hZ1EuVLuxNuuIJKX_V8a_OMXzR0EHR9R6jgdqrOOF4daGU96Sr_P6qJp6IcmD3HP99Obi1PRs-cwh3LO-p146waJ8IhehcwL7F09JdijmBqkvPeB2T9CJNqeGpe-gccMg4vfKjkM8FcGvnzZUN4_KSP0aAp1tOJ1zZwgjxqGByKHiOtX7TpdQyHE5lcMiKPXfEIQILVq0pc_E2DzL7emopWoaoZTF_m0_N0YzFC6g6EJbOEoRoSK5hoDalrcvRYLSrQAZZKflyuVCyixEoV9GfNQC3_osjzw2PAithfubEEBLuVVk4XUVrWOLrLl0nx7RkKU8NXNHq-rvKMzqg"
+        }
+      }
+    },
+    {
+      "name": "token-authorization-code-profile-claims",
+      "source": "要求は Core §3.1.3.1、応答は §3.1.3.3 の id_token を付録 A.2 の ID トークンに差し替えたもの（A.2 の iss は Discovery §4.2 の issuer と同じ https://server.example.com で、name と email を持つ）",
+      "setup": {"authorization_codes": [{"code": "SplxlOBeZQQYbYS6WxSbIA", "redirect_uri": "https://client.example.org/cb", "subject": "248289761001", "nonce": "n-0S6_WzA2Mj"}]},
+      "request": {
+        "method": "POST",
+        "path": "/token",
+        "headers": {"Authorization": "Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW", "Content-Type": "application/x-www-form-urlencoded"},
+        "body": "grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA&redirect_uri=https%3A%2F%2Fclient.example.org%2Fcb"
+      },
+      "response": {
+        "status": 200,
+        "headers": {"Content-Type": "application/json", "Cache-Control": "no-store"},
+        "body": {
+          "access_token": "SlAV32hkKG",
+          "token_type": "Bearer",
+          "refresh_token": "8xLOxBtZp8",
+          "expires_in": 3600,
+          "id_token": "eyJraWQiOiIxZTlnZGs3IiwiYWxnIjoiUlMyNTYifQ.ewogImlzcyI6ICJodHRwczovL3NlcnZlci5leGFtcGxlLmNvbSIsCiAic3ViIjogIjI0ODI4OTc2MTAwMSIsCiAiYXVkIjogInM2QmhkUmtxdDMiLAogIm5vbmNlIjogIm4tMFM2X1d6QTJNaiIsCiAiZXhwIjogMTMxMTI4MTk3MCwKICJpYXQiOiAxMzExMjgwOTcwLAogIm5hbWUiOiAiSmFuZSBEb2UiLAogImdpdmVuX25hbWUiOiAiSmFuZSIsCiAiZmFtaWx5X25hbWUiOiAiRG9lIiwKICJnZW5kZXIiOiAiZmVtYWxlIiwKICJiaXJ0aGRhdGUiOiAiMDAwMC0xMC0zMSIsCiAiZW1haWwiOiAiamFuZWRvZUBleGFtcGxlLmNvbSIsCiAicGljdHVyZSI6ICJodHRwOi8vZXhhbXBsZS5jb20vamFuZWRvZS9tZS5qcGciCn0.NTibBYW_ZoNHGm4ZrWCqYA9oJaxr1AVrJCze6FEcac4t_EOQiJFbD2nVEPkUXPuMshKjjTn7ESLIFUnfHq8UKTGibIC8uqrBgQAcUQFMeWeg-PkLvDTHk43Dn4_aNrxhmWwMNQfkjqx3wd2Fvta9j8yG2Qn790Gwb5psGcmBhqMJUUnFrGpyxQDhFIzzodmPokM7tnUxBNj-JuES_4CE-BvZICH4jKLp0TMu-WQsVst0ss-vY2RPdU1MzL59mq_eKk8Rv9XhxIr3WteA2ZlrgVyT0cwH3hlCnRUsLfHtIEb8k1Y_WaqKUu3DaKPxqRi6u0rN7RO2uZYPzC454xe-mg"
+        }
+      }
+    },
+    {
+      "name": "token-invalid-request",
+      "source": "要求は Core §3.1.3.1 の例から code を除いたもの（§3.1.3.4 に要求の例はない）、応答は §3.1.3.4",
+      "request": {
+        "method": "POST",
+        "path": "/token",
+        "headers": {"Authorization": "Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW", "Content-Type": "application/x-www-form-urlencoded"},
+        "body": "grant_type=authorization_code&redirect_uri=https%3A%2F%2Fclient.example.org%2Fcb"
+      },
+      "response": {
+        "status": 400,
+        "headers": {"Content-Type": "application/json", "Cache-Control": "no-store"},
+        "body": {"error": "invalid_request"}
+      }
+    }
+  ]
+}

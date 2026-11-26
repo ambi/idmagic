@@ -9,6 +9,7 @@
 | OIDC-CORE-CODE-FLOW | required | MUST | 外部 OIDC 認証は authorization code flow を使い、ID Token の署名、issuer、audience、有効時間、nonce を検証する。 |
 | OIDC-CORE-ID-TOKEN-KID-OPTIONAL | required | MUST | 上流の RS256 の ID Token が `kid` を省略した場合、署名に使える RSA 鍵（`alg` が省略または `RS256`、`use` が省略または `sig`）が JWK Set にちょうど一つあれば、その鍵で検証する。候補がないか複数なら拒否する。`kid` がある場合は一致する鍵を要求する。 |
 | OIDC-CORE-ID-TOKEN-RS256 | partial | SHOULD | 上流の ID Token は RS256 の署名だけを検証し、ES256 などほかのアルゴリズムで署名された ID Token は拒否する。 |
+| OIDC-CORE-CLIENT-SECRET-BASIC | required | MUST | 上流のトークンエンドポイントへの要求は、接続にクライアントシークレットがあれば `client_secret_basic` でクライアントを認証する（Core §9、Discovery §3 のデフォルト）。`client_id` とシークレットはそれぞれ `application/x-www-form-urlencoded` で符号化してから Basic の資格情報にし（RFC 6749 §2.3.1、付録 B）、シークレットを本文に入れない。シークレットがなければ、Basic を使わず `client_id` を本文に入れる。 |
 | OIDC-CORE-TOKEN-RESPONSE-OPTIONAL | required | MUST | 上流のトークン応答からは `id_token` だけを読み、`token_type`、`expires_in`、`refresh_token` を省いた応答も受け入れてサインインを完了する。 |
 | OIDC-CORE-CSRF | required | SHOULD | callback は login attempt に束縛された単発 state を照合し、不一致または再利用を拒否する。 |
 
