@@ -11,36 +11,7 @@ import (
 	"time"
 )
 
-// newTLSDocumentServer starts an httptest TLS server (client_id must be
-// https) whose handler renders body with __SELF__ replaced by the server's
-// own URL, and returns a Fetcher wired to the server's trusting client.
-func newTLSDocumentServer(t *testing.T, body string) (*httptest.Server, *Fetcher) {
-	t.Helper()
-	var srv *httptest.Server
-	srv = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(strings.ReplaceAll(body, "__SELF__", srv.URL)))
-	}))
-	t.Cleanup(srv.Close)
-	return srv, newFetcherWithClient(srv.Client())
-}
-
-//spec:covers EX-OAUTH2-017-01: クライアント所有のメタデータ URL の取得と検証に成功し、その client_id を名乗るクライアントが組み立てられる。
-func TestFetcher_FetchReturnsSynthesizedClientOnSuccess(t *testing.T) {
-	srv, f := newTLSDocumentServer(t, `{
-		"client_id": "__SELF__/client.json",
-		"client_name": "Example Client",
-		"redirect_uris": ["http://127.0.0.1:3000/callback"]
-	}`)
-	clientIDURL := srv.URL + "/client.json"
-	client, err := f.Fetch(t.Context(), clientIDURL)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if client.ClientID != clientIDURL {
-		t.Errorf("ClientID = %q, want %q", client.ClientID, clientIDURL)
-	}
-}
+// 取得と検証の成功は recording_test.go が、実在のクライアントの文書の記録の再生で検査する。
 
 func TestFetcher_FetchRejectsNon200Status(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

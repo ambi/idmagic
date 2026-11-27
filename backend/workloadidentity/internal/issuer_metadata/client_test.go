@@ -11,7 +11,10 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-//spec:covers REQ-WORKLOADIDENTITY-015: パス付き issuer の取得先と完全一致、サイズ、鍵 URL を検査する。
+// 実在の issuer の成功と issuer の不一致は recording_test.go が記録の再生で検査する。
+// ここでは、実物が返さない文書の欠落、不正、サイズの境界、失敗の状態コードを検査する。
+//
+//spec:covers REQ-WORKLOADIDENTITY-015: 末尾の slash を除いた取得先、サイズ、鍵 URL を検査する。
 func TestDiscoverIssuerMetadata(t *testing.T) {
 	const issuer = "https://issuer.example/tenant/"
 	for _, tc := range []struct {
@@ -19,9 +22,7 @@ func TestDiscoverIssuerMetadata(t *testing.T) {
 		status         int
 		valid          bool
 	}{
-		{"valid", `{"issuer":"https://issuer.example/tenant/","jwks_uri":"https://keys.example/jwks"}`, 200, true},
 		{"size limit", `{"issuer":"https://issuer.example/tenant/","jwks_uri":"https://keys.example/jwks"}` + strings.Repeat(" ", (1<<20)-len(`{"issuer":"https://issuer.example/tenant/","jwks_uri":"https://keys.example/jwks"}`)), 200, true},
-		{"issuer mismatch", `{"issuer":"https://issuer.example/tenant","jwks_uri":"https://keys.example/jwks"}`, 200, false},
 		{"missing key URL", `{"issuer":"https://issuer.example/tenant/"}`, 200, false},
 		{"insecure key URL", `{"issuer":"https://issuer.example/tenant/","jwks_uri":"http://keys.example/jwks"}`, 200, false},
 		{"bad JSON", `{`, 200, false},

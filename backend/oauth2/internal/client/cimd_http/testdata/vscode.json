@@ -1,0 +1,47 @@
+{
+  "counterpart": "Visual Studio Code OAuth Client ID Metadata Document (https://vscode.dev/oauth/client-metadata.json)",
+  "counterpart_version": "公開のサービスで版を示さない（2026-11-27 に返した応答）",
+  "retrieved_at": "2026-11-27",
+  "method": "2026-11-27T16:42Z（UTC）に curl で GET https://vscode.dev/oauth/client-metadata.json を Accept: application/json を付けて送った。この文書は、クライアントの client_id として任意の認可サーバーが取得するために公開されている。記録に残るのは公開のクライアントのメタデータだけである。応答のヘッダーは Content-Type、Cache-Control、Vary だけを残し、Date、Set-Cookie、CDN の識別子は省いた。要求の User-Agent は curl の既定値であり、製品は自分の User-Agent を送る。本文は受け取ったバイト列のままである。この記録は一つの相手の取得時点の応答であり、同じ種類のほかの相手の応答と、その後の変化を保証しない。",
+  "exchanges": [
+    {
+      "name": "metadata-document",
+      "source": "応答は実物。要求は draft-ietf-oauth-client-id-metadata-document の §4 の取得",
+      "request": {
+        "method": "GET",
+        "path": "/oauth/client-metadata.json",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store,no-cache,max-age=0",
+          "Vary": "Origin, Accept-Encoding"
+        },
+        "body": {
+          "client_name": "Visual Studio Code",
+          "logo_uri": "https://code.visualstudio.com/assets/branding/code-stable.png",
+          "grant_types": [
+            "authorization_code",
+            "refresh_token",
+            "urn:ietf:params:oauth:grant-type:device_code"
+          ],
+          "response_types": [
+            "code"
+          ],
+          "token_endpoint_auth_method": "none",
+          "application_type": "native",
+          "client_id": "https://vscode.dev/oauth/client-metadata.json",
+          "client_uri": "https://vscode.dev/product",
+          "redirect_uris": [
+            "http://127.0.0.1:33418/",
+            "https://vscode.dev/redirect"
+          ]
+        }
+      }
+    }
+  ]
+}
