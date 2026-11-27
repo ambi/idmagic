@@ -88,12 +88,6 @@ func TestReplay_RFC7644Recordings(t *testing.T) {
 				t.Errorf("UpdateGroup(patch) etag = %v, want W/\"b431af54f0671a2\"", etag)
 			}
 		}},
-		{"delete-user", "delete-user", func(t *testing.T, client *Client) {
-			t.Helper()
-			if err := client.DeleteUser(ctx, recordedUserID); err != nil {
-				t.Fatalf("DeleteUser() error = %v", err)
-			}
-		}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

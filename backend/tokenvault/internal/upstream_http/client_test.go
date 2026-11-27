@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	tokenvaultdomain "github.com/ambi/idmagic/backend/tokenvault/internal/domain"
 	tokenvaultports "github.com/ambi/idmagic/backend/tokenvault/internal/ports"
@@ -73,21 +75,35 @@ func TestSendAttachesStoredToken(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-TOKENVAULT-013: invalid_grant と不正な応答を区別して返すこと
+// 成功の応答は、更新トークンと有効期間を応答にある分だけ返し、有効期間はドメインの上限で頭打ちにする。
+//
+//spec:covers REQ-TOKENVAULT-012, REQ-TOKENVAULT-013: invalid_grant と不正な応答を区別して返すこと、応答にない更新トークンと有効期間を空にし、365 日を超える有効期間を 365 日にすること
 func TestRefreshParsesTokenEndpointOutcomes(t *testing.T) {
 	cases := []struct {
 		name, contentType, body string
 		status                  int
 		wantOAuthError          string
-		wantErr                 bool
+		// want が nil なら、TokenEndpointError を期待する。
+		want *tokenvaultports.TokenResponse
 	}{
-		{"success", "application/json", `{"access_token":"a","token_type":"bearer","refresh_token":"r","expires_in":60}`, 200, "", false},
-		{"invalid_grant", "application/json", `{"error":"invalid_grant"}`, 400, "invalid_grant", true},
-		{"error with 200", "application/json", `{"error":"invalid_grant"}`, 200, "invalid_grant", true},
-		{"html", "text/html", `<html>`, 200, "", true},
-		{"no access token", "application/json", `{"token_type":"bearer"}`, 200, "", true},
-		{"mac token", "application/json", `{"access_token":"a","token_type":"mac"}`, 200, "", true},
-		{"server error", "text/plain", `boom`, 500, "", true},
+		{
+			"success", "application/json", `{"access_token":"a","token_type":"bearer","refresh_token":"r","expires_in":60}`, 200, "",
+			&tokenvaultports.TokenResponse{AccessToken: "a", RefreshToken: "r", ExpiresIn: new(time.Minute)},
+		},
+		{
+			"no refresh token and no lifetime", "application/json", `{"access_token":"a","token_type":"Bearer"}`, 200, "",
+			&tokenvaultports.TokenResponse{AccessToken: "a"},
+		},
+		{
+			"lifetime over a year", "application/json", `{"access_token":"a","token_type":"Bearer","expires_in":31536001}`, 200, "",
+			&tokenvaultports.TokenResponse{AccessToken: "a", ExpiresIn: new(tokenvaultdomain.MaxTokenLifetime)},
+		},
+		{"invalid_grant", "application/json", `{"error":"invalid_grant"}`, 400, "invalid_grant", nil},
+		{"error with 200", "application/json", `{"error":"invalid_grant"}`, 200, "invalid_grant", nil},
+		{"html", "text/html", `<html>`, 200, "", nil},
+		{"no access token", "application/json", `{"token_type":"bearer"}`, 200, "", nil},
+		{"mac token", "application/json", `{"access_token":"a","token_type":"mac"}`, 200, "", nil},
+		{"server error", "text/plain", `boom`, 500, "", nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -102,9 +118,9 @@ func TestRefreshParsesTokenEndpointOutcomes(t *testing.T) {
 			defer target.Close()
 			client := &Client{HTTP: withoutRedirects(target.Client())}
 			response, err := client.Refresh(context.Background(), tokenvaultports.OAuthClient{TokenEndpoint: target.URL, ClientID: "c", ClientSecret: "s"}, "old")
-			if !tc.wantErr {
-				if err != nil || response.AccessToken != "a" || response.RefreshToken != "r" || response.ExpiresIn == nil {
-					t.Fatalf("response %+v, err %v", response, err)
+			if tc.want != nil {
+				if err != nil || !reflect.DeepEqual(response, *tc.want) {
+					t.Fatalf("response %+v, err %v, want %+v", response, err, *tc.want)
 				}
 				return
 			}

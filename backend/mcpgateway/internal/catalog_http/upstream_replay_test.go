@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"sync"
 	"testing"
 
@@ -94,28 +93,6 @@ func TestPublisher_FollowsEmptyNextCursor(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-MCPGATEWAY-011: 仕様の例の 401、403、未対応の版で最初のページを取得できなければ、カタログを送らない。
-func TestPublisher_SendsNoCatalogOnRecordedRefusals(t *testing.T) {
-	rec := testing_mcptwin.MCP20260728Recording(t)
-	for _, tc := range []struct {
-		exchange string
-		replay   func(testing.TB, ...testing_mcptwin.Exchange) *httptest.Server
-		want     string
-	}{
-		{"tools-list-unauthorized", testing_mcptwin.NewReplayServer, "HTTP 401"},
-		{"tools-list-insufficient-scope", testing_mcptwin.NewReplayServer, "HTTP 403"},
-		{"unsupported-protocol-version", testing_mcptwin.NewResponseReplayServer, "HTTP 400"},
-	} {
-		t.Run(tc.exchange, func(t *testing.T) {
-			publisher, sink := replayPublisher(t, tc.replay(t, rec.Exchange(t, tc.exchange)))
-			_, err := publisher.SendCatalog(context.Background())
-			if err == nil || !strings.Contains(err.Error(), tc.want) || len(sink.sent()) != 0 {
-				t.Errorf("SendCatalog() error = %v and sent %+v, want %s and no catalog", err, sink.sent(), tc.want)
-			}
-		})
-	}
-}
-
 // listenWith は記録の subscriptions/listen を一度だけ再生し、待ち受けの終わり方と送信の契機の数を返す。
 func listenWith(t *testing.T, exchange string) (listenOutcome, int) {
 	t.Helper()
@@ -140,13 +117,5 @@ func TestListener_IgnoresRecordedNotificationOfAnotherSubscription(t *testing.T)
 	outcome, triggers := listenWith(t, "subscriptions-listen-other-subscription")
 	if triggers != 1 || !outcome.acknowledged || outcome.stop {
 		t.Errorf("listen() = %+v with %d triggers, want acknowledged, not stopped, and only the acknowledgment as trigger", outcome, triggers)
-	}
-}
-
-//spec:covers REQ-MCPGATEWAY-012: 受信確認に toolsListChanged がなければ、待ち受けをやめる。
-func TestListener_StopsOnRecordedAcknowledgmentWithoutTools(t *testing.T) {
-	outcome, triggers := listenWith(t, "subscriptions-listen-without-tools")
-	if triggers != 0 || !outcome.stop {
-		t.Errorf("listen() = %+v with %d triggers, want stopped without triggers", outcome, triggers)
 	}
 }

@@ -22,14 +22,14 @@ type received struct {
 }
 
 // newServers は、ページごとの応答を返す上流と、カタログを受ける IdMagic の代役を立てる。
-func newServers(t *testing.T, pages func(cursor string) (int, string)) (Publisher, *received, *atomic.Int32) {
+func newServers(t *testing.T, pages func(cursor *string) (int, string)) (Publisher, *received, *atomic.Int32) {
 	t.Helper()
 	got := &received{}
 	catalogs := &atomic.Int32{}
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			Params struct {
-				Cursor string `json:"cursor"`
+				Cursor *string `json:"cursor"`
 			} `json:"params"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -72,25 +72,30 @@ func page(t *testing.T, tools []map[string]any, next string) string {
 	return string(raw)
 }
 
-//spec:covers REQ-MCPGATEWAY-011: nextCursor をたどって集め、送る項目は名前、表示名、説明、引数のキーだけで、上限で切り詰める。
+//spec:covers REQ-MCPGATEWAY-011: nextCursor を空文字列も含めてたどって集め、送る項目は名前、表示名、説明、引数のキーだけで、上限で切り詰める。
 func TestSendCatalogFollowsCursorsAndSendsOnlyTheDeclaredFields(t *testing.T) {
 	long := strings.Repeat("説", 3000)
-	publisher, got, _ := newServers(t, func(cursor string) (int, string) {
-		if cursor == "" {
+	publisher, got, _ := newServers(t, func(cursor *string) (int, string) {
+		switch {
+		case cursor == nil:
 			return http.StatusOK, page(t, []map[string]any{{
 				"name": "read_document", "title": strings.Repeat("題", 300), "description": long,
 				"inputSchema": map[string]any{"type": "object", "properties": map[string]any{"document_id": map[string]any{"type": "string"}}},
 				"annotations": map[string]any{"readOnlyHint": true},
 			}}, "next")
+		case *cursor == "next":
+			// SSE の data 行でも読める。空文字列の nextCursor は終わりではなく、次のページのカーソルである。
+			return http.StatusOK, "event: message\ndata: " + `{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"delete_document"}],"nextCursor":""}}` + "\n\n"
+		case *cursor == "":
+			return http.StatusOK, page(t, []map[string]any{{"name": "archive_document"}}, "")
 		}
-		// SSE の data 行でも読める。
-		return http.StatusOK, "event: message\ndata: " + page(t, []map[string]any{{"name": "delete_document"}}, "") + "\n\n"
+		return http.StatusBadRequest, ""
 	})
 	result, err := publisher.SendCatalog(context.Background())
-	if err != nil || result.Tools != 2 || !result.Complete {
+	if err != nil || result.Tools != 3 || !result.Complete {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
-	if got.complete != "true" || got.user != "gateway" || got.password != "secret" || len(got.tools) != 2 {
+	if got.complete != "true" || got.user != "gateway" || got.password != "secret" || len(got.tools) != 3 || got.tools[2].Name != "archive_document" {
 		t.Fatalf("received=%+v", got)
 	}
 	first := got.tools[0]
@@ -102,24 +107,28 @@ func TestSendCatalogFollowsCursorsAndSendsOnlyTheDeclaredFields(t *testing.T) {
 //spec:covers REQ-MCPGATEWAY-011: 二ページ目以降の失敗、件数とページの上限では、集めた分を不完全としてカタログを送る。
 func TestSendCatalogMarksPartialListsIncomplete(t *testing.T) {
 	cases := map[string]struct {
-		pages     func(cursor string) (int, string)
+		pages     func(cursor *string) (int, string)
 		wantTools int
 	}{
-		"second page fails": {func(cursor string) (int, string) {
-			if cursor == "" {
+		"second page fails": {func(cursor *string) (int, string) {
+			if cursor == nil {
 				return http.StatusOK, page(t, []map[string]any{{"name": "a"}}, "next")
 			}
 			return http.StatusBadGateway, ""
 		}, 1},
-		"more than 100 tools": {func(string) (int, string) {
+		"more than 100 tools": {func(*string) (int, string) {
 			tools := make([]map[string]any, 101)
 			for index := range tools {
 				tools[index] = map[string]any{"name": fmt.Sprintf("tool_%d", index)}
 			}
 			return http.StatusOK, page(t, tools, "")
 		}, maxTools},
-		"more than 10 pages": {func(cursor string) (int, string) {
-			return http.StatusOK, page(t, []map[string]any{{"name": "tool_" + url.QueryEscape(cursor)}}, cursor+"x")
+		"more than 10 pages": {func(cursor *string) (int, string) {
+			next := "x"
+			if cursor != nil {
+				next = *cursor + "x"
+			}
+			return http.StatusOK, page(t, []map[string]any{{"name": "tool_" + url.QueryEscape(next)}}, next)
 		}, maxPages},
 	}
 	for name, tc := range cases {
@@ -135,10 +144,10 @@ func TestSendCatalogMarksPartialListsIncomplete(t *testing.T) {
 
 //spec:covers REQ-MCPGATEWAY-011: 最初のページを取得できなければカタログを送らない。
 func TestSendCatalogSendsNothingWhenTheFirstPageFails(t *testing.T) {
-	for name, pages := range map[string]func(string) (int, string){
-		"HTTP error":     func(string) (int, string) { return http.StatusUnauthorized, "" },
-		"JSON-RPC error": func(string) (int, string) { return http.StatusOK, `{"jsonrpc":"2.0","id":1,"error":{"code":-32601}}` },
-		"not JSON":       func(string) (int, string) { return http.StatusOK, "<html>" },
+	for name, pages := range map[string]func(*string) (int, string){
+		"HTTP error":     func(*string) (int, string) { return http.StatusUnauthorized, "" },
+		"JSON-RPC error": func(*string) (int, string) { return http.StatusOK, `{"jsonrpc":"2.0","id":1,"error":{"code":-32601}}` },
+		"not JSON":       func(*string) (int, string) { return http.StatusOK, "<html>" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			publisher, _, catalogs := newServers(t, pages)
