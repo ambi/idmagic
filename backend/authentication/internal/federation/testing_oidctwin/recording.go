@@ -12,8 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -76,28 +74,8 @@ func NewReplayClient(tb testing.TB, exchanges ...Exchange) *http.Client {
 		Headers:   []string{"Accept", "Content-Type", "Authorization"},
 		CheckBody: testing_httprecord.CompareForm,
 	}.Serve(tb, exchanges...)
-	return routedClient(server)
+	return testing_httprecord.RoutedClient(server)
 }
-
-// routedClient は、どのホストへの要求も server へ送るクライアントを返す。リダイレクトは追わない。
-func routedClient(server *httptest.Server) *http.Client {
-	target, _ := url.Parse(server.URL)
-	base := server.Client().Transport
-	return &http.Client{
-		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-			routed := r.Clone(r.Context())
-			routed.URL.Scheme = target.Scheme
-			routed.URL.Host = target.Host
-			routed.Host = r.URL.Host
-			return base.RoundTrip(routed)
-		}),
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
-}
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 // setup は、記録の前から相手が持っていた認可コードである。
 type setup struct {

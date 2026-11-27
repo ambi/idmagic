@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 )
@@ -83,6 +84,29 @@ func (c Replay) check(tb testing.TB, ex Exchange, r *http.Request) {
 		tb.Errorf("replay %s: request body: %s", ex.Name, diff)
 	}
 }
+
+// RoutedClient は、どのホストへの要求も server へ送るクライアントを返す。リダイレクトは追わない。
+//
+// 要求の URL の方式とホストだけを server のものへ置き換え、パス、クエリ、Host ヘッダーはそのまま送る。
+// そのため、製品のクライアントへ記録の相手の URL（https://issuer.example など）をそのまま渡せる。
+func RoutedClient(server *httptest.Server) *http.Client {
+	target, _ := url.Parse(server.URL)
+	base := server.Client().Transport
+	return &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			routed := r.Clone(r.Context())
+			routed.URL.Scheme = target.Scheme
+			routed.URL.Host = target.Host
+			routed.Host = r.URL.Host
+			return base.RoundTrip(routed)
+		}),
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func writeRecordedResponse(w http.ResponseWriter, resp RecordedResponse) {
 	for name, value := range resp.Headers {

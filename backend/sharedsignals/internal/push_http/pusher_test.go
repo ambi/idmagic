@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 
@@ -28,21 +27,6 @@ func rfc8935Recording(t *testing.T) testing_httprecord.Recording {
 	return rec
 }
 
-// routedTo は、https の配送先への要求を、再生サーバーの http の URL へ向ける。
-// pusher は https の配送先しか受けないが、再生サーバーは TLS を使わないためである。
-func routedTo(server *httptest.Server) *http.Client {
-	target, _ := url.Parse(server.URL)
-	return &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		routed := r.Clone(r.Context())
-		routed.URL.Scheme, routed.URL.Host = target.Scheme, target.Host
-		return http.DefaultTransport.RoundTrip(routed)
-	})}
-}
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
 // 受信者は Figure 1 の要求を受け取り、Figure 2 の 202 の空の応答で配送が成功する。
 //
 //spec:covers RFC8935-PUSH-REQUEST: SET の compact serialization だけを本文にして、Content-Type: application/secevent+jwt と Accept: application/json の POST で送り、202 の応答を成功とする。
@@ -57,7 +41,8 @@ func TestHTTPSecurityEventPusher_PushMatchesRFC8935Example(t *testing.T) {
 		},
 	}.Serve(t, ex)
 
-	pusher := &push_http.HTTPSecurityEventPusher{Client: routedTo(server)}
+	// pusher は https の配送先しか受けないが、再生サーバーは TLS を使わないので、再生サーバーへ向けるクライアントを渡す。
+	pusher := &push_http.HTTPSecurityEventPusher{Client: testing_httprecord.RoutedClient(server)}
 	if err := pusher.Push(context.Background(), "https://notify.rp.example.com/Events", "", string(testing_httprecord.BodyBytes(ex.Request.Body))); err != nil {
 		t.Fatalf("Push: %v", err)
 	}

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+	"github.com/ambi/idmagic/backend/shared/testing_httprecord"
 )
 
 // 模倣が受け付けるクライアント認証の方式である（OpenID Connect Core 1.0 §9）。
@@ -109,7 +110,7 @@ func (tw *Twin) Client(tb testing.TB) *http.Client {
 	tb.Helper()
 	server := httptest.NewServer(tw)
 	tb.Cleanup(server.Close)
-	return routedClient(server)
+	return testing_httprecord.RoutedClient(server)
 }
 
 // AddAuthorizationCode は一度だけ交換できる認可コードを置く。
