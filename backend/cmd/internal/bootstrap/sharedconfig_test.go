@@ -163,6 +163,43 @@ func TestLoadSharedConfigDataKeyProviderOpenBaoRequiresAddrAndToken(t *testing.T
 	}
 }
 
+// OpenBao の Transit 鍵の名前は接頭辞とテナント ID から作る。Transit が受け付けない接頭辞は、
+// 鍵を作る最初の暗号化まで待たずに起動時に拒否する。
+func TestLoadSharedConfigOpenBaoDataKeyPrefix(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		prefix string // 空なら設定しない
+		want   string
+		ok     bool
+	}{
+		{"既定の接頭辞", "", "idmagic-datakeys", true},
+		{"規則に合う接頭辞", "tenant_keys.v2", "tenant_keys.v2", true},
+		{"スラッシュを含む接頭辞", "idmagic/datakeys", "", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			env := map[string]string{"DATA_KEY_PROVIDER": "openbao", "OPENBAO_ADDR": "https://openbao.internal:8200", "OPENBAO_TOKEN": "token"}
+			if tc.prefix != "" {
+				env["OPENBAO_DATA_KEY_PREFIX"] = tc.prefix
+			}
+			l := NewConfigLoader(stubEnv(env))
+			cfg := LoadSharedConfig(l)
+			err := l.Err()
+			if !tc.ok {
+				if err == nil || !strings.Contains(err.Error(), "OPENBAO_DATA_KEY_PREFIX") {
+					t.Fatalf("err = %v, want OPENBAO_DATA_KEY_PREFIX rejected", err)
+				}
+				return
+			}
+			if err != nil || cfg.OpenBaoDataKeyPrefix != tc.want {
+				t.Fatalf("prefix = %q, err = %v; want %q", cfg.OpenBaoDataKeyPrefix, err, tc.want)
+			}
+		})
+	}
+}
+
 // TestLoadSharedConfigReportsEveryUnrelatedProblemTogether guards
 // surface from one LoadSharedConfig call instead of stopping at the first.
 //

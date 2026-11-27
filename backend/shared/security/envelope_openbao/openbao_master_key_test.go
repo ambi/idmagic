@@ -64,14 +64,14 @@ func (f *fakeTransitEngine) Healthy(_ context.Context) bool {
 func TestWrapUnwrapRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	engine := newFakeTransitEngine()
-	provider := NewOpenBaoMasterKeyProvider(engine, "idmagic/datakeys")
+	provider := NewOpenBaoMasterKeyProvider(engine, DefaultKeyNamePrefix)
 
 	plaintextDEK := []byte("0123456789abcdef0123456789abcdef")
 	wrapped, masterKeyID, err := provider.WrapDataKey(ctx, "tenant-a", plaintextDEK)
 	if err != nil {
 		t.Fatalf("WrapDataKey failed: %v", err)
 	}
-	if masterKeyID != "idmagic/datakeys/tenant-a" {
+	if masterKeyID != "idmagic-datakeys-tenant-a" {
 		t.Fatalf("unexpected master key id: %s", masterKeyID)
 	}
 	if !engine.ensuredKeys[masterKeyID] {
@@ -93,14 +93,14 @@ func TestWrapUnwrapRoundTrip(t *testing.T) {
 func TestUnwrapRejectsMismatchedMasterKeyID(t *testing.T) {
 	ctx := context.Background()
 	engine := newFakeTransitEngine()
-	provider := NewOpenBaoMasterKeyProvider(engine, "idmagic/datakeys")
+	provider := NewOpenBaoMasterKeyProvider(engine, DefaultKeyNamePrefix)
 
 	wrapped, _, err := provider.WrapDataKey(ctx, "tenant-a", []byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {
 		t.Fatalf("WrapDataKey failed: %v", err)
 	}
 
-	if _, err := provider.UnwrapDataKey(ctx, "tenant-b", wrapped, "idmagic/datakeys/tenant-a"); err == nil {
+	if _, err := provider.UnwrapDataKey(ctx, "tenant-b", wrapped, "idmagic-datakeys-tenant-a"); err == nil {
 		t.Fatal("expected UnwrapDataKey to fail-closed for a masterKeyID/tenant mismatch")
 	} else if !errors.Is(err, envelope_crypto.ErrDataKeyUnavailable) {
 		t.Fatalf("expected ErrDataKeyUnavailable, got %v", err)
@@ -114,7 +114,7 @@ func TestWrapPropagatesProviderUnavailable(t *testing.T) {
 	ctx := context.Background()
 	engine := newFakeTransitEngine()
 	engine.ensureErr = errors.New("connection refused")
-	provider := NewOpenBaoMasterKeyProvider(engine, "idmagic/datakeys")
+	provider := NewOpenBaoMasterKeyProvider(engine, DefaultKeyNamePrefix)
 
 	if _, _, err := provider.WrapDataKey(ctx, "tenant-a", []byte("0123456789abcdef0123456789abcdef")); err == nil {
 		t.Fatal("expected WrapDataKey to fail when the transit engine is unavailable")
@@ -123,7 +123,7 @@ func TestWrapPropagatesProviderUnavailable(t *testing.T) {
 
 func TestHealthyDelegatesToEngine(t *testing.T) {
 	engine := newFakeTransitEngine()
-	provider := NewOpenBaoMasterKeyProvider(engine, "idmagic/datakeys")
+	provider := NewOpenBaoMasterKeyProvider(engine, DefaultKeyNamePrefix)
 
 	if !provider.Healthy(context.Background()) {
 		t.Fatal("expected Healthy to be true when engine is healthy")
@@ -131,6 +131,26 @@ func TestHealthyDelegatesToEngine(t *testing.T) {
 	engine.healthy = false
 	if provider.Healthy(context.Background()) {
 		t.Fatal("expected Healthy to be false when engine is unhealthy")
+	}
+}
+
+// 接頭辞は Transit の鍵名の規則に合うものだけを受け付ける。OpenBao の記録で受け付けた鍵名の接頭辞も受け付ける。
+func TestValidKeyNamePrefix(t *testing.T) {
+	tests := []struct {
+		prefix string
+		want   bool
+	}{
+		{DefaultKeyNamePrefix, true},
+		{"idmagic_datakeys.v2@prod", true},
+		{"idmagic/datakeys", false},
+		{"", false},
+		{"-datakeys", false},
+		{"data keys", false},
+	}
+	for _, tc := range tests {
+		if got := ValidKeyNamePrefix(tc.prefix); got != tc.want {
+			t.Errorf("ValidKeyNamePrefix(%q) = %v, want %v", tc.prefix, got, tc.want)
+		}
 	}
 }
 

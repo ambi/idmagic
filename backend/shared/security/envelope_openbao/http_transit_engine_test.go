@@ -1,46 +1,139 @@
 package envelope_openbao
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/ambi/idmagic/backend/shared/testing_httprecord"
 )
 
-// TestEnsureKeyCreatesMissingKey verifies the OpenBao Transit-compatible
-// create-if-missing flow, mirroring backend/signingkeys/keys_vault's
-// EnsureKey pattern: GET first, POST create only on 404.
-func TestEnsureKeyCreatesMissingKey(t *testing.T) {
-	var gotCreate bool
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("X-Vault-Token"); got != "test-token" {
-			t.Fatalf("unexpected token header: %s", got)
-		}
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/transit/keys/idmagic/datakeys/tenant-a":
-			w.WriteHeader(http.StatusNotFound)
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/transit/keys/idmagic/datakeys/tenant-a":
-			gotCreate = true
-			var body map[string]any
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body["type"] != "aes256-gcm96" {
-				t.Fatalf("unexpected key type: %v", body["type"])
-			}
-			w.WriteHeader(http.StatusOK)
-		default:
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	defer server.Close()
+// recordedToken は、記録が X-Vault-Token に置いた値である。記録に使った root トークンはこの値へ置き換えてある。
+const recordedToken = "recorded-root-token"
 
-	engine := NewHTTPTransitEngine(server.URL, "test-token", "")
-	if err := engine.EnsureKey(context.Background(), "idmagic/datakeys/tenant-a"); err != nil {
-		t.Fatalf("EnsureKey failed: %v", err)
+// openBaoRecording は、mise run record-transit -- openbao が OpenBao の開発用サーバーから取った記録を読む。
+func openBaoRecording(t *testing.T) testing_httprecord.Recording {
+	t.Helper()
+	data, err := os.ReadFile("testdata/openbao-transit.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !gotCreate {
-		t.Fatal("expected EnsureKey to create the missing key")
+	rec, err := testing_httprecord.Decode(data)
+	if err != nil {
+		t.Fatalf("decode OpenBao recording: %v", err)
+	}
+	return rec
+}
+
+// recordedPlaintext は、記録した暗号化の要求が送った平文の DEK を返す。
+func recordedPlaintext(t *testing.T, ex testing_httprecord.Exchange) []byte {
+	t.Helper()
+	var body struct {
+		Plaintext string `json:"plaintext"`
+	}
+	if err := json.Unmarshal(ex.Request.Body, &body); err != nil {
+		t.Fatal(err)
+	}
+	plaintext, err := base64.StdEncoding.DecodeString(body.Plaintext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return plaintext
+}
+
+// 既定の接頭辞のマスター鍵で、鍵の作成、DEK のラップ、戻しを OpenBao から取った記録に対して行う。
+// 要求は方式、パス、Content-Type、X-Vault-Token、JSON の本文の一致まで記録と照合する。
+// 記録のパスは OpenBao が受け付けた鍵名なので、製品の鍵名が OpenBao の名前の規則に合うことも確かめる。
+//
+//spec:covers REQ-DATAKEYS-001: テナントの初回の暗号化のとき、DEK を MasterKey のプロバイダーでラップする。OpenBao のプロバイダーは既定の接頭辞で OpenBao が受け付ける鍵を作ってラップする。
+func TestHTTPTransitEngine_ReplaysOpenBaoTransit(t *testing.T) {
+	rec := openBaoRecording(t).Select(t, "read-missing-key", "create-key", "encrypt-v1", "decrypt-v1")
+	server := testing_httprecord.Replay{
+		Headers:   []string{"Content-Type", "X-Vault-Token"},
+		CheckBody: testing_httprecord.CompareJSON,
+	}.Serve(t, rec.Exchanges...)
+	provider := NewOpenBaoMasterKeyProvider(NewHTTPTransitEngine(server.URL, recordedToken, ""), DefaultKeyNamePrefix)
+	ctx := context.Background()
+	dek := recordedPlaintext(t, rec.Exchange(t, "encrypt-v1"))
+
+	wrapped, masterKeyID, err := provider.WrapDataKey(ctx, "tenant-a", dek)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unwrapped, err := provider.UnwrapDataKey(ctx, "tenant-a", wrapped, masterKeyID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(unwrapped, dek) {
+		t.Fatalf("unwrapped DEK = %q, want the wrapped DEK", unwrapped)
+	}
+}
+
+// 一つの応答で決まる失敗。どの操作も、OpenBao の 2xx 以外の応答と解釈できない本文を成功として扱わない。
+func TestHTTPTransitEngine_RejectsUnsuccessfulStatus(t *testing.T) {
+	denied := func(w http.ResponseWriter) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = io.WriteString(w, `{"errors":["permission denied"]}`)
+	}
+	ciphertext := "vault:v1:" + base64.StdEncoding.EncodeToString([]byte("sealed"))
+	tests := []struct {
+		name    string
+		respond func(w http.ResponseWriter, r *http.Request)
+		call    func(ctx context.Context, e *HTTPTransitEngine) error
+	}{
+		{
+			"鍵の読み取りが拒否される", func(w http.ResponseWriter, _ *http.Request) { denied(w) },
+			func(ctx context.Context, e *HTTPTransitEngine) error { return e.EnsureKey(ctx, "k") },
+		},
+		{"鍵の作成が拒否される", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			denied(w)
+		}, func(ctx context.Context, e *HTTPTransitEngine) error { return e.EnsureKey(ctx, "k") }},
+		{
+			"暗号化が拒否される", func(w http.ResponseWriter, _ *http.Request) { denied(w) },
+			func(ctx context.Context, e *HTTPTransitEngine) error {
+				_, err := e.EncryptDataKey(ctx, "k", []byte("dek"))
+				return err
+			},
+		},
+		{"暗号化の応答に暗号文がない", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(w, `{"data":{}}`)
+		}, func(ctx context.Context, e *HTTPTransitEngine) error {
+			_, err := e.EncryptDataKey(ctx, "k", []byte("dek"))
+			return err
+		}},
+		{
+			"復号が拒否される", func(w http.ResponseWriter, _ *http.Request) { denied(w) },
+			func(ctx context.Context, e *HTTPTransitEngine) error {
+				_, err := e.DecryptDataKey(ctx, "k", ciphertext)
+				return err
+			},
+		},
+		{"復号の平文が base64 でない", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = io.WriteString(w, `{"data":{"plaintext":"not base64!"}}`)
+		}, func(ctx context.Context, e *HTTPTransitEngine) error {
+			_, err := e.DecryptDataKey(ctx, "k", ciphertext)
+			return err
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(tc.respond))
+			defer server.Close()
+			if err := tc.call(context.Background(), NewHTTPTransitEngine(server.URL, recordedToken, "")); err == nil {
+				t.Fatal("want an error")
+			}
+		})
 	}
 }
 
@@ -55,67 +148,11 @@ func TestEnsureKeyNoOpWhenKeyExists(t *testing.T) {
 	defer server.Close()
 
 	engine := NewHTTPTransitEngine(server.URL, "test-token", "")
-	if err := engine.EnsureKey(context.Background(), "idmagic/datakeys/tenant-a"); err != nil {
+	if err := engine.EnsureKey(context.Background(), "idmagic-datakeys-tenant-a"); err != nil {
 		t.Fatalf("EnsureKey failed: %v", err)
 	}
 	if gotCreate {
 		t.Fatal("expected EnsureKey not to recreate an existing key")
-	}
-}
-
-// TestEncryptDecryptRoundTrip exercises the wire format: base64 plaintext in
-// the request, "vault:vN:<base64>" ciphertext in the response, and the
-// reverse for decrypt.
-func TestEncryptDecryptRoundTrip(t *testing.T) {
-	const plaintext = "0123456789abcdef0123456789abcdef"
-	encoded := base64.StdEncoding.EncodeToString([]byte(plaintext))
-	vaultCiphertext := "vault:v1:" + encoded
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/v1/transit/encrypt/idmagic/datakeys/tenant-a":
-			var body struct {
-				Plaintext string `json:"plaintext"`
-			}
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body.Plaintext != encoded {
-				t.Fatalf("unexpected plaintext in request: %s", body.Plaintext)
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"data": map[string]any{"ciphertext": vaultCiphertext},
-			})
-		case "/v1/transit/decrypt/idmagic/datakeys/tenant-a":
-			var body struct {
-				Ciphertext string `json:"ciphertext"`
-			}
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body.Ciphertext != vaultCiphertext {
-				t.Fatalf("unexpected ciphertext in request: %s", body.Ciphertext)
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"data": map[string]any{"plaintext": encoded},
-			})
-		default:
-			t.Fatalf("unexpected request path: %s", r.URL.Path)
-		}
-	}))
-	defer server.Close()
-
-	engine := NewHTTPTransitEngine(server.URL, "test-token", "")
-	ciphertext, err := engine.EncryptDataKey(context.Background(), "idmagic/datakeys/tenant-a", []byte(plaintext))
-	if err != nil {
-		t.Fatalf("EncryptDataKey failed: %v", err)
-	}
-	if ciphertext != vaultCiphertext {
-		t.Fatalf("unexpected ciphertext: %s", ciphertext)
-	}
-
-	decrypted, err := engine.DecryptDataKey(context.Background(), "idmagic/datakeys/tenant-a", ciphertext)
-	if err != nil {
-		t.Fatalf("DecryptDataKey failed: %v", err)
-	}
-	if string(decrypted) != plaintext {
-		t.Fatalf("unexpected decrypted plaintext: %s", decrypted)
 	}
 }
 

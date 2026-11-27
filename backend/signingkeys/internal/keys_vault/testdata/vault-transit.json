@@ -1,0 +1,428 @@
+{
+  "counterpart": "HashiCorp Vault Transit secrets engine",
+  "counterpart_version": "Vault 2.2.2",
+  "retrieved_at": "2026-11-28",
+  "method": "mise run record-transit -- vault が 開発用サーバー（-dev、インメモリの保存、root トークン、監査デバイス、名前空間、ポリシーなし）を起動し、transit に Transit を有効にしてから往復を送った。本番の構成（監査デバイス、名前空間、ポリシー、HA の待機系）での応答は保証しない。X-Vault-Token は記録に使った使い捨ての root トークンを recorded-root-token へ置き換えた。要求は SigningKeys の HTTPTransitEngine と同じ本文とヘッダーで送り、順序は VaultKeyStore の初回取得、PS256 の署名、ローテーション、回転後の署名に合わせた。",
+  "exchanges": [
+    {
+      "name": "read-missing-key",
+      "source": "EnsureKey の読み取り。鍵はまだない。",
+      "request": {
+        "method": "GET",
+        "path": "/v1/transit/keys/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "create-key",
+      "source": "EnsureKey の作成。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/keys/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "type": "rsa-2048"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "eb88874c-7a2d-b220-2fe7-f73c0a2a4630",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "key_usages": [
+              "asymmetric-encryption",
+              "digital-signature"
+            ],
+            "keys": {
+              "1": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:23.94116+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzbzvM5Xa90y3ISwu1BFY\nHIraW6a7t35taiMjSkxzzURPY+5PlrwjF50DhypYIPuMCMRXiA2MgRyyZOPFotVN\nA8vEC+0EZEtvyAxE+F7Gq2Ay/C/loX1BJ/cw4XA0Umx3kYUE0wLidyHDzWJ+ZDum\nCtvv9Uoh3BIAnpqDtFetvBLhm4ldmRT5DHmWTCdjhS7lcxSd0hCn/HmWcqG6wG+c\nHqjfepr/UD+yTAXQBEMRDdOXpInB5WOy/McSWJ3eEd+XEAUWpKN5dggp9Q58JvwG\n5UTdNhEJ7jdzxjuRi6d0Qqjtrj+VwKEPi5xoFe1T7ntSet8B98d+UhQNV35nS0pQ\nwQIDAQAB\n-----END PUBLIC KEY-----\n"
+              }
+            },
+            "latest_version": 1,
+            "latest_version_type": "rsa-2048",
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-signing-tenant-a-signing-default",
+            "supports_decryption": true,
+            "supports_derivation": false,
+            "supports_encryption": true,
+            "supports_signing": true,
+            "type": "rsa-2048"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    },
+    {
+      "name": "read-key-v1",
+      "source": "LatestPublicKey。",
+      "request": {
+        "method": "GET",
+        "path": "/v1/transit/keys/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "88a74885-90b8-afc1-9e20-475249d48eb7",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "key_usages": [
+              "asymmetric-encryption",
+              "digital-signature"
+            ],
+            "keys": {
+              "1": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:23.94116+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzbzvM5Xa90y3ISwu1BFY\nHIraW6a7t35taiMjSkxzzURPY+5PlrwjF50DhypYIPuMCMRXiA2MgRyyZOPFotVN\nA8vEC+0EZEtvyAxE+F7Gq2Ay/C/loX1BJ/cw4XA0Umx3kYUE0wLidyHDzWJ+ZDum\nCtvv9Uoh3BIAnpqDtFetvBLhm4ldmRT5DHmWTCdjhS7lcxSd0hCn/HmWcqG6wG+c\nHqjfepr/UD+yTAXQBEMRDdOXpInB5WOy/McSWJ3eEd+XEAUWpKN5dggp9Q58JvwG\n5UTdNhEJ7jdzxjuRi6d0Qqjtrj+VwKEPi5xoFe1T7ntSet8B98d+UhQNV35nS0pQ\nwQIDAQAB\n-----END PUBLIC KEY-----\n"
+              }
+            },
+            "latest_version": 1,
+            "latest_version_type": "rsa-2048",
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-signing-tenant-a-signing-default",
+            "supports_decryption": true,
+            "supports_derivation": false,
+            "supports_encryption": true,
+            "supports_signing": true,
+            "type": "rsa-2048"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    },
+    {
+      "name": "sign-v1-pss",
+      "source": "PS256 の署名（PSSSaltLengthEqualsHash）。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/sign/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "hash_algorithm": "sha2-256",
+          "input": "stQraK5P1LAfF2beIEJDybwp7bzotV3JOp2azBMwDxI=",
+          "key_version": 1,
+          "prehashed": true,
+          "salt_length": "hash",
+          "signature_algorithm": "pss"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "265322c7-14f5-cf75-9489-e59f60263848",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "key_version": 1,
+            "signature": "vault:v1:mCSM2bASNgomrYngMB3KFGA5aoMPTzvpavnmpNw9U9cnrIjR+41ScWedNVf36WPrgHiceebgztvnsqCARuAsZo4hNBcer5v86oXFnCeRAAE6Y075qNNWIj2p9D5o/WH5r1ea7Rlg7rzgDoZEnjYiOI2RVydodV7pcQaUoFF9CAwFTecckYXhtlI8JeuXnTcQwVSRi7pc0nRQ6MU8mqPEKhCSvulAff1mqgz6ksuTqxBcFWoKl8+CbNr5XLONDjQwxwdvuEkcqf6qy6MQGsBpKTZ0kNnz8kHdQAFhuz3/WycQffSKM+aLU1cAIdJVFpO77gKM580xCeys0V8VfJv8Xw=="
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    },
+    {
+      "name": "read-key-before-rotation",
+      "source": "ローテーションの EnsureKey の読み取り。鍵はある。",
+      "request": {
+        "method": "GET",
+        "path": "/v1/transit/keys/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "e31e0f29-3a02-f17d-b092-bb9b1025efa1",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "key_usages": [
+              "asymmetric-encryption",
+              "digital-signature"
+            ],
+            "keys": {
+              "1": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:23.94116+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzbzvM5Xa90y3ISwu1BFY\nHIraW6a7t35taiMjSkxzzURPY+5PlrwjF50DhypYIPuMCMRXiA2MgRyyZOPFotVN\nA8vEC+0EZEtvyAxE+F7Gq2Ay/C/loX1BJ/cw4XA0Umx3kYUE0wLidyHDzWJ+ZDum\nCtvv9Uoh3BIAnpqDtFetvBLhm4ldmRT5DHmWTCdjhS7lcxSd0hCn/HmWcqG6wG+c\nHqjfepr/UD+yTAXQBEMRDdOXpInB5WOy/McSWJ3eEd+XEAUWpKN5dggp9Q58JvwG\n5UTdNhEJ7jdzxjuRi6d0Qqjtrj+VwKEPi5xoFe1T7ntSet8B98d+UhQNV35nS0pQ\nwQIDAQAB\n-----END PUBLIC KEY-----\n"
+              }
+            },
+            "latest_version": 1,
+            "latest_version_type": "rsa-2048",
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-signing-tenant-a-signing-default",
+            "supports_decryption": true,
+            "supports_derivation": false,
+            "supports_encryption": true,
+            "supports_signing": true,
+            "type": "rsa-2048"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    },
+    {
+      "name": "rotate-key",
+      "source": "RotateKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/keys/idmagic-signing-tenant-a-signing-default/rotate",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "d6eb7c88-93bd-f671-cef9-ea71c5f5b452",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "key_usages": [
+              "asymmetric-encryption",
+              "digital-signature"
+            ],
+            "keys": {
+              "1": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:23.94116+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzbzvM5Xa90y3ISwu1BFY\nHIraW6a7t35taiMjSkxzzURPY+5PlrwjF50DhypYIPuMCMRXiA2MgRyyZOPFotVN\nA8vEC+0EZEtvyAxE+F7Gq2Ay/C/loX1BJ/cw4XA0Umx3kYUE0wLidyHDzWJ+ZDum\nCtvv9Uoh3BIAnpqDtFetvBLhm4ldmRT5DHmWTCdjhS7lcxSd0hCn/HmWcqG6wG+c\nHqjfepr/UD+yTAXQBEMRDdOXpInB5WOy/McSWJ3eEd+XEAUWpKN5dggp9Q58JvwG\n5UTdNhEJ7jdzxjuRi6d0Qqjtrj+VwKEPi5xoFe1T7ntSet8B98d+UhQNV35nS0pQ\nwQIDAQAB\n-----END PUBLIC KEY-----\n"
+              },
+              "2": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:24.051961+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApOuq+mx+bV7zXVfW1JKN\nEp2uA6m4mycIpuCc4dDg5DTmWR8z3Xi/h8d+5PvUTgrCmzz3Wg3mDuXy1Mj8ZiDf\nINMxB1OV7pRdmKDvEUeOW0odjI1922S37LCTwPID/Y6RBtadYNRf49x7a+Vq8Nhx\nGpOmdmgiUEjoP1K8I7C1bRSwcqZ/6eCFqQ9Z8RBI4hX6oPwtT9QJWWQpSINioOLY\na+7OZDKVUWetzm7p+I6ovrDiTPOwmnWHkZ0UU+6TfcT3FaPmHkfgMcn7PMRzP6x8\nJREfpbQnxPu8mLSmkxk8J5Sosqkh1bi2Wpfju49g5z6cOpY9XQifVRTYPvBa3HiS\ncQIDAQAB\n-----END PUBLIC KEY-----\n"
+              }
+            },
+            "latest_version": 2,
+            "latest_version_type": "rsa-2048",
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-signing-tenant-a-signing-default",
+            "supports_decryption": true,
+            "supports_derivation": false,
+            "supports_encryption": true,
+            "supports_signing": true,
+            "type": "rsa-2048"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    },
+    {
+      "name": "read-key-v2",
+      "source": "回転後の LatestPublicKey。",
+      "request": {
+        "method": "GET",
+        "path": "/v1/transit/keys/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "d94385f1-873d-d646-f37f-671ec499aa89",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "key_usages": [
+              "asymmetric-encryption",
+              "digital-signature"
+            ],
+            "keys": {
+              "1": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:23.94116+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzbzvM5Xa90y3ISwu1BFY\nHIraW6a7t35taiMjSkxzzURPY+5PlrwjF50DhypYIPuMCMRXiA2MgRyyZOPFotVN\nA8vEC+0EZEtvyAxE+F7Gq2Ay/C/loX1BJ/cw4XA0Umx3kYUE0wLidyHDzWJ+ZDum\nCtvv9Uoh3BIAnpqDtFetvBLhm4ldmRT5DHmWTCdjhS7lcxSd0hCn/HmWcqG6wG+c\nHqjfepr/UD+yTAXQBEMRDdOXpInB5WOy/McSWJ3eEd+XEAUWpKN5dggp9Q58JvwG\n5UTdNhEJ7jdzxjuRi6d0Qqjtrj+VwKEPi5xoFe1T7ntSet8B98d+UhQNV35nS0pQ\nwQIDAQAB\n-----END PUBLIC KEY-----\n"
+              },
+              "2": {
+                "certificate_chain": "",
+                "creation_time": "2026-11-28T01:08:24.051961+09:00",
+                "hybrid_public_key": "",
+                "name": "rsa-2048",
+                "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApOuq+mx+bV7zXVfW1JKN\nEp2uA6m4mycIpuCc4dDg5DTmWR8z3Xi/h8d+5PvUTgrCmzz3Wg3mDuXy1Mj8ZiDf\nINMxB1OV7pRdmKDvEUeOW0odjI1922S37LCTwPID/Y6RBtadYNRf49x7a+Vq8Nhx\nGpOmdmgiUEjoP1K8I7C1bRSwcqZ/6eCFqQ9Z8RBI4hX6oPwtT9QJWWQpSINioOLY\na+7OZDKVUWetzm7p+I6ovrDiTPOwmnWHkZ0UU+6TfcT3FaPmHkfgMcn7PMRzP6x8\nJREfpbQnxPu8mLSmkxk8J5Sosqkh1bi2Wpfju49g5z6cOpY9XQifVRTYPvBa3HiS\ncQIDAQAB\n-----END PUBLIC KEY-----\n"
+              }
+            },
+            "latest_version": 2,
+            "latest_version_type": "rsa-2048",
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-signing-tenant-a-signing-default",
+            "supports_decryption": true,
+            "supports_derivation": false,
+            "supports_encryption": true,
+            "supports_signing": true,
+            "type": "rsa-2048"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    },
+    {
+      "name": "sign-v2-pkcs1v15",
+      "source": "回転後の鍵での PKCS #1 v1.5 の署名（XML の署名と RS256）。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/sign/idmagic-signing-tenant-a-signing-default",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "hash_algorithm": "sha2-256",
+          "input": "stQraK5P1LAfF2beIEJDybwp7bzotV3JOp2azBMwDxI=",
+          "key_version": 2,
+          "prehashed": true,
+          "signature_algorithm": "pkcs1v15"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "b81fc435-c216-4ec2-90c1-9cf0ca47b0fc",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "key_version": 2,
+            "signature": "vault:v2:JfKoNcsOXd0uHQgULTPLrj5f5uO6xiGJNPtIP+XfKZLqyQTx1uI8ULeC6V0l+LWOXPRcdTqMMSUKPpgZtLf2ogq4lGLtRP1veWvtJ224tjt6ufmimqLqtL3+IL6czKQ0CLK1SCyfVxx6O5+900qkhkba+xiI34IgMns1GJg8vy3eX/2p2H8Cplql+zD+c7vLkU82juWXLAH94zB4UtDl4Y7LMutOJ8GDNoRvoQuX2N13v0gEaw3NwXEIqkIubFt6ggS+wa/plU+VLtqbcoEsFpGPOmQ3x3kUyQCG3cdgJKp2ZMvAONMmpQpHARjFyhJlk2noWjrudIlBvWkCGN7eVQ=="
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null,
+          "mount_type": "transit"
+        }
+      }
+    }
+  ]
+}

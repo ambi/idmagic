@@ -9,6 +9,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -207,5 +211,37 @@ func TestVaultKeyStoreFailClosedWhenEngineDown(t *testing.T) {
 	engine.healthy = false
 	if ks.Healthy(ctx) {
 		t.Fatal("key store must report unhealthy when the engine is down")
+	}
+}
+
+// Vault が鍵の回転を拒否したとき、ローテーションは失敗し、回転前の鍵を新しい鍵として返さない。
+// 鍵の読み取りは Vault から取った記録の本文を返し、回転だけを 403 で拒否する。
+//
+//spec:covers REQ-SIGNINGKEYS-001: 管理者が署名鍵をローテーションしたとき、新しい鍵を Active にする。提供元が回転を拒否した場合は、それまでの鍵を新しい鍵として返さない。
+func TestVaultKeyStore_RotateFailsWhenVaultDeniesRotation(t *testing.T) {
+	readKey := vaultRecording(t).Exchange(t, "read-key-v1").Response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/rotate") {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = io.WriteString(w, `{"errors":["1 error occurred:\n\t* permission denied\n\n"]}`)
+			return
+		}
+		_, _ = w.Write(readKey.Body)
+	}))
+	defer server.Close()
+	store := adaptercrypto.NewVaultKeyStore(adaptercrypto.NewHTTPTransitEngine(server.URL, recordedToken, ""), "")
+	ctx := tenantCtx()
+	before, err := store.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotated, err := store.Rotate(ctx, time.Now().UTC(), 7*24*time.Hour)
+	if err == nil {
+		t.Fatalf("Rotate() = %s, want an error when Vault denies the rotation", rotated.Kid)
+	}
+	active, err := store.GetActiveKey(ctx)
+	if err != nil || active.Kid != before.Kid {
+		t.Fatalf("active key after the denied rotation = %v, %v; want %s", active, err, before.Kid)
 	}
 }

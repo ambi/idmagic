@@ -3,6 +3,7 @@ package envelope_openbao
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 )
@@ -18,8 +19,20 @@ type TransitEngine interface {
 	Healthy(ctx context.Context) bool
 }
 
+// DefaultKeyNamePrefix は、テナントごとの Transit 鍵の名前に付ける既定の接頭辞である。
+const DefaultKeyNamePrefix = "idmagic-datakeys"
+
+// keyNamePrefixPattern は、Transit の鍵名の規則（英数字か `_` で始まり、英数字、`_`、`-`、`.`、`@` だけからなる）に
+// 合う接頭辞である。OpenBao と Vault は、規則に合わない鍵名（スラッシュを含む名前など）を 404 unsupported path で拒否する。
+var keyNamePrefixPattern = regexp.MustCompile(`^\w[\w.@-]*$`)
+
+// ValidKeyNamePrefix は、接頭辞とテナント ID から作る鍵名を Transit が受け付けるかを返す。起動時の設定の検証に使う。
+func ValidKeyNamePrefix(prefix string) bool {
+	return keyNamePrefixPattern.MatchString(prefix)
+}
+
 // OpenBaoMasterKeyProvider implements envelope_crypto.MasterKeyProvider using
-// one OpenBao transit key per tenant, named "{keyNamePrefix}/{tenantID}".
+// one OpenBao transit key per tenant, named "{keyNamePrefix}-{tenantID}".
 type OpenBaoMasterKeyProvider struct {
 	engine        TransitEngine
 	keyNamePrefix string
@@ -62,5 +75,5 @@ func (p *OpenBaoMasterKeyProvider) Provider() string {
 }
 
 func (p *OpenBaoMasterKeyProvider) keyName(tenantID string) string {
-	return p.keyNamePrefix + "/" + tenantID
+	return p.keyNamePrefix + "-" + tenantID
 }

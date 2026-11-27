@@ -52,9 +52,16 @@ func (e *HTTPTransitEngine) EnsureKey(ctx context.Context, name string) error {
 	if status != http.StatusNotFound {
 		return fmt.Errorf("openbao: unexpected status %d reading key", status)
 	}
-	_, _, err = e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/keys/"+name,
+	status, _, err = e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/keys/"+name,
 		map[string]any{"type": "aes256-gcm96"})
-	return err
+	if err != nil {
+		return err
+	}
+	// OpenBao 2.7 は作成した鍵の情報を載せた 200 を返す。Vault の以前の版が返す本文のない 204 も成功とする。
+	if status != http.StatusOK && status != http.StatusNoContent {
+		return fmt.Errorf("openbao: unexpected status %d creating key", status)
+	}
+	return nil
 }
 
 func (e *HTTPTransitEngine) EncryptDataKey(ctx context.Context, name string, plaintext []byte) (string, error) {

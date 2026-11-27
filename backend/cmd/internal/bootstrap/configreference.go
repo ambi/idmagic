@@ -82,7 +82,7 @@ var configFieldDescriptions = map[string]string{
 	"OPENBAO_ADDR":                 "OpenBao のベースアドレス。DATA_KEY_PROVIDER=openbao のとき必須である。",
 	"OPENBAO_TOKEN":                "OpenBao のトークン。DATA_KEY_PROVIDER=openbao のとき必須である。",
 	"OPENBAO_TRANSIT_MOUNT":        "OpenBao Transit エンジンのマウントパス。",
-	"OPENBAO_DATA_KEY_PREFIX":      "テナントごとの OpenBao Transit 鍵の名前に付ける接頭辞（`{prefix}/{tenant_id}`）。",
+	"OPENBAO_DATA_KEY_PREFIX":      "テナントごとの OpenBao Transit 鍵の名前に付ける接頭辞（`{prefix}-{tenant_id}`）。英数字か `_` で始め、英数字、`_`、`-`、`.`、`@` だけを使う。",
 	"EMAIL_SENDER":                 "パスワードリセットと通知のメールを送る経路。`smtp` には SMTP_HOST と SMTP_FROM が必要である。",
 	"SMTP_HOST":                    "SMTP サーバーのホスト名。EMAIL_SENDER=smtp のとき必須である。",
 	"SMTP_FROM":                    "送信するメールの From アドレス。EMAIL_SENDER=smtp のとき必須である。",

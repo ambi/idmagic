@@ -9,6 +9,7 @@ import (
 	emailSMTP "github.com/ambi/idmagic/backend/shared/notification/email_smtp"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/resilience"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_openbao"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
@@ -146,10 +147,12 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 	l.RequiredWhen("OPENBAO_ADDR", "DATA_KEY_PROVIDER=openbao")
 	l.RequiredWhen("OPENBAO_TOKEN", "DATA_KEY_PROVIDER=openbao")
 	cfg.OpenBaoTransitMount = l.String("OPENBAO_TRANSIT_MOUNT", "")
-	cfg.OpenBaoDataKeyPrefix = l.String("OPENBAO_DATA_KEY_PREFIX", "idmagic/datakeys")
+	cfg.OpenBaoDataKeyPrefix = l.String("OPENBAO_DATA_KEY_PREFIX", envelope_openbao.DefaultKeyNamePrefix)
 	if cfg.DataKeyProvider == "openbao" {
 		l.Require("OPENBAO_ADDR", cfg.OpenBaoAddr != "", "is required when DATA_KEY_PROVIDER=openbao")
 		l.Require("OPENBAO_TOKEN", !cfg.OpenBaoToken.Empty(), "is required when DATA_KEY_PROVIDER=openbao")
+		l.Require("OPENBAO_DATA_KEY_PREFIX", envelope_openbao.ValidKeyNamePrefix(cfg.OpenBaoDataKeyPrefix),
+			"must start with a letter, digit or '_' and contain only letters, digits, '_', '-', '.' and '@' to form a Transit key name")
 	}
 
 	cfg.EmailSender = strings.ToLower(l.Enum("EMAIL_SENDER", "console", "console", "smtp"))

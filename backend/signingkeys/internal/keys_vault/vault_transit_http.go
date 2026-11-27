@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -48,14 +49,32 @@ func (e *HTTPTransitEngine) EnsureKey(ctx context.Context, name string) error {
 	if status != http.StatusNotFound {
 		return fmt.Errorf("vault: unexpected status %d reading key", status)
 	}
-	_, _, err = e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/keys/"+name,
+	status, _, err = e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/keys/"+name,
 		map[string]any{"type": "rsa-2048"})
-	return err
+	if err != nil {
+		return err
+	}
+	if !succeeded(status) {
+		return fmt.Errorf("vault: unexpected status %d creating key", status)
+	}
+	return nil
 }
 
 func (e *HTTPTransitEngine) RotateKey(ctx context.Context, name string) error {
-	_, _, err := e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/keys/"+name+"/rotate", nil)
-	return err
+	status, _, err := e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/keys/"+name+"/rotate", nil)
+	if err != nil {
+		return err
+	}
+	if !succeeded(status) {
+		return fmt.Errorf("vault: unexpected status %d rotating key", status)
+	}
+	return nil
+}
+
+// succeeded は、本文の要らない書き込みの成功を表す状態コードかを返す。
+// Vault 2.2 の鍵の作成と回転は鍵の情報を載せた 200 を返す。以前の版が返す本文のない 204 も成功とする。
+func succeeded(status int) bool {
+	return status == http.StatusOK || status == http.StatusNoContent
 }
 
 func (e *HTTPTransitEngine) LatestPublicKey(ctx context.Context, name string) (string, int, error) {
@@ -86,17 +105,18 @@ func (e *HTTPTransitEngine) LatestPublicKey(ctx context.Context, name string) (s
 }
 
 func (e *HTTPTransitEngine) Sign(ctx context.Context, name string, version int, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
-	signatureAlgorithm := "pkcs1v15"
-	if _, ok := opts.(*rsa.PSSOptions); ok {
-		signatureAlgorithm = "pss"
-	}
-	status, body, err := e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/sign/"+name, map[string]any{
+	payload := map[string]any{
 		"input":               base64.StdEncoding.EncodeToString(digest),
 		"prehashed":           true,
-		"signature_algorithm": signatureAlgorithm,
+		"signature_algorithm": "pkcs1v15",
 		"hash_algorithm":      "sha2-256",
 		"key_version":         version,
-	})
+	}
+	if pss, ok := opts.(*rsa.PSSOptions); ok {
+		payload["signature_algorithm"] = "pss"
+		payload["salt_length"] = pssSaltLength(pss.SaltLength)
+	}
+	status, body, err := e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/sign/"+name, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +137,21 @@ func (e *HTTPTransitEngine) Sign(ctx context.Context, name string, version int, 
 		return nil, errors.New("vault: malformed signature")
 	}
 	return base64.StdEncoding.DecodeString(parts[2])
+}
+
+// pssSaltLength は、呼び出し元の PSS の salt 長を Transit の salt_length の値へ写す。
+//
+// salt_length を省くと Vault は既定の auto で署名し、auto は署名で最大長の salt を使う。
+// RFC 7518 §3.5 の PS256 はハッシュ長の salt を求めるので、署名者の指定をそのまま送る。
+func pssSaltLength(saltLength int) string {
+	switch saltLength {
+	case rsa.PSSSaltLengthEqualsHash:
+		return "hash"
+	case rsa.PSSSaltLengthAuto:
+		return "auto"
+	default:
+		return strconv.Itoa(saltLength)
+	}
 }
 
 func (e *HTTPTransitEngine) Healthy(ctx context.Context) bool {

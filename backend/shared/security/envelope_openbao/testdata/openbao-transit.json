@@ -1,0 +1,384 @@
+{
+  "counterpart": "OpenBao Transit secrets engine",
+  "counterpart_version": "OpenBao 2.7.3",
+  "retrieved_at": "2026-11-28",
+  "method": "mise run record-transit -- openbao が 開発用サーバー（-dev、インメモリの保存、root トークン、監査デバイス、名前空間、ポリシーなし）を起動し、transit に Transit を有効にしてから往復を送った。本番の構成（監査デバイス、名前空間、ポリシー、HA の待機系）での応答は保証しない。X-Vault-Token は記録に使った使い捨ての root トークンを recorded-root-token へ置き換えた。要求は envelope_openbao の HTTPTransitEngine と同じ本文とヘッダーで送り、順序は OpenBaoMasterKeyProvider のラップと戻しに合わせた。回転と min_decryption_version の設定は運用者の操作であり、アダプターは送らない。",
+  "exchanges": [
+    {
+      "name": "read-missing-key",
+      "source": "EnsureKey の読み取り。鍵はまだない。",
+      "request": {
+        "method": "GET",
+        "path": "/v1/transit/keys/idmagic-datakeys-tenant-a",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "create-key",
+      "source": "EnsureKey の作成。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/keys/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "type": "aes256-gcm96"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "a2ece787-54c2-93cb-db31-6807ca84e98a",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "keys": {
+              "1": 1795795704
+            },
+            "latest_version": 1,
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-datakeys-tenant-a",
+            "soft_deleted": false,
+            "supports_decryption": true,
+            "supports_derivation": true,
+            "supports_encryption": true,
+            "supports_signing": false,
+            "type": "aes256-gcm96"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "encrypt-v1",
+      "source": "EncryptDataKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/encrypt/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "plaintext": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "a41619e5-8a4a-929a-4f0c-679ab58322ea",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "ciphertext": "vault:v1:1Bd6Si3xy6yvM943DFE/yQRbTD9QY9XSaHhqRNDNqYTexCAT70UOEi6rUzwSy8APMtoQMG2uz0oiRfd3",
+            "key_version": 1
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "decrypt-v1",
+      "source": "DecryptDataKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/decrypt/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "ciphertext": "vault:v1:1Bd6Si3xy6yvM943DFE/yQRbTD9QY9XSaHhqRNDNqYTexCAT70UOEi6rUzwSy8APMtoQMG2uz0oiRfd3"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "ac83face-b7b6-3a33-40c4-b6ecb6f87117",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "plaintext": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "rotate-key",
+      "source": "運用者の鍵の回転。アダプターは送らない。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/keys/idmagic-datakeys-tenant-a/rotate",
+        "headers": {
+          "X-Vault-Token": "recorded-root-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "2d668a13-9e6f-8366-15fe-ba4b85044ab7",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "keys": {
+              "1": 1795795704,
+              "2": 1795795704
+            },
+            "latest_version": 2,
+            "min_available_version": 0,
+            "min_decryption_version": 1,
+            "min_encryption_version": 0,
+            "name": "idmagic-datakeys-tenant-a",
+            "soft_deleted": false,
+            "supports_decryption": true,
+            "supports_derivation": true,
+            "supports_encryption": true,
+            "supports_signing": false,
+            "type": "aes256-gcm96"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "encrypt-v2",
+      "source": "回転後の EncryptDataKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/encrypt/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "plaintext": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "cb78d567-9367-f00c-daba-dcfbe5aa9732",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "ciphertext": "vault:v2:6zaalBCBTH+Mo2jSqPnvje9lWQgCf5oZGLWPPq4JG4d+ts4VpSOdlCFZ4JlIhWF7hOvbI361teGdaUjI",
+            "key_version": 2
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "decrypt-v1-after-rotation",
+      "source": "回転前の暗号文の DecryptDataKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/decrypt/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "ciphertext": "vault:v1:1Bd6Si3xy6yvM943DFE/yQRbTD9QY9XSaHhqRNDNqYTexCAT70UOEi6rUzwSy8APMtoQMG2uz0oiRfd3"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "ab85f14b-00e9-8587-835d-00223507f8b2",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "plaintext": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "raise-min-decryption-version",
+      "source": "運用者の min_decryption_version の引き上げ。アダプターは送らない。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/keys/idmagic-datakeys-tenant-a/config",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "min_decryption_version": 2
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "82a6b1ff-90e5-e386-c95a-87e691eb4c93",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "allow_plaintext_backup": false,
+            "auto_rotate_period": 0,
+            "deletion_allowed": false,
+            "derived": false,
+            "exportable": false,
+            "imported_key": false,
+            "keys": {
+              "2": 1795795704
+            },
+            "latest_version": 2,
+            "min_available_version": 0,
+            "min_decryption_version": 2,
+            "min_encryption_version": 0,
+            "name": "idmagic-datakeys-tenant-a",
+            "soft_deleted": false,
+            "supports_decryption": true,
+            "supports_derivation": true,
+            "supports_encryption": true,
+            "supports_signing": false,
+            "type": "aes256-gcm96"
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    },
+    {
+      "name": "decrypt-v1-below-min-version",
+      "source": "min_decryption_version より古い暗号文の DecryptDataKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/decrypt/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "ciphertext": "vault:v1:1Bd6Si3xy6yvM943DFE/yQRbTD9QY9XSaHhqRNDNqYTexCAT70UOEi6rUzwSy8APMtoQMG2uz0oiRfd3"
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "errors": [
+            "ciphertext or signature version is disallowed by policy (too old)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "decrypt-v2",
+      "source": "min_decryption_version 以上の暗号文の DecryptDataKey。",
+      "request": {
+        "method": "POST",
+        "path": "/v1/transit/decrypt/idmagic-datakeys-tenant-a",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Vault-Token": "recorded-root-token"
+        },
+        "body": {
+          "ciphertext": "vault:v2:6zaalBCBTH+Mo2jSqPnvje9lWQgCf5oZGLWPPq4JG4d+ts4VpSOdlCFZ4JlIhWF7hOvbI361teGdaUjI"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "request_id": "28bbf46e-cd6c-efb7-0e67-3dce334426c5",
+          "lease_id": "",
+          "renewable": false,
+          "lease_duration": 0,
+          "data": {
+            "plaintext": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+          },
+          "wrap_info": null,
+          "warnings": null,
+          "auth": null
+        }
+      }
+    }
+  ]
+}

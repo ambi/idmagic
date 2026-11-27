@@ -488,6 +488,24 @@ set -eu
 go run ./backend/cmd/idmagic-seed --environment "${1:-development}" --profile performance --mode apply --count "${2:-10000}" --batch-size "${3:-250}"
 '''
 
+[tasks.record-transit]
+description = "Record Vault or OpenBao Transit round trips from a local dev server into the replay testdata"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。開発用サーバーのバージョンをここで固定し、
+# 上げたら記録を取り直して差分を読む。サーバーは localhost で待ち受けるので、サンドボックスの外で実行する。
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run record-transit -- <vault|openbao> [-out <path>]" >&2; exit 2; }
+product="$1"
+shift
+case "$product" in
+  vault) server="vault@2.2.2" ;;
+  openbao) server="openbao@2.7.3" ;;
+  *) echo "unknown product: $product; want vault or openbao" >&2; exit 2 ;;
+esac
+mise exec "$server" -- go run ./backend/shared/testing_transitrecord -product "$product" "$@"
+'''
+
 [tasks.batch]
 description = "Run one externally scheduled operational batch"
 run = '''
