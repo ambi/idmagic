@@ -51,3 +51,11 @@ OpenID Shared Signals Framework 1.0 — https://openid.net/specs/openid-sharedsi
 | `authenticator_changed` | `AuthenticatorChanged` |
 | `refresh_token_reuse` | `RefreshTokenReuse` |
 | `inbound_security_event` | `InboundSecurityEvent` |
+
+## Push-Based Security Event Token (SET) Delivery Using HTTP
+
+RFC 8935 — https://www.rfc-editor.org/rfc/rfc8935.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC8935-PUSH-REQUEST | partial | MUST | 送信側のストリームの `delivery_endpoint` へ、SET の compact serialization だけを本文にして、`Content-Type: application/secevent+jwt` と `Accept: application/json` を付けた POST で送る。202 を含む 2xx の応答を配送の成功とし、それ以外の状態コードは本文を読まずに失敗として再試行の対象にする。`Accept-Language` は送らない。 |

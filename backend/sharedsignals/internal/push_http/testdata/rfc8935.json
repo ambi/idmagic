@@ -1,0 +1,26 @@
+{
+  "counterpart": "SET Recipient of push-based SET delivery",
+  "counterpart_version": "RFC 8935 (November 2020)",
+  "retrieved_at": "2026-11-28",
+  "method": "https://www.rfc-editor.org/rfc/rfc8935.txt の 2.1 節の Figure 1 と 2.2 節の Figure 2 を転記した。要求の Host は省き、折り返した SET は連結した。往復ごとに要求と応答の出どころを source に書く。",
+  "exchanges": [
+    {
+      "name": "push-accepted",
+      "source": "要求は §2.1 の Figure 1、応答は §2.2 の Figure 2",
+      "request": {
+        "method": "POST",
+        "path": "/Events",
+        "headers": {
+          "Accept": "application/json",
+          "Accept-Language": "en-US, en;q=0.5",
+          "Content-Type": "application/secevent+jwt"
+        },
+        "body": "eyJ0eXAiOiJzZWNldmVudCtqd3QiLCJhbGciOiJIUzI1NiJ9Cg.eyJpc3MiOiJodHRwczovL2lkcC5leGFtcGxlLmNvbS8iLCJqdGkiOiI3NTZFNjk3MTc1NjUyMDY5NjQ2NTZFNzQ2OTY2Njk2NTcyIiwiaWF0IjoxNTA4MTg0ODQ1LCJhdWQiOiI2MzZDNjk2NTZFNzQ1RjY5NjQiLCJldmVudHMiOnsiaHR0cHM6Ly9zY2hlbWFzLm9wZW5pZC5uZXQvc2VjZXZlbnQvcmlzYy9ldmVudC10eXBlL2FjY291bnQtZGlzYWJsZWQiOnsic3ViamVjdCI6eyJzdWJqZWN0X3R5cGUiOiJpc3Mtc3ViIiwiaXNzIjoiaHR0cHM6Ly9pZHAuZXhhbXBsZS5jb20vIiwic3ViIjoiNzM3NTYyNkE2NTYzNzQifSwicmVhc29uIjoiaGlqYWNraW5nIn19fQ.Y4rXxMD406P2edv00cr9Wf3_XwNtLjB9n-jTqN1_lLc"
+      },
+      "response": {
+        "status": 202,
+        "headers": {}
+      }
+    }
+  ]
+}

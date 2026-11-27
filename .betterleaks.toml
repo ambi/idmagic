@@ -43,6 +43,10 @@ description = "RFC 6749 と RFC 6750 の要求と応答の例を転記したト�
 paths = ['''^backend/shared/testing_oauthtwin/(recording\.go|testdata/rfc6749\.json)$''']
 
 [[allowlists]]
+description = "RFC 8935 の 2.1 節の Figure 1 を転記した SET の配送の記録。JWT は RFC の本文に公開された例示の SET であり、発行者と受信者は example.com の架空の値で、どの受信者に対しても何の権限も持たない。"
+paths = ['''^backend/sharedsignals/internal/push_http/testdata/rfc8935\.json$''']
+
+[[allowlists]]
 description = "デモスクリプトが自分で起動したローカルサーバーに対して使う Basic 認証。demo.sh の手順そのものが公開の説明であり、値はデモ用のクライアント資格情報である。"
 paths = ['''^demo\.sh$''']
 

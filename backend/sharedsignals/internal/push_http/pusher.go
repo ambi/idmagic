@@ -119,8 +119,8 @@ func (p *HTTPSecurityEventPusher) CheckDestination(ctx context.Context, endpoint
 	return nil
 }
 
-// Push POSTs compactSET to endpoint per SSF push-based delivery:
-// Content-Type: application/secevent+jwt, body = the raw compact JWT.
+// Push POSTs compactSET to endpoint per RFC 8935 §2.1 (RFC8935-PUSH-REQUEST):
+// Content-Type: application/secevent+jwt, Accept: application/json, body = the raw compact JWT.
 // authorization, if non-empty, is sent as the Authorization header verbatim
 // (SsfTransmitterConfig.DeliveryAuthorization, e.g. "Bearer <token>"). Any
 // non-2xx response or transport failure is returned as an error; the caller
@@ -135,6 +135,7 @@ func (p *HTTPSecurityEventPusher) Push(ctx context.Context, endpoint, authorizat
 		return err
 	}
 	req.Header.Set("Content-Type", "application/secevent+jwt")
+	req.Header.Set("Accept", "application/json")
 	if authorization != "" {
 		req.Header.Set("Authorization", authorization)
 	}
