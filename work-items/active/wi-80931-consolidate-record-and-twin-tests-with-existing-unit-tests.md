@@ -38,7 +38,7 @@ MCP Gateway の `backend/mcpgateway/internal/catalog_http` では、2026-11-28 �
 ## 対象範囲
 
 - 四つの相手について、記録の再生と模倣のテストを、同じパッケージの既存の単体テストと振る舞いごとに並べた表を作る。
-- [wi-82146](wi-82146-require-spec-record-verification-when-implementing-external-protocols.md) で書く分担に従い、テストを次の三つに分ける。
+- [wi-82146](../done/wi-82146-require-spec-record-verification-when-implementing-external-protocols.md) で書く分担に従い、テストを次の三つに分ける。
   - 再生のうち、仕様の形が意味を持つ往復（成功の本文、カーソル、ストリームのメッセージ、本文のあるエラー）は契約の層として残す。
   - 模倣のうち、既存のテストが扱えない状態をまたぐ検査は残す。
   - 既存の単体テストと同じ分岐を検査するものは、どちらか一方に寄せる。
