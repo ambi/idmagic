@@ -1063,8 +1063,8 @@ run = [
 ]
 
 [tasks.lint-go-openldap]
-description = "Lint Directory Connector including OpenLDAP-tagged tests"
-run = "golangci-lint run --allow-serial-runners --build-tags=openldap ./backend/directoryconnector/..."
+description = "Lint Directory Connector including OpenLDAP- and Samba AD-tagged tests"
+run = "golangci-lint run --allow-serial-runners --build-tags=openldap,sambaad ./backend/directoryconnector/..."
 
 [tasks.list-outdated-example-dependencies]
 description = "List MCP walkthrough dependencies that have a newer release"
@@ -1080,6 +1080,27 @@ run = '''
 set -eu
 go run ./backend/authentication/internal/federation/testing_samlrecord -image quay.io/keycloak/keycloak:26.8.2 "$@"
 '''
+
+[tasks.record-webauthn]
+description = "Record the WebAuthn registration and sign-in bodies the UI sends, using Chrome's CDP virtual authenticator"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。E2E と同じスタックと Chrome を起動するので、
+# サンドボックスの外で実行する。Chrome を上げたら記録を取り直して差分を読む。
+depends = ["install-ui"]
+dir = "frontend"
+run = "bun run tests/record/webauthn.ts"
+
+[tasks.record-msal]
+description = "Record the MEX fetch and WS-Trust RST that MSAL.NET sends for a federated username/password sign-in"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。.NET SDK のイメージはここで、MSAL の版は
+# testdata/record/msal/msal.csproj で固定し、上げたら記録を取り直して差分を読む。docker と待受けを使うので、
+# サンドボックスの外で実行する。
+env = { MSAL_RECORD_IMAGE = "mcr.microsoft.com/dotnet/sdk:8.0" }
+run = "go test -tags msalrecord -count=1 -run '^TestRecordMSALWsTrust$' -v ./backend/wsfederation/internal/handlers_http"
+
+[tasks.record-negotiate]
+description = "Record the SPNEGO token local Chrome sends to a Negotiate challenge, using an isolated Samba AD KDC"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。Chrome を上げたら記録を取り直して差分を読む。
+run = 'bash scripts/record-negotiate.sh'
 
 [tasks.record-transit]
 description = "Record Vault or OpenBao Transit round trips from a local dev server into the replay testdata"
@@ -1128,6 +1149,11 @@ run = "bun run tools/verification/src/main.ts --report .verification/test-go-ope
 description = "Run LDAP adapter integration tests against real OpenLDAP (requires Docker)"
 depends = ["setup-tools"]
 run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-integration.json -- -count=1 -tags=openldap ./backend/directoryconnector/internal/ldap_goldap ./backend/directoryconnector/internal/testing_openldap"
+
+[tasks.test-go-sambaad]
+description = "Run the Active Directory dialect of the LDAP adapter against an isolated Samba AD domain controller (requires Docker)"
+depends = ["setup-tools"]
+run = "bun run tools/verification/src/main.ts --report .verification/test-go-sambaad.json -- -count=1 -tags=sambaad ./backend/directoryconnector/internal/ldap_goldap"
 
 [tasks.test-kerberos-ad]
 description = "Verify Kerberos tickets against an isolated Samba AD domain controller"

@@ -39,6 +39,18 @@ description = "Directory Connector の統合テストが起動し、テストの
 paths = ['''^backend/directoryconnector/internal/testing_openldap/server\.go$''']
 
 [[allowlists]]
+description = "Active Directory の読み取り方の統合テストが起動し、テストの終わりに消す Samba AD のコンテナの管理者と利用者のパスワード。infra/test/kerberos/start.sh が作る隔離した検証用の値と同じで、127.0.0.1 にだけ公開するテスト専用のコンテナのものであり、リポジトリの外に対して何の権限も持たない。"
+paths = ['''^backend/directoryconnector/internal/testing_sambaad/server\.go$''']
+
+[[allowlists]]
+description = "Okta の SCIM 2.0 protocol reference の要求の例を転記した記録。password は Okta が作成の要求に入れる仮の値で、文書が「its value isn't relevant or sensitive in nature」と明記している。"
+paths = ['''^backend/sourcing/internal/scim/handlers_http/testdata/okta-provisioning\.json$''']
+
+[[allowlists]]
+description = "Chrome の CDP の仮想認証器が手元の使い捨ての E2E のスタックへ送った WebAuthn の本文の記録。authenticatorData と署名は、記録のたびに作り直す仮想認証器の公開鍵の資格情報の公開の値であり、秘密鍵は記録に含まない。"
+paths = ['''^backend/authentication/internal/webauthn/usecases/testdata/chrome-virtual-authenticator\.json$''']
+
+[[allowlists]]
 description = "RFC 6749 と RFC 6750 の要求と応答の例を転記したトークンエンドポイントの記録と、その例のクライアント資格情報の定数。値は RFC の本文に公開された例示であり、どの認可サーバーに対しても何の権限も持たない。"
 paths = ['''^backend/shared/testing_oauthtwin/(recording\.go|testdata/rfc6749\.json)$''']
 

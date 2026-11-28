@@ -1,0 +1,708 @@
+{
+  "counterpart": "Microsoft Entra ID provisioning service",
+  "counterpart_version": "Microsoft Learn, Tutorial: Develop and plan provisioning for a SCIM endpoint in Microsoft Entra ID (ms.date 2026-09-15)",
+  "retrieved_at": "2026-11-28",
+  "method": "https://learn.microsoft.com/en-us/entra/identity/app-provisioning/use-scim-to-provision-users-and-groups の要求と応答の例を転記した。パスは文書の例と同じくエンドポイントの基底（IdMagic では /scim/v2）からの相対である。文書が要求の本文を示さない操作（GET、DELETE）は本文の段落にある要求行を写した。応答は文書の例の SCIM サーバーが返したものであり、IdMagic の応答の期待値ではない。再生では、パスの資源の識別子と本文の members と manager の value を、IdMagic が割り当てた識別子へ置き換える。置き換える欄は再生のテストが往復ごとに名指す。要求は署名を持たない。 文書が応答を示さない往復（Handling provisioning の節の二つ）は status を 0 にした。Discover schema の応答の本文は長いので省いた。",
+  "exchanges": [
+    {
+      "name": "create-user",
+      "source": "SCIM protocol requests and responses > User Operations > Create User",
+      "request": {
+        "method": "POST",
+        "path": "/Users",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User",
+            "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+          ],
+          "externalId": "0a21f0f2-8d2a-4f8e-bf98-7363c4aed4ef",
+          "userName": "Test_User_00aa00aa-bb11-cc22-dd33-44ee44ee44ee",
+          "active": true,
+          "emails": [
+            {
+              "primary": true,
+              "type": "work",
+              "value": "Test_User_11bb11bb-cc22-dd33-ee44-55ff55ff55ff@testuser.com"
+            }
+          ],
+          "meta": {
+            "resourceType": "User"
+          },
+          "name": {
+            "formatted": "givenName familyName",
+            "familyName": "familyName",
+            "givenName": "givenName"
+          },
+          "roles": []
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User"
+          ],
+          "id": "48af03ac28ad4fb88478",
+          "externalId": "0a21f0f2-8d2a-4f8e-bf98-7363c4aed4ef",
+          "meta": {
+            "resourceType": "User",
+            "created": "2018-03-27T19:59:26.000Z",
+            "lastModified": "2018-03-27T19:59:26.000Z"
+          },
+          "userName": "Test_User_00aa00aa-bb11-cc22-dd33-44ee44ee44ee",
+          "name": {
+            "formatted": "givenName familyName",
+            "familyName": "familyName",
+            "givenName": "givenName"
+          },
+          "active": true,
+          "emails": [
+            {
+              "value": "Test_User_11bb11bb-cc22-dd33-ee44-55ff55ff55ff@testuser.com",
+              "type": "work",
+              "primary": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get-user",
+      "source": "SCIM protocol requests and responses > User Operations > Get User",
+      "request": {
+        "method": "GET",
+        "path": "/Users/5d48a0a8e9f04aa38008",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User"
+          ],
+          "id": "5d48a0a8e9f04aa38008",
+          "externalId": "58342554-38d6-4ec8-948c-50044d0a33fd",
+          "meta": {
+            "resourceType": "User",
+            "created": "2018-03-27T19:59:26.000Z",
+            "lastModified": "2018-03-27T19:59:26.000Z"
+          },
+          "userName": "Test_User_00aa00aa-bb11-cc22-dd33-44ee44ee44ee",
+          "name": {
+            "formatted": "givenName familyName",
+            "familyName": "familyName",
+            "givenName": "givenName"
+          },
+          "active": true,
+          "emails": [
+            {
+              "value": "Test_User_11bb11bb-cc22-dd33-ee44-55ff55ff55ff@testuser.com",
+              "type": "work",
+              "primary": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "get-user-not-found",
+      "source": "SCIM protocol requests and responses > User Operations > Get User（二つ目の例）",
+      "request": {
+        "method": "GET",
+        "path": "/Users/5171a35d82074e068ce2",
+        "headers": {}
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:Error"
+          ],
+          "status": "404",
+          "detail": "Resource 23B51B0E5D7AE9110A49411D@7cca31655d49f3640a494224 not found"
+        }
+      }
+    },
+    {
+      "name": "query-user",
+      "source": "SCIM protocol requests and responses > User Operations > Get User by query",
+      "request": {
+        "method": "GET",
+        "path": "/Users",
+        "query": "filter=userName eq \"Test_User_00aa00aa-bb11-cc22-dd33-44ee44ee44ee\"",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+          ],
+          "totalResults": 1,
+          "Resources": [
+            {
+              "schemas": [
+                "urn:ietf:params:scim:schemas:core:2.0:User"
+              ],
+              "id": "2441309d85324e7793ae",
+              "externalId": "7fce0092-d52e-4f76-b727-3955bd72c939",
+              "meta": {
+                "resourceType": "User",
+                "created": "2018-03-27T19:59:26.000Z",
+                "lastModified": "2018-03-27T19:59:26.000Z"
+              },
+              "userName": "Test_User_00aa00aa-bb11-cc22-dd33-44ee44ee44ee",
+              "name": {
+                "familyName": "familyName",
+                "givenName": "givenName"
+              },
+              "active": true,
+              "emails": [
+                {
+                  "value": "Test_User_11bb11bb-cc22-dd33-ee44-55ff55ff55ff@testuser.com",
+                  "type": "work",
+                  "primary": true
+                }
+              ]
+            }
+          ],
+          "startIndex": 1,
+          "itemsPerPage": 20
+        }
+      }
+    },
+    {
+      "name": "query-user-zero-results",
+      "source": "SCIM protocol requests and responses > User Operations > Get User by query - Zero results",
+      "request": {
+        "method": "GET",
+        "path": "/Users",
+        "query": "filter=userName eq \"non-existent user\"",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+          ],
+          "totalResults": 0,
+          "Resources": [],
+          "startIndex": 1,
+          "itemsPerPage": 20
+        }
+      }
+    },
+    {
+      "name": "update-user-multi-valued",
+      "source": "SCIM protocol requests and responses > User Operations > Update User [Multi-valued properties]",
+      "request": {
+        "method": "PATCH",
+        "path": "/Users/6764549bef60420686bc",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ],
+          "Operations": [
+            {
+              "op": "Replace",
+              "path": "emails[type eq \"work\"].value",
+              "value": "updatedEmail@microsoft.com"
+            },
+            {
+              "op": "Replace",
+              "path": "name.familyName",
+              "value": "updatedFamilyName"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User"
+          ],
+          "id": "6764549bef60420686bc",
+          "externalId": "6c75de36-30fa-4d2d-a196-6bdcdb6b6539",
+          "meta": {
+            "resourceType": "User",
+            "created": "2018-03-27T19:59:26.000Z",
+            "lastModified": "2018-03-27T19:59:26.000Z"
+          },
+          "userName": "Test_User_00aa00aa-bb11-cc22-dd33-44ee44ee44ee",
+          "name": {
+            "formatted": "givenName updatedFamilyName",
+            "familyName": "updatedFamilyName",
+            "givenName": "givenName"
+          },
+          "active": true,
+          "emails": [
+            {
+              "value": "updatedEmail@microsoft.com",
+              "type": "work",
+              "primary": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "update-user-single-valued",
+      "source": "SCIM protocol requests and responses > User Operations > Update User [Single-valued properties]",
+      "request": {
+        "method": "PATCH",
+        "path": "/Users/5171a35d82074e068ce2",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ],
+          "Operations": [
+            {
+              "op": "Replace",
+              "path": "userName",
+              "value": "5b50642d-79fc-4410-9e90-4c077cdd1a59@testuser.com"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User"
+          ],
+          "id": "5171a35d82074e068ce2",
+          "externalId": "aa1eca08-7179-4eeb-a0be-a519f7e5cd1a",
+          "meta": {
+            "resourceType": "User",
+            "created": "2018-03-27T19:59:26.000Z",
+            "lastModified": "2018-03-27T19:59:26.000Z"
+          },
+          "userName": "5b50642d-79fc-4410-9e90-4c077cdd1a59@testuser.com",
+          "name": {
+            "formatted": "givenName familyName",
+            "familyName": "familyName",
+            "givenName": "givenName"
+          },
+          "active": true,
+          "emails": [
+            {
+              "value": "Test_User_11bb11bb-cc22-dd33-ee44-55ff55ff55ff@testuser.com",
+              "type": "work",
+              "primary": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "disable-user",
+      "source": "SCIM protocol requests and responses > User Operations > Disable User",
+      "request": {
+        "method": "PATCH",
+        "path": "/Users/5171a35d82074e068ce2",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "Operations": [
+            {
+              "op": "Replace",
+              "path": "active",
+              "value": false
+            }
+          ],
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User"
+          ],
+          "id": "CEC50F275D83C4530A495FCF@834d0e1e5d8235f90a495fda",
+          "userName": "deanruiz@testuser.com",
+          "name": {
+            "familyName": "Harris",
+            "givenName": "Larry"
+          },
+          "active": false,
+          "emails": [
+            {
+              "value": "gloversuzanne@testuser.com",
+              "type": "work",
+              "primary": true
+            }
+          ],
+          "addresses": [
+            {
+              "country": "ML",
+              "type": "work",
+              "primary": true
+            }
+          ],
+          "meta": {
+            "resourceType": "Users",
+            "location": "/scim/5171a35d82074e068ce2/Users/CEC50F265D83B4530B495FCF@5171a35d82074e068ce2"
+          }
+        }
+      }
+    },
+    {
+      "name": "create-group",
+      "source": "SCIM protocol requests and responses > Group Operations > Create Group",
+      "request": {
+        "method": "POST",
+        "path": "/Groups",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:Group",
+            "http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group"
+          ],
+          "externalId": "8aa1a0c0-c4c3-4bc0-b4a5-2ef676900159",
+          "displayName": "displayName",
+          "meta": {
+            "resourceType": "Group"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:Group"
+          ],
+          "id": "927fa2c08dcb4a7fae9e",
+          "externalId": "8aa1a0c0-c4c3-4bc0-b4a5-2ef676900159",
+          "meta": {
+            "resourceType": "Group",
+            "created": "2018-03-27T19:59:26.000Z",
+            "lastModified": "2018-03-27T19:59:26.000Z"
+          },
+          "displayName": "displayName",
+          "members": []
+        }
+      }
+    },
+    {
+      "name": "get-group",
+      "source": "SCIM protocol requests and responses > Group Operations > Get Group",
+      "request": {
+        "method": "GET",
+        "path": "/Groups/40734ae655284ad3abcc",
+        "query": "excludedAttributes=members",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:Group"
+          ],
+          "id": "40734ae655284ad3abcc",
+          "externalId": "60f1bb27-2e1e-402d-bcc4-ec999564a194",
+          "meta": {
+            "resourceType": "Group",
+            "created": "2018-03-27T19:59:26.000Z",
+            "lastModified": "2018-03-27T19:59:26.000Z"
+          },
+          "displayName": "displayName"
+        }
+      }
+    },
+    {
+      "name": "query-group",
+      "source": "SCIM protocol requests and responses > Group Operations > Get Group by displayName",
+      "request": {
+        "method": "GET",
+        "path": "/Groups",
+        "query": "excludedAttributes=members&filter=displayName eq \"displayName\"",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+          ],
+          "totalResults": 1,
+          "Resources": [
+            {
+              "schemas": [
+                "urn:ietf:params:scim:schemas:core:2.0:Group"
+              ],
+              "id": "8c601452cc934a9ebef9",
+              "externalId": "0db508eb-91e2-46e4-809c-30dcbda0c685",
+              "meta": {
+                "resourceType": "Group",
+                "created": "2018-03-27T22:02:32.000Z",
+                "lastModified": "2018-03-27T22:02:32.000Z"
+              },
+              "displayName": "displayName"
+            }
+          ],
+          "startIndex": 1,
+          "itemsPerPage": 20
+        }
+      }
+    },
+    {
+      "name": "update-group-display-name",
+      "source": "SCIM protocol requests and responses > Group Operations > Update Group [Non-member attributes]",
+      "request": {
+        "method": "PATCH",
+        "path": "/Groups/fa2ce26709934589afc5",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ],
+          "Operations": [
+            {
+              "op": "Replace",
+              "path": "displayName",
+              "value": "1879db59-3bdf-4490-ad68-ab880a269474updatedDisplayName"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 204,
+        "headers": {}
+      }
+    },
+    {
+      "name": "add-members",
+      "source": "SCIM protocol requests and responses > Group Operations > Update Group [Add Members]",
+      "request": {
+        "method": "PATCH",
+        "path": "/Groups/a99962b9f99d4c4fac67",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ],
+          "Operations": [
+            {
+              "op": "Add",
+              "path": "members",
+              "value": [
+                {
+                  "$ref": null,
+                  "value": "f648f8d5ea4e4cd38e9c"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 204,
+        "headers": {}
+      }
+    },
+    {
+      "name": "remove-members",
+      "source": "SCIM protocol requests and responses > Group Operations > Update Group [Remove Members]",
+      "request": {
+        "method": "PATCH",
+        "path": "/Groups/a99962b9f99d4c4fac67",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ],
+          "Operations": [
+            {
+              "op": "Remove",
+              "path": "members",
+              "value": [
+                {
+                  "$ref": null,
+                  "value": "f648f8d5ea4e4cd38e9c"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 204,
+        "headers": {}
+      }
+    },
+    {
+      "name": "delete-group",
+      "source": "SCIM protocol requests and responses > Group Operations > Delete Group",
+      "request": {
+        "method": "DELETE",
+        "path": "/Groups/cdb1ce18f65944079d37",
+        "headers": {}
+      },
+      "response": {
+        "status": 204,
+        "headers": {}
+      }
+    },
+    {
+      "name": "delete-user",
+      "source": "SCIM protocol requests and responses > User Operations > Delete User",
+      "request": {
+        "method": "DELETE",
+        "path": "/Users/5171a35d82074e068ce2",
+        "headers": {}
+      },
+      "response": {
+        "status": 204,
+        "headers": {}
+      }
+    },
+    {
+      "name": "create-user-with-nulls",
+      "source": "Building a custom SCIM endpoint > Handling provisioning and deprovisioning of users（POST の例）",
+      "request": {
+        "method": "POST",
+        "path": "/Users",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:core:2.0:User",
+            "urn:ietf:params:scim:schemas:extension:enterprise:2.0User"
+          ],
+          "externalId": "jyoung",
+          "userName": "jyoung@testuser.com",
+          "active": true,
+          "addresses": null,
+          "displayName": "Joy Young",
+          "emails": [
+            {
+              "type": "work",
+              "value": "jyoung@Contoso.com",
+              "primary": true
+            }
+          ],
+          "meta": {
+            "resourceType": "User"
+          },
+          "name": {
+            "familyName": "Young",
+            "givenName": "Joy"
+          },
+          "phoneNumbers": null,
+          "preferredLanguage": null,
+          "title": null,
+          "department": null,
+          "manager": null
+        }
+      },
+      "response": {
+        "status": 0,
+        "headers": {}
+      }
+    },
+    {
+      "name": "add-manager",
+      "source": "Building a custom SCIM endpoint > Handling provisioning and deprovisioning of users（PATCH の例）",
+      "request": {
+        "method": "PATCH",
+        "path": "/Users/a0a0a0a0-bbbb-cccc-dddd-e1e1e1e1e1e1",
+        "headers": {
+          "Content-Type": "application/scim+json"
+        },
+        "body": {
+          "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+          ],
+          "Operations": [
+            {
+              "op": "Add",
+              "path": "manager",
+              "value": [
+                {
+                  "$ref": "http://.../scim/Users/00aa00aa-bb11-cc22-dd33-44ee44ee44ee",
+                  "value": "00aa00aa-bb11-cc22-dd33-44ee44ee44ee"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 0,
+        "headers": {}
+      }
+    },
+    {
+      "name": "discover-schema",
+      "source": "SCIM protocol requests and responses > Schema discovery > Discover schema",
+      "request": {
+        "method": "GET",
+        "path": "/Schemas",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/scim+json"
+        }
+      }
+    }
+  ]
+}

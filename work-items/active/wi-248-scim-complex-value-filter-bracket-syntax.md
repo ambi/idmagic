@@ -35,6 +35,11 @@ Microsoft Learn「Tutorial: Develop and plan provisioning for a SCIM endpoint」
 グループの基準の p3（標準の任意の機能）とは違い、主要な SCIM のクライアントの既定の要求が通らない。
 同じ文書のメンバーの削除は `"path": "members"` と値の配列で送るので、`members[value eq "..."]` の対応はこの理由に含まれない。
 実装では、上の要求の例を [[wi-21740-decide-recordings-for-requests-idmagic-receives]] の記録として再生し、受け入れの検査の入力にする。
+記録は `backend/sourcing/internal/scim/handlers_http/testdata/entra-provisioning.json` の往復 `update-user-multi-valued` であり、`provisioning_client_replay_test.go` の `entraNotReplayed` から消して再生の列へ入れる。
+
+同じ日に読んだ Okta の SCIM 2.0 protocol reference（Last updated on September 18, 2026）の「Update specific group membership」では、Okta はメンバーを外すときに `"op": "remove"`、`"path": "members[value eq \"...\"]"` を送り、同じ要求で別のメンバーを `add` する。
+上の段落が Entra ID について「この理由に含まれない」とした `members[value eq "..."]` は、Okta では既定の要求であり、通らないと同じ要求の `add` も適用されない。
+記録は `okta-provisioning.json` の往復 `update-membership-patch` であり、`oktaNotReplayed` から消して再生の列へ入れる。
 
 ## Scope
 

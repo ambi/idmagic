@@ -1,0 +1,179 @@
+{
+  "counterpart": "Chrome/158.0.8127.88 の CDP の仮想認証器（{\"protocol\":\"ctap2\",\"transport\":\"internal\",\"hasResidentKey\":true,\"hasUserVerification\":true,\"isUserVerified\":true,\"automaticPresenceSimulation\":true}）",
+  "counterpart_version": "Chrome/158.0.8127.88（Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36）",
+  "retrieved_at": "2026-11-28",
+  "method": "mise run record-webauthn が E2E と同じスタック（WEBAUTHN_RP_ID=localhost、WEBAUTHN_RP_ORIGINS=http://localhost:5174）を起動し、Bun.WebView の Chrome バックエンドに CDP の WebAuthn.addVirtualAuthenticator で認証器を足した。投入済みの利用者 alice でパスワードのログインの後、アカウントのセキュリティの画面で「パスキーを登録」を押し、Cookie を消してパスワードでログインし直し、二段目で「パスキーで認証」を押した。画面の fetch を Page.addScriptToEvaluateOnNewDocument で包み、/webauthn を含む要求と応答の本文をそのまま記録した。CSRF のトークンとセッションの Cookie はヘッダーにあり、本文に含まないので記録しない。値は challenge、origin、RP ID、仮想認証器の鍵に縛られるので書き換えていない。仮想認証器の応答であり、実機の認証器（Touch ID、セキュリティキー）の attestation や拡張の癖は保証しない。",
+  "setup": {
+    "rp_id": "localhost",
+    "rp_origin": "http://localhost:5174",
+    "username": "alice"
+  },
+  "exchanges": [
+    {
+      "name": "01-register-start",
+      "source": "IdMagic の画面が POST /realms/default/api/account/v1/mfa/webauthn/register/start へ送った要求と、サーバーの応答",
+      "request": {
+        "method": "POST",
+        "path": "/realms/default/api/account/v1/mfa/webauthn/register/start",
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": {
+          "publicKey": {
+            "rp": {
+              "name": "IdMagic E2E",
+              "id": "localhost"
+            },
+            "user": {
+              "name": "root",
+              "displayName": "root",
+              "id": "MDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAy"
+            },
+            "challenge": "5djjCzt5X6tSQWRo83bcDoSWsZBKx8Lcxbp7I5MMtLc",
+            "pubKeyCredParams": [
+              {
+                "type": "public-key",
+                "alg": -7
+              },
+              {
+                "type": "public-key",
+                "alg": -35
+              },
+              {
+                "type": "public-key",
+                "alg": -36
+              },
+              {
+                "type": "public-key",
+                "alg": -257
+              },
+              {
+                "type": "public-key",
+                "alg": -258
+              },
+              {
+                "type": "public-key",
+                "alg": -259
+              },
+              {
+                "type": "public-key",
+                "alg": -37
+              },
+              {
+                "type": "public-key",
+                "alg": -38
+              },
+              {
+                "type": "public-key",
+                "alg": -39
+              },
+              {
+                "type": "public-key",
+                "alg": -8
+              }
+            ],
+            "timeout": 300000,
+            "authenticatorSelection": {
+              "residentKey": "discouraged",
+              "userVerification": "preferred"
+            },
+            "attestation": "none"
+          }
+        }
+      }
+    },
+    {
+      "name": "02-register-finish",
+      "source": "IdMagic の画面が POST /realms/default/api/account/v1/mfa/webauthn/register/finish へ送った要求と、サーバーの応答",
+      "request": {
+        "method": "POST",
+        "path": "/realms/default/api/account/v1/mfa/webauthn/register/finish",
+        "headers": {},
+        "body": {
+          "attestation": {
+            "id": "4ZN6VY0GTaC83j-umEttCYELPXpz0yq-9aLaaprq6P0",
+            "rawId": "4ZN6VY0GTaC83j-umEttCYELPXpz0yq-9aLaaprq6P0",
+            "type": "public-key",
+            "clientExtensionResults": {},
+            "response": {
+              "attestationObject": "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVikSZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NFAAAAAQECAwQFBgcIAQIDBAUGBwgAIOGTelWNBk2gvN4_rphLbQmBCz16c9MqvvWi2mqa6uj9pQECAyYgASFYIDXf1Bl3g5hOhE6M2bJBXhuLnKUea2ANpmIaqItN50QFIlggP_JUgTsN7UafwLxgB8ppKD3RA_Fo7Y0HTMwOzpY6ceA",
+              "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiNWRqakN6dDVYNnRTUVdSbzgzYmNEb1NXc1pCS3g4TGN4YnA3STVNTXRMYyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTE3NCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9",
+              "transports": [
+                "internal"
+              ]
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 204,
+        "headers": {},
+        "body": null
+      }
+    },
+    {
+      "name": "03-webauthn-challenge",
+      "source": "IdMagic の画面が POST /realms/default/api/auth/webauthn/challenge へ送った要求と、サーバーの応答",
+      "request": {
+        "method": "POST",
+        "path": "/realms/default/api/auth/webauthn/challenge",
+        "headers": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": {
+          "publicKey": {
+            "challenge": "IXr1MeRUnwxsW3cQT3cphekMeroSHor-2hydnhEp7Yo",
+            "timeout": 300000,
+            "rpId": "localhost",
+            "allowCredentials": [
+              {
+                "type": "public-key",
+                "id": "4ZN6VY0GTaC83j-umEttCYELPXpz0yq-9aLaaprq6P0",
+                "transports": [
+                  "internal"
+                ]
+              }
+            ],
+            "userVerification": "preferred"
+          }
+        }
+      }
+    },
+    {
+      "name": "04-auth-webauthn",
+      "source": "IdMagic の画面が POST /realms/default/api/auth/webauthn へ送った要求と、サーバーの応答",
+      "request": {
+        "method": "POST",
+        "path": "/realms/default/api/auth/webauthn",
+        "headers": {},
+        "body": {
+          "assertion": {
+            "id": "4ZN6VY0GTaC83j-umEttCYELPXpz0yq-9aLaaprq6P0",
+            "rawId": "4ZN6VY0GTaC83j-umEttCYELPXpz0yq-9aLaaprq6P0",
+            "type": "public-key",
+            "clientExtensionResults": {},
+            "response": {
+              "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAg",
+              "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSVhyMU1lUlVud3hzVzNjUVQzY3BoZWtNZXJvU0hvci0yaHlkbmhFcDdZbyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTE3NCIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+              "signature": "MEQCIHmuUSp9ifGPF1GVLUFiO1OEYAJ3HBTxFV2AK5RUPLYEAiA2CJUrAtSKi597fyWUVt5DBH9_W3FupVBjcfE2-P09VQ"
+            }
+          },
+          "remember_device": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body": {
+          "redirect_to": "http://localhost:5174/realms/default/callback?code=HfKTKTr27cIId12WNDAcXwKVQBDAfltmOMSF3eF_L1w&iss=http%3A%2F%2Flocalhost%3A5174%2Frealms%2Fdefault&state=zBMLs1bpI3q-3KS0oTXC9A"
+        }
+      }
+    }
+  ]
+}

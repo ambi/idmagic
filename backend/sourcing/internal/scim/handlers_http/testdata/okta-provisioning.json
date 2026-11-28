@@ -1,0 +1,166 @@
+{
+  "counterpart": "Okta SCIM Client 1.0.0",
+  "counterpart_version": "Okta Developer, SCIM 2.0 protocol reference（Last updated on September 18, 2026）が示す User-Agent: Okta SCIM Client 1.0.0",
+  "retrieved_at": "2026-11-28",
+  "method": "https://developer.okta.com/docs/api/openapi/okta-scim/guides/scim-20/ の要求の例を転記した。パスとクエリは文書のとおりで、IdMagic の SCIM の基底 /scim/v2 と一致する。Authorization ヘッダーは文書でも伏せてあり、再生では IdMagic が発行したトークンを使う。文書の例は Content-Type を示さないので、本文のある要求には application/scim+json を置いた。応答は文書の例の SCIM サーバーのものであり、状態コードだけを残して本文を省いた。IdMagic の期待値には使わない。再生では、パスの資源の識別子と、本文の id と members の value を、IdMagic が割り当てた識別子へ置き換える。置き換える欄は再生のテストが往復ごとに名指す。要求は署名を持たない。",
+  "exchanges": [
+    {
+      "name": "list-users-connection-test",
+      "source": "SCIM user operations > Create users（接続の確認の GET /Users）",
+      "request": { "method": "GET", "path": "/scim/v2/Users", "query": "startIndex=1&count=2", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "list-groups-connection-test",
+      "source": "SCIM user operations > Create users（接続の確認の GET /Groups）",
+      "request": { "method": "GET", "path": "/scim/v2/Groups", "query": "startIndex=1&count=100", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "find-user",
+      "source": "SCIM user operations > Create users > Determine if the user already exists",
+      "request": { "method": "GET", "path": "/scim/v2/Users", "query": "filter=userName%20eq%20%22test.user%40okta.local%22&startIndex=1&count=100", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "create-user",
+      "source": "SCIM user operations > Create users > Create the user（一つ目の例）",
+      "request": {
+        "method": "POST",
+        "path": "/scim/v2/Users",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "userName": "test.user@okta.local", "name": { "givenName": "Test", "familyName": "User" }, "emails": [{ "primary": true, "value": "test.user@okta.local", "type": "work" }], "displayName": "Test User", "locale": "en-US", "externalId": "00ujl29u0le5T6Aj10h7", "groups": [], "password": "1mz050nq", "active": true }
+      },
+      "response": { "status": 201, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "create-user-conflict",
+      "source": "SCIM user operations > Create users > Create the user（二つ目の例と 409 Conflict の応答）",
+      "request": {
+        "method": "POST",
+        "path": "/scim/v2/Users",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "userName": "test.user@okta.local", "name": { "givenName": "Test", "familyName": "User" }, "emails": [{ "primary": true, "value": "test.user@okta.local", "type": "work" }], "displayName": "Test User", "locale": "en-US", "groups": [], "password": "1mz050nq", "active": true }
+      },
+      "response": { "status": 409, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "retrieve-users",
+      "source": "SCIM user operations > Retrieve users",
+      "request": { "method": "GET", "path": "/scim/v2/Users", "query": "startIndex=1&count=100", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "get-user",
+      "source": "SCIM user operations > Retrieve a specific user",
+      "request": { "method": "GET", "path": "/scim/v2/Users/23a35c27-23d3-4c03-b4c5-6443c09e7173", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "replace-user",
+      "source": "SCIM user operations > Update a specific user (PUT) > Update the user",
+      "request": {
+        "method": "PUT",
+        "path": "/scim/v2/Users/23a35c27-23d3-4c03-b4c5-6443c09e7173",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"], "id": "23a35c27-23d3-4c03-b4c5-6443c09e7173", "userName": "test.user@okta.local", "name": { "givenName": "Another", "middleName": "Excited", "familyName": "User" }, "emails": [{ "primary": true, "value": "test.user@okta.local", "type": "work", "display": "test.user@okta.local" }], "active": true, "groups": [], "meta": { "resourceType": "User" } }
+      },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "deactivate-user",
+      "source": "SCIM user operations > Update a specific user (PATCH)（Deactivating a user）",
+      "request": {
+        "method": "PATCH",
+        "path": "/scim/v2/Users/23a35c27-23d3-4c03-b4c5-6443c09e7173",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"], "Operations": [{ "op": "replace", "value": { "active": false } }] }
+      },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "create-group",
+      "source": "SCIM group operations > Create groups",
+      "request": {
+        "method": "POST",
+        "path": "/scim/v2/Groups",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"], "displayName": "Test SCIMv2", "members": [] }
+      },
+      "response": { "status": 201, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "find-group",
+      "source": "SCIM group operations > Retrieve groups（displayName の filter）",
+      "request": { "method": "GET", "path": "/scim/v2/Groups", "query": "filter=displayName%20eq%20%22Test%20SCIMv2%22&startIndex=1&count=100", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "get-group",
+      "source": "SCIM group operations > Retrieve specific groups",
+      "request": { "method": "GET", "path": "/scim/v2/Groups/abf4dd94-a4c0-4f67-89c9-76b03340cb9b", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "rename-group-patch",
+      "source": "SCIM group operations > Update a specific group name > PATCH method request",
+      "request": {
+        "method": "PATCH",
+        "path": "/scim/v2/Groups/abf4dd94-a4c0-4f67-89c9-76b03340cb9b",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"], "Operations": [{ "op": "replace", "value": { "id": "abf4dd94-a4c0-4f67-89c9-76b03340cb9b", "displayName": "Test SCIMv2" } }] }
+      },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "rename-group-put",
+      "source": "SCIM group operations > Update a specific group name > PUT method request",
+      "request": {
+        "method": "PUT",
+        "path": "/scim/v2/Groups/U0FP0NMEE",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"], "id": "e9e30dba-f08f-4109-8486-d5c6a331660a", "displayName": "Tour Guides", "members": [{ "value": "some-member-1", "display": "Babs Jensen" }, { "value": "some-member-2", "display": "Mandy Pepperidge" }] }
+      },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "update-membership-patch",
+      "source": "SCIM group operations > Update specific group membership（PATCH の例）",
+      "request": {
+        "method": "PATCH",
+        "path": "/scim/v2/Groups/abf4dd94-a4c0-4f67-89c9-76b03340cb9b",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"], "Operations": [{ "op": "remove", "path": "members[value eq \"89bb1940-b905-4575-9e7f-6f887cfb368e\"]" }, { "op": "add", "path": "members", "value": [{ "value": "23a35c27-23d3-4c03-b4c5-6443c09e7173", "display": "test.user@okta.local" }] }] }
+      },
+      "response": { "status": 204, "headers": {} }
+    },
+    {
+      "name": "update-membership-put",
+      "source": "SCIM group operations > Update specific group membership（PUT の例）",
+      "request": {
+        "method": "PUT",
+        "path": "/scim/v2/Groups/abf4dd94-a4c0-4f67-89c9-76b03340cb9b",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"], "displayName": "Test SCIMv2", "members": [{ "value": "23a35c27-23d3-4c03-b4c5-6443c09e7173", "display": "test.user@okta.local" }] }
+      },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "replace-members-patch",
+      "source": "SCIM group operations > Update specific group membership（新しい OIN の連携の PATCH の例）",
+      "request": {
+        "method": "PATCH",
+        "path": "/scim/v2/Groups/abf4dd94-a4c0-4f67-89c9-76b03340cb9b",
+        "headers": { "User-Agent": "Okta SCIM Client 1.0.0", "Content-Type": "application/scim+json" },
+        "body": { "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"], "Operations": [{ "op": "replace", "path": "members", "value": [{ "value": "23a35c27-23d3-4c03-b4c5-6443c09e7173", "display": "test.user@okta.local" }, { "value": "89bb1940-b905-4575-9e7f-6f887cfb368e", "display": "test.user@okta.local" }] }] }
+      },
+      "response": { "status": 200, "headers": { "Content-Type": "application/scim+json; charset=UTF-8" } }
+    },
+    {
+      "name": "delete-group",
+      "source": "SCIM group operations > Delete a specific group",
+      "request": { "method": "DELETE", "path": "/scim/v2/Groups/abf4dd94-a4c0-4f67-89c9-76b03340cb9b", "headers": { "User-Agent": "Okta SCIM Client 1.0.0" } },
+      "response": { "status": 204, "headers": {} }
+    }
+  ]
+}
