@@ -23,6 +23,16 @@ type managedMcpTransport func(*http.Request) (*http.Response, error)
 
 func (f managedMcpTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+type managedMcpTrackedBody struct {
+	io.ReadCloser
+	closed *bool
+}
+
+func (b managedMcpTrackedBody) Close() error {
+	*b.closed = true
+	return b.ReadCloser.Close()
+}
+
 func managedMcpCall(t *testing.T, f *publicSetupPath, resource, token, name string, want int, arguments ...string) *httptest.ResponseRecorder {
 	t.Helper()
 	args := "{}"
@@ -47,11 +57,13 @@ func managedMcpCall(t *testing.T, f *publicSetupPath, resource, token, name stri
 	return recorder
 }
 
-//spec:covers REQ-TOKENVAULT-016, REQ-OAUTH2-092: 公開した本人の連携と代行だけで、本人の接続を選び、別本人の接続へ退避せず、401 の MCP 操作を再送しない。
+//spec:covers REQ-TOKENVAULT-016, REQ-OAUTH2-092, REQ-OAUTH2-101: 本人の連携と復旧の案内を通し、別本人の接続へ退避せず、401 の MCP 操作を再送しない。
 func TestHostedMcpUsesOnlyTheDelegatingUsersVaultConnection(t *testing.T) {
 	var sent []string
 	refreshes := 0
 	status := http.StatusOK
+	rejectedBodyClosed := false
+	unreachable := false
 	upstream := &http.Client{Transport: managedMcpTransport(func(r *http.Request) (*http.Response, error) {
 		recorder := httptest.NewRecorder()
 		recorder.Header().Set("Content-Type", "application/json")
@@ -60,12 +72,30 @@ func TestHostedMcpUsesOnlyTheDelegatingUsersVaultConnection(t *testing.T) {
 			_ = r.ParseForm()
 			if r.PostForm.Get("grant_type") == "refresh_token" {
 				refreshes++
+				recorder.WriteHeader(400)
+				_, _ = recorder.WriteString(`{"error":"invalid_grant"}`)
+				return recorder.Result(), nil
 			}
-			_, _ = fmt.Fprintf(recorder, `{"access_token":%q,"refresh_token":"refresh","token_type":"Bearer","expires_in":3600,"scope":"read"}`, "stored-"+r.PostForm.Get("code"))
+			lifetime := 3600
+			if r.PostForm.Get("code") == "expired" {
+				lifetime = 1
+			}
+			_, _ = fmt.Fprintf(recorder, `{"access_token":%q,"refresh_token":"refresh","token_type":"Bearer","expires_in":%d,"scope":"read"}`, "stored-"+r.PostForm.Get("code"), lifetime)
 		case vaultRevokeURL:
 			recorder.WriteHeader(200)
 		default:
+			if unreachable {
+				return nil, fmt.Errorf("upstream unreachable")
+			}
 			sent = append(sent, r.Header.Get("Authorization"))
+			if status == http.StatusUnauthorized {
+				recorder.Header().Set("WWW-Authenticate", `Bearer realm="private-upstream"`)
+				recorder.WriteHeader(status)
+				_, _ = recorder.WriteString(`{"private":"stored-upstream-secret"}`)
+				response := recorder.Result()
+				response.Body = managedMcpTrackedBody{ReadCloser: response.Body, closed: &rejectedBodyClosed}
+				return response, nil
+			}
 			recorder.WriteHeader(status)
 			_, _ = recorder.WriteString(`{"jsonrpc":"2.0","id":1,"result":{}}`)
 		}
@@ -121,7 +151,35 @@ func TestHostedMcpUsesOnlyTheDelegatingUsersVaultConnection(t *testing.T) {
 	f.request(t, "POST", "/api/account/v1/agent-delegations", map[string]any{"agent_id": agent, "scopes": []string{"read"}}, aliceCookie, 201)
 	issued := f.signedForm(t, agentKey, agentClient, "/token", url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:token-exchange"}, "subject_token_type": {"urn:ietf:params:oauth:token-type:access_token"}, "subject_token": {setupString(t, subject, "access_token")}, "resource": {resource}, "scope": {"read"}}, 200)
 	token := setupString(t, issued, "access_token")
-	managedMcpCall(t, f, resource, token, "read_document", 403)
+	assertRemediation := func(response *httptest.ResponseRecorder, reason string) {
+		t.Helper()
+		var result struct {
+			Error struct {
+				Data struct {
+					Connection struct {
+						Reason      string `json:"reason"`
+						ConnectorID string `json:"connector_id"`
+						URI         string `json:"uri"`
+					} `json:"upstream_connection"`
+				} `json:"data"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		connection := result.Error.Data.Connection
+		if connection.Reason != reason || connection.ConnectorID != connectorID || connection.URI != stack.Issuer+"/realms/default/account/connections" {
+			t.Fatalf("missing safe connection remediation: %s", response.Body.String())
+		}
+		if response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("WWW-Authenticate") != "" || strings.Contains(response.Body.String(), "stored-") {
+			t.Fatalf("unsafe remediation: %v %s", response.Header(), response.Body.String())
+		}
+	}
+	assertRemediation(managedMcpCall(t, f, resource, token, "read_document", 403), "connection_required")
+	denied := managedMcpCall(t, f, resource, token, "unpublished", 403)
+	if strings.Contains(denied.Body.String(), "upstream_connection") {
+		t.Fatal("disclosed a connection to an unauthorized operation")
+	}
 	if len(sent) != 0 {
 		t.Fatal("used another user's connection")
 	}
@@ -133,14 +191,43 @@ func TestHostedMcpUsesOnlyTheDelegatingUsersVaultConnection(t *testing.T) {
 	}
 	f.s.Events.AssertEmitted(t, "TokenVaultExecutionPerformed")
 	status = 401
-	managedMcpCall(t, f, resource, token, "read_document", 502)
+	assertRemediation(managedMcpCall(t, f, resource, token, "read_document", 403), "upstream_credentials_rejected")
 	if len(sent) != 2 || refreshes != 0 {
 		t.Fatalf("MCP replay after 401: sends=%v refreshes=%d", sent, refreshes)
 	}
+	if !rejectedBodyClosed {
+		t.Fatal("kept the rejected upstream body open")
+	}
+	connections := f.request(t, "GET", "/api/account/v1/token-vault/connections", nil, aliceCookie, 200)
+	if got := connections["items"].([]any)[0].(map[string]any)["status"]; got != "active" {
+		t.Fatalf("changed connection state solely on an upstream 401: %v", got)
+	}
+	status = 200
+	link(aliceCookie, "expired")
+	assertRemediation(managedMcpCall(t, f, resource, token, "read_document", 403), "reauthorization_required")
+	if len(sent) != 2 || refreshes != 1 {
+		t.Fatalf("sent after rejected refresh: sends=%v refreshes=%d", sent, refreshes)
+	}
+	link(aliceCookie, "recovered")
+	managedMcpCall(t, f, resource, token, "read_document", 200)
+	if len(sent) != 3 || sent[2] != "Bearer stored-recovered" {
+		t.Fatalf("did not recover with the user's new connection: %v", sent)
+	}
+	unreachable = true
+	unavailable := managedMcpCall(t, f, resource, token, "read_document", 503)
+	if strings.Contains(unavailable.Body.String(), "upstream_connection") {
+		t.Fatal("turned a connection failure into a reauthorization request")
+	}
+	unreachable = false
 	f.request(t, "DELETE", "/api/account/v1/token-vault/connections/"+connectorID, nil, aliceCookie, 204)
-	managedMcpCall(t, f, resource, token, "read_document", 403)
-	if len(sent) != 2 {
+	assertRemediation(managedMcpCall(t, f, resource, token, "read_document", 403), "connection_required")
+	if len(sent) != 3 {
 		t.Fatal("disconnected user's request was sent")
+	}
+	f.request(t, "PATCH", "/api/admin/v1/token-vault/connectors/"+connectorID, map[string]any{"status": "disabled"}, f.admin, 200)
+	stopped := managedMcpCall(t, f, resource, token, "read_document", 403)
+	if strings.Contains(stopped.Body.String(), "upstream_connection") {
+		t.Fatal("suggested linking a connector stopped by an administrator")
 	}
 }
 

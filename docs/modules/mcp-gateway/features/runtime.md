@@ -8,7 +8,7 @@
 | --- | --- |
 | 責務 | 2026-07-28 版の MCP の要求の解釈、評価する操作の選択、[リソースアクセスの評価](../../oauth2/features/resource-access.md)の呼び出し、許可した要求の転送、監査ログと指標 |
 | 行為者 | ゲートウェイを配置する運用者、MCP クライアント、McpGateway |
-| 扱わないもの | 判断と主体の導出は OAuth2 と AccessControl が扱う。`tools/list` の絞り込み、Envoy の `ext_proc` と Envoy の構成での下流向けのトークンの差し替え、業務処理の成功と結果の回収、mTLS に束縛したトークン |
+| 扱わないもの | 判断と主体の導出は OAuth2 と AccessControl が扱う。Envoy の `ext_proc` と Envoy の構成での一覧の絞り込みと下流向けのトークンの差し替え、業務処理の成功と結果の回収、mTLS に束縛したトークン |
 
 ゲートウェイは単体のバイナリで、状態を持たない。
 対象は [MCP の 2026-07-28 版](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)の Streamable HTTP に固定する。
@@ -254,6 +254,20 @@ MCP クライアントは `resource` を宛先としてトークンを取得し�
 - **前提**：設定例の Envoy が `envoy_ext_authz` のゲートウェイを判定に使い、`d1` だけを許可する。
 - **操作**：`read_document` を `d1`、`d2` の順に Envoy へ送る。
 - **結果**：`d1` は資格情報のない要求として上流へ一回届き、`d2` はゲートウェイの 403 と `-32000` になり上流へ届かない。
+
+### 呼び出し元に提示するツール一覧の絞り込み
+
+#### REQ-MCPGATEWAY-015 ゲートウェイは一覧の評価で選んだツール定義だけを返す
+
+- `mapping.catalog` が真の `proxy` で `tools/list` を許可されたとき、McpGateway は、REQ-OAUTH2-099 の `allowed_tools` にある名前の定義だけを上流の一覧の各ページに残す。
+- 絞り込むとき、McpGateway は、残す定義と順序と `nextCursor` を保ち、そのページのツールがなくてもカーソルを保つ。
+- 一覧の応答を返すとき、McpGateway は、`ttlMs` を `0`、`cacheScope` を `private`、HTTP の `Cache-Control` を `no-store` にして JSON で返す。
+- `allowed_tools` が欠落か `null`、空でない文字列の配列でないか、重複または 101 件以上を含む場合、McpGateway は、503 で拒否し、上流へ一覧を要求しない。
+- 一覧を上流から受けるとき、McpGateway は、200 の非圧縮 JSON または SSE の本文を 30 秒と 4 MiB の上限で読み、要求の `id` に対応する一つの JSON-RPC 結果を検査する。
+- SSE の一覧を受けるとき、McpGateway は、複数行の `data` を一つのイベントとして読み、途中通知を返さず、対応する一つの結果だけを JSON で返す。
+- 上流の本文が上限を超えるか、不正な JSON、重複キー、不正または重複したツール名、エラー、対応する結果の欠落や複数の結果を含む場合、McpGateway は、上流の本文を返さず 502 にする。
+- `envoy_ext_authz` か `mapping.catalog` が偽の構成では、McpGateway は、この絞り込みを適用しない。
+- **判断**：応答本文を扱わない `ext_authz` に一覧の秘匿を保証しない。必要な場合は `proxy` を使う。古い評価サーバーに対しては未検査の一覧を透過せず、両方を更新する。
 
 ### 接続先の操作カタログの参照
 

@@ -20,6 +20,7 @@ import (
 )
 
 type resourceAccessResponse struct {
+	AllowedTools         []string                   `json:"allowed_tools,omitempty"`
 	Decision             bool                       `json:"decision"`
 	Reasons              []string                   `json:"reasons,omitempty"`
 	Scope                string                     `json:"scope,omitempty"`
@@ -150,7 +151,8 @@ func (d Deps) handleEvaluateResourceAccess(c *echo.Context) error {
 			support.OAuthErrorBody("temporarily_unavailable", "the evaluation could not complete"))
 	}
 	response := resourceAccessResponse{
-		Decision: decision.Permitted, Reasons: decision.Reasons, Scope: decision.Scope,
+		AllowedTools: decision.AllowedTools,
+		Decision:     decision.Permitted, Reasons: decision.Reasons, Scope: decision.Scope,
 		DelegationMode: decision.DelegationMode, AuthorizationDetails: decision.AuthorizationDetails,
 		TokenExchangeGrant: decision.TokenExchangeGrant,
 	}

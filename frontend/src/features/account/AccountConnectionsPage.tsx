@@ -124,7 +124,7 @@ export function AccountConnectionsPage({
               ) : null}
             </div>
             <div className="flex shrink-0 gap-2">
-              {connection.connector_status === 'active' && connection.status !== 'active' ? (
+              {connection.connector_status === 'active' ? (
                 <Button disabled={busy} onClick={() => link(connection.connector_id)}>
                   {connection.status ? t.relink : t.link}
                 </Button>

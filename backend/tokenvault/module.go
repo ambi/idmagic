@@ -56,9 +56,20 @@ func (f mcpForwarder) ForwardMCP(ctx context.Context, in oauthports.McpForwardRe
 	}
 	response, err := tokenvaultusecases.ExecuteMCP(ctx, f.deps, f.upstream, tokenvaultusecases.ExecuteInput{TenantID: in.TenantID, ConnectorID: in.ConnectorID, Method: http.MethodPost, URL: in.URL, Headers: headers, Body: in.Body}, caller)
 	if err == nil {
+		if response != nil && response.StatusCode == http.StatusUnauthorized {
+			// 401 だけでは接続の失効と設定不備を区別できない。状態を変えず、本文を公開しない。
+			_ = response.Body.Close()
+			return nil, oauthports.ErrMcpUpstreamCredentialsRejected
+		}
 		return response, nil
 	}
-	if errors.Is(err, tokenvaultusecases.ErrAccessDenied) || errors.Is(err, tokenvaultusecases.ErrConnectionNotFound) || errors.Is(err, tokenvaultusecases.ErrConnectorNotFound) || errors.Is(err, tokenvaultusecases.ErrReauthorizationRequired) {
+	if errors.Is(err, tokenvaultusecases.ErrConnectionNotFound) {
+		return nil, oauthports.ErrMcpConnectionRequired
+	}
+	if errors.Is(err, tokenvaultusecases.ErrReauthorizationRequired) {
+		return nil, oauthports.ErrMcpReauthorizationRequired
+	}
+	if errors.Is(err, tokenvaultusecases.ErrAccessDenied) || errors.Is(err, tokenvaultusecases.ErrConnectorNotFound) {
 		return nil, oauthports.ErrMcpForwardDenied
 	}
 	return nil, oauthports.ErrMcpForwardUnavailable

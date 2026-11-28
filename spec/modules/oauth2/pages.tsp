@@ -28,14 +28,14 @@ model CrossAppAccessPages {
 }
 
 model McpResourceServerPages {
-  @page(#{...adminContext, id: "admin-mcp-resource-servers", name: "MCP リソースサーバー", entry: "管理メニュー", purpose: "MCP の接続先、認証とアクセス規則を管理する", content: #["接続先と有効状態", "選択した対象の詳細、編集と削除確認", "Agent ごとのアクセス概要"]}) @category(Category.agents)
+  @page(#{...adminContext, id: "admin-mcp-resource-servers", name: "MCP リソースサーバー", entry: "管理メニュー", purpose: "MCP の接続先、認証とアクセス規則を管理する", content: #["接続先と有効状態", "選択した対象の詳細、編集と削除確認", "マネージド型の接続 URL、対応条件と準備手順", "Agent ごとのアクセス概要"]}) @category(Category.agents)
   list: PageData<{
     @transition(#{...update, event: "再取得または削除を確認", result: "対象サーバーの一覧を更新する"}, McpResourceServerPages.list) @uses(IdMagic.OAuth2.Operations.ListAdminMcpResourceServers, IdMagic.OAuth2.Operations.DeleteAdminMcpResourceServer) refresh: unknown;
     @transition(#{event: "作成"}, McpResourceServerPages.create) create: unknown;
     @transition(#{event: "編集"}, McpResourceServerPages.edit) edit: unknown;
     @transition(#{event: "Agent のアクセス"}, McpResourceServerPages.access) access: unknown;
   }, ListStates>;
-  @page(#{...adminContext, id: "admin-mcp-resource-server-create", name: "MCP リソースサーバーを登録", entry: "リソースサーバー一覧", purpose: "接続先と認証・アクセス規則を登録する", content: #["既存アプリケーションの利用または新規作成", "接続 URL、リソース識別子と認証", "ツールとアクセスの規則", "スコープとツールの変更度、個人データの扱いと申告の説明", "登録結果と初期資格情報の表示", "作成途中の失敗時は作成済みの対象を保持"]}) @category(Category.agents)
+  @page(#{...adminContext, id: "admin-mcp-resource-server-create", name: "MCP リソースサーバーを登録", entry: "リソースサーバー一覧", purpose: "接続先と認証・アクセス規則を登録する", content: #["既存アプリケーションの利用または新規作成", "接続 URL、リソース識別子と認証", "ツールとアクセスの規則", "スコープとツールの変更度、個人データの扱いと申告の説明", "登録結果と初期資格情報の表示", "マネージド型の対応条件と準備手順", "作成途中の失敗時は作成済みの対象を保持"]}) @category(Category.agents)
   create: PageData<{
     @transition(#{...update, event: "登録", result: "必要なアプリケーションと接続先を登録し結果を表示する", toState: "success"}, McpResourceServerPages.create) @uses(IdMagic.Application.Operations.CreateAdminApplication, IdMagic.Application.Operations.UpdateApplicationOidcConfig, IdMagic.OAuth2.Operations.CreateAdminMcpResourceServer) save: unknown;
     @transition(#{event: "ツールを設定", from: "success"}, McpResourceServerPages.edit) edit: unknown;

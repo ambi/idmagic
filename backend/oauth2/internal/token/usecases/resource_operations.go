@@ -78,21 +78,6 @@ func checkTargetRange(ctx context.Context, checker accessports.RelationChecker, 
 func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, operation resourceOperation, subject accessports.PrincipalRef, actors []accessports.PrincipalRef, scopes []string) (accessports.RelationDecision, error) {
 	rule, in := operation.Rule, operation.Request
 	check := accessports.RelationCheck{TenantID: in.TenantID, ResourceType: in.ResourceType, ResourceID: in.ResourceID, Relation: in.Relation, Subject: subject, Actors: actors, GrantedScopes: scopes, RequiredScopes: rule.Scopes}
-	if operation.Preparation {
-		for _, operation := range server.AccessRules {
-			if operation.Tool == nil {
-				continue
-			}
-			decision, err := checkToolAssignment(ctx, deps.Relations, server, operation, subject, actors, scopes)
-			if err != nil {
-				return accessports.RelationDecision{}, err
-			}
-			if decision.Permitted {
-				return decision, nil
-			}
-		}
-		return accessports.RelationDecision{Reasons: []string{"operation_assignment_required"}}, nil
-	}
 	if rule.Tool != nil {
 		decision, err := checkToolAssignment(ctx, deps.Relations, server, rule, subject, actors, scopes)
 		if err != nil || !decision.Permitted {
@@ -106,6 +91,25 @@ func operationPermission(ctx context.Context, deps ResourceAccessDeps, server *o
 		}
 	}
 	return deps.Relations.CheckRelation(ctx, check)
+}
+
+// assignedToolNames は一覧と接続準備に使う候補を求める。業務操作の条件、承認と回数は評価しない。
+func assignedToolNames(ctx context.Context, deps ResourceAccessDeps, server *oauthdomain.McpResourceServer, subject accessports.PrincipalRef, actors []accessports.PrincipalRef, scopes []string) ([]string, error) {
+	names := []string{}
+	for _, rule := range server.AccessRules {
+		if rule.Tool == nil {
+			continue
+		}
+		decision, err := checkToolAssignment(ctx, deps.Relations, server, rule, subject, actors, scopes)
+		if err != nil {
+			return nil, err
+		}
+		if decision.Permitted && !slices.Contains(names, rule.Tool.Name) {
+			names = append(names, rule.Tool.Name)
+		}
+	}
+	slices.Sort(names)
+	return names, nil
 }
 
 func checkToolAssignment(ctx context.Context, checker accessports.RelationChecker, server *oauthdomain.McpResourceServer, rule oauthdomain.ResourceAccessRule, subject accessports.PrincipalRef, actors []accessports.PrincipalRef, scopes []string) (accessports.RelationDecision, error) {

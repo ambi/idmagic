@@ -24,6 +24,7 @@ import (
 	mcpgatewaydomain "github.com/ambi/idmagic/backend/mcpgateway/internal/domain"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/evaluation_http"
 	"github.com/ambi/idmagic/backend/mcpgateway/internal/exchange_http"
+	"github.com/ambi/idmagic/backend/shared/protocol/mcp"
 )
 
 // 実装が定義できる範囲 (-32000 から -32019) から割り当てるコードである。
@@ -128,7 +129,7 @@ func NewHandler(options Options) (*Handler, error) {
 		Rewrite:        h.rewrite,
 		Transport:      options.Transport,
 		FlushInterval:  -1,
-		ModifyResponse: restoreCorrelationID,
+		ModifyResponse: h.modifyResponse,
 		ErrorHandler:   h.upstreamFailed,
 		ErrorLog:       slog.NewLogLogger(options.Audit.Handler(), slog.LevelWarn),
 	}
@@ -136,6 +137,7 @@ func NewHandler(options Options) (*Handler, error) {
 }
 
 type requestRecord struct {
+	allowedTools                                        []string
 	correlationID, method, methodLabel, tool, toolLabel string
 	operation                                           mcpgatewaydomain.Operation
 	outcome, evaluationRequestID                        string
@@ -342,6 +344,14 @@ func (h *Handler) enforce(w http.ResponseWriter, r *http.Request, record *reques
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	if h.options.Mapping.Catalog && message.Method == mcp.MethodToolsList {
+		if !mcp.ValidAllowedTools(result.AllowedTools) {
+			record.outcome = outcomeUnavailable
+			writeError(w, http.StatusServiceUnavailable, message.ID, codeUnavailable, "tool list authorization is unavailable", nil)
+			return
+		}
+		record.allowedTools = result.AllowedTools
+	}
 	if h.options.Downstream != nil {
 		if !h.obtainDownstream(r.Context(), record, token, result.TokenExchangeGrant) {
 			writeError(w, http.StatusServiceUnavailable, message.ID, codeUnavailable, "authorization is unavailable", nil)
@@ -402,10 +412,13 @@ func (h *Handler) rewrite(request *httputil.ProxyRequest) {
 	}
 }
 
-// restoreCorrelationID は上流の X-Request-ID で相関 ID を上書きさせない。
-func restoreCorrelationID(response *http.Response) error {
+// modifyResponse は相関 ID を保ち、必要な場合だけツール一覧を検査して差し替える。
+func (h *Handler) modifyResponse(response *http.Response) error {
 	if record, ok := response.Request.Context().Value(recordKey{}).(*requestRecord); ok {
 		response.Header.Set("X-Request-ID", record.correlationID)
+		if record.allowedTools != nil {
+			return mcp.FilterToolsListResponse(response, record.rpcID, record.allowedTools)
+		}
 	}
 	return nil
 }

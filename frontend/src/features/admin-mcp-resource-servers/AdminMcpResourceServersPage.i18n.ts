@@ -19,6 +19,20 @@ export const adminMcpResourceServersDictionary = defineDictionary(
       'https://agent.example の形で空白区切りで指定します。空欄では Origin 付きの要求を拒否します。',
     managedResultIntro: 'Agent は次の公開 URL へ接続します。Gateway の起動作業は不要です。',
     publicURL: 'Agent の接続 URL',
+    connectionGuide: '接続の準備と配布',
+    connectionProtocol:
+      'MCP 2026-07-28 の stateless HTTP に対応したクライアントと上流を使います。tools/list と tools/call を提供します。',
+    connectionPublish:
+      '編集画面で上流のツール名と必要な権限を登録し、本人と Agent に利用を割り当てます。上流のツールの追加や名前の変更も管理者が反映します。',
+    connectionVault:
+      '利用者本人が次の画面で対象の外部サービスを連携します。上流が接続を拒否した場合は再連携か、管理者による接続設定の確認を行います。',
+    connectionServices: '本人の外部サービス接続',
+    connectionAuthorize:
+      '利用者へ接続 URL とこの手順を配ります。クライアントでこの URL を接続先と認可の resource に指定し、必要なスコープでトークンを取得して呼び出します。',
+    connectionUnsupported:
+      '2025 版、legacy SSE、prompts、resources、MCP Apps には対応していません。任意のデスクトップクライアントでの接続を保証するものではありません。',
+    connectionCredentials:
+      '評価用クライアントの資格情報は MCP クライアントへ配らないでください。URL の配布だけでは実行権限は付与されません。',
     publicKey: 'Gateway の専用公開鍵（JWK）',
     exchangeBypassHelp:
       '上流では、この公開鍵のサムプリント（JKT）に束縛したトークンだけを受け付けてください。',
@@ -223,6 +237,20 @@ export const adminMcpResourceServersDictionary = defineDictionary(
       'Enter space-separated origins such as https://agent.example. Leave empty to reject requests with an Origin header.',
     managedResultIntro: 'Connect your agent to this public URL. No gateway startup is needed.',
     publicURL: 'Agent connection URL',
+    connectionGuide: 'Prepare and distribute the connection',
+    connectionProtocol:
+      'Use a client and upstream supporting MCP 2026-07-28 stateless HTTP. The gateway provides tools/list and tools/call.',
+    connectionPublish:
+      'Register the upstream tool names and required permissions on the edit page, then assign access to the user and agent. Administrators also reflect added or renamed upstream tools.',
+    connectionVault:
+      'Each user links the upstream service on the page below. If the upstream rejects its credentials, link again or ask an administrator to check the connection settings.',
+    connectionServices: 'Your external service connections',
+    connectionAuthorize:
+      'Distribute the connection URL and these instructions. Configure this URL as the client endpoint and authorization resource, obtain a token with the required scopes, then call the gateway.',
+    connectionUnsupported:
+      '2025 versions, legacy SSE, prompts, resources, and MCP Apps are not supported. Connectivity with arbitrary desktop clients is not guaranteed.',
+    connectionCredentials:
+      'Do not distribute the evaluator client credentials to MCP clients. Sharing the URL does not grant execution permissions.',
     publicKey: 'Dedicated gateway public key (JWK)',
     exchangeBypassHelp:
       'Configure the upstream to accept only tokens bound to this public key’s thumbprint (JKT).',

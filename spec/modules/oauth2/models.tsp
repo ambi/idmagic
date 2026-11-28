@@ -1254,6 +1254,8 @@ model ApprovedOperationUse {
 
 @doc("`/resource-access/evaluate` のレスポンス。応答は再利用せず、業務操作ごとに評価する。不許可ではトークンのクレームを返さない。")
 model ResourceAccessEvaluationResponse {
+  @doc("tools/list を許可した場合だけ返す、現在の操作割当とスコープを満たす公開ツール名。実行時の条件、対象、承認と上限は呼び出し時に再評価する。")
+  allowed_tools?: string[];
   @doc("`true` のときだけ業務処理を実行してよい。")
   decision: boolean;
   @doc("不許可の理由。識別子を含まない。")

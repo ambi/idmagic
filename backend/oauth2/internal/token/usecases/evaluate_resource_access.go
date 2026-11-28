@@ -94,6 +94,8 @@ type ApprovedOperationUse struct {
 
 // ResourceAccessDecision は評価の結果である。不許可ではトークンのクレームを持たない。
 type ResourceAccessDecision struct {
+	// AllowedTools は tools/list の許可でだけ持つ、現在の操作割当を満たす名前である。
+	AllowedTools []string
 	// Caller は内部の代理転送だけが使う検証済みの事実。HTTP 応答へは変換しない。
 	Caller               *oauthports.IntrospectionResult `json:"-"`
 	Permitted            bool
@@ -233,7 +235,30 @@ func evaluateForServer(
 	if !resolved {
 		return denyResourceAccess(oauthdomain.ReasonPrincipalUnresolved), audit, nil
 	}
-	relation, err := operationPermission(ctx, deps, server, operation, subject, actors, strings.Fields(token.Scope))
+	var allowedTools []string
+	var relation accessports.RelationDecision
+	if operation.Preparation {
+		names, listErr := assignedToolNames(ctx, deps, server, subject, actors, strings.Fields(token.Scope))
+		if listErr != nil {
+			return ResourceAccessDecision{}, audit, listErr
+		}
+		if len(names) == 0 {
+			return denyResourceAccess("operation_assignment_required"), audit, nil
+		}
+		relation.Permitted = true
+		if in.ResourceID == "tools/list" {
+			allowedTools = names
+		}
+		// 接続準備にも上流宛の交換が必要なことがある。割当済みの操作が明示した宛先だけを使う。
+		for _, candidate := range server.AccessRules {
+			if candidate.Tool != nil && slices.Contains(names, candidate.Tool.Name) && candidate.PermitsTokenExchange(in.TokenExchangeResource) {
+				rule.TokenExchangeResources = []string{in.TokenExchangeResource}
+				break
+			}
+		}
+	} else {
+		relation, err = operationPermission(ctx, deps, server, operation, subject, actors, strings.Fields(token.Scope))
+	}
 	if err != nil {
 		return ResourceAccessDecision{}, audit, err
 	}
@@ -322,6 +347,7 @@ func evaluateForServer(
 		return ResourceAccessDecision{}, audit, err
 	}
 	return ResourceAccessDecision{
+		AllowedTools:       allowedTools,
 		Permitted:          true,
 		Caller:             token,
 		ApprovedOperation:  approved,

@@ -9,7 +9,7 @@ import {
   uiOrigin,
 } from './fixtures'
 
-//spec:covers REQ-OAUTH2-091: 管理画面からマネージド型を登録して公開 URL を得る。配置用の設定と秘密は表示しない。
+//spec:covers REQ-OAUTH2-091, REQ-OAUTH2-100: 管理画面から登録して接続案内を得て、再訪時にも同じ案内を取得する。
 test('administrator registers a hosted MCP connection', async () => {
   const view = await openWebView({ width: 1440, height: 1800 })
   try {
@@ -49,6 +49,17 @@ test('administrator registers a hosted MCP connection', async () => {
       ),
     ).toContain('"kty": "RSA"')
     await waitForText(view, 'thumbprint (JKT)')
+    await waitForText(view, 'MCP 2026-07-28 stateless HTTP')
+    await waitForText(view, 'Do not distribute the evaluator client credentials')
+    await view.navigate(`${uiOrigin}/realms/default/admin/mcp-resource-servers`)
+    await waitForPage(view, 'admin-mcp-resource-servers')
+    await view.evaluate(
+      `document.querySelector('button[aria-label="Show details for Managed-${suffix}"]').click()`,
+    )
+    await waitForText(view, 'MCP 2026-07-28 stateless HTTP')
+    expect(
+      String(await view.evaluate(`document.querySelector('#result-public-url')?.textContent`)),
+    ).toBe(resource)
   } finally {
     await view.close()
   }

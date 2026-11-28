@@ -28,7 +28,8 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 describe('AccountConnectionsPage', () => {
-  it('offers linking only for a service that is not linked', async () => {
+  //spec:covers REQ-TOKENVAULT-005: 上流が接続を拒否しても、接続の状態を変えず本人が再連携を開始できる。
+  it('offers linking again for an active connection as well as linking a new one', async () => {
     await renderWithRouter(
       <AccountConnectionsPage
         {...base}
@@ -44,6 +45,7 @@ describe('AccountConnectionsPage', () => {
       />,
     )
     expect(screen.getAllByRole('button', { name: t.link })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: t.relink })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: t.unlink })).toHaveLength(1)
   })
 
@@ -99,6 +101,25 @@ describe('AccountConnectionsPage', () => {
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith('https://idp.example/authorize?state=s'),
     )
+  })
+
+  //spec:covers REQ-TOKENVAULT-005: 再連携も本人用の既存開始 API を使い、失敗しても現在の連携を保つ。
+  it('keeps the active connection when starting reauthorization fails', async () => {
+    const navigate = mock((_url: string) => {})
+    const calls: string[] = []
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') calls.push(`POST ${String(input)}`)
+      return jsonResponse({ error: 'temporarily_unavailable' }, 503)
+    }) as unknown as typeof fetch
+    await renderWithRouter(
+      <AccountConnectionsPage {...base} connections={[linked]} navigate={navigate} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: t.relink }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(t.genericError))
+    expect(screen.getByText(t.statusActive)).toBeInTheDocument()
+    expect(navigate).not.toHaveBeenCalled()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatch(/POST .*\/token-vault\/connections\/c1\/authorize$/)
   })
 
   it('refreshes the list after unlinking', async () => {

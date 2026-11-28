@@ -16,6 +16,7 @@ import { useFormValidation } from '../../lib/form'
 import { useDictionary } from '../../lib/i18n'
 import type { McpResourceServer } from '../../types'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
+import { ManagedMcpConnectionGuide } from './ManagedMcpConnectionGuide'
 import {
   editURL,
   emptyForm,
@@ -175,14 +176,6 @@ export function AdminMcpResourceServerCreatePage({
           </p>
           {registered.hosting ? (
             <dl className="mt-3 grid gap-2 text-sm">
-              <dt className="font-medium">{t.publicURL}</dt>
-              <dd>
-                <CopyableValue
-                  id="result-public-url"
-                  value={registered.resource}
-                  copyLabel={t.copy.replace('{label}', t.publicURL)}
-                />
-              </dd>
               {registered.hosting.authentication === 'token_exchange' &&
               registered.gateway_dpop_jwk ? (
                 <>
@@ -238,6 +231,7 @@ export function AdminMcpResourceServerCreatePage({
               </dd>
             </dl>
           )}
+          <ManagedMcpConnectionGuide server={registered} />
           <p className="mt-3 text-sm text-slate-600">
             {registered.hosting ? t.managedResultNext : t.resultNext}
           </p>

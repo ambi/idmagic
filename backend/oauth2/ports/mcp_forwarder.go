@@ -9,6 +9,10 @@ import (
 var (
 	ErrMcpForwardDenied      = errors.New("MCP forwarding denied")
 	ErrMcpForwardUnavailable = errors.New("MCP forwarding unavailable")
+	// 本人向けの接続案内に必要な原因だけを区別し、内部のエラーと資格情報を渡さない。
+	ErrMcpConnectionRequired          = errors.New("MCP upstream connection required")
+	ErrMcpReauthorizationRequired     = errors.New("MCP upstream reauthorization required")
+	ErrMcpUpstreamCredentialsRejected = errors.New("MCP upstream credentials rejected")
 )
 
 // McpForwardRequest は OAuth2 の評価を通った呼び出し元と、登録に束縛した要求である。

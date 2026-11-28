@@ -231,6 +231,14 @@ func (d Deps) handleHostedMcp(c *echo.Context) error {
 			return hostedMcpError(c, 503, message.ID, "credentials are unavailable", nil)
 		}
 		upstream, err = d.McpForwarder.ForwardMCP(ctx, oauthports.McpForwardRequest{TenantID: server.TenantID, ConnectorID: server.Hosting.ConnectorID, URL: server.Hosting.UpstreamURL, Caller: decision.Caller, Headers: headers, Body: body})
+		switch {
+		case errors.Is(err, oauthports.ErrMcpConnectionRequired):
+			return d.hostedMcpConnectionError(c, server, message.ID, "connection_required", "Link your upstream service in External services, then try again.")
+		case errors.Is(err, oauthports.ErrMcpReauthorizationRequired):
+			return d.hostedMcpConnectionError(c, server, message.ID, "reauthorization_required", "Link your upstream service again in External services, then try again.")
+		case errors.Is(err, oauthports.ErrMcpUpstreamCredentialsRejected):
+			return d.hostedMcpConnectionError(c, server, message.ID, "upstream_credentials_rejected", "The upstream rejected its credentials. You can link the service again in External services, or ask an administrator to check its connection settings.")
+		}
 		if errors.Is(err, oauthports.ErrMcpForwardDenied) {
 			return hostedMcpError(c, 403, message.ID, "forbidden", nil)
 		}
@@ -241,7 +249,21 @@ func (d Deps) handleHostedMcp(c *echo.Context) error {
 		return hostedMcpError(c, 503, message.ID, "upstream is unavailable", nil)
 	}
 	defer func() { _ = upstream.Body.Close() }()
+	if message.Method == mcp.MethodToolsList {
+		if err := mcp.FilterToolsListResponse(upstream, message.ID, decision.AllowedTools); err != nil {
+			return hostedMcpError(c, 502, message.ID, "upstream tool list is not supported", nil)
+		}
+	}
 	return streamHostedMcp(c, upstream, message.ID, hostedMcpResponseLimit)
+}
+
+func (d Deps) hostedMcpConnectionError(c *echo.Context, server *oauthdomain.McpResourceServer, id json.RawMessage, reason, message string) error {
+	return hostedMcpError(c, 403, id, message, map[string]any{
+		"upstream_connection": map[string]string{
+			"reason": reason, "connector_id": server.Hosting.ConnectorID,
+			"uri": support.RequestIssuer(c, d.Issuer) + "/account/connections",
+		},
+	})
 }
 
 func hostedMcpToken(headers http.Header) (string, bool) {

@@ -48,6 +48,7 @@ type ApprovalRequest struct {
 
 // Result は評価の結果である。Available が偽なら判断はなく、許可として扱わない。
 type Result struct {
+	AllowedTools      []string
 	Available         bool
 	Permitted         bool
 	Reasons           []string
@@ -129,6 +130,7 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 		return result, fmt.Errorf("evaluation returned status %d", response.StatusCode)
 	}
 	var body struct {
+		AllowedTools       []string `json:"allowed_tools"`
 		Decision           *bool    `json:"decision"`
 		Reasons            []string `json:"reasons"`
 		TokenExchangeGrant string   `json:"token_exchange_grant"`
@@ -150,6 +152,7 @@ func (c Client) Evaluate(ctx context.Context, in Request) (Result, error) {
 	if body.Decision == nil {
 		return result, fmt.Errorf("evaluation response has no decision")
 	}
+	result.AllowedTools = body.AllowedTools
 	if approval := body.ApprovedOperation; approval != nil {
 		digest, err := hex.DecodeString(approval.OperationDigest)
 		if approval.ApprovalRequestID == "" || err != nil || len(digest) != 32 || approval.Replayed == nil {

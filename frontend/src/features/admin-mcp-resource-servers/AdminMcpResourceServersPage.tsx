@@ -18,6 +18,7 @@ import type { McpResourceServer } from '../../types'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
 import { editURL, newURL, McpResourceServerStatus } from './AdminMcpResourceServersShared'
 import { shellDictionary } from '../../components/shell.i18n'
+import { ManagedMcpConnectionGuide } from './ManagedMcpConnectionGuide'
 
 // AdminMcpResourceServersPage は MCP リソースサーバーの参照専用一覧。作成/編集は専用ルート
 // (new / $resourceServerId/edit) に一本化されている (policy #2, wi-314 T014)。
@@ -147,6 +148,7 @@ export function AdminMcpResourceServersPage({
                 <dt className="font-medium">{dict.clientIdLabel}</dt>
                 <dd className="break-all font-mono text-xs">{selected.client_id || '—'}</dd>
               </dl>
+              <ManagedMcpConnectionGuide server={selected} />
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   variant="outline"

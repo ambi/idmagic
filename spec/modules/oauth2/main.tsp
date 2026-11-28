@@ -2220,6 +2220,7 @@ model HostedMcpSuccess {
   @body body: unknown;
 }
 
+@doc("MCP の JSON-RPC エラー。上流の接続の復旧を案内する 403 では error.data.upstream_connection に reason（connection_required、reauthorization_required、upstream_credentials_rejected）、connector_id、正規 issuer の /account/connections を指す uri を含める（REQ-OAUTH2-101）。")
 model HostedMcpFailure {
   @statusCode statusCode: 400 | 401 | 403 | 404 | 405 | 413 | 415 | 429 | 502 | 503;
   @body body: unknown;
