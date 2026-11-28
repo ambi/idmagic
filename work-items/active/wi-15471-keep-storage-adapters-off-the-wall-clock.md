@@ -20,7 +20,7 @@ spec_impact: { kind: none, reason: "期限、再送、失効の判定の規則�
 
 - c1ceb0613：信頼済み端末の一覧で、ユースケースは呼び出し側の時刻で判定するのに、リポジトリが絶対期限を実時計で判定していた。
 - 4cb1d8378：HTTP ハンドラーが `time.Now()` で刻んだ実行時刻を、テストが固定の日付で処理し、書いた翌日から失敗した。
-- [wi-91138](wi-91138-compare-federation-replay-expiry-with-the-validation-clock.md)：連携の再送の予約が実時計で期限を判定し、記録から 10 分後に SAML の再送テストが失敗した。
+- [wi-91138](../done/wi-91138-compare-federation-replay-expiry-with-the-validation-clock.md)：連携の再送の予約が実時計で期限を判定し、記録から 10 分後に SAML の再送テストが失敗した。
 
 規則は、ドメインが時刻を読まないこと（`.golangci.yml` の forbidigo で `domain/` だけに適用）と、時刻の分解能をそろえること（[テストダブル](../../docs/development/testing.md#テストダブル)）までしかない。
 [作用の境界](../../docs/design/application/design-guidelines.md#作用の境界)もドメインの計算だけを扱い、アダプターが実時計を読むことを止める規則も検査もない。
@@ -39,7 +39,7 @@ SQL でも `federation.sql` の `expires_at<=now()` が同じ判定をする。
 
 ## 対象外
 
-- [wi-91138](wi-91138-compare-federation-replay-expiry-with-the-validation-clock.md) が直す連携の再送の予約。main の `test-go` を直すために先に扱い、この項目はその形に合わせる。
+- [wi-91138](../done/wi-91138-compare-federation-replay-expiry-with-the-validation-clock.md) が直す連携の再送の予約。main の `test-go` を直すために先に扱い、この項目はその形に合わせる。
 - `handlers_http` などストレージ以外のアダプターの `time.Now`。HTTP の入口がユースケースへ渡す時刻を作るのは作用を編成する側の役割である。
 - 時刻の分解能の規則。既存の規則を変えない。
 

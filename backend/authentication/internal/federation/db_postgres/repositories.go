@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -399,17 +400,21 @@ func (s *AttemptStore) Consume(ctx context.Context, tenantID, state string, now 
 
 type ReplayStore struct{ Pool sharedpg.DB }
 
-func (s *ReplayStore) Reserve(ctx context.Context, tenantID, id string, expiresAt time.Time) (bool, error) {
+func (s *ReplayStore) Reserve(ctx context.Context, tenantID, id string, now time.Time, ttl time.Duration) (bool, error) {
+	if now.IsZero() || ttl <= 0 {
+		return false, fmt.Errorf("federation: reserve replay: now must be set and ttl must be positive (now=%v, ttl=%v)", now, ttl)
+	}
 	q := New(s.Pool)
 	_ = q.DeleteExpiredReplays(ctx, DeleteExpiredReplaysParams{
 		TenantID:   tenantID,
 		ResponseID: id,
+		Now:        now,
 	})
 
 	_, err := q.ReserveReplay(ctx, ReserveReplayParams{
 		TenantID:   tenantID,
 		ResponseID: id,
-		ExpiresAt:  expiresAt,
+		ExpiresAt:  now.Add(ttl),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil

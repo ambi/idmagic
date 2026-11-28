@@ -123,7 +123,7 @@ WHERE tenant_id=$1 AND state=$2;
 
 -- name: DeleteExpiredReplays :exec
 DELETE FROM federated_response_replays
-WHERE tenant_id=$1 AND response_id=$2 AND expires_at<=now();
+WHERE tenant_id=$1 AND response_id=$2 AND expires_at<=sqlc.arg(now)::timestamptz;
 
 -- name: ReserveReplay :one
 INSERT INTO federated_response_replays

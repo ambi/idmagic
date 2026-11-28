@@ -19,6 +19,7 @@ type Verifier interface {
 }
 
 // ReplayStore は全レプリカで同じ認証応答を一度だけ予約する。
+// 既存の予約の期限切れは now で判定し、新しい予約は now+ttl まで有効にする。
 type ReplayStore interface {
-	Reserve(context.Context, string, string, time.Time) (bool, error)
+	Reserve(ctx context.Context, tenantID, id string, now time.Time, ttl time.Duration) (bool, error)
 }

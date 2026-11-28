@@ -135,7 +135,7 @@ func ValidateResponse(
 	if replay == nil {
 		return empty, errors.New("SAML replay store is required")
 	}
-	reserved, err := replay.Reserve(ctx, connection.TenantID, responseID, now.Add(10*time.Minute))
+	reserved, err := replay.Reserve(ctx, connection.TenantID, responseID, now, 10*time.Minute)
 	if err != nil {
 		return empty, err
 	}

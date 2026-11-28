@@ -109,16 +109,17 @@ func (q *Queries) CreateFederatedIdentity(ctx context.Context, arg CreateFederat
 
 const deleteExpiredReplays = `-- name: DeleteExpiredReplays :exec
 DELETE FROM federated_response_replays
-WHERE tenant_id=$1 AND response_id=$2 AND expires_at<=now()
+WHERE tenant_id=$1 AND response_id=$2 AND expires_at<=$3::timestamptz
 `
 
 type DeleteExpiredReplaysParams struct {
 	TenantID   string
 	ResponseID string
+	Now        time.Time
 }
 
 func (q *Queries) DeleteExpiredReplays(ctx context.Context, arg DeleteExpiredReplaysParams) error {
-	_, err := q.db.Exec(ctx, deleteExpiredReplays, arg.TenantID, arg.ResponseID)
+	_, err := q.db.Exec(ctx, deleteExpiredReplays, arg.TenantID, arg.ResponseID, arg.Now)
 	return err
 }
 

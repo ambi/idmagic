@@ -80,7 +80,7 @@ func (s *Service) Authenticate(ctx context.Context, tenantID string, token []byt
 	if err != nil || verified.ReplayID == "" {
 		return reject("ticket")
 	}
-	reserved, err := s.replay.Reserve(ctx, tenantID, "krb5:"+verified.ReplayID, now.Add(10*time.Minute))
+	reserved, err := s.replay.Reserve(ctx, tenantID, "krb5:"+verified.ReplayID, now, 10*time.Minute)
 	if err != nil {
 		emit(&Rejected{At: now, TenantID: tenantID, Reason: "replay_store"})
 		return nil, nil, fmt.Errorf("negotiate: reserve replay: %w", err)

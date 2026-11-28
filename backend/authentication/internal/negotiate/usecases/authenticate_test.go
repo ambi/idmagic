@@ -30,7 +30,7 @@ func (u users) FindBySub(context.Context, string) (*userdomain.User, error) { re
 
 type failedReplay struct{}
 
-func (failedReplay) Reserve(context.Context, string, string, time.Time) (bool, error) {
+func (failedReplay) Reserve(context.Context, string, string, time.Time, time.Duration) (bool, error) {
 	return false, errors.New("store unavailable")
 }
 

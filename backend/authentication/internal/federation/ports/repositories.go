@@ -37,8 +37,11 @@ type AttemptStore interface {
 	Consume(context.Context, string, string, time.Time) (*federationdomain.FederatedLoginAttempt, error)
 }
 
+// ReplayStore はテナントの中で同じ応答 ID を一度だけ予約する。
+// 既存の予約の期限切れは、呼び出し側が検証に使った時刻 now で判定し、新しい予約は now+ttl まで有効にする。
+// now がゼロ値、または ttl が正でなければ、予約せずにエラーを返す。
 type ReplayStore interface {
-	Reserve(context.Context, string, string, time.Time) (bool, error)
+	Reserve(ctx context.Context, tenantID, id string, now time.Time, ttl time.Duration) (bool, error)
 }
 
 type SecretResolver interface {

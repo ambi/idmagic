@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -176,14 +177,17 @@ type ReplayStore struct {
 	items map[string]time.Time
 }
 
-func (s *ReplayStore) Reserve(_ context.Context, tenantID, id string, expiresAt time.Time) (bool, error) {
+func (s *ReplayStore) Reserve(_ context.Context, tenantID, id string, now time.Time, ttl time.Duration) (bool, error) {
+	if now.IsZero() || ttl <= 0 {
+		return false, fmt.Errorf("federation: reserve replay: now must be set and ttl must be positive (now=%v, ttl=%v)", now, ttl)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	key, now := tenantID+"\x00"+id, time.Now().UTC()
+	key := tenantID + "\x00" + id
 	if expiry, exists := s.items[key]; exists && expiry.After(now) {
 		return false, nil
 	}
-	s.items[key] = expiresAt
+	s.items[key] = now.Add(ttl)
 	return true, nil
 }
 

@@ -30,7 +30,7 @@ func TestPersistenceContract(t *testing.T) {
 			t.Fatalf("seed connection: %v", err)
 		}
 		return testing_contract.Fixture{
-			Attempts: &db_postgres.AttemptStore{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
+			Attempts: &db_postgres.AttemptStore{Pool: db}, Replay: &db_postgres.ReplayStore{Pool: db}, TenantA: tenantA.ID, TenantB: tenantB.ID,
 			ProviderID: connection.ID, State: pgfixtures.UniqueID("state"), Now: now,
 		}
 	})

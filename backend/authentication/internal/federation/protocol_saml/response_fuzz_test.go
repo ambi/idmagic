@@ -11,7 +11,7 @@ import (
 
 type fuzzReplayStore struct{}
 
-func (fuzzReplayStore) Reserve(context.Context, string, string, time.Time) (bool, error) {
+func (fuzzReplayStore) Reserve(context.Context, string, string, time.Time, time.Duration) (bool, error) {
 	return true, nil
 }
 
