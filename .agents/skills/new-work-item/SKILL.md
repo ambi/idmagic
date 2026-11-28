@@ -14,7 +14,7 @@ description: 仕様先行の作業項目を work-items/active/ に起票し、�
    製品に機能がないことを動機にするときは、`docs/modules/README.md` から該当モジュールの README と機能仕様を読んでから書く。
 4. 外部の製品、標準、論文、記事の知見に依る項目では、設計に出典、読んだ範囲（本文か要約か）、調査日を書く。
    要約しか読めなかった知見は、既存の規則と矛盾しない範囲でだけ使う。
-   `feature` の項目では、`docs/formats/work-item-format.md` の「既存製品との比較」に従い、同じ領域の主要な製品 2〜3 件の扱いを設計に書く。
+   機能の範囲、仕様の値、画面設計などの製品の振る舞いを決める項目では、[同種の製品の参照](../../../docs/development/specification-first-workflow.md#同種の製品の参照)に従って主要な製品の扱いを調べ、`docs/formats/work-item-format.md` の「既存製品との比較」の形式で設計に書く。
 5. `mise run work-item-number` を実行し、`work-items/active/wi-<出力した番号>-kebab-title.md` を作る。
    最大の既存番号を数えない。push 済みの番号しか見えず、並列 worktree で衝突するためである。
 6. 動機、対象範囲、対象外、設計、計画、タスク、検証、リスクを書く。
