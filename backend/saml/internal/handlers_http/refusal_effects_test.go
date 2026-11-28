@@ -63,7 +63,7 @@ type unreachableKeyStore struct {
 
 func (unreachableKeyStore) Healthy(context.Context) bool { return false }
 
-func (unreachableKeyStore) GetActiveKey(context.Context) (*signingdomain.SigningKey, error) {
+func (unreachableKeyStore) GetActiveKey(context.Context, time.Time) (*signingdomain.SigningKey, error) {
 	return nil, fmt.Errorf("federation key provider is unreachable")
 }
 
@@ -94,7 +94,7 @@ func newProfileBoundServerWith(t *testing.T, reachableKeys bool) (*echo.Echo, *[
 	for _, profileID := range []string{refusalProfileA, refusalProfileB} {
 		if err := spRepo.SaveIDPProfile(context.Background(), &samldomain.SamlIdentityProviderProfile{
 			TenantID: tenancydomain.DefaultTenantID, ProfileID: profileID,
-			Name: profileID, Mode: samldomain.IDPProfileModeDedicated,
+			Name: profileID, Mode: samldomain.IDPProfileModeDedicated, UpdatedAt: time.Now().UTC(),
 		}); err != nil {
 			t.Fatal(err)
 		}

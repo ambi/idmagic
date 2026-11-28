@@ -26,7 +26,6 @@ func TestGroupCSVImportInputExpiryDoesNotExtendWithApply(t *testing.T) {
 			f := newGroupImportFixture(t)
 			created := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 			boundary := created.Add(30 * 24 * time.Hour)
-			f.artifacts.Now = func() time.Time { return created }
 			repo := jobs.NewJobRepository()
 			groupDeps := GroupImportStartDeps{SchemaReader: groupAttributeSchemaStub{}, Artifacts: f.artifacts, Jobs: repo, Enqueuer: testJobEnqueuer(repo)}
 			memberDeps := GroupMembershipImportStartDeps{Artifacts: f.artifacts, Jobs: repo, Enqueuer: testJobEnqueuer(repo)}

@@ -95,7 +95,7 @@ func TestBuildAndSignSecurityEventToken(t *testing.T) {
 
 	// 署名そのものを、受信側が使うのと同じ検証器に通す。テナントの公開鍵で検証を
 	// 通ることが「署名済み」の観測であり、3 分割の形だけでは代わりにならない。
-	key, err := keyStore.GetActiveKey(tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: "tenant-a"}, "", ""))
+	key, err := keyStore.GetActiveKey(tenantports.WithTenant(ctx, &tenancydomain.Tenant{ID: "tenant-a"}, "", ""), time.Now().UTC())
 	if err != nil {
 		t.Fatalf("GetActiveKey: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestRevocationReasonWireRepresentations(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := tenantports.WithTenant(t.Context(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
-	key, err := keyStore.GetActiveKey(ctx)
+	key, err := keyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

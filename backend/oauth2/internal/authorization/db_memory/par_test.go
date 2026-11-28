@@ -11,6 +11,7 @@ import (
 func TestPARStore(t *testing.T) {
 	ctx := context.Background()
 	store := NewPARStore()
+	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 	t.Run("Save and Find", func(t *testing.T) {
 		rec := &oauthdomain.PARRecord{
@@ -18,8 +19,8 @@ func TestPARStore(t *testing.T) {
 			TenantID:   "tenant-1",
 			ClientID:   "client-1",
 			Parameters: map[string]string{"scope": "openid"},
-			IssuedAt:   time.Now(),
-			ExpiresAt:  time.Now().Add(5 * time.Minute),
+			IssuedAt:   now,
+			ExpiresAt:  now.Add(5 * time.Minute),
 			Used:       false,
 		}
 
@@ -42,7 +43,7 @@ func TestPARStore(t *testing.T) {
 
 	t.Run("Consume", func(t *testing.T) {
 		// 正常ケース
-		consumed, err := store.Consume(ctx, "urn:ietf:params:oauth:request_uri:123")
+		consumed, err := store.Consume(ctx, "urn:ietf:params:oauth:request_uri:123", now)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -54,7 +55,7 @@ func TestPARStore(t *testing.T) {
 		}
 
 		// すでに Used のレコードを再 Consume (失敗するべき)
-		again, err := store.Consume(ctx, "urn:ietf:params:oauth:request_uri:123")
+		again, err := store.Consume(ctx, "urn:ietf:params:oauth:request_uri:123", now)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +64,7 @@ func TestPARStore(t *testing.T) {
 		}
 
 		// 存在しない RequestURI の Consume
-		notfound, err := store.Consume(ctx, "urn:none")
+		notfound, err := store.Consume(ctx, "urn:none", now)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,12 +75,12 @@ func TestPARStore(t *testing.T) {
 		// 期限切れレコードの Consume
 		expiredRec := &oauthdomain.PARRecord{
 			RequestURI: "urn:expired",
-			ExpiresAt:  time.Now().Add(-1 * time.Minute),
+			ExpiresAt:  now.Add(-1 * time.Minute),
 			Used:       false,
 		}
 		_ = store.Save(ctx, expiredRec)
 
-		expired, err := store.Consume(ctx, "urn:expired")
+		expired, err := store.Consume(ctx, "urn:expired", now)
 		if err != nil {
 			t.Fatal(err)
 		}

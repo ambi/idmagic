@@ -29,8 +29,7 @@ func TestPurgeExpiredCSVArtifactsKeepsArtifactsWithinRetention(t *testing.T) {
 	ctx := context.Background()
 	put := func(savedAt time.Time) string {
 		t.Helper()
-		store.Now = func() time.Time { return savedAt }
-		metadata, err := store.PutCSVArtifact(ctx, "tenant-a", func(output io.Writer) error {
+		metadata, err := store.PutCSVArtifact(ctx, "tenant-a", savedAt, func(output io.Writer) error {
 			_, err := io.WriteString(output, "preferred_username\nalice\n")
 			return err
 		})
@@ -105,8 +104,7 @@ func TestCSVRetentionCancelsExpiredImportsBeforeDeletingInputs(t *testing.T) {
 							savedAt = savedAt.Add(-time.Second)
 							tenant = "expired-tenant"
 						}
-						store.Now = func() time.Time { return savedAt }
-						artifact, err := store.PutCSVArtifact(ctx, tenant, func(w io.Writer) error {
+						artifact, err := store.PutCSVArtifact(ctx, tenant, savedAt, func(w io.Writer) error {
 							_, err := io.WriteString(w, "preferred_username,email\nalice,alice@example.com\n")
 							return err
 						})
@@ -168,8 +166,7 @@ func TestCSVRetentionKeepsInputsWhenCancellationFails(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
 	store := idmmemory.NewCSVArtifactStore()
-	store.Now = func() time.Time { return now.Add(-31 * 24 * time.Hour) }
-	artifact, err := store.PutCSVArtifact(ctx, "tenant", func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
+	artifact, err := store.PutCSVArtifact(ctx, "tenant", now.Add(-31*24*time.Hour), func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,8 +204,7 @@ func TestCSVRetentionVisitsEveryPageOfImports(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
 	store := idmmemory.NewCSVArtifactStore()
-	store.Now = func() time.Time { return now.Add(-31 * 24 * time.Hour) }
-	artifact, err := store.PutCSVArtifact(ctx, "tenant", func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
+	artifact, err := store.PutCSVArtifact(ctx, "tenant", now.Add(-31*24*time.Hour), func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}

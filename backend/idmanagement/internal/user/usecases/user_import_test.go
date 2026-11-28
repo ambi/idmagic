@@ -332,7 +332,7 @@ func TestStartUserImportApplyRequiresSucceededSameTenantPreviewAndDigest(t *test
 func TestReadUserImportErrorRangeCrossesImmutableArtifactPages(t *testing.T) {
 	ctx := importPlannerContext()
 	artifacts := idmmemory.NewCSVArtifactStore()
-	metadata, err := artifacts.PutCSVArtifactPages(ctx, "acme", func(emit func([]byte) error) error {
+	metadata, err := artifacts.PutCSVArtifactPages(ctx, "acme", time.Now().UTC(), func(emit func([]byte) error) error {
 		for pageNumber := range 3 {
 			page := make([]UserImportRowError, 0, UserImportErrorArtifactPageSize)
 			for index := range UserImportErrorArtifactPageSize {

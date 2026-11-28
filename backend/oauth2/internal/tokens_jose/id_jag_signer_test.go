@@ -40,7 +40,7 @@ func TestVerifyIDTokenAssertion_REQ_OAUTH2_067(t *testing.T) {
 		t.Fatalf("assertion = %+v", assertion)
 	}
 
-	key, err := store.GetActiveKey(ctx)
+	key, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestSignIDJAGUsesDedicatedRS256Key_REQ_SIGNINGKEYS_013(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := store.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning))
+	key, err := store.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

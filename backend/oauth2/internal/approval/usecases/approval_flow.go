@@ -375,8 +375,8 @@ func approvedAudiences(ctx context.Context, servers oauthports.McpResourceServer
 	return audiences, nil
 }
 
-func ListPendingApprovals(ctx context.Context, store approvalports.ApprovalRequestStore, userID string) ([]*approvaldomain.ApprovalRequest, error) {
-	return store.ListPendingForUser(ctx, userID)
+func ListPendingApprovals(ctx context.Context, store approvalports.ApprovalRequestStore, userID string, now time.Time) ([]*approvaldomain.ApprovalRequest, error) {
+	return store.ListPendingForUser(ctx, userID, now)
 }
 
 func DecideApproval(ctx context.Context, store approvalports.ApprovalRequestStore, emitFn func(spec.DomainEvent), userID, id string, approve bool, now time.Time) error {

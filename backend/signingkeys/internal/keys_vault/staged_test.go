@@ -39,7 +39,7 @@ func TestVaultPreparedSelectionSurvivesRestart(t *testing.T) {
 		return adaptercrypto.NewVaultKeyStoreWithState(engine, "idmagic-signing-", signingpostgres.VaultKeyStateStore{Pool: db})
 	}
 	first := newStore()
-	old, err := first.GetActiveKey(ctx)
+	old, err := first.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestVaultPreparedSelectionSurvivesRestart(t *testing.T) {
 		t.Fatalf("prepare: %+v", prepared)
 	}
 	restarted := newStore()
-	current, err := restarted.GetActiveKey(ctx)
+	current, err := restarted.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || current.Kid != old.Kid {
 		t.Fatalf("restart selected new key: %v %+v", err, current)
 	}
@@ -72,7 +72,7 @@ func TestVaultPreparedSelectionSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current, err = first.GetActiveKey(ctx)
+	current, err = first.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || current.Kid != activated.Next.Kid {
 		t.Fatal("another process retained the old selection")
 	}
@@ -172,7 +172,7 @@ func TestVaultPreparationPersistenceFailureKeepsTheSigningKey(t *testing.T) {
 	engine := newFakeTransit()
 	ctx := signingports.WithKeyUsage(tenantCtx(), signingdomain.KeyUsageXMLFederationSigning)
 	store := adaptercrypto.NewVaultKeyStoreWithState(engine, "idmagic-signing-", state)
-	old, err := store.GetActiveKey(ctx)
+	old, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestVaultPreparationPersistenceFailureKeepsTheSigningKey(t *testing.T) {
 		t.Fatal("persist failure was ignored")
 	}
 	state.fail = false
-	current, err := adaptercrypto.NewVaultKeyStoreWithState(engine, "idmagic-signing-", state).GetActiveKey(ctx)
+	current, err := adaptercrypto.NewVaultKeyStoreWithState(engine, "idmagic-signing-", state).GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || current.Kid != old.Kid {
 		t.Fatal("orphaned Vault version became active")
 	}

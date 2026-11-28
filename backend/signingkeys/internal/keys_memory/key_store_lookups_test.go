@@ -25,7 +25,7 @@ func TestInMemoryKeyStoreFindByKID(t *testing.T) {
 		}
 	})
 
-	active, err := ks.GetActiveKey(ctx)
+	active, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

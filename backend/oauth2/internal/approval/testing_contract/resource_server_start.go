@@ -97,7 +97,7 @@ func RunResourceServerStartContract(t *testing.T, newFixture func(t *testing.T) 
 		if _, outcome := start(t, f, request(f, f.OtherUser, "op-over"), now); outcome != approvalports.StartCreated {
 			t.Fatalf("another user at the limit: outcome=%v", outcome)
 		}
-		pending, err := f.Store.ListPendingForUser(f.Context, f.UserID)
+		pending, err := f.Store.ListPendingForUser(f.Context, f.UserID, now)
 		if err != nil || len(pending) != approvaldomain.MaxPendingResourceServerApprovals {
 			t.Fatalf("pending=%d err=%v", len(pending), err)
 		}

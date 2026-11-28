@@ -16,8 +16,7 @@ import (
 func TestCSVImportContextExpiresAtTheInputDeadline(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	store := idmmemory.NewCSVArtifactStore()
-	store.Now = func() time.Time { return now.Add(-30 * 24 * time.Hour).Add(20 * time.Millisecond) }
-	artifact, err := store.PutCSVArtifact(context.Background(), "tenant", func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
+	artifact, err := store.PutCSVArtifact(context.Background(), "tenant", now.Add(-30*24*time.Hour).Add(20*time.Millisecond), func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,8 +46,7 @@ func (s slowCSVArtifactStore) OpenCSVArtifact(ctx context.Context, tenantID, ref
 func TestCSVImportContextIncludesMetadataLookupInItsDeadline(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	store := idmmemory.NewCSVArtifactStore()
-	store.Now = func() time.Time { return now.Add(-30 * 24 * time.Hour).Add(20 * time.Millisecond) }
-	artifact, err := store.PutCSVArtifact(context.Background(), "tenant", func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
+	artifact, err := store.PutCSVArtifact(context.Background(), "tenant", now.Add(-30*24*time.Hour).Add(20*time.Millisecond), func(w io.Writer) error { _, err := io.WriteString(w, "alice@example.com"); return err })
 	if err != nil {
 		t.Fatal(err)
 	}

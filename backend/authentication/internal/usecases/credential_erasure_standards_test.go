@@ -144,7 +144,7 @@ func TestCredentialErasureLeavesNothingAuthenticable(t *testing.T) {
 	if got, err := factors.ListBySub(ctx, credentialSubject); err != nil || len(got) != 0 {
 		t.Fatalf("消去後に残った MFA 要素=%v err=%v", got, err)
 	}
-	if session, err := sessions.Find(ctx, "session-erasure"); err != nil || session != nil {
+	if session, err := sessions.Find(ctx, "session-erasure", time.Now().UTC()); err != nil || session != nil {
 		t.Fatalf("消去後に残ったセッション=%+v err=%v", session, err)
 	}
 	if device, err := devices.FindBySelector(ctx, tenancydomain.DefaultTenantID, "selector-erasure"); err != nil || device != nil {

@@ -19,13 +19,13 @@ func TestSessionManagerCreate_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	store := memory.NewSessionStore()
-	store.Clock = func() time.Time { return now }
 	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{ActiveSessions: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	manager := NewSessionManager(store)
+	manager.Now = func() time.Time { return now }
 	manager.QuotaRepo = quotaRepo
 
 	if _, err := manager.Create(ctx, "user-1", []string{"pwd"}, now); err != nil {
@@ -45,13 +45,13 @@ func TestRevokeOwnSession_decrementsQuotaUsage(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	store := memory.NewSessionStore()
-	store.Clock = func() time.Time { return now }
 	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{ActiveSessions: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	manager := NewSessionManager(store)
+	manager.Now = func() time.Time { return now }
 	manager.QuotaRepo = quotaRepo
 
 	created, err := manager.Create(ctx, "user-1", []string{"pwd"}, now)

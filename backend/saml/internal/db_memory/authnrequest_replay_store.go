@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -17,7 +18,7 @@ func NewAuthnRequestReplayStore() *authnRequestReplayStore {
 
 func (s *authnRequestReplayStore) RecordIfNew(_ context.Context, tenantID, entityID, requestID string, ttl time.Duration, now time.Time) (bool, error) {
 	if now.IsZero() {
-		now = time.Now().UTC()
+		return false, errors.New("AuthnRequest replay reservation requires the current time")
 	}
 	key := tenantID + "\x00" + entityID + "\x00" + requestID
 	s.mu.Lock()

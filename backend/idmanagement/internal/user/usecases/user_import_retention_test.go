@@ -23,7 +23,6 @@ func TestUserImportInputExpiryDoesNotExtendWithApply(t *testing.T) {
 	created := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 	boundary := created.Add(30 * 24 * time.Hour)
 	artifacts := idmmemory.NewCSVArtifactStore()
-	artifacts.Now = func() time.Time { return created }
 	repo := jobs.NewJobRepository()
 	deps := UserImportStartDeps{SchemaReader: importSchemaReader{}, Artifacts: artifacts, Jobs: repo, Enqueuer: testJobEnqueuer(repo)}
 	preview, err := StartUserImportPreview(ctx, deps, "admin", strings.NewReader("preferred_username\nalice\n"), created)
@@ -82,7 +81,6 @@ func TestUserImportExpiredPreviewCreatesNoResult(t *testing.T) {
 	ctx := importPlannerContext()
 	created := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 	store := idmmemory.NewCSVArtifactStore()
-	store.Now = func() time.Time { return created }
 	repo := jobs.NewJobRepository()
 	job, err := StartUserImportPreview(ctx, UserImportStartDeps{SchemaReader: importSchemaReader{}, Artifacts: store, Jobs: repo, Enqueuer: testJobEnqueuer(repo)}, "admin", strings.NewReader("preferred_username\nalice\n"), created)
 	if err != nil {

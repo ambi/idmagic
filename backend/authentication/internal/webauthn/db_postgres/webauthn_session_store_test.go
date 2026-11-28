@@ -28,7 +28,7 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	if err := store.Save(ctx, "key-1", data, now.Add(time.Minute)); err != nil {
 		t.Fatalf("save: %v", err)
 	}
-	got, err := store.Take(ctx, "key-1")
+	got, err := store.Take(ctx, "key-1", now)
 	if err != nil || got == nil {
 		t.Fatalf("take: %v %+v (want data)", err, got)
 	}
@@ -36,19 +36,19 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	if err := json.Unmarshal(got.Payload, &stored); err != nil || stored["challenge"] != "abc" || stored["user_id"] != "dXNlci0x" {
 		t.Fatalf("round-trip mismatch: %s (%v)", got.Payload, err)
 	}
-	if got2, err := store.Take(ctx, "key-1"); err != nil || got2 != nil {
+	if got2, err := store.Take(ctx, "key-1", now); err != nil || got2 != nil {
 		t.Fatalf("second take=%+v err=%v (want nil, once-only)", got2, err)
 	}
 	if err := store.Save(ctx, "key-exp", data, now.Add(-time.Second)); err != nil {
 		t.Fatalf("save expired: %v", err)
 	}
-	if got, err := store.Take(ctx, "key-exp"); err != nil || got != nil {
+	if got, err := store.Take(ctx, "key-exp", now); err != nil || got != nil {
 		t.Fatalf("expired take=%+v err=%v (want nil)", got, err)
 	}
 	if err := store.Save(ctx, "key-iso", data, now.Add(time.Minute)); err != nil {
 		t.Fatalf("save iso: %v", err)
 	}
-	if got, err := store.Take(otherCtx, "key-iso"); err != nil || got != nil {
+	if got, err := store.Take(otherCtx, "key-iso", now); err != nil || got != nil {
 		t.Fatalf("cross-tenant take=%+v err=%v (want nil)", got, err)
 	}
 	if n, err := store.DeleteExpiredBatch(ctx, now, 100); err != nil || n < 1 {

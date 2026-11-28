@@ -31,7 +31,7 @@ func TestRetentionSweepReconcilesSoftQuotas(t *testing.T) {
 		if err := deps.Audit.AuditEventRepo.Append(ctx, &auditports.AuditEventRecord{ID: id, TenantID: id, Type: "TenantCreated", OccurredAt: now}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := deps.IdManagement.CSVArtifacts.PutCSVArtifact(ctx, id, func(w io.Writer) error { _, err := io.WriteString(w, "abc"); return err }); err != nil {
+		if _, err := deps.IdManagement.CSVArtifacts.PutCSVArtifact(ctx, id, time.Now().UTC(), func(w io.Writer) error { _, err := io.WriteString(w, "abc"); return err }); err != nil {
 			t.Fatal(err)
 		}
 	}

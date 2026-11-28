@@ -769,7 +769,7 @@ func TestApiTokenCannotStepUpAnySession(t *testing.T) {
 	}
 
 	// 拒否が変えなかったもの: どのセッションのステップアップも成立していない。
-	session, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), stale)
+	session, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), stale, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

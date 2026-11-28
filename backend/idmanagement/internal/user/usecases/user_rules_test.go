@@ -689,7 +689,7 @@ func TestDeleteUserAnonymizesAnActiveUserAndReleasesItsQuota(t *testing.T) {
 	if ok, _ := testing_passwords.NewHasher().Verify("any-password", stored.PasswordHash); ok {
 		t.Fatalf("完全削除した User のパスワードが照合に通った")
 	}
-	if sessions, _ := f.sessions.ListBySub(ctx, alice.ID); len(sessions) != 0 {
+	if sessions, _ := f.sessions.ListBySub(ctx, alice.ID, time.Now().UTC()); len(sessions) != 0 {
 		t.Fatalf("sessions=%+v, want none", sessions)
 	}
 	usage, err := f.quota.GetUsage(ctx, tenancydomain.DefaultTenantID)
@@ -784,7 +784,7 @@ func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
 		if err := purge(f, "admin"); !errors.Is(err, errInjected) {
 			t.Fatalf("first purge err=%v, want injected failure", err)
 		}
-		remaining, _ := f.sessions.ListBySub(testing_tenant.Default(context.Background()), "alice")
+		remaining, _ := f.sessions.ListBySub(testing_tenant.Default(context.Background()), "alice", time.Now().UTC())
 		if !f.stored(t, "alice").IsDeleted() || len(remaining) != 1 || f.usersUsage(t) != 2 || len(f.eventsOf("UserDeleted")) != 0 {
 			t.Fatalf("前提：匿名化の後、関連する記録を消す前に止まっていない")
 		}
@@ -793,7 +793,7 @@ func TestDeleteUserResumesAPurgeThatFailedAfterAnonymizing(t *testing.T) {
 		if err := purge(f, "admin-2"); err != nil {
 			t.Fatal(err)
 		}
-		if remaining, _ := f.sessions.ListBySub(testing_tenant.Default(context.Background()), "alice"); len(remaining) != 0 {
+		if remaining, _ := f.sessions.ListBySub(testing_tenant.Default(context.Background()), "alice", time.Now().UTC()); len(remaining) != 0 {
 			t.Fatalf("sessions=%+v, want none", remaining)
 		}
 		if usage := f.usersUsage(t); usage != 1 {

@@ -31,5 +31,6 @@ type AuthorizationCodeStore interface {
 type PARStore interface {
 	Save(ctx context.Context, rec *oauthdomain.PARRecord) error
 	Find(ctx context.Context, requestURI string) (*oauthdomain.PARRecord, error)
-	Consume(ctx context.Context, requestURI string) (*oauthdomain.PARRecord, error)
+	// Consume は now で期限内かつ未使用の要求を使用済みにして返す。なければ nil を返す。
+	Consume(ctx context.Context, requestURI string, now time.Time) (*oauthdomain.PARRecord, error)
 }

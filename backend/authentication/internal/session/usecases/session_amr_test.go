@@ -31,7 +31,7 @@ func TestSessionManagerRefusesAMROutsideTheVocabulary(t *testing.T) {
 	if !strings.Contains(err.Error(), "mfa") {
 		t.Fatalf("err=%v does not name the rejected value", err)
 	}
-	issued, err := store.ListBySub(ctx, "user-alice")
+	issued, err := store.ListBySub(ctx, "user-alice", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestSessionManagerRefusesAMROutsideTheVocabulary(t *testing.T) {
 	if !strings.Contains(err.Error(), "sms") {
 		t.Fatalf("err=%v does not name the rejected value", err)
 	}
-	stored, err := store.Find(ctx, valid.SessionID)
+	stored, err := store.Find(ctx, valid.SessionID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

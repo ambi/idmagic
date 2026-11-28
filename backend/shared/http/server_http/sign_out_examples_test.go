@@ -64,7 +64,7 @@ func TestSignOutRevokesTheServerSideSessionForEveryEndpointShape(t *testing.T) {
 				}
 
 				// サーバー側の失効。Cookie を消すだけの実装はここで落ちる。
-				found, err := s.SessionStore.Find(testing_tenant.Default(context.Background()), sessionID)
+				found, err := s.SessionStore.Find(testing_tenant.Default(context.Background()), sessionID, time.Now().UTC())
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -51,8 +51,8 @@ type ConnectionRepository interface {
 
 // AttemptStore は進行中の連携の保存先である。
 type AttemptStore interface {
-	// Save は同じ本人とコネクタの連携を置き換える。
-	Save(ctx context.Context, attempt *tokenvaultdomain.ConnectionAttempt) error
+	// Save は同じ本人とコネクタの連携を置き換える。now で期限切れの連携は片付けてよい。
+	Save(ctx context.Context, attempt *tokenvaultdomain.ConnectionAttempt, now time.Time) error
 	// Consume は一致する期限内の連携を原子的に消して返す。なければ nil を返す。
 	Consume(ctx context.Context, tenantID, connectorID, userID string, stateHash []byte, now time.Time) (*tokenvaultdomain.ConnectionAttempt, error)
 }

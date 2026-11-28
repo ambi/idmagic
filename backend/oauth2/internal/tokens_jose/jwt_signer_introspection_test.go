@@ -240,7 +240,7 @@ func TestVerifyIDTokenHintReturnsAudienceArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()))
+	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

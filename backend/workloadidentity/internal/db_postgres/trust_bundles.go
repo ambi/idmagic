@@ -145,7 +145,8 @@ func (r *WorkloadTrustBundleRepository) Save(ctx context.Context, b *workloaddom
 			return err
 		}
 	}
-	updatedAt := time.Now().UTC()
+	// 作成したばかりで更新のない行は、作成の時刻を更新の時刻として記録する。
+	updatedAt := b.CreatedAt
 	if b.UpdatedAt != nil {
 		updatedAt = *b.UpdatedAt
 	}

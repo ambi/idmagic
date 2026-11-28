@@ -52,7 +52,7 @@ func (s *JWTSigner) AccessTokenTTLSeconds() int { return accessTokenTTLSeconds }
 func (s *JWTSigner) IDTokenTTLSeconds() int     { return idTokenTTLSeconds }
 
 func (s *JWTSigner) SignLogoutToken(ctx context.Context, in logoutports.LogoutTokenInput) (string, error) {
-	key, err := s.KeyStore.GetActiveKey(ctx)
+	key, err := s.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +68,7 @@ func (s *JWTSigner) SignLogoutToken(ctx context.Context, in logoutports.LogoutTo
 }
 
 func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTokenInput) (string, string, error) {
-	key, err := s.KeyStore.GetActiveKey(ctx)
+	key, err := s.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		return "", "", err
 	}
@@ -158,7 +158,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 }
 
 func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput) (string, error) {
-	key, err := s.KeyStore.GetActiveKey(ctx)
+	key, err := s.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		return "", err
 	}

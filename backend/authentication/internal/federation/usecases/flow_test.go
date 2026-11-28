@@ -145,7 +145,7 @@ func TestCompleteLoginRejectsAStateThatIsNotTheOneItIssued(t *testing.T) {
 	}
 	sessionCount := func(t *testing.T) int {
 		t.Helper()
-		issued, err := sessions.ListBySub(ctx, user.ID)
+		issued, err := sessions.ListBySub(ctx, user.ID, time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}

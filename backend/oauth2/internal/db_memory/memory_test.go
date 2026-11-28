@@ -78,13 +78,9 @@ func TestReplayStoreAcceptsJTIOnce(t *testing.T) {
 		t.Fatalf("first=%v second=%v", first, second)
 	}
 
-	// now.IsZero() のケースをテスト
-	third, err := store.RecordIfNew(context.Background(), "jti-zero-time", 60, time.Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !third {
-		t.Error("expected true when recording with zero time")
+	// 時刻を渡し忘れた予約は、実時計で補わずに拒否する。
+	if third, err := store.RecordIfNew(context.Background(), "jti-zero-time", 60, time.Time{}); err == nil || third {
+		t.Fatalf("zero time = (%v, %v), want an error", third, err)
 	}
 
 	// 期限切れクリーンアップのケースをテスト

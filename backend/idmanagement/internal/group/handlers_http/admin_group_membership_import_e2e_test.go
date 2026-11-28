@@ -356,10 +356,9 @@ func TestE2EGroupMembershipExportRoundTripsAsUnchangedThroughTheAdminRoutes(t *t
 	h := newMembershipImportHarness(t, groupdomain.GroupMembershipManual)
 	base := "/realms/default/api/admin/v1/groups/group-engineering/members/imports"
 
-	export, err := groupusecases.ExportGroupMembershipCSV(
-		membershipExportContext(), groupusecases.GroupMembershipCSVExportDeps{
-			GroupRepo: h.groups, UserRepo: h.users, Artifacts: h.artifacts,
-		}, "group-engineering", groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), defaultMembershipPolicy())
+	export, err := groupusecases.ExportGroupMembershipCSV(membershipExportContext(), groupusecases.GroupMembershipCSVExportDeps{
+		GroupRepo: h.groups, UserRepo: h.users, Artifacts: h.artifacts,
+	}, "group-engineering", groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), defaultMembershipPolicy(), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -115,10 +115,10 @@ func RevokeAgentDelegation(ctx context.Context, deps ConsentDeps, sub, agentID s
 	if grant == nil {
 		return ErrConsentNotFound
 	}
-	if err := deps.ConsentRepo.RevokeAgentDelegation(ctx, tenantID, sub, agentID); err != nil {
+	if err := deps.ConsentRepo.RevokeAgentDelegation(ctx, tenantID, sub, agentID, now); err != nil {
 		return err
 	}
-	if deps.QuotaRepo != nil && grant.State == oauthdomain.ConsentGranted {
+	if deps.QuotaRepo != nil && grant.StateAt(now) == oauthdomain.ConsentGranted {
 		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
 			return err
 		}

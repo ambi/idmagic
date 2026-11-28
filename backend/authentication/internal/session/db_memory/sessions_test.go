@@ -43,7 +43,7 @@ func TestSessionStore(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, err := store.Find(ctx, "sess-1")
+		found, err := store.Find(ctx, "sess-1", time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -55,7 +55,7 @@ func TestSessionStore(t *testing.T) {
 		}
 
 		// 存在しないセッション
-		notfound, err := store.Find(ctx, "sess-none")
+		notfound, err := store.Find(ctx, "sess-none", time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,15 +74,12 @@ func TestSessionStore(t *testing.T) {
 		}
 		_ = store.Save(ctx, sessExpired)
 
-		// 15分後に時計を進める設定にする
-		store.Clock = func() time.Time {
-			return time.Now().Add(15 * time.Minute)
-		}
-		defer func() { store.Clock = nil }() // テスト後に戻す
+		// 15 分後の時刻で判定する
+		later := time.Now().Add(15 * time.Minute)
 
 		// Find は期限切れセッションを fail-closed に nil として扱う (行は tombstone/housekeeping
 		// 対象であり、Find 自体は物理削除しない、wi-253)。
-		found, err := store.Find(ctx, "sess-expired")
+		found, err := store.Find(ctx, "sess-expired", later)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -111,7 +108,7 @@ func TestSessionStore(t *testing.T) {
 		if _, err := store.Revoke(ctx, "sess-revoke", spec.SessionEndSelfRevoke, now); err != nil {
 			t.Fatal(err)
 		}
-		if found, _ := store.Find(ctx, "sess-revoke"); found != nil {
+		if found, _ := store.Find(ctx, "sess-revoke", time.Now().UTC()); found != nil {
 			t.Error("expected revoked session to be excluded from Find")
 		}
 		owned, err := store.FindOwned(ctx, "sess-revoke", "user-1")
@@ -142,14 +139,14 @@ func TestSessionStore(t *testing.T) {
 
 		now := time.Now().UTC()
 		_ = store.Touch(ctx, "sess-touch", now)
-		found, _ := store.Find(ctx, "sess-touch")
+		found, _ := store.Find(ctx, "sess-touch", time.Now().UTC())
 		if !found.LastSeenAt.Equal(now) {
 			t.Fatalf("LastSeenAt = %v, want %v", found.LastSeenAt, now)
 		}
 
 		soon := now.Add(time.Second)
 		_ = store.Touch(ctx, "sess-touch", soon)
-		found, _ = store.Find(ctx, "sess-touch")
+		found, _ = store.Find(ctx, "sess-touch", time.Now().UTC())
 		if !found.LastSeenAt.Equal(now) {
 			t.Errorf("touch within interval must not update LastSeenAt: got %v, want %v", found.LastSeenAt, now)
 		}
@@ -185,7 +182,7 @@ func TestSessionStore(t *testing.T) {
 
 		// 正常に ListBySub を実行 (sess-1, sess-expired, sess-touch, sess-will-expire が有効。
 		// sess-expired は実時計上はまだ期限内、sess-revoke は revoked なので除外される)。
-		list, err := store.ListBySub(ctx, "user-1")
+		list, err := store.ListBySub(ctx, "user-1", time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -193,13 +190,8 @@ func TestSessionStore(t *testing.T) {
 			t.Fatalf("expected 4 active sessions, got %d: %v", len(list), sessionIDs(list))
 		}
 
-		// 時計を進めて sess-will-expire を失効させる
-		store.Clock = func() time.Time {
-			return time.Now().Add(10 * time.Minute)
-		}
-		defer func() { store.Clock = nil }()
-
-		listExpired, err := store.ListBySub(ctx, "user-1")
+		// 10 分後の時刻で判定し、sess-will-expire を失効させる
+		listExpired, err := store.ListBySub(ctx, "user-1", time.Now().Add(10*time.Minute))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -214,7 +206,7 @@ func TestSessionStore(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		found, _ := store.Find(ctx, "sess-other")
+		found, _ := store.Find(ctx, "sess-other", time.Now().UTC())
 		if found != nil {
 			t.Error("expected sess-other to be deleted")
 		}
@@ -263,13 +255,13 @@ func TestSessionStoreIsolatesTenants(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if found, _ := store.Find(intruder, "sess-owned"); found != nil {
+	if found, _ := store.Find(intruder, "sess-owned", time.Now().UTC()); found != nil {
 		t.Error("別テナントの Find が行を返した")
 	}
 	if owned, _ := store.FindOwned(intruder, "sess-owned", "user-1"); owned != nil {
 		t.Error("別テナントの FindOwned が行を返した")
 	}
-	if list, _ := store.ListBySub(intruder, "user-1"); len(list) != 0 {
+	if list, _ := store.ListBySub(intruder, "user-1", time.Now().UTC()); len(list) != 0 {
 		t.Errorf("別テナントの ListBySub が %d 件返した", len(list))
 	}
 

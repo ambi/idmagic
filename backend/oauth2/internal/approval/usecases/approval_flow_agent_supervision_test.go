@@ -23,7 +23,7 @@ func TestApprovalRecordsTheAgentItPermitted(t *testing.T) {
 	}, t0); err != nil {
 		t.Fatal(err)
 	}
-	records, err := f.store.ListPendingForUser(f.ctx, "alice-id")
+	records, err := f.store.ListPendingForUser(f.ctx, "alice-id", time.Now().UTC())
 	if err != nil || len(records) != 1 {
 		t.Fatalf("pending records = %d, err = %v", len(records), err)
 	}

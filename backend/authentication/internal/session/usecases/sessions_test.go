@@ -43,7 +43,7 @@ func TestListSessionsMarksCurrentAndSortsDesc(t *testing.T) {
 	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
 	seedSession(t, store, "s3", "bob", base.Add(2*time.Minute))
 
-	views, err := sessionusecases.ListSessions(ctx, store, "alice", "s2")
+	views, err := sessionusecases.ListSessions(ctx, store, "alice", "s2", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 		"alice", "s2", base); !errors.Is(err, sessionusecases.ErrSessionNotFound) {
 		t.Fatalf("error=%v, want ErrSessionNotFound", err)
 	}
-	if sess, _ := store.Find(ctx, "s2"); sess == nil {
+	if sess, _ := store.Find(ctx, "s2", time.Now().UTC()); sess == nil {
 		t.Fatal("bob's session was deleted")
 	}
 
@@ -83,7 +83,7 @@ func TestRevokeOwnSessionRejectsOthersSession(t *testing.T) {
 	}, "alice", "s1", base); err != nil {
 		t.Fatal(err)
 	}
-	if sess, _ := store.Find(ctx, "s1"); sess != nil {
+	if sess, _ := store.Find(ctx, "s1", time.Now().UTC()); sess != nil {
 		t.Fatal("alice's session was not deleted")
 	}
 	if len(events) != 1 || events[0].EventType() != "SessionEnded" {
@@ -108,7 +108,7 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	remaining, _ := sessionusecases.ListSessions(ctx, store, "alice", "s2")
+	remaining, _ := sessionusecases.ListSessions(ctx, store, "alice", "s2", time.Now().UTC())
 	if len(remaining) != 1 || remaining[0].ID != "s2" {
 		t.Fatalf("remaining=%#v, want only s2", remaining)
 	}
@@ -137,7 +137,7 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 	}, "s1", base); err != nil {
 		t.Fatal(err)
 	}
-	if sess, _ := store.Find(ctx, "s1"); sess != nil {
+	if sess, _ := store.Find(ctx, "s1", time.Now().UTC()); sess != nil {
 		t.Fatal("s1 was not revoked")
 	}
 	if len(events) != 1 || events[0].EventType() != "SessionEnded" {
@@ -170,7 +170,7 @@ func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {
 	seedSession(t, store, "s2", "alice", base.Add(time.Minute))
 	seedSession(t, store, "s3", "bob", base)
 
-	views, err := sessionusecases.AdminListSessions(ctx, store, "alice")
+	views, err := sessionusecases.AdminListSessions(ctx, store, "alice", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 		"admin-1", "bob", "s1", base); !errors.Is(err, sessionusecases.ErrSessionNotFound) {
 		t.Fatalf("error=%v, want ErrSessionNotFound", err)
 	}
-	if sess, _ := store.Find(ctx, "s1"); sess == nil {
+	if sess, _ := store.Find(ctx, "s1", time.Now().UTC()); sess == nil {
 		t.Fatal("alice's session was revoked despite user_id mismatch")
 	}
 
@@ -208,7 +208,7 @@ func TestAdminRevokeSessionRejectsSessionOfOtherUser(t *testing.T) {
 	}, "admin-1", "alice", "s1", base); err != nil {
 		t.Fatal(err)
 	}
-	if sess, _ := store.Find(ctx, "s1"); sess != nil {
+	if sess, _ := store.Find(ctx, "s1", time.Now().UTC()); sess != nil {
 		t.Fatal("alice's session was not revoked")
 	}
 	if len(events) != 1 || events[0].EventType() != "SessionEnded" {
@@ -250,11 +250,11 @@ func TestAdminRevokeUserSessionsRevokesAllWithNoExclusion(t *testing.T) {
 	if len(revokedIDs) != 2 || !slices.Contains(revokedIDs, "s1") || !slices.Contains(revokedIDs, "s2") {
 		t.Fatalf("revokedIDs=%#v, want [s1 s2]", revokedIDs)
 	}
-	remaining, _ := sessionusecases.AdminListSessions(ctx, store, "alice")
+	remaining, _ := sessionusecases.AdminListSessions(ctx, store, "alice", time.Now().UTC())
 	if len(remaining) != 0 {
 		t.Fatalf("remaining=%#v, want none", remaining)
 	}
-	if sess, _ := store.Find(ctx, "s3"); sess == nil {
+	if sess, _ := store.Find(ctx, "s3", time.Now().UTC()); sess == nil {
 		t.Fatal("bob's session must not be revoked")
 	}
 	if len(events) != 2 {

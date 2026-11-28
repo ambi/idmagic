@@ -13,6 +13,7 @@ import { checkLinks } from './check-links.ts'
 import { checkModuleDependencies } from './check-module-dependencies.ts'
 import { checkPortalApiCalls } from './check-portal-api-calls.ts'
 import { checkRawSql } from './check-raw-sql.ts'
+import { checkSqlClock } from './check-sql-clock.ts'
 import { checkSqlConcurrency } from './check-sql-concurrency.ts'
 import { checkSchemaTables } from './check-schema-tables.ts'
 import { checkSecurityControls } from './check-security-controls.ts'
@@ -44,6 +45,7 @@ export const repositoryChecks: readonly RepositoryCheck[] = [
   { name: 'raw-sql', groups: ['all'], run: checkRawSql },
   { name: 'portal-api-calls', groups: ['all'], run: checkPortalApiCalls },
   { name: 'sql-concurrency', groups: ['all'], run: checkSqlConcurrency },
+  { name: 'sql-clock', groups: ['all'], run: checkSqlClock },
   { name: 'test-document-reads', groups: ['all'], run: checkTestDocumentReads },
   { name: 'tool-test-inputs', groups: ['all'], run: checkToolTestInputs },
   { name: 'agent-guidance', groups: ['all'], run: checkAgentGuidance },

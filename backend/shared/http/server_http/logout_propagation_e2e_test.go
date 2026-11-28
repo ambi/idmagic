@@ -95,7 +95,7 @@ func newLogoutE2EFixture(t *testing.T, mutate func(*oauthdomain.OAuth2Client)) l
 // この 2 つの効果を読まないと「配信が失敗したので失効もしなかった」実装を通す。
 func (f logoutE2EFixture) assertLocalLogoutSettled(t *testing.T) {
 	t.Helper()
-	session, err := f.sessions.Find(testing_tenant.Default(context.Background()), f.sessionID)
+	session, err := f.sessions.Find(testing_tenant.Default(context.Background()), f.sessionID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

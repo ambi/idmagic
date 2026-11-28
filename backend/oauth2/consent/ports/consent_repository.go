@@ -18,7 +18,8 @@ type ConsentRepository interface {
 	ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*consentdomain.Consent, error)
 	ListPageBefore(ctx context.Context, tenantID, beforeUserID, beforeClientID string, limit int) ([]*consentdomain.Consent, error)
 	Save(ctx context.Context, tenantID string, c *consentdomain.Consent) error
-	Revoke(ctx context.Context, tenantID, sub, clientID string) error
+	// Revoke は未撤回の同意を now に撤回したものとして記録する。撤回済みなら何もしない。
+	Revoke(ctx context.Context, tenantID, sub, clientID string, now time.Time) error
 	// DeleteAllForSub は anonymize cascade から呼ばれる。
 	// 対象 sub の Consent と Agent への代行を物理削除し、消した行のうち撤回していない行の件数を返す。
 	// 撤回していない行（期限切れを含む）は consents の使用量を占めており、呼び出し側が減算に使う。
@@ -37,7 +38,7 @@ type ConsentRepository interface {
 	ListAgentDelegationPageBefore(ctx context.Context, tenantID, beforeUserID, beforeAgentID string, limit int) ([]*consentdomain.Consent, error)
 	// SaveAgentDelegation は付与を Granted で置き換える。last_used_at は保つ。
 	SaveAgentDelegation(ctx context.Context, tenantID string, c *consentdomain.Consent) error
-	RevokeAgentDelegation(ctx context.Context, tenantID, sub, agentID string) error
+	RevokeAgentDelegation(ctx context.Context, tenantID, sub, agentID string, now time.Time) error
 	// TouchAgentDelegation は付与の last_used_at を at にする。
 	TouchAgentDelegation(ctx context.Context, tenantID, sub, agentID string, at time.Time) error
 }

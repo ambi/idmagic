@@ -51,7 +51,7 @@ ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO UPDATE SET
   updated_at = now();
 
 -- name: RevokeConsent :exec
-UPDATE consents SET revoked_at = now(), updated_at = now()
+UPDATE consents SET revoked_at = $3, updated_at = $3
 WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL;
 
 -- name: DeleteConsentsForSub :one
@@ -118,7 +118,7 @@ ON CONFLICT (user_id, agent_id) WHERE agent_id IS NOT NULL DO UPDATE SET
   updated_at = now();
 
 -- name: RevokeAgentDelegation :exec
-UPDATE consents SET revoked_at = now(), updated_at = now()
+UPDATE consents SET revoked_at = $3, updated_at = $3
 WHERE user_id = $1 AND agent_id = $2 AND revoked_at IS NULL;
 
 -- name: TouchAgentDelegation :exec

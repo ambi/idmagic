@@ -23,7 +23,7 @@ func TestRotateSigningKeyKeepsPreviousKidInJWKS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prev, err := keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
+	prev, err := keyStore.GetActiveKey(testing_tenant.Default(context.Background()), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

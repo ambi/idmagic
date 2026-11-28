@@ -84,7 +84,7 @@ func (d Deps) handleListMyApprovalRequests(c *echo.Context) error {
 	if authn == nil || authn.AuthenticationPending {
 		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
-	records, err := approvalusecases.ListPendingApprovals(c.Request().Context(), d.ApprovalRequestStore, authn.UserID)
+	records, err := approvalusecases.ListPendingApprovals(c.Request().Context(), d.ApprovalRequestStore, authn.UserID, time.Now().UTC())
 	if err != nil {
 		return err
 	}

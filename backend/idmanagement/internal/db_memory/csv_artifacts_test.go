@@ -17,8 +17,7 @@ func TestCSVArtifactStoreDeletesArtifactsSavedBeforeTheCutoff(t *testing.T) {
 	ctx := context.Background()
 	put := func(savedAt time.Time) string {
 		t.Helper()
-		store.Now = func() time.Time { return savedAt }
-		metadata, err := store.PutCSVArtifact(ctx, "tenant-a", func(output io.Writer) error {
+		metadata, err := store.PutCSVArtifact(ctx, "tenant-a", savedAt, func(output io.Writer) error {
 			_, err := io.WriteString(output, "preferred_username\nalice\n")
 			return err
 		})

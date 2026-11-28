@@ -74,11 +74,12 @@ func StartLink(ctx context.Context, deps Deps, in StartLinkInput) (string, error
 	if err != nil {
 		return "", err
 	}
+	now := deps.now()
 	if err := deps.Attempts.Save(ctx, &tokenvaultdomain.ConnectionAttempt{
 		ID: uuid.NewV4().String(), TenantID: in.TenantID, ConnectorID: in.ConnectorID, UserID: in.UserID,
 		StateHash: hashState(state), CodeVerifier: verifier, RequestedScopes: scopes,
-		ExpiresAt: deps.now().Add(tokenvaultdomain.AttemptTTL),
-	}); err != nil {
+		ExpiresAt: now.Add(tokenvaultdomain.AttemptTTL),
+	}, now); err != nil {
 		return "", err
 	}
 	challenge := sha256.Sum256([]byte(verifier))

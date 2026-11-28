@@ -33,6 +33,15 @@ type SessionManager struct {
 	// Emit reports QuotaExceeded audit events (SCL objective QuotaAudit) when
 	// QuotaRepo rejects a session create. nil is a valid no-op sink.
 	Emit func(spec.DomainEvent)
+	// Now は、時刻を引数に取らない入口がセッションの有効性を判定する時刻を返す。nil なら実時計を使う。
+	Now func() time.Time
+}
+
+func (m *SessionManager) now() time.Time {
+	if m.Now != nil {
+		return m.Now()
+	}
+	return time.Now().UTC()
 }
 
 func NewSessionManager(s sessionports.SessionStore) *SessionManager {
@@ -103,7 +112,7 @@ func (m *SessionManager) CompleteFactor(
 	sessionID string,
 	additionalAMR []string,
 ) (*authdomain.AuthenticationContext, error) {
-	sess, err := m.Store.Find(ctx, sessionID)
+	sess, err := m.Store.Find(ctx, sessionID, m.now())
 	if err != nil || sess == nil {
 		return nil, err
 	}
@@ -152,7 +161,7 @@ func (m *SessionManager) RequireFactor(
 	ctx context.Context,
 	sessionID string,
 ) (*authdomain.AuthenticationContext, error) {
-	sess, err := m.Store.Find(ctx, sessionID)
+	sess, err := m.Store.Find(ctx, sessionID, m.now())
 	if err != nil || sess == nil {
 		return nil, err
 	}
@@ -184,7 +193,7 @@ func (m *SessionManager) RequireEnrollment(
 	if deadline.IsZero() || bypassID == "" {
 		return nil, mfadomain.ErrInvalidMfaEnrollmentBypass
 	}
-	sess, err := m.Store.Find(ctx, sessionID)
+	sess, err := m.Store.Find(ctx, sessionID, m.now())
 	if err != nil || sess == nil {
 		return nil, err
 	}
@@ -220,7 +229,7 @@ func (m *SessionManager) RecordStepUp(
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	sess, err := m.Store.Find(ctx, sessionID)
+	sess, err := m.Store.Find(ctx, sessionID, now)
 	if err != nil || sess == nil {
 		return nil, err
 	}
@@ -247,7 +256,7 @@ func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers
 	if sid == "" {
 		return nil, nil //nolint:nilnil // A missing session cookie is an anonymous request, not an error.
 	}
-	sess, err := m.Store.Find(ctx, sid)
+	sess, err := m.Store.Find(ctx, sid, m.now())
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -22,11 +23,14 @@ type replayStore struct {
 	seen map[string]replayEntry
 }
 
+// errReplayTimeRequired は、予約の時刻を渡し忘れた呼び出しを期限内と誤らせずに止める。
+var errReplayTimeRequired = errors.New("replay reservation requires the current time")
+
 func newReplayStore() *replayStore { return &replayStore{seen: map[string]replayEntry{}} }
 
 func (s *replayStore) recordIfNew(jti string, windowSeconds int, now time.Time) (bool, error) {
 	if now.IsZero() {
-		now = time.Now()
+		return false, errReplayTimeRequired
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

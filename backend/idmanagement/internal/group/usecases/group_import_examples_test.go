@@ -263,8 +263,7 @@ func TestGroupCSVExportFailsRatherThanWriteAnUnimportableArtifact(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = ExportGroupCSV(f.ctx, deps, schema.ColumnKeys(),
-		idmdomain.CSVTransferPolicy{MaxRows: 2, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10})
+	_, err = ExportGroupCSV(f.ctx, deps, schema.ColumnKeys(), idmdomain.CSVTransferPolicy{MaxRows: 2, MaxBytes: 1 << 20, MaxFieldBytes: 1 << 10}, time.Now().UTC())
 	csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
 	if !ok || csvErr.Code != idmdomain.CSVErrorTooManyRows {
 		t.Fatalf("error = %v, want too_many_rows", err)
@@ -281,9 +280,9 @@ type countingCSVArtifactStore struct {
 }
 
 func (s *countingCSVArtifactStore) PutCSVArtifact(
-	ctx context.Context, tenantID string, write func(io.Writer) error,
+	ctx context.Context, tenantID string, createdAt time.Time, write func(io.Writer) error,
 ) (idmports.CSVArtifact, error) {
-	artifact, err := s.CSVArtifactStore.PutCSVArtifact(ctx, tenantID, write)
+	artifact, err := s.CSVArtifactStore.PutCSVArtifact(ctx, tenantID, createdAt, write)
 	if err == nil {
 		s.stored++
 	}

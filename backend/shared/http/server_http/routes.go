@@ -568,7 +568,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 // 本人の絞り込みと Granted の判定は OAuth2 に残す。
 func accountConsentExport(consents consentports.AccountConsents) func(context.Context, string) ([]userports.AccountConsent, error) {
 	return func(ctx context.Context, sub string) ([]userports.AccountConsent, error) {
-		granted, err := consents.ListGranted(ctx, sub)
+		granted, err := consents.ListGranted(ctx, sub, time.Now().UTC())
 		if err != nil {
 			return nil, err
 		}

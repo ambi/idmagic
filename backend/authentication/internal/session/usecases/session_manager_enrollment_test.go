@@ -15,8 +15,8 @@ func TestSessionManagerEnrollmentUsesSameSessionAndCompletesMfa(t *testing.T) {
 	ctx := testing_tenant.Default(context.Background())
 	now := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
 	store := memory.NewSessionStore()
-	store.Clock = func() time.Time { return now }
 	manager := NewSessionManager(store)
+	manager.Now = func() time.Time { return now }
 	created, err := manager.Create(ctx, "user", []string{"pwd"}, now)
 	if err != nil {
 		t.Fatal(err)

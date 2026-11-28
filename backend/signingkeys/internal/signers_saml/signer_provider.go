@@ -47,7 +47,7 @@ func (p KeyStoreSignerProvider) Resolve(ctx context.Context) (*tokens_saml.Signe
 	if p.KeyStore == nil || !p.KeyStore.Healthy(ctx) {
 		return nil, fmt.Errorf("samltoken: federation key provider unavailable")
 	}
-	key, err := p.KeyStore.GetActiveKey(p.xmlContext(ctx))
+	key, err := p.KeyStore.GetActiveKey(p.xmlContext(ctx), time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}

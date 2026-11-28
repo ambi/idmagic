@@ -117,7 +117,7 @@ func jwksKids(t *testing.T, s *stack.Stack, jwksRealm string) []string {
 
 func activeKid(t *testing.T, s *stack.Stack, keyRealm string, usage signingdomain.KeyUsage) string {
 	t.Helper()
-	key, err := s.KeyStore.GetActiveKey(signingports.WithKeyUsage(s.RealmContext(t, keyRealm), usage))
+	key, err := s.KeyStore.GetActiveKey(signingports.WithKeyUsage(s.RealmContext(t, keyRealm), usage), time.Now().UTC())
 	if err != nil || key == nil {
 		t.Fatalf("active %s key of %s: key=%v err=%v", usage, keyRealm, key, err)
 	}

@@ -39,7 +39,7 @@ func (r ResourceAccessTokens) IntrospectAccessToken(ctx context.Context, token s
 	if res == nil || !res.Active || res.Sub == "" {
 		return nil, nil //nolint:nilnil // 無効なトークンは nil で表し、拒否の種類は呼び出し元が決める。
 	}
-	revoked, err := tokenusecases.AccessTokenIsRevoked(ctx, r.Revocation, res)
+	revoked, err := tokenusecases.AccessTokenIsRevoked(ctx, r.Revocation, res, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}

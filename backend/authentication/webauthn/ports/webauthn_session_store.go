@@ -17,6 +17,6 @@ type WebAuthnSession struct {
 // をキーにする。Take は一度きり (取得と同時に削除) の消費で replay を防ぐ。
 type WebAuthnSessionStore interface {
 	Save(ctx context.Context, key string, session WebAuthnSession, expiresAt time.Time) error
-	// Take は key に対応するセッションを取り出し、同時に削除する。無ければ (nil, nil)。
-	Take(ctx context.Context, key string) (*WebAuthnSession, error)
+	// Take は key に対応するセッションを取り出し、同時に削除する。無いか now で期限切れなら (nil, nil)。
+	Take(ctx context.Context, key string, now time.Time) (*WebAuthnSession, error)
 }

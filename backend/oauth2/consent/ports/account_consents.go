@@ -14,8 +14,8 @@ var ErrConsentNotFound = errors.New("consent not found")
 // AccountConsents は、利用者本人が自分の同意を一覧し撤回する操作である。ほかのモジュールの
 // アカウント画面が使い、同意の状態遷移と ConsentRevoked の発行は OAuth2 が行う。
 type AccountConsents interface {
-	// ListGranted は sub の Granted の同意だけを返す。
-	ListGranted(ctx context.Context, sub string) ([]*consentdomain.Consent, error)
+	// ListGranted は sub の同意のうち、now の時点で Granted のものだけを返す。
+	ListGranted(ctx context.Context, sub string, now time.Time) ([]*consentdomain.Consent, error)
 	// Revoke は sub 自身を操作者として、sub と clientID の組の同意を撤回する。同意がなければ
 	// ErrConsentNotFound を返す。
 	Revoke(ctx context.Context, sub, clientID string, now time.Time) error

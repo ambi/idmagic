@@ -26,7 +26,8 @@ type ApprovalRequestStore interface {
 	FindByID(ctx context.Context, id string) (*approvaldomain.ApprovalRequest, error)
 	FindByAuthReqIDHash(ctx context.Context, hash string) (*approvaldomain.ApprovalRequest, error)
 	// ListPendingForUser returns undecided, unexpired requests for the subject.
-	ListPendingForUser(ctx context.Context, userID string) ([]*approvaldomain.ApprovalRequest, error)
+	// ListPendingForUser は userID の保留中で、now で期限内の要求を返す。
+	ListPendingForUser(ctx context.Context, userID string, now time.Time) ([]*approvaldomain.ApprovalRequest, error)
 	// RecordPoll atomically updates transport polling bookkeeping without changing the decision state.
 	RecordPoll(ctx context.Context, authReqIDHash string, now time.Time) (*approvaldomain.ApprovalRequest, bool, error)
 	// Expire atomically moves a pending or approved request to Expired.

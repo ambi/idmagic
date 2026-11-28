@@ -15,9 +15,9 @@ import (
 type SessionStore interface {
 	Save(ctx context.Context, s *sessiondomain.LoginSession) error
 
-	// Find resolves an active (unrevoked, unexpired) session for
+	// Find resolves a session that is unrevoked and unexpired at now for
 	// authentication. A nil result must be treated as unauthenticated.
-	Find(ctx context.Context, sessionID string) (*sessiondomain.LoginSession, error)
+	Find(ctx context.Context, sessionID string, now time.Time) (*sessiondomain.LoginSession, error)
 
 	// FindOwned resolves a session regardless of revoked/expired state,
 	// scoped to its owner (userID). Returns nil if no such session exists
@@ -39,9 +39,9 @@ type SessionStore interface {
 	// decision, at domain.LoginSessionTouchInterval granularity.
 	Touch(ctx context.Context, sessionID string, now time.Time) error
 
-	// ListBySub は対象 sub の有効な (未失効・未期限切れ) LoginSession を新しい順で返す
+	// ListBySub は対象 sub の、now で有効な (未失効・未期限切れ) LoginSession を新しい順で返す
 	// (wi-20 スライス 2)。self / admin のセッション一覧に使う。
-	ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error)
+	ListBySub(ctx context.Context, sub string, now time.Time) ([]*sessiondomain.LoginSession, error)
 
 	// DeleteAllForSub は anonymize cascade から呼ばれる。
 	// 対象 sub の LoginSession をすべて物理削除する (tombstone ではなく erasure)。

@@ -144,7 +144,7 @@ func (s hintTestServer) signExpiredIDTokenHint(t *testing.T, clientID, sub, sid 
 	expired := time.Now().Add(-2 * time.Hour).Unix()
 	claims["iat"] = expired
 	claims["exp"] = expired + 60
-	key, err := s.keyStore.GetActiveKey(testing_tenant.Default(context.Background()))
+	key, err := s.keyStore.GetActiveKey(testing_tenant.Default(context.Background()), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	if sess, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid); sess != nil {
+	if sess, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid, time.Now().UTC()); sess != nil {
 		t.Fatal("LoginSession was not revoked")
 	}
 	rec1, _ := s.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-"+hintClientID)
@@ -192,7 +192,7 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 // テストは「拒否を返し、そのうえでログアウトも実行する」実装を通してしまう。
 func assertSessionAndTokensSurvived(t *testing.T, s hintTestServer, sid string) {
 	t.Helper()
-	if session, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid); session == nil {
+	if session, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid, time.Now().UTC()); session == nil {
 		t.Fatal("拒否されたヒントでセッションが失効した")
 	}
 	record, _ := s.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-"+hintClientID)
@@ -291,7 +291,7 @@ func TestEndSessionAcceptsExpiredIDTokenHint(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid); sess != nil {
+	if sess, _ := s.sessionStore.Find(testing_tenant.Default(context.Background()), sid, time.Now().UTC()); sess != nil {
 		t.Fatal("session should be resolved and revoked via sid despite hint being old")
 	}
 }

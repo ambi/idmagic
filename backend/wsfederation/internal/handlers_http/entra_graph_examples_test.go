@@ -35,7 +35,7 @@ func TestConfigureEntraFederationReturnsUsableGraphSettings(t *testing.T) {
 	}
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	xmlCtx := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
-	old, err := store.GetActiveKey(xmlCtx)
+	old, err := store.GetActiveKey(xmlCtx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

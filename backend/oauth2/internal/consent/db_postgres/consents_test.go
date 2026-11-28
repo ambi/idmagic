@@ -117,7 +117,7 @@ func TestAgentDelegationRowsStayOutOfClientConsents(t *testing.T) {
 		found.LastUsedAt == nil || !found.LastUsedAt.Equal(usedAt) {
 		t.Fatalf("FindAgentDelegation = (%+v, %v)", found, err)
 	}
-	if err := repo.RevokeAgentDelegation(ctx, tenant.ID, user.ID, agentID); err != nil {
+	if err := repo.RevokeAgentDelegation(ctx, tenant.ID, user.ID, agentID, now); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	for _, tenantID := range []string{tenant.ID, pgfixtures.SeedTenant(t, db).ID} {

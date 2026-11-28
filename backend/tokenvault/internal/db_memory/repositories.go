@@ -255,7 +255,7 @@ func (r connectionRepo) Delete(_ context.Context, tenantID, connectorID, userID 
 
 type attemptStore struct{ s *Store }
 
-func (a attemptStore) Save(_ context.Context, attempt *tokenvaultdomain.ConnectionAttempt) error {
+func (a attemptStore) Save(_ context.Context, attempt *tokenvaultdomain.ConnectionAttempt, _ time.Time) error {
 	a.s.mu.Lock()
 	defer a.s.mu.Unlock()
 	a.s.attempts[connectionKey(attempt.TenantID, attempt.ConnectorID, attempt.UserID)] = *attempt

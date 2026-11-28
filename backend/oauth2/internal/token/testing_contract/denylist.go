@@ -20,13 +20,13 @@ func RunDenylist(t *testing.T, newFixture NewDenylistFixture) {
 	t.Helper()
 	f := newFixture(t)
 	ctx := f.Context
-	if revoked, err := f.Denylist.IsRevoked(ctx, "contract-jti"); err != nil || revoked {
+	if revoked, err := f.Denylist.IsRevoked(ctx, "contract-jti", f.Now); err != nil || revoked {
 		t.Fatalf("IsRevoked before Add = (%v, %v)", revoked, err)
 	}
 	if err := f.Denylist.Add(ctx, "contract-jti", f.Now.Add(time.Hour)); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	if revoked, err := f.Denylist.IsRevoked(ctx, "contract-jti"); err != nil || !revoked {
+	if revoked, err := f.Denylist.IsRevoked(ctx, "contract-jti", f.Now); err != nil || !revoked {
 		t.Fatalf("IsRevoked after Add = (%v, %v)", revoked, err)
 	}
 }

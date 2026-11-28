@@ -3,6 +3,7 @@ package handlers_http
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -14,7 +15,7 @@ func (d Deps) mcpGatewayKey(ctx context.Context, serverID string) (*signingdomai
 	if d.KeyStore == nil || !d.KeyStore.Healthy(ctx) {
 		return nil, errors.New("gateway key provider is unavailable")
 	}
-	key, err := d.KeyStore.GetActiveKey(ctx)
+	key, err := d.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}

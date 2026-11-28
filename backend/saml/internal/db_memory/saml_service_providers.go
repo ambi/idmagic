@@ -48,12 +48,11 @@ func cloneIDPProfile(profile *samldomain.SamlIdentityProviderProfile) *samldomai
 	return &cloned
 }
 
-func (r *SamlServiceProviderRepository) ensureDefaultIDPProfileLocked(tenantID string) *samldomain.SamlIdentityProviderProfile {
+func (r *SamlServiceProviderRepository) ensureDefaultIDPProfileLocked(tenantID string, now time.Time) *samldomain.SamlIdentityProviderProfile {
 	key := sharedmem.ScopedKey(tenantID, samldomain.DefaultIDPProfileID, kernel.DefaultTenantID)
 	if profile := r.profiles[key]; profile != nil {
 		return profile
 	}
-	now := time.Now().UTC()
 	profile := &samldomain.SamlIdentityProviderProfile{
 		TenantID: tenantID, ProfileID: samldomain.DefaultIDPProfileID, Name: "Default",
 		Mode: samldomain.IDPProfileModeShared, IsDefault: true, CreatedAt: now, UpdatedAt: now,
@@ -62,13 +61,13 @@ func (r *SamlServiceProviderRepository) ensureDefaultIDPProfileLocked(tenantID s
 	return profile
 }
 
-func (r *SamlServiceProviderRepository) EnsureDefaultIDPProfile(_ context.Context, tenantID string) (*samldomain.SamlIdentityProviderProfile, error) {
+func (r *SamlServiceProviderRepository) EnsureDefaultIDPProfile(_ context.Context, tenantID string, now time.Time) (*samldomain.SamlIdentityProviderProfile, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if tenantID == "" {
 		return nil, samldomain.ErrInvalidIDPProfile
 	}
-	return cloneIDPProfile(r.ensureDefaultIDPProfileLocked(tenantID)), nil
+	return cloneIDPProfile(r.ensureDefaultIDPProfileLocked(tenantID, now)), nil
 }
 
 func (r *SamlServiceProviderRepository) FindIDPProfileByID(_ context.Context, tenantID, profileID string) (*samldomain.SamlIdentityProviderProfile, error) {
@@ -81,10 +80,10 @@ func (r *SamlServiceProviderRepository) FindIDPProfileByID(_ context.Context, te
 	return cloneIDPProfile(profile), nil
 }
 
-func (r *SamlServiceProviderRepository) ListIDPProfilesByTenant(_ context.Context, tenantID string) ([]*samldomain.SamlIdentityProviderProfile, error) {
+func (r *SamlServiceProviderRepository) ListIDPProfilesByTenant(_ context.Context, tenantID string, now time.Time) ([]*samldomain.SamlIdentityProviderProfile, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.ensureDefaultIDPProfileLocked(tenantID)
+	r.ensureDefaultIDPProfileLocked(tenantID, now)
 	out := make([]*samldomain.SamlIdentityProviderProfile, 0)
 	for _, profile := range r.profiles {
 		if profile.TenantID == tenantID {
@@ -106,7 +105,7 @@ func (r *SamlServiceProviderRepository) ListIDPProfilesByTenant(_ context.Contex
 func (r *SamlServiceProviderRepository) SaveIDPProfile(_ context.Context, profile *samldomain.SamlIdentityProviderProfile) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if profile == nil {
+	if profile == nil || profile.UpdatedAt.IsZero() {
 		return samldomain.ErrInvalidIDPProfile
 	}
 	boundCount := 0
@@ -122,12 +121,10 @@ func (r *SamlServiceProviderRepository) SaveIDPProfile(_ context.Context, profil
 	if existing := r.profiles[key]; existing != nil && existing.IsDefault {
 		return samldomain.ErrDefaultIDPProfile
 	}
-	now := time.Now().UTC()
 	stored := cloneIDPProfile(profile)
 	if stored.CreatedAt.IsZero() {
-		stored.CreatedAt = now
+		stored.CreatedAt = stored.UpdatedAt
 	}
-	stored.UpdatedAt = now
 	r.profiles[key] = stored
 	return nil
 }
@@ -182,7 +179,7 @@ func (r *SamlServiceProviderRepository) Save(_ context.Context, sp *samldomain.S
 	}
 	sharedmem.DefaultScope(&sp.TenantID, kernel.DefaultTenantID)
 	sp.IDPProfileID = sp.EffectiveIDPProfileID()
-	r.ensureDefaultIDPProfileLocked(sp.TenantID)
+	r.ensureDefaultIDPProfileLocked(sp.TenantID, sp.UpdatedAt)
 	profile := r.profiles[sharedmem.ScopedKey(sp.TenantID, sp.IDPProfileID, kernel.DefaultTenantID)]
 	if profile == nil {
 		return samldomain.ErrInvalidIDPProfile

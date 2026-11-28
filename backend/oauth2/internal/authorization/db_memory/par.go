@@ -38,11 +38,11 @@ func (s *PARStore) Find(_ context.Context, requestURI string) (*oauthdomain.PARR
 	return s.records[requestURI], nil
 }
 
-func (s *PARStore) Consume(_ context.Context, requestURI string) (*oauthdomain.PARRecord, error) {
+func (s *PARStore) Consume(_ context.Context, requestURI string, now time.Time) (*oauthdomain.PARRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rec, ok := s.records[requestURI]
-	if !ok || rec.Used || time.Now().After(rec.ExpiresAt) {
+	if !ok || rec.Used || !now.Before(rec.ExpiresAt) {
 		return nil, nil
 	}
 	rec.Used = true

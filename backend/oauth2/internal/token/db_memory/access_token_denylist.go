@@ -26,11 +26,11 @@ func (d *AccessTokenDenylist) Add(_ context.Context, jti string, expiresAt time.
 	return nil
 }
 
-func (d *AccessTokenDenylist) IsRevoked(_ context.Context, jti string) (bool, error) {
+func (d *AccessTokenDenylist) IsRevoked(_ context.Context, jti string, now time.Time) (bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	expiresAt, ok := d.entries[jti]
-	if ok && time.Now().After(expiresAt) {
+	if ok && !now.Before(expiresAt) {
 		delete(d.entries, jti)
 		return false, nil
 	}

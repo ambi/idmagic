@@ -18,7 +18,7 @@ type fakeKeyStore struct {
 	getKeysErr error
 }
 
-func (f *fakeKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
+func (f *fakeKeyStore) GetActiveKey(ctx context.Context, _ time.Time) (*signingdomain.SigningKey, error) {
 	return nil, errors.New("unimplemented")
 }
 

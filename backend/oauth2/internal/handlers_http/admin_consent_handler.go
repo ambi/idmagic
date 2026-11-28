@@ -59,10 +59,11 @@ func (d Deps) handleListAdminConsents(c *echo.Context) error {
 	}
 	clientNames := d.ClientDisplayNameResolver.ResolveAll(ctx, tenantID, clientIDs)
 	usernames := map[string]string{}
+	now := time.Now().UTC()
 	response := make([]adminConsentResponse, len(consents))
 	for i, consent := range consents {
 		response[i] = toAdminConsentResponse(
-			consent, clientNames[consent.ClientID], d.resolveUsername(ctx, usernames, consent.UserID),
+			consent, clientNames[consent.ClientID], d.resolveUsername(ctx, usernames, consent.UserID), now,
 		)
 	}
 	if len(consents) > 0 {
@@ -89,7 +90,7 @@ func (d Deps) handleGetAdminConsent(c *echo.Context) error {
 	}
 	clientName := d.ClientDisplayNameResolver.Resolve(ctx, support.RequestTenantID(c), consent.ClientID)
 	return support.NoStoreJSON(
-		c, http.StatusOK, toAdminConsentResponse(consent, clientName, d.resolveUsername(ctx, map[string]string{}, consent.UserID)),
+		c, http.StatusOK, toAdminConsentResponse(consent, clientName, d.resolveUsername(ctx, map[string]string{}, consent.UserID), time.Now().UTC()),
 	)
 }
 
@@ -127,11 +128,11 @@ func (d Deps) handleRevokeAdminConsent(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func toAdminConsentResponse(consent *oauthdomain.Consent, clientName, preferredUsername string) adminConsentResponse {
+func toAdminConsentResponse(consent *oauthdomain.Consent, clientName, preferredUsername string, now time.Time) adminConsentResponse {
 	return adminConsentResponse{
 		UserID: consent.UserID, PreferredUsername: preferredUsername,
 		ClientID: consent.ClientID, ClientName: clientName,
-		Scopes: slices.Clone(consent.Scopes), State: consent.State,
+		Scopes: slices.Clone(consent.Scopes), State: consent.StateAt(now),
 		GrantedAt: consent.GrantedAt, ExpiresAt: consent.ExpiresAt, RevokedAt: consent.RevokedAt,
 	}
 }

@@ -24,7 +24,7 @@ func (s *KeyStore) Prepare(ctx context.Context, now time.Time) (signingdomain.Ro
 	if signingports.KeyUsage(ctx) != signingdomain.KeyUsageXMLFederationSigning {
 		return signingdomain.RotationResult{}, signingdomain.ErrKeyNotPrepared
 	}
-	if _, err := s.GetActiveKey(ctx); err != nil {
+	if _, err := s.GetActiveKey(ctx, now); err != nil {
 		return signingdomain.RotationResult{}, err
 	}
 	tx, err := s.Pool.Begin(ctx)

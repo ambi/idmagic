@@ -602,32 +602,34 @@ func (q *Queries) ListDelegationsForAgent(ctx context.Context, arg ListDelegatio
 }
 
 const revokeAgentDelegation = `-- name: RevokeAgentDelegation :exec
-UPDATE consents SET revoked_at = now(), updated_at = now()
+UPDATE consents SET revoked_at = $3, updated_at = $3
 WHERE user_id = $1 AND agent_id = $2 AND revoked_at IS NULL
 `
 
 type RevokeAgentDelegationParams struct {
-	UserID  string
-	AgentID pgtype.UUID
+	UserID    string
+	AgentID   pgtype.UUID
+	RevokedAt pgtype.Timestamptz
 }
 
 func (q *Queries) RevokeAgentDelegation(ctx context.Context, arg RevokeAgentDelegationParams) error {
-	_, err := q.db.Exec(ctx, revokeAgentDelegation, arg.UserID, arg.AgentID)
+	_, err := q.db.Exec(ctx, revokeAgentDelegation, arg.UserID, arg.AgentID, arg.RevokedAt)
 	return err
 }
 
 const revokeConsent = `-- name: RevokeConsent :exec
-UPDATE consents SET revoked_at = now(), updated_at = now()
+UPDATE consents SET revoked_at = $3, updated_at = $3
 WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
 `
 
 type RevokeConsentParams struct {
-	UserID   string
-	ClientID pgtype.UUID
+	UserID    string
+	ClientID  pgtype.UUID
+	RevokedAt pgtype.Timestamptz
 }
 
 func (q *Queries) RevokeConsent(ctx context.Context, arg RevokeConsentParams) error {
-	_, err := q.db.Exec(ctx, revokeConsent, arg.UserID, arg.ClientID)
+	_, err := q.db.Exec(ctx, revokeConsent, arg.UserID, arg.ClientID, arg.RevokedAt)
 	return err
 }
 

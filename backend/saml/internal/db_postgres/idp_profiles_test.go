@@ -19,7 +19,7 @@ func TestSamlIdentityProviderProfileRepository(t *testing.T) {
 	profiles := &SamlIdentityProviderProfileRepository{Pool: db}
 	serviceProviders := &SamlServiceProviderRepository{Pool: db}
 
-	defaultProfile, err := profiles.EnsureDefaultIDPProfile(ctx, tenant.ID)
+	defaultProfile, err := profiles.EnsureDefaultIDPProfile(ctx, tenant.ID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestSamlIdentityProviderProfileRepository(t *testing.T) {
 	}
 
 	dedicated := &samldomain.SamlIdentityProviderProfile{
-		TenantID: tenant.ID, ProfileID: "dedicated-a", Name: "Dedicated A", Mode: samldomain.IDPProfileModeDedicated,
+		TenantID: tenant.ID, ProfileID: "dedicated-a", Name: "Dedicated A", Mode: samldomain.IDPProfileModeDedicated, UpdatedAt: time.Now().UTC(),
 	}
 	if err := profiles.SaveIDPProfile(ctx, dedicated); err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestSamlIdentityProviderProfileRepository(t *testing.T) {
 		t.Fatalf("delete default profile error = %v", err)
 	}
 
-	list, err := profiles.ListIDPProfilesByTenant(ctx, tenant.ID)
+	list, err := profiles.ListIDPProfilesByTenant(ctx, tenant.ID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestSaveIDPProfileSeesConcurrentCreationBeforeValidating(t *testing.T) {
 	saved := make(chan error, 1)
 	go func() {
 		saved <- profiles.SaveIDPProfile(ctx, &samldomain.SamlIdentityProviderProfile{
-			TenantID: tenant.ID, ProfileID: "concurrent", Name: "Dedicated", Mode: samldomain.IDPProfileModeDedicated,
+			TenantID: tenant.ID, ProfileID: "concurrent", Name: "Dedicated", Mode: samldomain.IDPProfileModeDedicated, UpdatedAt: time.Now().UTC(),
 		})
 	}()
 	waitForBlockedInsert(t, db)

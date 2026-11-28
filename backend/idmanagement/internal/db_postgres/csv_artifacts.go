@@ -41,7 +41,7 @@ func (w *hashingArtifactWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *CSVArtifactStore) PutCSVArtifact(ctx context.Context, tenantID string, write func(io.Writer) error) (idmports.CSVArtifact, error) {
+func (s *CSVArtifactStore) PutCSVArtifact(ctx context.Context, tenantID string, createdAt time.Time, write func(io.Writer) error) (idmports.CSVArtifact, error) {
 	temporary, err := os.CreateTemp("", "idmagic-csv-*")
 	if err != nil {
 		return idmports.CSVArtifact{}, err
@@ -70,7 +70,7 @@ func (s *CSVArtifactStore) PutCSVArtifact(ctx context.Context, tenantID string, 
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
 	queries := New(tx)
-	metadata.CreatedAt, err = queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize})
+	metadata.CreatedAt, err = queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: metadata.SHA256, ByteSize: metadata.ByteSize, CreatedAt: createdAt})
 	if err != nil {
 		_ = temporary.Close()
 		return idmports.CSVArtifact{}, err
@@ -117,7 +117,7 @@ func (s *CSVArtifactStore) OpenCSVArtifact(ctx context.Context, tenantID, ref st
 	return &csvChunkReader{ctx: ctx, queries: queries, ref: ref}, metadata, nil
 }
 
-func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID string, write func(emit func([]byte) error) error) (idmports.CSVArtifact, error) {
+func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID string, createdAt time.Time, write func(emit func([]byte) error) error) (idmports.CSVArtifact, error) {
 	ref, err := spec.NewUUIDv4()
 	if err != nil {
 		return idmports.CSVArtifact{}, err
@@ -129,7 +129,7 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(ctx context.Context, tenantID str
 	defer tx.Rollback(ctx) //nolint:errcheck // commit path makes rollback a no-op
 	queries := New(tx)
 	placeholder := "0000000000000000000000000000000000000000000000000000000000000000"
-	createdAt, err := queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: placeholder})
+	createdAt, err = queries.InsertCSVArtifact(ctx, InsertCSVArtifactParams{ID: ref, TenantID: tenantID, Sha256: placeholder, CreatedAt: createdAt})
 	if err != nil {
 		return idmports.CSVArtifact{}, err
 	}

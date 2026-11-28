@@ -53,22 +53,22 @@ func TestAccessTokenDenylist(t *testing.T) {
 	d := &oauth2postgres.AccessTokenDenylist{Pool: db}
 	now := pgtest.Now()
 
-	if revoked, err := d.IsRevoked(ctx, "jti-a"); err != nil || revoked {
+	if revoked, err := d.IsRevoked(ctx, "jti-a", now); err != nil || revoked {
 		t.Fatalf("pre-add revoked=%v err=%v (want false)", revoked, err)
 	}
 	if err := d.Add(ctx, "jti-a", now.Add(time.Hour)); err != nil {
 		t.Fatalf("add: %v", err)
 	}
-	if revoked, err := d.IsRevoked(ctx, "jti-a"); err != nil || !revoked {
+	if revoked, err := d.IsRevoked(ctx, "jti-a", now); err != nil || !revoked {
 		t.Fatalf("post-add revoked=%v err=%v (want true)", revoked, err)
 	}
-	if revoked, err := d.IsRevoked(otherCtx, "jti-a"); err != nil || revoked {
+	if revoked, err := d.IsRevoked(otherCtx, "jti-a", now); err != nil || revoked {
 		t.Fatalf("cross-tenant revoked=%v err=%v (want false)", revoked, err)
 	}
 	if err := d.Add(ctx, "jti-exp", now.Add(-time.Second)); err != nil {
 		t.Fatalf("add expired: %v", err)
 	}
-	if revoked, err := d.IsRevoked(ctx, "jti-exp"); err != nil || revoked {
+	if revoked, err := d.IsRevoked(ctx, "jti-exp", now); err != nil || revoked {
 		t.Fatalf("expired revoked=%v err=%v (want false)", revoked, err)
 	}
 	if n, err := d.DeleteExpiredBatch(ctx, now, 100); err != nil || n < 1 {

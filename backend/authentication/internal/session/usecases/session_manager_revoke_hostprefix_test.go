@@ -43,7 +43,7 @@ func TestRevokeHonorsHostPrefixedCookie(t *testing.T) {
 			}
 
 			// 失効が起きたことは、応答ではなく状態を読み戻して確かめる。
-			found, err := store.Find(ctx, session.ID)
+			found, err := store.Find(ctx, session.ID, time.Now().UTC())
 			if err != nil {
 				t.Fatalf("find after revoke: %v", err)
 			}
@@ -85,7 +85,7 @@ func TestSessionEntryPointsResolveTheSameCookie(t *testing.T) {
 			if err := manager.Revoke(ctx, header); err != nil {
 				t.Fatalf("revoke: %v", err)
 			}
-			found, err := store.Find(ctx, resolved)
+			found, err := store.Find(ctx, resolved, time.Now().UTC())
 			if err != nil {
 				t.Fatalf("find after revoke: %v", err)
 			}

@@ -45,7 +45,7 @@ func TestRevokeAccessTokenAddsOwnedJTIToDenylist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	revoked, err := denylist.IsRevoked(ctx, "jti-1")
+	revoked, err := denylist.IsRevoked(ctx, "jti-1", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestRevokeAccessTokenIgnoresOtherClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	revoked, err := denylist.IsRevoked(ctx, "jti-1")
+	revoked, err := denylist.IsRevoked(ctx, "jti-1", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

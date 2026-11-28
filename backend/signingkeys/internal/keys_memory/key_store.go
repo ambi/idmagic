@@ -35,7 +35,7 @@ func NewInMemoryKeyStore() (*InMemoryKeyStore, error) {
 	return &InMemoryKeyStore{byTenant: map[string]*tenantKeys{}}, nil
 }
 
-func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
+func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context, now time.Time) (*signingdomain.SigningKey, error) {
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -50,7 +50,7 @@ func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Sig
 	}
 	s.mu.RUnlock()
 	// まだ鍵の無いテナントは初回に遅延生成する。
-	result, err := s.createKey(tenantID, usage, scopeID, time.Now().UTC(), 7*24*time.Hour, false, true)
+	result, err := s.createKey(tenantID, usage, scopeID, now, 7*24*time.Hour, false, true)
 	return result.Next, err
 }
 
@@ -253,7 +253,7 @@ func (s *InMemoryKeyStore) Prepare(ctx context.Context, now time.Time) (signingd
 	if signingports.KeyUsage(ctx) != signingdomain.KeyUsageXMLFederationSigning {
 		return signingdomain.RotationResult{}, signingdomain.ErrKeyNotPrepared
 	}
-	if _, err := s.GetActiveKey(ctx); err != nil {
+	if _, err := s.GetActiveKey(ctx, now); err != nil {
 		return signingdomain.RotationResult{}, err
 	}
 	return s.createKey(tenantports.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx), now, 0, true, false)

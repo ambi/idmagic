@@ -20,7 +20,7 @@ func RunDisable(t *testing.T, newFixture func(*testing.T) Fixture) {
 			f := newFixture(t)
 			ctx := signingports.WithKeyScope(signingports.WithKeyUsage(f.Context, usage), "disable-contract")
 			now := time.Now().UTC().Truncate(time.Microsecond)
-			old, err := f.Store.GetActiveKey(ctx)
+			old, err := f.Store.GetActiveKey(ctx, time.Now().UTC())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -63,7 +63,7 @@ func RunDisable(t *testing.T, newFixture func(*testing.T) Fixture) {
 			if err != nil || len(keys) != 1 || keys[0].Kid != current.Kid {
 				t.Fatalf("public keys after disable: %v %+v", err, keys)
 			}
-			active, err := f.Store.GetActiveKey(ctx)
+			active, err := f.Store.GetActiveKey(ctx, time.Now().UTC())
 			if err != nil || active.Kid != current.Kid {
 				t.Fatalf("active key changed: %v %+v", err, active)
 			}
@@ -87,7 +87,7 @@ func RunDisable(t *testing.T, newFixture func(*testing.T) Fixture) {
 	})
 	t.Run("retired", func(t *testing.T) {
 		f := newFixture(t)
-		old, err := f.Store.GetActiveKey(f.Context)
+		old, err := f.Store.GetActiveKey(f.Context, time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,7 +101,7 @@ func RunDisable(t *testing.T, newFixture func(*testing.T) Fixture) {
 	})
 	t.Run("concurrent", func(t *testing.T) {
 		f := newFixture(t)
-		old, err := f.Store.GetActiveKey(f.Context)
+		old, err := f.Store.GetActiveKey(f.Context, time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}

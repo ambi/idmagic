@@ -49,19 +49,19 @@ func (e UserCSVExporter) ValidateUserCSVColumns(ctx context.Context, columns []s
 	return validateUserCSVExportColumns(schema, columns)
 }
 
-func (e UserCSVExporter) ExportUserCSV(ctx context.Context, columns []string, status string) (idmports.CSVArtifact, int, error) {
+func (e UserCSVExporter) ExportUserCSV(ctx context.Context, columns []string, status string, now time.Time) (idmports.CSVArtifact, int, error) {
 	policy := e.Policy
 	if policy == (idmdomain.CSVTransferPolicy{}) {
 		policy = idmdomain.DefaultCSVTransferPolicy()
 	}
-	result, err := ExportUserCSV(ctx, e.Deps, columns, status, policy)
+	result, err := ExportUserCSV(ctx, e.Deps, columns, status, policy, now)
 	return result.Artifact, result.TotalRows, err
 }
 
 // ExportUserCSV writes repository pages directly into an immutable artifact.
 // A returned artifact always satisfies the same policy and schema accepted by
 // PlanUserImport.
-func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string, status string, policy idmdomain.CSVTransferPolicy) (UserCSVExportResult, error) {
+func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string, status string, policy idmdomain.CSVTransferPolicy, now time.Time) (UserCSVExportResult, error) {
 	var result UserCSVExportResult
 	if deps.UserRepo == nil || deps.SchemaReader == nil || deps.Artifacts == nil {
 		return result, errors.New("user CSV export dependencies are incomplete")
@@ -90,7 +90,7 @@ func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string
 	status = strings.ToLower(strings.TrimSpace(status))
 
 	rowCount := 0
-	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, now, func(output io.Writer) error {
 		writer, err := idmdomain.NewCSVWriter(output, columns, policy)
 		if err != nil {
 			return err

@@ -42,7 +42,7 @@ func TestListConsentsForSubReturnsOnlyOwnGrantedConsents(t *testing.T) {
 	saveConsent(t, repo, "user-alice", "app-2", oauthdomain.ConsentRevoked)
 	saveConsent(t, repo, "user-bob", "app-3", oauthdomain.ConsentGranted)
 
-	got, err := consentusecases.ListConsentsForSub(ctx, consentusecases.ConsentDeps{ConsentRepo: repo}, "user-alice")
+	got, err := consentusecases.ListConsentsForSub(ctx, consentusecases.ConsentDeps{ConsentRepo: repo}, "user-alice", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestRevokeConsentSelfMarksRevokedAndEmits(t *testing.T) {
 	if err := consentusecases.RevokeConsent(ctx, deps, "user-alice", "user-alice", "app-1", time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := consentusecases.ListConsentsForSub(ctx, deps, "user-alice")
+	got, _ := consentusecases.ListConsentsForSub(ctx, deps, "user-alice", time.Now().UTC())
 	if len(got) != 0 {
 		t.Fatalf("revoked consent must not appear in active list: %#v", got)
 	}

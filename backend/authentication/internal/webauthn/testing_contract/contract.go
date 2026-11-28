@@ -28,22 +28,22 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err := f.Store.Save(ctx, "key-1", session, f.Now.Add(time.Minute)); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	if got, err := f.Store.Take(ctx, "key-1"); err != nil || got == nil || !sameJSON(t, got.Payload, session.Payload) {
+	if got, err := f.Store.Take(ctx, "key-1", f.Now); err != nil || got == nil || !sameJSON(t, got.Payload, session.Payload) {
 		t.Fatalf("first Take = (%+v, %v)", got, err)
 	}
-	if got, err := f.Store.Take(ctx, "key-1"); err != nil || got != nil {
+	if got, err := f.Store.Take(ctx, "key-1", f.Now); err != nil || got != nil {
 		t.Fatalf("second Take = (%+v, %v), want once-only", got, err)
 	}
 	if err := f.Store.Save(ctx, "key-expired", session, f.Now.Add(-time.Minute)); err != nil {
 		t.Fatalf("Save expired: %v", err)
 	}
-	if got, err := f.Store.Take(ctx, "key-expired"); err != nil || got != nil {
+	if got, err := f.Store.Take(ctx, "key-expired", f.Now); err != nil || got != nil {
 		t.Fatalf("expired Take = (%+v, %v)", got, err)
 	}
 	if err := f.Store.Save(ctx, "key-isolated", session, f.Now.Add(time.Minute)); err != nil {
 		t.Fatalf("Save isolated: %v", err)
 	}
-	if got, err := f.Store.Take(other, "key-isolated"); err != nil || got != nil {
+	if got, err := f.Store.Take(other, "key-isolated", f.Now); err != nil || got != nil {
 		t.Fatalf("cross-tenant Take = (%+v, %v)", got, err)
 	}
 }

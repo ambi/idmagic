@@ -117,14 +117,14 @@ type DataExportDeps struct {
 
 type UserCSVExporter interface {
 	ValidateUserCSVColumns(ctx context.Context, columns []string) error
-	ExportUserCSV(ctx context.Context, columns []string, status string) (idmports.CSVArtifact, int, error)
+	ExportUserCSV(ctx context.Context, columns []string, status string, now time.Time) (idmports.CSVArtifact, int, error)
 }
 
 // GroupCSVExporter は Group 側の同じ契約。列の検証も生成も Group の方言が持ち、
 // data export は種別ごとの実装を選ぶだけにする。
 type GroupCSVExporter interface {
 	ValidateGroupCSVColumns(ctx context.Context, columns []string) error
-	ExportGroupCSV(ctx context.Context, columns []string) (idmports.CSVArtifact, int, error)
+	ExportGroupCSV(ctx context.Context, columns []string, now time.Time) (idmports.CSVArtifact, int, error)
 }
 
 // GroupMembershipCSVExporter はメンバーシップ側の同じ契約。対象 Group はフィルター
@@ -132,7 +132,7 @@ type GroupCSVExporter interface {
 // 閉じており、絞り込みではなく対象そのものだからである。
 type GroupMembershipCSVExporter interface {
 	ValidateGroupMembershipCSVColumns(ctx context.Context, columns []string) error
-	ExportGroupMembershipCSV(ctx context.Context, groupID string, columns []string) (idmports.CSVArtifact, int, error)
+	ExportGroupMembershipCSV(ctx context.Context, groupID string, columns []string, now time.Time) (idmports.CSVArtifact, int, error)
 }
 
 func (d DataExportDeps) now() time.Time {
@@ -449,18 +449,18 @@ func generateExport(ctx context.Context, deps DataExportDeps, p DataExportParams
 		if deps.UserCSVExporter == nil {
 			return nil, errors.New("user CSV exporter is unavailable")
 		}
-		artifact, totalRows, err = deps.UserCSVExporter.ExportUserCSV(ctx, p.Columns, p.Filter["status"])
+		artifact, totalRows, err = deps.UserCSVExporter.ExportUserCSV(ctx, p.Columns, p.Filter["status"], deps.now())
 	case idmdomain.ExportTargetGroup:
 		if deps.GroupCSVExporter == nil {
 			return nil, errors.New("group CSV exporter is unavailable")
 		}
-		artifact, totalRows, err = deps.GroupCSVExporter.ExportGroupCSV(ctx, p.Columns)
+		artifact, totalRows, err = deps.GroupCSVExporter.ExportGroupCSV(ctx, p.Columns, deps.now())
 	case idmdomain.ExportTargetGroupMembership:
 		if deps.GroupMembershipCSVExporter == nil {
 			return nil, errors.New("group membership CSV exporter is unavailable")
 		}
 		artifact, totalRows, err = deps.GroupMembershipCSVExporter.ExportGroupMembershipCSV(
-			ctx, strings.TrimSpace(p.Filter["group_id"]), p.Columns)
+			ctx, strings.TrimSpace(p.Filter["group_id"]), p.Columns, deps.now())
 	default:
 		return nil, idmdomain.ErrInvalidExportTarget
 	}

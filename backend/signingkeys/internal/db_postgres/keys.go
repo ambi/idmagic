@@ -42,7 +42,7 @@ func timeToPg(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
-func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
+func (s *KeyStore) GetActiveKey(ctx context.Context, now time.Time) (*signingdomain.SigningKey, error) {
 	tenantID := tenantports.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
@@ -53,7 +53,7 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey,
 		ScopeID:  scopeID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return s.rotateForTenant(ctx, tenantID, time.Now().UTC(), 7*24*time.Hour, nil, true)
+		return s.rotateForTenant(ctx, tenantID, now, 7*24*time.Hour, nil, true)
 	}
 	if err != nil {
 		return nil, err
@@ -337,7 +337,7 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
 	if now.IsZero() {
-		now = time.Now().UTC()
+		return nil, errors.New("signing key rotation requires the current time")
 	}
 	if grace < 0 {
 		return nil, errors.New("signing key grace period must not be negative")

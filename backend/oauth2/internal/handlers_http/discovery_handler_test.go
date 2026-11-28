@@ -64,11 +64,11 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 	// 各テナントで token 発行相当 (GetActiveKey) を起こし鍵を作る。
 	ctxA := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 	ctxB := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-b"}, "", "")
-	keyA, err := keyStore.GetActiveKey(ctxA)
+	keyA, err := keyStore.GetActiveKey(ctxA, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	keyB, err := keyStore.GetActiveKey(ctxB)
+	keyB, err := keyStore.GetActiveKey(ctxB, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -181,7 +181,7 @@ func TestApprovalFlowPollingDecisionAndReplay(t *testing.T) {
 	if _, err := approvalusecases.ExchangeApproval(f.ctx, f.exchangeDeps, exchange, t0.Add(time.Second)); approvalOAuthErrorCode(err) != "slow_down" {
 		t.Fatalf("fast poll: %v", err)
 	}
-	records, err := f.store.ListPendingForUser(f.ctx, "alice-id")
+	records, err := f.store.ListPendingForUser(f.ctx, "alice-id", time.Now().UTC())
 	if err != nil || len(records) != 1 {
 		t.Fatalf("pending records = %d, err = %v", len(records), err)
 	}
@@ -226,7 +226,7 @@ func TestApprovalExchangeRejectsDeniedRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id")
+	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id", time.Now().UTC())
 	if err := approvalusecases.DecideApproval(f.ctx, f.store, nil, "alice-id", records[0].ID, false, t0.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestApprovalExchangeFailsClosedAfterAgentKill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id")
+	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id", time.Now().UTC())
 	if err := approvalusecases.DecideApproval(f.ctx, f.store, nil, "alice-id", records[0].ID, true, t0.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +313,7 @@ func TestApprovalExchangeConcurrentConsume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id")
+	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id", time.Now().UTC())
 	if err := approvalusecases.DecideApproval(f.ctx, f.store, nil, "alice-id", records[0].ID, true, t0.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}

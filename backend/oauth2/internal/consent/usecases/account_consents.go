@@ -16,16 +16,16 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// ListConsentsForSub は指定 sub の active な (granted) Consent のみを返す。
+// ListConsentsForSub は指定 sub の、now の時点で active な (granted) Consent のみを返す。
 // 接続済みアプリ一覧の用途で、revoked / expired は除外する。
-func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string) ([]*oauthdomain.Consent, error) {
+func ListConsentsForSub(ctx context.Context, deps ConsentDeps, sub string, now time.Time) ([]*oauthdomain.Consent, error) {
 	all, err := deps.ConsentRepo.FindAll(ctx, tenantports.TenantID(ctx))
 	if err != nil {
 		return nil, err
 	}
 	mine := make([]*oauthdomain.Consent, 0)
 	for _, consent := range all {
-		if consent.UserID == sub && consent.State == oauthdomain.ConsentGranted {
+		if consent.UserID == sub && consent.StateAt(now) == oauthdomain.ConsentGranted {
 			mine = append(mine, consent)
 		}
 	}
@@ -46,8 +46,8 @@ func (a AccountConsents) deps() ConsentDeps {
 	return ConsentDeps(a)
 }
 
-func (a AccountConsents) ListGranted(ctx context.Context, sub string) ([]*oauthdomain.Consent, error) {
-	return ListConsentsForSub(ctx, a.deps(), sub)
+func (a AccountConsents) ListGranted(ctx context.Context, sub string, now time.Time) ([]*oauthdomain.Consent, error) {
+	return ListConsentsForSub(ctx, a.deps(), sub, now)
 }
 
 func (a AccountConsents) Revoke(ctx context.Context, sub, clientID string, now time.Time) error {

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
@@ -242,7 +243,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 			t.Fatalf("Latest on an empty tenant = (%v, %v), want (nil, nil)", latest, err)
 		}
 		first, version, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
-			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}, 0)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
@@ -251,7 +252,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 			t.Fatalf("Publish = (version %d, consistency %d), want (1, > 0)", first.Version, version)
 		}
 		second, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
-			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}, 1)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
@@ -282,7 +283,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		ctx := context.Background()
 		tenantA := f.Tenant("tenant-a")
 		_, published, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
-			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}, 0)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
@@ -307,12 +308,12 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		ctx := context.Background()
 		tenantA, tenantB := f.Tenant("tenant-a"), f.Tenant("tenant-b")
 		if _, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
-			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+			ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}, 0); err != nil {
 			t.Fatalf("Publish returned error: %v", err)
 		}
 		other, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
-			ID: newModelID(t), TenantID: tenantB, ResourceTypes: minimalTypes,
+			ID: newModelID(t), TenantID: tenantB, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}, 0)
 		if err != nil {
 			t.Fatalf("Publish returned error: %v", err)
@@ -333,7 +334,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 		tenantA := f.Tenant("tenant-a")
 		publish := func(expected int) error {
 			_, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
-				ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes,
+				ID: newModelID(t), TenantID: tenantA, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 			}, expected)
 			return err
 		}
@@ -369,7 +370,7 @@ func RunAuthorizationModelRepositoryContract(t *testing.T, newFixture NewFixture
 			id := newModelID(t)
 			wg.Go(func() {
 				_, _, errs[i] = f.Models.Publish(context.Background(), &accessdomain.AuthorizationModel{
-					ID: id, TenantID: tenantA, ResourceTypes: minimalTypes,
+					ID: id, TenantID: tenantA, ResourceTypes: minimalTypes, CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 				}, 0)
 			})
 		}

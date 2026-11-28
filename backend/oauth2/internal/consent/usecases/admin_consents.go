@@ -59,24 +59,25 @@ func RevokeConsent(
 	actorUserID, sub, clientID string,
 	now time.Time,
 ) error {
+	now = adminNow(now)
 	consent, err := GetConsent(ctx, deps, sub, clientID)
 	if err != nil {
 		return err
 	}
 	tenantID := tenantports.TenantID(ctx)
-	if err := deps.ConsentRepo.Revoke(ctx, tenantID, sub, clientID); err != nil {
+	if err := deps.ConsentRepo.Revoke(ctx, tenantID, sub, clientID, now); err != nil {
 		return err
 	}
 	// Revoke is idempotent (SCL); only free the quota slot the first time a
-	// Granted consent transitions to Revoked, so repeat revokes don't
-	// under-count usage (wi-160).
-	if deps.QuotaRepo != nil && consent.State == oauthdomain.ConsentGranted {
+	// consent that is Granted at now transitions to Revoked, so repeat revokes
+	// and revokes of expired consents don't under-count usage (wi-160).
+	if deps.QuotaRepo != nil && consent.StateAt(now) == oauthdomain.ConsentGranted {
 		if err := deps.QuotaRepo.Decrement(ctx, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
 			return err
 		}
 	}
 	emit(deps.Emit, &oauthdomain.ConsentRevokedEvent{
-		At: adminNow(now), TenantID: tenantID, ActorUserID: actorUserID, UserID: sub, ClientID: clientID,
+		At: now, TenantID: tenantID, ActorUserID: actorUserID, UserID: sub, ClientID: clientID,
 	})
 	return nil
 }

@@ -49,7 +49,7 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 		return writeUserInfoError(c, tokenusecases.NewOAuthError("invalid_token", "The token is invalid."))
 	}
 	if d.AccessTokenDenylist != nil && intro.JTI != "" {
-		revoked, err := d.AccessTokenDenylist.IsRevoked(c.Request().Context(), intro.JTI)
+		revoked, err := d.AccessTokenDenylist.IsRevoked(c.Request().Context(), intro.JTI, time.Now().UTC())
 		if err != nil {
 			return writeUserInfoError(c, err)
 		}

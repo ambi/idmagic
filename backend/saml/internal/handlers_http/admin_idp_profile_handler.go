@@ -81,7 +81,7 @@ func (d Deps) handleListIDPProfiles(c *echo.Context) error {
 	if d.IDPProfileRepo == nil {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"profiles": []any{}})
 	}
-	profiles, err := d.IDPProfileRepo.ListIDPProfilesByTenant(c.Request().Context(), support.RequestTenantID(c))
+	profiles, err := d.IDPProfileRepo.ListIDPProfilesByTenant(c.Request().Context(), support.RequestTenantID(c), time.Now().UTC())
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func (d Deps) handleUpdateIDPProfile(c *echo.Context) error {
 	if profile == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The SAML identity provider profile does not exist.")
 	}
-	profile.Name, profile.Mode = strings.TrimSpace(req.Name), req.Mode
+	profile.Name, profile.Mode, profile.UpdatedAt = strings.TrimSpace(req.Name), req.Mode, time.Now().UTC()
 	if err := d.IDPProfileRepo.SaveIDPProfile(c.Request().Context(), profile); err != nil {
 		return d.writeIDPProfileError(c, err)
 	}

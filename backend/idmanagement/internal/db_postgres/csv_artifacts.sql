@@ -1,5 +1,5 @@
 -- name: InsertCSVArtifact :one
-INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4) RETURNING created_at;
+INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING created_at;
 
 -- name: InsertCSVArtifactChunk :exec
 INSERT INTO csv_artifact_chunks (artifact_id, chunk_number, payload) VALUES ($1, $2, $3);

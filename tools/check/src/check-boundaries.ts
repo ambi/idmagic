@@ -15,6 +15,7 @@ import {
 } from './boundary-fitness.ts'
 import type { CheckOptions, CheckOutcome } from './runner.ts'
 import { describedTables, tableOwners } from './schema-tables.ts'
+import { SQLC_CONFIG_PATH, sqlcQueryInputs } from './sqlc-inputs.ts'
 import {
   extractTableWrites,
   parseSqlFiles,
@@ -31,7 +32,6 @@ export const RESPONSIBILITY_TABLE_PATH = 'docs/modules/README.md'
 /** 基準 revision との比較では、表を論理アーキテクチャに置いていた revision も読む。 */
 const EARLIER_RESPONSIBILITY_TABLE_PATH = 'docs/design/architecture/logical.md'
 const DATABASE_DESIGN_PATH = 'docs/design/data/database.md'
-const SQLC_CONFIG_PATH = 'sqlc.yaml'
 export const BOUNDARY_DEBT_PATH = 'tools/check/boundary-debt.json'
 
 /** 境界検査が読む入力。基準 revision の比較は、この範囲だけを取り出して同じ判定を行う。 */
@@ -166,37 +166,6 @@ async function responsibilityTable(snapshot: WorkspaceSnapshot): Promise<string>
     if (source.split(/\r?\n/).some(isResponsibilityHeader)) return source
   }
   throw new Error(`${RESPONSIBILITY_TABLE_PATH} must contain the module responsibility table`)
-}
-
-type SqlcQueryInput = {
-  schema: string
-  packagePath: string
-  files: string[]
-}
-
-/** `sqlc.yaml` の各入力を、クエリのファイルと、それを置いたパッケージにする。 */
-async function sqlcQueryInputs(snapshot: WorkspaceSnapshot): Promise<SqlcQueryInput[]> {
-  const config = Bun.YAML.parse(await snapshot.read(SQLC_CONFIG_PATH)) as {
-    sql?: { schema?: unknown; queries?: unknown }[]
-  }
-  const inputs: SqlcQueryInput[] = []
-  for (const entry of config.sql ?? []) {
-    if (typeof entry.schema !== 'string' || typeof entry.queries !== 'string') {
-      throw new Error(
-        `${SQLC_CONFIG_PATH}: every sql entry needs one schema path and one queries path`,
-      )
-    }
-    const queries = entry.queries.replace(/\/+$/, '')
-    const files = queries.endsWith('.sql')
-      ? [queries]
-      : (await snapshot.files(queries)).filter((path) => path.endsWith('.sql'))
-    inputs.push({
-      schema: entry.schema,
-      packagePath: queries.endsWith('.sql') ? queries.split('/').slice(0, -1).join('/') : queries,
-      files,
-    })
-  }
-  return inputs
 }
 
 async function productionGoFiles(snapshot: WorkspaceSnapshot): Promise<string[]> {

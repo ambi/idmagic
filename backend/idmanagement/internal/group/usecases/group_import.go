@@ -102,7 +102,7 @@ func StartGroupImportPreview(ctx context.Context, deps GroupImportStartDeps, act
 	if err != nil {
 		return nil, err
 	}
-	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, now, func(output io.Writer) error {
 		return idmdomain.CopyCSVWithinPolicy(output, input, policy, schema.Accepts)
 	})
 	if err != nil {
@@ -209,7 +209,7 @@ func GroupImportJobHandler(deps GroupImportJobDeps, mode GroupImportMode) func(c
 
 		result := GroupImportResult{SourceSHA256: source.SourceSHA256, PreviewJobID: params.PreviewJobID}
 		var summary GroupImportPlanSummary
-		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, func(emitPage func([]byte) error) error {
+		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, deps.now(), func(emitPage func([]byte) error) error {
 			pendingErrors := make([]GroupImportRowError, 0, GroupImportErrorArtifactPageSize)
 			flushErrors := func() error {
 				if len(pendingErrors) == 0 {

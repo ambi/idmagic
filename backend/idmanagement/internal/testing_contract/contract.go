@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	idmports "github.com/ambi/idmagic/backend/idmanagement/internal/ports"
 )
@@ -24,7 +25,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	f := newFixture(t)
 	ctx := context.Background()
 	payload := bytes.Repeat([]byte("id,email\n1,alice@example.com\n"), 4_000)
-	metadata, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantA, func(output io.Writer) error {
+	metadata, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantA, time.Now().UTC(), func(output io.Writer) error {
 		_, err := output.Write(payload)
 		return err
 	})
@@ -48,7 +49,7 @@ func Run(t *testing.T, newFixture NewFixture) {
 	}
 
 	pages := [][]byte{[]byte(`[{"row":1}]`), []byte(`[{"row":2}]`)}
-	pageMetadata, err := f.Artifacts.PutCSVArtifactPages(ctx, f.TenantA, func(emit func([]byte) error) error {
+	pageMetadata, err := f.Artifacts.PutCSVArtifactPages(ctx, f.TenantA, time.Now().UTC(), func(emit func([]byte) error) error {
 		for _, page := range pages {
 			if err := emit(page); err != nil {
 				return err
@@ -75,10 +76,10 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if !ok {
 		t.Fatal("artifact store cannot measure its usage")
 	}
-	if _, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantB, func(w io.Writer) error { _, err := w.Write([]byte("other")); return err }); err != nil {
+	if _, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantB, time.Now().UTC(), func(w io.Writer) error { _, err := w.Write([]byte("other")); return err }); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantA, func(w io.Writer) error { _, _ = w.Write([]byte("partial")); return errors.New("failed write") }); err == nil {
+	if _, err := f.Artifacts.PutCSVArtifact(ctx, f.TenantA, time.Now().UTC(), func(w io.Writer) error { _, _ = w.Write([]byte("partial")); return errors.New("failed write") }); err == nil {
 		t.Fatal("failed write succeeded")
 	}
 	for tenantID, want := range map[string]int64{f.TenantA: metadata.ByteSize + pageMetadata.ByteSize, f.TenantB: 5} {

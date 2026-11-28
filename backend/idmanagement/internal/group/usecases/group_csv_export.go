@@ -52,12 +52,12 @@ func (e GroupCSVExporter) ValidateGroupCSVColumns(ctx context.Context, columns [
 	return validateGroupCSVExportColumns(schema, columns)
 }
 
-func (e GroupCSVExporter) ExportGroupCSV(ctx context.Context, columns []string) (idmports.CSVArtifact, int, error) {
-	result, err := ExportGroupCSV(ctx, e.Deps, columns, e.policy())
+func (e GroupCSVExporter) ExportGroupCSV(ctx context.Context, columns []string, now time.Time) (idmports.CSVArtifact, int, error) {
+	result, err := ExportGroupCSV(ctx, e.Deps, columns, e.policy(), now)
 	return result.Artifact, result.TotalRows, err
 }
 
-func ExportGroupCSV(ctx context.Context, deps GroupCSVExportDeps, columns []string, policy idmdomain.CSVTransferPolicy) (GroupCSVExportResult, error) {
+func ExportGroupCSV(ctx context.Context, deps GroupCSVExportDeps, columns []string, policy idmdomain.CSVTransferPolicy, now time.Time) (GroupCSVExportResult, error) {
 	var result GroupCSVExportResult
 	if deps.GroupRepo == nil || deps.Artifacts == nil {
 		return result, errors.New("group CSV export dependencies are incomplete")
@@ -86,7 +86,7 @@ func ExportGroupCSV(ctx context.Context, deps GroupCSVExportDeps, columns []stri
 	}
 
 	rowCount := 0
-	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, now, func(output io.Writer) error {
 		writer, err := idmdomain.NewCSVWriter(output, columns, policy)
 		if err != nil {
 			return err

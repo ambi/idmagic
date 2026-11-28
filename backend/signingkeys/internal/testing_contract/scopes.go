@@ -24,7 +24,7 @@ func RunKeyScopes(t *testing.T, newFixture func(*testing.T) Fixture) {
 	expectScopes(xml, t, f.Store, nil)
 	expectScopes(xml, t, f.Store, nil)
 	for _, ctx := range []context.Context{xml, signingports.WithKeyScope(xml, "profile-x"), f.Context} {
-		if _, err := f.Store.GetActiveKey(ctx); err != nil {
+		if _, err := f.Store.GetActiveKey(ctx, time.Now().UTC()); err != nil {
 			t.Fatal(err)
 		}
 	}

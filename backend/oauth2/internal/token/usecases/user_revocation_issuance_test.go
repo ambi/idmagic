@@ -141,7 +141,7 @@ func TestTokenIssuedRightAfterUserRevocationStaysActive(t *testing.T) {
 		"失効の後に発行した": {after, false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			revoked, err := AccessTokenIsRevoked(ctx, deps, &oauthports.IntrospectionResult{Active: true, Sub: idJagUser, Iat: tc.iat})
+			revoked, err := AccessTokenIsRevoked(ctx, deps, &oauthports.IntrospectionResult{Active: true, Sub: idJagUser, Iat: tc.iat}, time.Now().UTC())
 			if err != nil {
 				t.Fatal(err)
 			}

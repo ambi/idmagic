@@ -100,7 +100,7 @@ func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actor
 	if err != nil {
 		return nil, err
 	}
-	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, now, func(output io.Writer) error {
 		return idmdomain.CopyCSVWithinPolicy(output, input, policy, schema.Accepts)
 	})
 	if err != nil {
@@ -207,7 +207,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 
 		result := UserImportResult{SourceSHA256: source.SourceSHA256, PreviewJobID: params.PreviewJobID}
 		var summary userdomain.UserImportPlanSummary
-		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, func(emitPage func([]byte) error) error {
+		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, deps.now(), func(emitPage func([]byte) error) error {
 			pendingErrors := make([]UserImportRowError, 0, UserImportErrorArtifactPageSize)
 			flushErrors := func() error {
 				if len(pendingErrors) == 0 {

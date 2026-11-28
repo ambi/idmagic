@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"time"
 
 	accessdomain "github.com/ambi/idmagic/backend/accesscontrol/internal/domain"
 	accessinternalports "github.com/ambi/idmagic/backend/accesscontrol/internal/ports"
@@ -149,6 +148,9 @@ func (r *RelationTupleRepository) Version(ctx context.Context, tenantID string) 
 	return version, nil
 }
 
+// errModelCreatedAtRequired は、作成の時刻を渡し忘れた登録を実時計で補わずに止める。
+var errModelCreatedAtRequired = errors.New("authorization model requires its creation time")
+
 // AuthorizationModelRepository は認可モデルのバージョンを PostgreSQL に永続化する。
 // バージョンの採番は INSERT の中で行い、同時登録が同じバージョンを採らないようにする。
 type AuthorizationModelRepository struct{ Pool sharedpg.DB }
@@ -164,7 +166,7 @@ func (r *AuthorizationModelRepository) Publish(ctx context.Context, model *acces
 	}
 	createdAt := model.CreatedAt
 	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
+		return nil, 0, errModelCreatedAtRequired
 	}
 	tx, err := r.Pool.Begin(ctx)
 	if err != nil {

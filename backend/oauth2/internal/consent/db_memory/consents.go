@@ -124,14 +124,13 @@ func (r *ConsentRepository) Save(_ context.Context, tenantID string, c *oauthdom
 	return nil
 }
 
-func (r *ConsentRepository) Revoke(_ context.Context, tenantID, sub, clientID string) error {
+func (r *ConsentRepository) Revoke(_ context.Context, tenantID, sub, clientID string, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	mc, ok := r.consents[consentKey(tenantID, sub, clientID)]
-	if !ok {
+	if !ok || mc.RevokedAt != nil {
 		return nil
 	}
-	now := time.Now().UTC()
 	mc.State = oauthdomain.ConsentRevoked
 	mc.RevokedAt = &now
 	return nil
@@ -245,14 +244,13 @@ func (r *ConsentRepository) SaveAgentDelegation(_ context.Context, tenantID stri
 	return nil
 }
 
-func (r *ConsentRepository) RevokeAgentDelegation(_ context.Context, tenantID, sub, agentID string) error {
+func (r *ConsentRepository) RevokeAgentDelegation(_ context.Context, tenantID, sub, agentID string, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	mc, ok := r.delegations[consentKey(tenantID, sub, agentID)]
 	if !ok || mc.RevokedAt != nil {
 		return nil
 	}
-	now := time.Now().UTC()
 	mc.State = oauthdomain.ConsentRevoked
 	mc.RevokedAt = &now
 	return nil

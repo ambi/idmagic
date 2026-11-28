@@ -54,7 +54,7 @@ func TestNegotiateRateLimitFailsClosed(t *testing.T) {
 		if response.Code != 429 || response.Header().Get("Retry-After") != "30" || response.Header().Get("WWW-Authenticate") != "" {
 			t.Fatalf("response=%d %s", response.Code, response.Body.String())
 		}
-		sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+		sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 		if len(sessions) != 0 || len(f.events) != 0 {
 			t.Fatalf("sessions=%d events=%v", len(sessions), f.events)
 		}
@@ -126,7 +126,7 @@ func TestNegotiateCannotBypassRequiredMFA(t *testing.T) {
 			t.Fatal("policy refusal issued a usable session cookie")
 		}
 	}
-	sessions, err := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+	sessions, err := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestNegotiateContinuesRequiredSecondFactor(t *testing.T) {
 	if sessionID == "" {
 		t.Fatal("pending session cookie missing")
 	}
-	session, err := f.module.SessionStore.Find(f.ctx, sessionID)
+	session, err := f.module.SessionStore.Find(f.ctx, sessionID, time.Now().UTC())
 	if err != nil || session == nil || session.UserID != "alice-id" || !session.AuthenticationPending || session.RevokedAt != nil {
 		t.Fatalf("session=%+v err=%v", session, err)
 	}
@@ -229,7 +229,7 @@ func TestNegotiateRefusalsHaveNoSession(t *testing.T) {
 			if response.Header().Get("WWW-Authenticate") != "" {
 				t.Fatal("a refusal issued another Negotiate challenge")
 			}
-			sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+			sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 			if len(sessions) != 0 {
 				t.Fatalf("refusal created %d sessions", len(sessions))
 			}
@@ -259,7 +259,7 @@ func TestNegotiateCreatesMappedSessionAndRejectsReplay(t *testing.T) {
 	if !strings.HasPrefix(response.Header().Get("WWW-Authenticate"), "Negotiate ") {
 		t.Fatal("mutual authentication reply missing")
 	}
-	sessions, err := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+	sessions, err := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 	if err != nil || len(sessions) != 1 || len(sessions[0].AMR) != 1 || sessions[0].AMR[0] != "wia" || sessions[0].AuthenticationPending {
 		t.Fatalf("sessions=%+v err=%v", sessions, err)
 	}
@@ -273,7 +273,7 @@ func TestNegotiateCreatesMappedSessionAndRejectsReplay(t *testing.T) {
 	if replayed.Code != http.StatusUnauthorized || !strings.Contains(replayed.Body.String(), "rejected") {
 		t.Fatalf("replay=%d %s", replayed.Code, replayed.Body.String())
 	}
-	after, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+	after, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 	if len(after) != 1 {
 		t.Fatalf("replay created %d sessions", len(after))
 	}
@@ -294,7 +294,7 @@ func TestNegotiateRejectsInvalidContinuation(t *testing.T) {
 		if response.Code != want || response.Header().Get("WWW-Authenticate") != "" {
 			t.Fatalf("response=%d %s", response.Code, response.Body.String())
 		}
-		sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+		sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 		if len(sessions) != 0 {
 			t.Fatal("invalid continuation created a session")
 		}
@@ -366,7 +366,7 @@ func TestNegotiateWithoutTicketFallsBackWithoutLoop(t *testing.T) {
 	if response.Code != 200 || strings.TrimSpace(response.Body.String()) != "{}" || response.Header().Get("WWW-Authenticate") != "" {
 		t.Fatalf("fallback=%d %s headers=%v", response.Code, response.Body.String(), response.Header())
 	}
-	sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id")
+	sessions, _ := f.module.SessionStore.ListBySub(f.ctx, "alice-id", time.Now().UTC())
 	if len(sessions) != 0 || len(f.events) != 0 {
 		t.Fatalf("sessions=%d events=%v", len(sessions), f.events)
 	}

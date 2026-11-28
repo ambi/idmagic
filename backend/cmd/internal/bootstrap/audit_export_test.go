@@ -61,7 +61,7 @@ func TestAuditExportLifecycleAndQuotaWiring(t *testing.T) {
 		t.Fatal(err)
 	}
 	reader.Close()
-	if _, err := deps.IdManagement.CSVArtifacts.PutCSVArtifact(ctx, tenantID, func(w io.Writer) error { _, err := io.WriteString(w, "abc"); return err }); err != nil {
+	if _, err := deps.IdManagement.CSVArtifacts.PutCSVArtifact(ctx, tenantID, time.Now().UTC(), func(w io.Writer) error { _, err := io.WriteString(w, "abc"); return err }); err != nil {
 		t.Fatal(err)
 	}
 	if err := RunRetentionSweepOnce(ctx, deps, now); err != nil {

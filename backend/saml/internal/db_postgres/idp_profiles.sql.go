@@ -64,14 +64,19 @@ func (q *Queries) DeleteSamlIDPProfile(ctx context.Context, arg DeleteSamlIDPPro
 
 const ensureDefaultSamlIDPProfile = `-- name: EnsureDefaultSamlIDPProfile :one
 INSERT INTO saml_identity_provider_profiles
-    (tenant_id, profile_id, name, mode, is_default)
-VALUES ($1, 'default', 'Default', 'shared', TRUE)
+    (tenant_id, profile_id, name, mode, is_default, created_at, updated_at)
+VALUES ($1, 'default', 'Default', 'shared', TRUE, $2, $2)
 ON CONFLICT (tenant_id, profile_id) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
 RETURNING tenant_id, profile_id, name, mode, is_default, created_at, updated_at
 `
 
-func (q *Queries) EnsureDefaultSamlIDPProfile(ctx context.Context, tenantID string) (*SamlIdentityProviderProfile, error) {
-	row := q.db.QueryRow(ctx, ensureDefaultSamlIDPProfile, tenantID)
+type EnsureDefaultSamlIDPProfileParams struct {
+	TenantID string
+	Now      time.Time
+}
+
+func (q *Queries) EnsureDefaultSamlIDPProfile(ctx context.Context, arg EnsureDefaultSamlIDPProfileParams) (*SamlIdentityProviderProfile, error) {
+	row := q.db.QueryRow(ctx, ensureDefaultSamlIDPProfile, arg.TenantID, arg.Now)
 	var i SamlIdentityProviderProfile
 	err := row.Scan(
 		&i.TenantID,

@@ -140,7 +140,7 @@ linters:
       analyze-types: true
       forbid:
         - pattern: ^time\.Now$
-          msg: "domain は現在時刻を引数か ports で受け取る"
+          msg: "domain とストレージのアダプターは現在時刻を引数で受け取る"
         - pattern: ^os\.(Getenv|LookupEnv|Environ)$
           msg: "起動設定は backend/cmd/internal/bootstrap の ConfigLoader を通して読む"
     gosec:
@@ -197,9 +197,10 @@ linters:
         text: "\\.(AttrSchemaRepo|UserRepo|MfaFactorRepo|TokenIssuer|KeyStore) is deprecated:"
         linters:
           - staticcheck
-      # time.Now の禁止は domain だけに適用する。診断は別名の綴りで出るので、理由の文で選ぶ。
-      - path-except: ^backend/(?:[^/]+/)*domain/
-        text: "domain は現在時刻"
+      # time.Now の禁止は domain とストレージのアダプターだけに適用する。
+      # 診断は別名の綴りで出るので、理由の文で選ぶ。
+      - path-except: ^backend/(?:[^/]+/)*(?:domain|db_memory|db_postgres)/
+        text: "domain とストレージのアダプターは現在時刻"
         linters:
           - forbidigo
       # 起動設定の読み取りは bootstrap、実行時の locator を解決する *_env アダプター、

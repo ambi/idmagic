@@ -144,7 +144,7 @@ func TestBackchannelApprovalIssuesTokenOnce(t *testing.T) {
 		t.Fatalf("backchannel response=%+v err=%v", started, err)
 	}
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
-	pending, err := store.ListPendingForUser(ctx, "alice-id")
+	pending, err := store.ListPendingForUser(ctx, "alice-id", time.Now().UTC())
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("pending approvals=%#v err=%v", pending, err)
 	}

@@ -1,7 +1,7 @@
 -- name: EnsureDefaultSamlIDPProfile :one
 INSERT INTO saml_identity_provider_profiles
-    (tenant_id, profile_id, name, mode, is_default)
-VALUES ($1, 'default', 'Default', 'shared', TRUE)
+    (tenant_id, profile_id, name, mode, is_default, created_at, updated_at)
+VALUES (@tenant_id, 'default', 'Default', 'shared', TRUE, @now, @now)
 ON CONFLICT (tenant_id, profile_id) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
 RETURNING tenant_id, profile_id, name, mode, is_default, created_at, updated_at;
 

@@ -88,14 +88,15 @@ func (q *Queries) FindCSVArtifactPage(ctx context.Context, arg FindCSVArtifactPa
 }
 
 const insertCSVArtifact = `-- name: InsertCSVArtifact :one
-INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size) VALUES ($1, $2, $3, $4) RETURNING created_at
+INSERT INTO csv_artifacts (id, tenant_id, sha256, byte_size, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING created_at
 `
 
 type InsertCSVArtifactParams struct {
-	ID       string
-	TenantID string
-	Sha256   string
-	ByteSize int64
+	ID        string
+	TenantID  string
+	Sha256    string
+	ByteSize  int64
+	CreatedAt time.Time
 }
 
 func (q *Queries) InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactParams) (time.Time, error) {
@@ -104,6 +105,7 @@ func (q *Queries) InsertCSVArtifact(ctx context.Context, arg InsertCSVArtifactPa
 		arg.TenantID,
 		arg.Sha256,
 		arg.ByteSize,
+		arg.CreatedAt,
 	)
 	var created_at time.Time
 	err := row.Scan(&created_at)

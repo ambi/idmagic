@@ -39,8 +39,9 @@ type CSVArtifactUsageReader interface {
 }
 
 type CSVArtifactStore interface {
-	PutCSVArtifact(ctx context.Context, tenantID string, write func(io.Writer) error) (CSVArtifact, error)
+	// PutCSVArtifact は write が書いた内容を、createdAt に保存した成果物として記録する。
+	PutCSVArtifact(ctx context.Context, tenantID string, createdAt time.Time, write func(io.Writer) error) (CSVArtifact, error)
 	OpenCSVArtifact(ctx context.Context, tenantID, ref string) (io.ReadCloser, CSVArtifact, error)
-	PutCSVArtifactPages(ctx context.Context, tenantID string, write func(emit func([]byte) error) error) (CSVArtifact, error)
+	PutCSVArtifactPages(ctx context.Context, tenantID string, createdAt time.Time, write func(emit func([]byte) error) error) (CSVArtifact, error)
 	ReadCSVArtifactPage(ctx context.Context, tenantID, ref string, page int) ([]byte, CSVArtifact, error)
 }

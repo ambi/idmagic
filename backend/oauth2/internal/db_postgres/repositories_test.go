@@ -234,7 +234,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("find all: %v len=%d", err, len(all))
 	}
 
-	if err := repo.Revoke(ctx, tenant.ID, user.ID, client.ClientID); err != nil {
+	if err := repo.Revoke(ctx, tenant.ID, user.ID, client.ClientID, time.Now().UTC()); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
 	got, err = repo.Find(ctx, tenant.ID, user.ID, client.ClientID)

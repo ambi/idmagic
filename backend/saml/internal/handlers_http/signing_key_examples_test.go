@@ -131,7 +131,7 @@ func TestSamlAssertionIsSignedOnlyByTheIssuingTenantsXmlFederationKey(t *testing
 		t.Fatal("acme テナントの XML 証明書で default テナントの Assertion が検証できてしまう")
 	}
 
-	jwtKey, err := s.KeyStore.GetActiveKey(s.RealmContext(t, tenancydomain.DefaultRealm))
+	jwtKey, err := s.KeyStore.GetActiveKey(s.RealmContext(t, tenancydomain.DefaultRealm), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

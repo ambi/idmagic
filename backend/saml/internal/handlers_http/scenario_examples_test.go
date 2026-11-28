@@ -362,7 +362,7 @@ func TestSamlProfileEndpointsRefuseAnUnknownOrForeignProfileID(t *testing.T) {
 	const foreignProfileID = "foreign-profile"
 	if err := repo.SaveIDPProfile(context.Background(), &samldomain.SamlIdentityProviderProfile{
 		TenantID: "another-tenant", ProfileID: foreignProfileID,
-		Name: "Foreign", Mode: samldomain.IDPProfileModeDedicated,
+		Name: "Foreign", Mode: samldomain.IDPProfileModeDedicated, UpdatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -638,8 +638,33 @@ func TestAdminManagesSharedAndDedicatedIDPProfilesEndToEnd(t *testing.T) {
 	if updated.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", updated.Code, updated.Body.String())
 	}
-	if reread := get(e, "/api/admin/v1/saml/idp-profiles"); !strings.Contains(reread.Body.String(), "Renamed partners") {
+	reread := get(e, "/api/admin/v1/saml/idp-profiles")
+	if !strings.Contains(reread.Body.String(), "Renamed partners") {
 		t.Fatalf("変更が保存されていない: %s", reread.Body.String())
+	}
+	// 変更の応答は、保存した更新の時刻を返す。
+	var response adminIDPProfile
+	var stored struct {
+		Profiles []adminIDPProfile `json:"profiles"`
+	}
+	if err := json.Unmarshal(updated.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(reread.Body.Bytes(), &stored); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, profile := range stored.Profiles {
+		if profile.Profile.ProfileID != shared.Profile.ProfileID {
+			continue
+		}
+		found = true
+		if !profile.Profile.UpdatedAt.Equal(response.Profile.UpdatedAt) || response.Profile.UpdatedAt.Equal(shared.Profile.UpdatedAt) {
+			t.Fatalf("updated_at: response=%v stored=%v created=%v", response.Profile.UpdatedAt, profile.Profile.UpdatedAt, shared.Profile.UpdatedAt)
+		}
+	}
+	if !found {
+		t.Fatalf("更新したプロファイルが一覧にない: %s", reread.Body.String())
 	}
 
 	// dedicated プロファイルと 1 つの SP の関連付けが保存される。

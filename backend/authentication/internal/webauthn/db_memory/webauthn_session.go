@@ -45,6 +45,7 @@ func (s *WebAuthnSessionStore) Save(
 func (s *WebAuthnSessionStore) Take(
 	ctx context.Context,
 	key string,
+	now time.Time,
 ) (*webauthnports.WebAuthnSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -53,7 +54,7 @@ func (s *WebAuthnSessionStore) Take(
 		return nil, nil
 	}
 	delete(s.sessions, sessionKey(ctx, key))
-	if !time.Now().Before(entry.expiresAt) {
+	if !now.Before(entry.expiresAt) {
 		return nil, nil
 	}
 	return &webauthnports.WebAuthnSession{Payload: entry.payload}, nil

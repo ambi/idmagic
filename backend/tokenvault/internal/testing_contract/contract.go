@@ -215,7 +215,7 @@ func attemptContract(t *testing.T, f Fixture) {
 		ID: f.NewID(), TenantID: f.TenantA, ConnectorID: c.ID, UserID: f.UserA, StateHash: []byte("hash-1"),
 		CodeVerifier: "verifier", RequestedScopes: []string{"read"}, ExpiresAt: f.Now.Add(time.Minute),
 	}
-	if err := f.Attempts.Save(ctx, attempt); err != nil {
+	if err := f.Attempts.Save(ctx, attempt, f.Now); err != nil {
 		t.Fatal(err)
 	}
 	consume := func(user string, hash []byte, at time.Time) *tokenvaultdomain.ConnectionAttempt {

@@ -23,7 +23,7 @@ type ReplayStore struct {
 
 func (s *ReplayStore) RecordIfNew(ctx context.Context, jti string, windowSeconds int, now time.Time) (bool, error) {
 	if now.IsZero() {
-		now = time.Now().UTC()
+		return false, errors.New("replay reservation requires the current time")
 	}
 	_, err := New(s.Pool).ReserveOauth2ReplayJTI(ctx, ReserveOauth2ReplayJTIParams{
 		TenantID:     tenantports.TenantID(ctx),

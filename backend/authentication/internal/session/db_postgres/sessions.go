@@ -46,11 +46,11 @@ func (r *SessionRepository) Save(ctx context.Context, sess *sessiondomain.LoginS
 	})
 }
 
-func (r *SessionRepository) Find(ctx context.Context, sessionID string) (*sessiondomain.LoginSession, error) {
+func (r *SessionRepository) Find(ctx context.Context, sessionID string, now time.Time) (*sessiondomain.LoginSession, error) {
 	row, err := r.queries().FindActiveAuthenticationSession(ctx, FindActiveAuthenticationSessionParams{
 		ID:        sessionID,
 		TenantID:  tenantports.TenantID(ctx),
-		ExpiresAt: time.Now().UTC(),
+		ExpiresAt: now,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -103,11 +103,11 @@ func (r *SessionRepository) Touch(ctx context.Context, sessionID string, now tim
 	})
 }
 
-func (r *SessionRepository) ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error) {
+func (r *SessionRepository) ListBySub(ctx context.Context, sub string, now time.Time) ([]*sessiondomain.LoginSession, error) {
 	rows, err := r.queries().ListActiveAuthenticationSessionsByUser(ctx, ListActiveAuthenticationSessionsByUserParams{
 		TenantID:  tenantports.TenantID(ctx),
 		UserID:    sub,
-		ExpiresAt: time.Now().UTC(),
+		ExpiresAt: now,
 		Limit:     defaultSessionListLimit,
 	})
 	if err != nil {

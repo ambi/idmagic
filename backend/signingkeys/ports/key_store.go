@@ -48,7 +48,8 @@ func KeyScope(ctx context.Context) string {
 // KeyStore はテナント帰属の署名鍵を扱う。tenant scope は ctx (tenantports.TenantID)
 // から解決し、列挙・検索・回転・署名鍵選択はすべて ctx のテナントに閉じる。
 type KeyStore interface {
-	GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error)
+	// GetActiveKey は ctx の用途とスコープで有効な鍵を返す。まだ鍵がなければ now に作成した鍵を作る。
+	GetActiveKey(ctx context.Context, now time.Time) (*signingdomain.SigningKey, error)
 	GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error)
 	ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error)
 	FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error)

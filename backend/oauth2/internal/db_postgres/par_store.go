@@ -60,11 +60,11 @@ func (s *PARStore) Find(ctx context.Context, requestURI string) (*oauthdomain.PA
 	return rec, nil
 }
 
-func (s *PARStore) Consume(ctx context.Context, requestURI string) (*oauthdomain.PARRecord, error) {
+func (s *PARStore) Consume(ctx context.Context, requestURI string, now time.Time) (*oauthdomain.PARRecord, error) {
 	payload, err := New(s.Pool).ConsumePARRequest(ctx, ConsumePARRequestParams{
 		RequestUri: requestURI,
 		TenantID:   tenantports.TenantID(ctx),
-		Now:        time.Now().UTC(),
+		Now:        now,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

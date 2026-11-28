@@ -27,11 +27,11 @@ func (s *WebAuthnSessionStore) Save(ctx context.Context, key string, session web
 	})
 }
 
-func (s *WebAuthnSessionStore) Take(ctx context.Context, key string) (*webauthnports.WebAuthnSession, error) {
+func (s *WebAuthnSessionStore) Take(ctx context.Context, key string, now time.Time) (*webauthnports.WebAuthnSession, error) {
 	payload, err := New(s.Pool).TakeWebauthnSession(ctx, TakeWebauthnSessionParams{
 		TenantID:   tenantports.TenantID(ctx),
 		SessionKey: key,
-		Now:        time.Now().UTC(),
+		Now:        now,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

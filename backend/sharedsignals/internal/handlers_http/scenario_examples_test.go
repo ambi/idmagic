@@ -451,7 +451,7 @@ func (s *exampleStack) reissueAt(t *testing.T, token string, issuedAt time.Time)
 	claims["iat"] = issuedAt.Unix()
 	claims["jti"] = "reissued-" + strings.ReplaceAll(issuedAt.Format(time.RFC3339Nano), ":", "")
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
-	key, err := s.keyStore.GetActiveKey(ctx)
+	key, err := s.keyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

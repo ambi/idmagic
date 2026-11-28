@@ -71,7 +71,7 @@ func TestHTTPTransitEngine_ReplaysVaultTransit(t *testing.T) {
 	ctx := tenantCtx()
 	digest := recordedDigest(t, rec.Exchange(t, "sign-v1-pss"))
 
-	first, err := store.GetActiveKey(ctx)
+	first, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

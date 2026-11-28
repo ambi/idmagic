@@ -40,7 +40,7 @@ func TestGetAdminGroupImportUsesManagementCursorPaginationForArtifactErrors(t *t
 	tenantID := tenancydomain.DefaultTenantID
 	repo.Seed(&userdomain.User{ID: "admin", TenantID: tenantID, PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now})
 	artifacts := idmmemory.NewCSVArtifactStore()
-	errorArtifact, err := artifacts.PutCSVArtifactPages(testing_tenant.Default(context.Background()), tenantID, func(emit func([]byte) error) error {
+	errorArtifact, err := artifacts.PutCSVArtifactPages(testing_tenant.Default(context.Background()), tenantID, time.Now().UTC(), func(emit func([]byte) error) error {
 		for pageNumber := range 3 {
 			page := make([]groupusecases.GroupImportRowError, 0, groupusecases.GroupImportErrorArtifactPageSize)
 			for index := range groupusecases.GroupImportErrorArtifactPageSize {

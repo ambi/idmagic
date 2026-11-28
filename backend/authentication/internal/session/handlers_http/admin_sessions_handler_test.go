@@ -173,7 +173,7 @@ func TestAdminRevokeSessionCascadesToRefreshTokens(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1"); sess != nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1", time.Now().UTC()); sess != nil {
 		t.Fatal("session was not revoked")
 	}
 	rt, _ := f.refreshStore.FindByHash(testing_tenant.Default(context.Background()), "hash-web-app")
@@ -193,7 +193,7 @@ func TestAdminRevokeSessionRejectsMismatchedUser(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1"); sess == nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1", time.Now().UTC()); sess == nil {
 		t.Fatal("alice's session must not be revoked via mismatched user_id")
 	}
 }
@@ -210,13 +210,13 @@ func TestAdminRevokeAllSessionsRevokesEveryTargetSession(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1"); sess != nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s1", time.Now().UTC()); sess != nil {
 		t.Fatal("s1 was not revoked")
 	}
-	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s2"); sess != nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s2", time.Now().UTC()); sess != nil {
 		t.Fatal("s2 was not revoked")
 	}
-	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s3"); sess == nil {
+	if sess, _ := f.sessionStore.Find(testing_tenant.Default(context.Background()), "s3", time.Now().UTC()); sess == nil {
 		t.Fatal("bob's session must not be revoked")
 	}
 }

@@ -20,8 +20,8 @@ func samlIDPProfileFromRow(row *SamlIdentityProviderProfile) *samldomain.SamlIde
 	}
 }
 
-func (r *SamlIdentityProviderProfileRepository) EnsureDefaultIDPProfile(ctx context.Context, tenantID string) (*samldomain.SamlIdentityProviderProfile, error) {
-	row, err := New(r.Pool).EnsureDefaultSamlIDPProfile(ctx, tenantID)
+func (r *SamlIdentityProviderProfileRepository) EnsureDefaultIDPProfile(ctx context.Context, tenantID string, now time.Time) (*samldomain.SamlIdentityProviderProfile, error) {
+	row, err := New(r.Pool).EnsureDefaultSamlIDPProfile(ctx, EnsureDefaultSamlIDPProfileParams{TenantID: tenantID, Now: now})
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +39,8 @@ func (r *SamlIdentityProviderProfileRepository) FindIDPProfileByID(ctx context.C
 	return samlIDPProfileFromRow(row), nil
 }
 
-func (r *SamlIdentityProviderProfileRepository) ListIDPProfilesByTenant(ctx context.Context, tenantID string) ([]*samldomain.SamlIdentityProviderProfile, error) {
-	if _, err := r.EnsureDefaultIDPProfile(ctx, tenantID); err != nil {
+func (r *SamlIdentityProviderProfileRepository) ListIDPProfilesByTenant(ctx context.Context, tenantID string, now time.Time) ([]*samldomain.SamlIdentityProviderProfile, error) {
+	if _, err := r.EnsureDefaultIDPProfile(ctx, tenantID, now); err != nil {
 		return nil, err
 	}
 	rows, err := New(r.Pool).ListSamlIDPProfilesByTenant(ctx, tenantID)
@@ -55,7 +55,7 @@ func (r *SamlIdentityProviderProfileRepository) ListIDPProfilesByTenant(ctx cont
 }
 
 func (r *SamlIdentityProviderProfileRepository) SaveIDPProfile(ctx context.Context, profile *samldomain.SamlIdentityProviderProfile) error {
-	if profile == nil {
+	if profile == nil || profile.UpdatedAt.IsZero() {
 		return samldomain.ErrInvalidIDPProfile
 	}
 	tx, err := r.Pool.Begin(ctx)
@@ -64,7 +64,7 @@ func (r *SamlIdentityProviderProfileRepository) SaveIDPProfile(ctx context.Conte
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := New(tx)
-	now := time.Now().UTC()
+	now := profile.UpdatedAt
 	createdAt := profile.CreatedAt
 	if createdAt.IsZero() {
 		createdAt = now

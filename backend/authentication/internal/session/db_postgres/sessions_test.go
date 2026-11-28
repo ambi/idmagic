@@ -47,7 +47,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	}
 
 	t.Run("Find resolves an active session", func(t *testing.T) {
-		got, err := repo.Find(ctx, sess.ID)
+		got, err := repo.Find(ctx, sess.ID, time.Now().UTC())
 		if err != nil || got == nil {
 			t.Fatalf("find: %v %+v", err, got)
 		}
@@ -58,7 +58,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 
 	t.Run("Find enforces tenant isolation (fail-closed)", func(t *testing.T) {
 		wrongTenantCtx := withTenant(context.Background(), otherTenant)
-		got, err := repo.Find(wrongTenantCtx, sess.ID)
+		got, err := repo.Find(wrongTenantCtx, sess.ID, time.Now().UTC())
 		if err != nil {
 			t.Fatalf("find: %v", err)
 		}
@@ -77,7 +77,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		if err := repo.Save(ctx, sess); err != nil {
 			t.Fatalf("save (update): %v", err)
 		}
-		got, err := repo.Find(ctx, sess.ID)
+		got, err := repo.Find(ctx, sess.ID, time.Now().UTC())
 		if err != nil || got == nil {
 			t.Fatalf("find: %v %+v", err, got)
 		}
@@ -94,7 +94,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		if err := repo.Touch(ctx, sess.ID, t1); err != nil {
 			t.Fatalf("touch: %v", err)
 		}
-		got, _ := repo.Find(ctx, sess.ID)
+		got, _ := repo.Find(ctx, sess.ID, time.Now().UTC())
 		if !got.LastSeenAt.Equal(t1) {
 			t.Fatalf("LastSeenAt = %v, want %v", got.LastSeenAt, t1)
 		}
@@ -103,7 +103,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		if err := repo.Touch(ctx, sess.ID, t2); err != nil {
 			t.Fatalf("touch: %v", err)
 		}
-		got, _ = repo.Find(ctx, sess.ID)
+		got, _ = repo.Find(ctx, sess.ID, time.Now().UTC())
 		if !got.LastSeenAt.Equal(t1) {
 			t.Fatalf("touch within interval must not persist: got %v, want %v", got.LastSeenAt, t1)
 		}
@@ -112,7 +112,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		if err := repo.Touch(ctx, sess.ID, t3); err != nil {
 			t.Fatalf("touch: %v", err)
 		}
-		got, _ = repo.Find(ctx, sess.ID)
+		got, _ = repo.Find(ctx, sess.ID, time.Now().UTC())
 		if !got.LastSeenAt.Equal(t3) {
 			t.Fatalf("touch past interval must persist: got %v, want %v", got.LastSeenAt, t3)
 		}
@@ -136,7 +136,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 			t.Fatalf("save pending: %v", err)
 		}
 
-		list, err := repo.ListBySub(ctx, user.ID)
+		list, err := repo.ListBySub(ctx, user.ID, time.Now().UTC())
 		if err != nil {
 			t.Fatalf("list: %v", err)
 		}
@@ -165,7 +165,7 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 		if _, err := repo.Revoke(ctx, sess.ID, spec.SessionEndSelfRevoke, revokeAt); err != nil {
 			t.Fatalf("revoke: %v", err)
 		}
-		if got, _ := repo.Find(ctx, sess.ID); got != nil {
+		if got, _ := repo.Find(ctx, sess.ID, time.Now().UTC()); got != nil {
 			t.Fatalf("revoked session must not resolve as active")
 		}
 		owned, err := repo.FindOwned(ctx, sess.ID, user.ID)

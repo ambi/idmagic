@@ -23,11 +23,11 @@ func (d *AccessTokenDenylist) Add(ctx context.Context, jti string, expiresAt tim
 	})
 }
 
-func (d *AccessTokenDenylist) IsRevoked(ctx context.Context, jti string) (bool, error) {
+func (d *AccessTokenDenylist) IsRevoked(ctx context.Context, jti string, now time.Time) (bool, error) {
 	return New(d.Pool).IsOauth2AccessTokenRevoked(ctx, IsOauth2AccessTokenRevokedParams{
 		TenantID: tenantports.TenantID(ctx),
 		Jti:      jti,
-		Now:      time.Now().UTC(),
+		Now:      now,
 	})
 }
 

@@ -108,10 +108,9 @@ func (s *ApprovalRequestStore) FindByAuthReqIDHash(ctx context.Context, hash str
 	return cloneApprovalRequest(rec), nil
 }
 
-func (s *ApprovalRequestStore) ListPendingForUser(ctx context.Context, userID string) ([]*approvaldomain.ApprovalRequest, error) {
+func (s *ApprovalRequestStore) ListPendingForUser(ctx context.Context, userID string, now time.Time) ([]*approvaldomain.ApprovalRequest, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	now := time.Now().UTC()
 	out := []*approvaldomain.ApprovalRequest{}
 	for _, rec := range s.byID {
 		if rec.TenantID != tenantports.TenantID(ctx) || rec.UserID != userID || rec.State != spec.ApprovalPending || !now.Before(rec.ExpiresAt) {

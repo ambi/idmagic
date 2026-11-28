@@ -101,7 +101,7 @@ func TestPersonalApiTokenRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stored, err := s.Sessions.Store.Find(s.RealmContext(t, realm), stale.SessionID)
+	stored, err := s.Sessions.Store.Find(s.RealmContext(t, realm), stale.SessionID, time.Now().UTC())
 	if err != nil || stored == nil {
 		t.Fatalf("session=%v error=%v", stored, err)
 	}

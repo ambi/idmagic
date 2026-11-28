@@ -69,13 +69,10 @@ func consentFromRow(row consentRow) (*oauthdomain.Consent, error) {
 	if err := json.Unmarshal(row.scopes, &c.Scopes); err != nil {
 		return nil, err
 	}
-	switch {
-	case c.RevokedAt != nil:
+	// 期限切れは保存した状態ではないので、呼び出し側が Consent.StateAt で判定する。
+	c.State = oauthdomain.ConsentGranted
+	if c.RevokedAt != nil {
 		c.State = oauthdomain.ConsentRevoked
-	case !time.Now().Before(c.ExpiresAt):
-		c.State = oauthdomain.ConsentExpired
-	default:
-		c.State = oauthdomain.ConsentGranted
 	}
 	return c, nil
 }
@@ -200,12 +197,12 @@ func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *oauthd
 	})
 }
 
-func (r *ConsentRepository) Revoke(ctx context.Context, tenantID, sub, clientID string) error {
+func (r *ConsentRepository) Revoke(ctx context.Context, tenantID, sub, clientID string, now time.Time) error {
 	client, err := uuidParam(clientID)
 	if err != nil {
 		return err
 	}
-	return oauth2pg.New(r.Pool).RevokeConsent(ctx, oauth2pg.RevokeConsentParams{UserID: sub, ClientID: client})
+	return oauth2pg.New(r.Pool).RevokeConsent(ctx, oauth2pg.RevokeConsentParams{UserID: sub, ClientID: client, RevokedAt: pgtype.Timestamptz{Time: now, Valid: true}})
 }
 
 func (r *ConsentRepository) DeleteAllForSub(ctx context.Context, sub string) (int, error) {
@@ -326,12 +323,12 @@ func (r *ConsentRepository) SaveAgentDelegation(ctx context.Context, tenantID st
 	})
 }
 
-func (r *ConsentRepository) RevokeAgentDelegation(ctx context.Context, tenantID, sub, agentID string) error {
+func (r *ConsentRepository) RevokeAgentDelegation(ctx context.Context, tenantID, sub, agentID string, now time.Time) error {
 	agent, err := uuidParam(agentID)
 	if err != nil {
 		return err
 	}
-	return oauth2pg.New(r.Pool).RevokeAgentDelegation(ctx, oauth2pg.RevokeAgentDelegationParams{UserID: sub, AgentID: agent})
+	return oauth2pg.New(r.Pool).RevokeAgentDelegation(ctx, oauth2pg.RevokeAgentDelegationParams{UserID: sub, AgentID: agent, RevokedAt: pgtype.Timestamptz{Time: now, Valid: true}})
 }
 
 func (r *ConsentRepository) TouchAgentDelegation(ctx context.Context, tenantID, sub, agentID string, at time.Time) error {

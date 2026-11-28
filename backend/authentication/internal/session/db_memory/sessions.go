@@ -22,20 +22,10 @@ import (
 type SessionStore struct {
 	mu       sync.Mutex
 	sessions map[string]*sessiondomain.LoginSession
-	// Clock は期限切れ判定に使う時計。nil なら time.Now。決定的な時刻でセッション失効を
-	// 制御したいテストが差し替える (本番は実時計のまま)。
-	Clock func() time.Time
 }
 
 func NewSessionStore() *SessionStore {
 	return &SessionStore{sessions: map[string]*sessiondomain.LoginSession{}}
-}
-
-func (s *SessionStore) now() time.Time {
-	if s.Clock != nil {
-		return s.Clock()
-	}
-	return time.Now()
 }
 
 func (s *SessionStore) Save(_ context.Context, sess *sessiondomain.LoginSession) error {
@@ -57,11 +47,11 @@ func inTenant(ctx context.Context, sess *sessiondomain.LoginSession) bool {
 }
 
 // Find は有効な (未失効・未期限切れ) セッションだけを返す fail-closed な解決用 lookup。
-func (s *SessionStore) Find(ctx context.Context, id string) (*sessiondomain.LoginSession, error) {
+func (s *SessionStore) Find(ctx context.Context, id string, now time.Time) (*sessiondomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[id]
-	if !ok || !inTenant(ctx, sess) || !sess.Active(s.now()) {
+	if !ok || !inTenant(ctx, sess) || !sess.Active(now) {
 		return nil, nil
 	}
 	return sess, nil
@@ -111,10 +101,9 @@ func (s *SessionStore) Touch(ctx context.Context, id string, now time.Time) erro
 	return nil
 }
 
-func (s *SessionStore) ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error) {
+func (s *SessionStore) ListBySub(ctx context.Context, sub string, now time.Time) ([]*sessiondomain.LoginSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	now := s.now()
 	out := []*sessiondomain.LoginSession{}
 	for _, sess := range s.sessions {
 		if inTenant(ctx, sess) && sess.UserID == sub && !sess.AuthenticationPending && sess.Active(now) {

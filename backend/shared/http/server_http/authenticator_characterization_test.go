@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
+
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
@@ -114,7 +116,7 @@ type failingDenylist struct{}
 
 func (failingDenylist) Add(context.Context, string, time.Time) error { return nil }
 
-func (failingDenylist) IsRevoked(context.Context, string) (bool, error) {
+func (failingDenylist) IsRevoked(context.Context, string, time.Time) (bool, error) {
 	return false, errCharacterizedStore
 }
 
@@ -124,7 +126,7 @@ type authCharacterization struct {
 	groups       *faultyGroups
 	consents     *faultyConsents
 	sessions     *authentication.SessionManager
-	sessionStore sessionports.SessionStore
+	sessionStore characterizedSessions
 	tenants      tenantports.TenantRepository
 	apiTokens    *apitoken.Service
 	echo         *echo.Echo
@@ -152,7 +154,7 @@ func newAuthCharacterization(t *testing.T) *authCharacterization {
 		groups:       &faultyGroups{GroupRepository: idmanagement.NewMemoryModule().GroupRepo},
 		consents:     &faultyConsents{ConsentRepository: oauth2.NewMemoryModule().ConsentRepo},
 		sessions:     sessions,
-		sessionStore: sessionStore,
+		sessionStore: characterizedSessions{sessionStore},
 		tenants:      tenants,
 		apiTokens: apitoken.New(apiTokenRepo,
 			apitoken.WithTokenIssuer(signer), apitoken.WithTokenIntrospector(signer)),
@@ -460,4 +462,11 @@ func TestCharacterizeAdminActorResolution(t *testing.T) {
 				listed)
 		})
 	}
+}
+
+// characterizedSessions は、特性化テストが有効なセッションを現在時刻で読み直すための保管先である。
+type characterizedSessions struct{ store sessionports.SessionStore }
+
+func (s characterizedSessions) Find(ctx context.Context, sessionID string) (*sessiondomain.LoginSession, error) {
+	return s.store.Find(ctx, sessionID, time.Now().UTC())
 }

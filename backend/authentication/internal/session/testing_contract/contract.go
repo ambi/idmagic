@@ -42,20 +42,20 @@ func Run(t *testing.T, newFixture NewFixture) {
 	if err := f.Store.Save(ctx, session); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	if got, err := f.Store.Find(ctx, session.ID); err != nil || got == nil || got.UserID != f.UserID {
+	if got, err := f.Store.Find(ctx, session.ID, f.Now); err != nil || got == nil || got.UserID != f.UserID {
 		t.Fatalf("Find = (%+v, %v)", got, err)
 	}
-	if got, err := f.Store.Find(f.Other(context.Background()), session.ID); err != nil || got != nil {
+	if got, err := f.Store.Find(f.Other(context.Background()), session.ID, f.Now); err != nil || got != nil {
 		t.Fatalf("cross-tenant Find = (%+v, %v)", got, err)
 	}
-	list, err := f.Store.ListBySub(ctx, f.UserID)
+	list, err := f.Store.ListBySub(ctx, f.UserID, f.Now)
 	if err != nil || len(list) != 1 || list[0].ID != session.ID {
 		t.Fatalf("ListBySub = (%+v, %v)", list, err)
 	}
 	if revoked, err := f.Store.Revoke(ctx, session.ID, spec.SessionEndAdminRevoke, f.Now); err != nil || !revoked {
 		t.Fatalf("Revoke = (%v, %v), want (true, nil)", revoked, err)
 	}
-	if got, err := f.Store.Find(ctx, session.ID); err != nil || got != nil {
+	if got, err := f.Store.Find(ctx, session.ID, f.Now); err != nil || got != nil {
 		t.Fatalf("Find revoked = (%+v, %v), want nil", got, err)
 	}
 	if revoked, err := f.Store.Revoke(ctx, session.ID, spec.SessionEndLogout, f.Now.Add(time.Minute)); err != nil || revoked {

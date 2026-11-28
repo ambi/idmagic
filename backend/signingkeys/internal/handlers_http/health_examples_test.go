@@ -189,7 +189,7 @@ func decodeHealth(t *testing.T, recorder *httptest.ResponseRecorder) map[string]
 func TestKeyProviderOutageIsVisibleInHealthWhileJWKSServesCachedKeys(t *testing.T) {
 	transit := &transitDouble{keys: map[string]*rsa.PrivateKey{}, reachable: true}
 	keyStore := signingvault.NewVaultKeyStore(transit, "idmagic-signing-")
-	cached, err := keyStore.GetActiveKey(tenantContext(tenantA))
+	cached, err := keyStore.GetActiveKey(tenantContext(tenantA), time.Now().UTC())
 	if err != nil {
 		t.Fatalf("load tenant-a key while Vault is reachable: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestSigningKeyHealthRefusesActorsOutsideTheControlPlane(t *testing.T) {
 	}
 	var kids []string
 	for _, tenantID := range []string{tenancydomain.DefaultTenantID, tenantA} {
-		key, err := keyStore.GetActiveKey(tenantContext(tenantID))
+		key, err := keyStore.GetActiveKey(tenantContext(tenantID), time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}

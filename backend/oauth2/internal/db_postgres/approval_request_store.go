@@ -125,8 +125,8 @@ func (s *ApprovalRequestStore) FindByAuthReqIDHash(ctx context.Context, hash str
 	return approvalFromPayload(row.Payload, row.State, row.IntervalSeconds, row.LastPolledAt)
 }
 
-func (s *ApprovalRequestStore) ListPendingForUser(ctx context.Context, userID string) ([]*approvaldomain.ApprovalRequest, error) {
-	rows, err := New(s.Pool).ListPendingApprovalRequestsForUser(ctx, ListPendingApprovalRequestsForUserParams{TenantID: tenantports.TenantID(ctx), UserID: userID, Now: time.Now().UTC()})
+func (s *ApprovalRequestStore) ListPendingForUser(ctx context.Context, userID string, now time.Time) ([]*approvaldomain.ApprovalRequest, error) {
+	rows, err := New(s.Pool).ListPendingApprovalRequestsForUser(ctx, ListPendingApprovalRequestsForUserParams{TenantID: tenantports.TenantID(ctx), UserID: userID, Now: now})
 	if err != nil {
 		return nil, err
 	}

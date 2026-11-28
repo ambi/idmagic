@@ -101,7 +101,7 @@ func saveCeremonySession(
 func takeCeremonySession(
 	ctx context.Context, store webauthnports.WebAuthnSessionStore, key string,
 ) (*gowebauthn.SessionData, error) {
-	session, err := store.Take(ctx, key)
+	session, err := store.Take(ctx, key, time.Now())
 	if err != nil {
 		return nil, err
 	}

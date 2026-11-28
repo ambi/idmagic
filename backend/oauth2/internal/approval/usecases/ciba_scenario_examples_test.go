@@ -145,7 +145,7 @@ func TestApprovalExchangeExpiresTheRequestItRefuses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records, err := f.store.ListPendingForUser(f.ctx, "alice-id")
+	records, err := f.store.ListPendingForUser(f.ctx, "alice-id", time.Now().UTC())
 	if err != nil || len(records) != 1 {
 		t.Fatalf("pending records = %d, err = %v", len(records), err)
 	}
@@ -189,7 +189,7 @@ func seedNeighbourUsers(t *testing.T, f approvalFixture) {
 func assertNoApprovalRequested(t *testing.T, f approvalFixture) {
 	t.Helper()
 	for _, userID := range []string{"alice-id", "bob-id", "carol-id"} {
-		records, err := f.store.ListPendingForUser(f.ctx, userID)
+		records, err := f.store.ListPendingForUser(f.ctx, userID, time.Now().UTC())
 		if err != nil {
 			t.Fatalf("ListPendingForUser(%s): %v", userID, err)
 		}

@@ -157,7 +157,7 @@ func (f hintE2EFixture) endSession(t *testing.T, cookieSid string, query url.Val
 
 func (f hintE2EFixture) assertNothingRevoked(t *testing.T) {
 	t.Helper()
-	session, err := f.sessions.Find(testing_tenant.Default(context.Background()), f.sessionID)
+	session, err := f.sessions.Find(testing_tenant.Default(context.Background()), f.sessionID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestEndSessionAcceptsCompleteIDTokenHint(t *testing.T) {
 	if response.status != http.StatusSeeOther {
 		t.Fatalf("status=%d body=%s, want 303", response.status, response.body)
 	}
-	session, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), fixture.sessionID)
+	session, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), fixture.sessionID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,14 +219,14 @@ func TestEndSessionResolvesTargetFromIDTokenHint_OIDC_LOGOUT_ID_TOKEN_HINT(t *te
 	if response.status != http.StatusFound || response.location != "https://rp.example/callback" {
 		t.Fatalf("status=%d location=%q body=%s", response.status, response.location, response.body)
 	}
-	hinted, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), fixture.sessionID)
+	hinted, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), fixture.sessionID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if hinted != nil {
 		t.Fatal("ヒントが指す LoginSession が失効していない")
 	}
-	cookieSession, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), other.SessionID)
+	cookieSession, err := fixture.sessions.Find(testing_tenant.Default(context.Background()), other.SessionID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

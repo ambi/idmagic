@@ -84,7 +84,7 @@ func TestSignOutThroughTheCookieEndsTheSessionOnce(t *testing.T) {
 	if e := f.events[0]; e.SessionID != sid || e.UserID != "user-1" || e.ActorUserID != "user-1" || e.Reason != spec.SessionEndLogout || e.AllSessions {
 		t.Fatalf("SessionEnded = %+v", e)
 	}
-	if found, err := f.store.Find(f.ctx, sid); err != nil || found != nil {
+	if found, err := f.store.Find(f.ctx, sid, time.Now().UTC()); err != nil || found != nil {
 		t.Fatalf("Find after sign-out = %+v, %v; want no active session", found, err)
 	}
 }
@@ -111,8 +111,8 @@ type revokedWhileListing struct {
 	*memory.SessionStore
 }
 
-func (s revokedWhileListing) ListBySub(ctx context.Context, sub string) ([]*sessiondomain.LoginSession, error) {
-	sessions, err := s.SessionStore.ListBySub(ctx, sub)
+func (s revokedWhileListing) ListBySub(ctx context.Context, sub string, now time.Time) ([]*sessiondomain.LoginSession, error) {
+	sessions, err := s.SessionStore.ListBySub(ctx, sub, now)
 	if err != nil {
 		return nil, err
 	}

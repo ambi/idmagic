@@ -193,7 +193,7 @@ func (f *autoLinkFixture) callback(t *testing.T, state string) *httptest.Respons
 // issuedSessions は seed 済みの利用者に対して発行されたセッションの数を返す。
 func (f *autoLinkFixture) issuedSessions(t *testing.T, userID string) int {
 	t.Helper()
-	issued, err := f.sessions.ListBySub(testing_tenant.Default(context.Background()), userID)
+	issued, err := f.sessions.ListBySub(testing_tenant.Default(context.Background()), userID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

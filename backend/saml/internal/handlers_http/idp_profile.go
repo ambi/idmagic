@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	samltoken "github.com/ambi/idmagic/backend/shared/security/tokens_saml"
 
@@ -26,7 +27,7 @@ func (d Deps) resolveIDPProfile(ctx context.Context, tenantID, profileID string)
 		return nil, errIDPProfileRepositoryUnavailable
 	}
 	if profileID == samldomain.DefaultIDPProfileID {
-		return d.IDPProfileRepo.EnsureDefaultIDPProfile(ctx, tenantID)
+		return d.IDPProfileRepo.EnsureDefaultIDPProfile(ctx, tenantID, time.Now().UTC())
 	}
 	return d.IDPProfileRepo.FindIDPProfileByID(ctx, tenantID, profileID)
 }

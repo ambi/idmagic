@@ -29,12 +29,12 @@ func TestInMemoryKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := tenantCtx("tenant-a")
-	jwtKey, err := ks.GetActiveKey(ctx)
+	jwtKey, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	xmlCtx := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
-	xmlKey, err := ks.GetActiveKey(xmlCtx)
+	xmlKey, err := ks.GetActiveKey(xmlCtx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestInMemoryKeyStoreArchivesExpiredVerifyingKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := tenantCtx("tenant-a")
-	first, err := ks.GetActiveKey(ctx)
+	first, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,11 +97,11 @@ func TestInMemoryKeyStoreTenantIsolation(t *testing.T) {
 	}
 	ctxA, ctxB := tenantCtx("tenant-a"), tenantCtx("tenant-b")
 
-	keyA, err := ks.GetActiveKey(ctxA)
+	keyA, err := ks.GetActiveKey(ctxA, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	keyB, err := ks.GetActiveKey(ctxB)
+	keyB, err := ks.GetActiveKey(ctxB, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestInMemoryKeyStoreRotateKeepsTenantScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctxA := tenantCtx("tenant-a")
-	first, err := ks.GetActiveKey(ctxA)
+	first, err := ks.GetActiveKey(ctxA, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestInMemoryKeyStoreRejectsDisablingActiveKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := tenantCtx("tenant-a")
-	active, err := ks.GetActiveKey(ctx)
+	active, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

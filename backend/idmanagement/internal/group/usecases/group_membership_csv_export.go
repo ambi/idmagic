@@ -52,9 +52,9 @@ func (e GroupMembershipCSVExporter) ValidateGroupMembershipCSVColumns(_ context.
 }
 
 func (e GroupMembershipCSVExporter) ExportGroupMembershipCSV(
-	ctx context.Context, groupID string, columns []string,
+	ctx context.Context, groupID string, columns []string, now time.Time,
 ) (idmports.CSVArtifact, int, error) {
-	result, err := ExportGroupMembershipCSV(ctx, e.Deps, groupID, columns, e.policy())
+	result, err := ExportGroupMembershipCSV(ctx, e.Deps, groupID, columns, e.policy(), now)
 	return result.Artifact, result.TotalRows, err
 }
 
@@ -64,6 +64,7 @@ func ExportGroupMembershipCSV(
 	groupID string,
 	columns []string,
 	policy idmdomain.CSVTransferPolicy,
+	now time.Time,
 ) (GroupMembershipCSVExportResult, error) {
 	var result GroupMembershipCSVExportResult
 	if deps.GroupRepo == nil || deps.UserRepo == nil || deps.Artifacts == nil {
@@ -95,7 +96,7 @@ func ExportGroupMembershipCSV(
 	columns = append([]string(nil), columns...)
 
 	rowCount := 0
-	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, now, func(output io.Writer) error {
 		writer, err := idmdomain.NewCSVWriter(output, columns, policy)
 		if err != nil {
 			return err

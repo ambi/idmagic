@@ -84,17 +84,18 @@ type SessionView struct {
 	ExpiresAt time.Time
 }
 
-// ListSessions は sub の有効なセッションを開始時刻の降順で返す。currentSessionID に
+// ListSessions は sub の now で有効なセッションを開始時刻の降順で返す。currentSessionID に
 // 一致するものを Current=true でマークする。
 func ListSessions(
 	ctx context.Context,
 	store sessionports.SessionStore,
 	sub, currentSessionID string,
+	now time.Time,
 ) ([]SessionView, error) {
 	if store == nil {
 		return []SessionView{}, nil
 	}
-	sessions, err := store.ListBySub(ctx, sub)
+	sessions, err := store.ListBySub(ctx, sub, now)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func RevokeOtherSessions(
 	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
 		return nil, err
 	}
-	sessions, err := deps.Store.ListBySub(ctx, sub)
+	sessions, err := deps.Store.ListBySub(ctx, sub, now)
 	if err != nil {
 		return nil, err
 	}
@@ -183,11 +184,11 @@ type AdminSessionView struct {
 // 一覧する (wi-28, 決定9)。ListUserSignInActivity と同じアクセス制御
 // パターン (TenantAdministrator, resource=User/input.user_id) を前提とし、
 // アクセス制御自体は HTTP 層が担う。
-func AdminListSessions(ctx context.Context, store sessionports.SessionStore, targetUserID string) ([]AdminSessionView, error) {
+func AdminListSessions(ctx context.Context, store sessionports.SessionStore, targetUserID string, now time.Time) ([]AdminSessionView, error) {
 	if store == nil {
 		return []AdminSessionView{}, nil
 	}
-	sessions, err := store.ListBySub(ctx, targetUserID)
+	sessions, err := store.ListBySub(ctx, targetUserID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +236,7 @@ func AdminRevokeUserSessions(
 	if err := trusteddeviceusecases.RequireRevoker(deps.TrustedDevices); err != nil {
 		return nil, err
 	}
-	sessions, err := deps.Store.ListBySub(ctx, targetUserID)
+	sessions, err := deps.Store.ListBySub(ctx, targetUserID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +274,7 @@ func endActiveSession(ctx context.Context, deps SessionDeps, sid string, reason 
 	if sid == "" {
 		return nil
 	}
-	sess, err := deps.Store.Find(ctx, sid)
+	sess, err := deps.Store.Find(ctx, sid, now)
 	if err != nil {
 		return err
 	}
@@ -317,7 +318,7 @@ func (l LogoutSessions) Owner(ctx context.Context, sid string) (string, bool, er
 	if l.Manager.Store == nil {
 		return "", false, nil
 	}
-	session, err := l.Manager.Store.Find(ctx, sid)
+	session, err := l.Manager.Store.Find(ctx, sid, l.Manager.now())
 	if err != nil {
 		return "", false, err
 	}
@@ -331,7 +332,7 @@ func (l LogoutSessions) Owner(ctx context.Context, sid string) (string, bool, er
 // 読めなかった理由を問わず found=false を返し、何もしない。ログアウトは Cookie を消して
 // 終えられるので、読み取りの失敗でログアウトを止めない。
 func (l LogoutSessions) End(ctx context.Context, sid string, now time.Time) (subject string, found bool, err error) {
-	session, findErr := l.Manager.Store.Find(ctx, sid)
+	session, findErr := l.Manager.Store.Find(ctx, sid, now)
 	if findErr != nil || session == nil {
 		return "", false, nil //nolint:nilerr // 読めないセッションは見つからないものとして扱う。
 	}

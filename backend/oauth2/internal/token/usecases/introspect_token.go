@@ -79,12 +79,12 @@ type IntrospectDeps struct {
 // IntrospectToken から切り出してあるのは、Bearer を受ける資源サーバー側の経路
 // (shared/http/support_http.Authenticator) とトークン交換の入力の検証が、同じ規則を
 // 二度実装せずに通すためである (REQ-OAUTH2-047、REQ-OAUTH2-048)。
-func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *oauthports.IntrospectionResult) (bool, error) {
+func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *oauthports.IntrospectionResult, now time.Time) (bool, error) {
 	if r == nil || !r.Active {
 		return false, nil
 	}
 	if r.JTI != "" && deps.AccessTokenDenylist != nil {
-		revoked, err := deps.AccessTokenDenylist.IsRevoked(ctx, r.JTI)
+		revoked, err := deps.AccessTokenDenylist.IsRevoked(ctx, r.JTI, now)
 		if err != nil || revoked {
 			return revoked, err
 		}
@@ -220,7 +220,7 @@ func (i RevocationCheckingIntrospector) IntrospectAccessToken(ctx context.Contex
 	if err != nil || r == nil || !r.Active {
 		return r, err
 	}
-	revoked, err := AccessTokenIsRevoked(ctx, i.Deps, r)
+	revoked, err := AccessTokenIsRevoked(ctx, i.Deps, r, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 		now = time.Now().UTC()
 	}
 	if in.TokenTypeHint == "access_token" {
-		resp, err := introspectAccessToken(ctx, deps, in.Token)
+		resp, err := introspectAccessToken(ctx, deps, in.Token, now)
 		if err != nil || resp.Active {
 			return resp, err
 		}
@@ -253,7 +253,7 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 	if err != nil || found {
 		return resp, err
 	}
-	return introspectAccessToken(ctx, deps, in.Token)
+	return introspectAccessToken(ctx, deps, in.Token, now)
 }
 
 // introspectRefreshToken は、ストアにレコードがあれば found=true とその応答を返す。
@@ -299,12 +299,12 @@ func introspectRefreshToken(ctx context.Context, deps IntrospectDeps, token stri
 	return resp, true, nil
 }
 
-func introspectAccessToken(ctx context.Context, deps IntrospectDeps, token string) (*IntrospectionResponse, error) {
+func introspectAccessToken(ctx context.Context, deps IntrospectDeps, token string, now time.Time) (*IntrospectionResponse, error) {
 	r, err := deps.Introspector.IntrospectAccessToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
-	revoked, err := AccessTokenIsRevoked(ctx, deps, r)
+	revoked, err := AccessTokenIsRevoked(ctx, deps, r, now)
 	if err != nil {
 		return nil, err
 	}

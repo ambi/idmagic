@@ -35,10 +35,10 @@ func (q *Queries) DeleteExpiredSamlAuthnRequestReplaysBatch(ctx context.Context,
 }
 
 const reserveSamlAuthnRequestReplay = `-- name: ReserveSamlAuthnRequestReplay :one
-INSERT INTO saml_authnrequest_replays (tenant_id, entity_id, request_id, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO saml_authnrequest_replays (tenant_id, entity_id, request_id, expires_at, created_at)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (tenant_id, entity_id, request_id) DO UPDATE
-    SET expires_at = EXCLUDED.expires_at, created_at = now()
+    SET expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at
     WHERE saml_authnrequest_replays.expires_at <= $5
 RETURNING request_id
 `

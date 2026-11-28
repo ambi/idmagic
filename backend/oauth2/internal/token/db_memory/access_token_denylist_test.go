@@ -9,9 +9,10 @@ import (
 func TestAccessTokenDenylist(t *testing.T) {
 	ctx := context.Background()
 	d := NewAccessTokenDenylist()
+	now := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 	// 存在しないトークンは revoked ではない
-	revoked, err := d.IsRevoked(ctx, "jti-1")
+	revoked, err := d.IsRevoked(ctx, "jti-1", now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,14 +21,14 @@ func TestAccessTokenDenylist(t *testing.T) {
 	}
 
 	// トークンを追加
-	future := time.Now().Add(1 * time.Hour)
+	future := now.Add(1 * time.Hour)
 	err = d.Add(ctx, "jti-1", future)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// 追加後は revoked になる
-	revoked, err = d.IsRevoked(ctx, "jti-1")
+	revoked, err = d.IsRevoked(ctx, "jti-1", now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,14 +37,14 @@ func TestAccessTokenDenylist(t *testing.T) {
 	}
 
 	// 期限切れトークンを追加
-	past := time.Now().Add(-1 * time.Hour)
+	past := now.Add(-1 * time.Hour)
 	err = d.Add(ctx, "jti-expired", past)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// 期限切れトークンは IsRevoked 内で削除され、revoked ではないと判定される
-	revoked, err = d.IsRevoked(ctx, "jti-expired")
+	revoked, err = d.IsRevoked(ctx, "jti-expired", now)
 	if err != nil {
 		t.Fatal(err)
 	}

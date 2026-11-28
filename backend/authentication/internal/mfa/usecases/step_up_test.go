@@ -60,11 +60,11 @@ func newStepUpFixture(t *testing.T, now time.Time) (StepUpDeps, *sessionusecases
 		t.Fatal(err)
 	}
 	var events []spec.DomainEvent
-	// in-memory SessionStore は既定で実時計により期限切れ判定するため、固定 now の
+	// SessionManager は時刻を受け取らない入口で既定で実時計を使うため、固定 now の
 	// テストでセッションが失効しないよう時計を now に固定する。
 	sessionStore := sessionmemory.NewSessionStore()
-	sessionStore.Clock = func() time.Time { return now }
 	sm := sessionusecases.NewSessionManager(sessionStore)
+	sm.Now = func() time.Time { return now }
 	deps := StepUpDeps{
 		UserRepo: userRepo, PasswordHasher: hasher, MfaFactorRepo: mfaRepo, SessionManager: sm,
 		Emit: func(e spec.DomainEvent) { events = append(events, e) },
@@ -88,7 +88,7 @@ func TestCompleteStepUpPasswordRecordsAndEmits(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("complete step-up: %v", err)
 	}
-	sess, _ := sm.Store.Find(ctx, authn.SessionID)
+	sess, _ := sm.Store.Find(ctx, authn.SessionID, sm.Now())
 	if sess.StepUpAt != now.Unix() {
 		t.Fatalf("step_up_at=%d, want %d", sess.StepUpAt, now.Unix())
 	}
@@ -119,7 +119,7 @@ func TestCompleteStepUpWrongPasswordFails(t *testing.T) {
 	if !errors.Is(err, ErrStepUpFailed) {
 		t.Fatalf("err=%v, want ErrStepUpFailed", err)
 	}
-	sess, _ := sm.Store.Find(ctx, authn.SessionID)
+	sess, _ := sm.Store.Find(ctx, authn.SessionID, sm.Now())
 	if sess.StepUpAt != 0 {
 		t.Fatal("step_up_at must stay unset on failure")
 	}
@@ -145,7 +145,7 @@ func TestCompleteStepUpTOTPSucceeds(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("complete TOTP step-up: %v", err)
 	}
-	sess, _ := sm.Store.Find(ctx, authn.SessionID)
+	sess, _ := sm.Store.Find(ctx, authn.SessionID, sm.Now())
 	if sess.StepUpAt != now.Unix() {
 		t.Fatal("expected step_up_at recorded for TOTP")
 	}

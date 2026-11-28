@@ -43,7 +43,7 @@ func (d Deps) handleListMyConsents(c *echo.Context) error {
 		return writeAccountSubError(c, err)
 	}
 	ctx := c.Request().Context()
-	consents, err := d.accountConsents().ListGranted(ctx, sub)
+	consents, err := d.accountConsents().ListGranted(ctx, sub, time.Now().UTC())
 	if err != nil {
 		return err
 	}

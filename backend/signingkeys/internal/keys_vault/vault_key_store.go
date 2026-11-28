@@ -71,7 +71,7 @@ func vaultSetID(tenantID string, usage signingdomain.KeyUsage, scopeID string) s
 	return tenantID + "\x00" + string(usage) + "\x00" + scopeID
 }
 
-func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
+func (s *VaultKeyStore) GetActiveKey(ctx context.Context, now time.Time) (*signingdomain.SigningKey, error) {
 	if signingports.KeyUsage(ctx) == signingdomain.KeyUsageXMLFederationSigning {
 		return s.xmlActive(ctx)
 	}

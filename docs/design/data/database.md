@@ -649,6 +649,11 @@ Jobs がレーン、重複排除とクォータを担い、行の確定後にだ
 
 例外とする呼び出しは、その直前の行に `//sql:raw <理由>` を書く。`mise run check-repository` の `raw-sql` 検査は、`backend/` のテスト以外の Go コードから、第 1 引数に context を取るこれらの呼び出しを探し、理由のある印がないものを拒否する。
 
+アダプターは期限や順序の判定に、ポートの引数で受け取った時刻を使う（[作用の境界](../application/design-guidelines.md#作用の境界)）。
+SQL の `now()` と `CURRENT_TIMESTAMP` は、`SET` の代入と `VALUES` の項目で記録する値にだけ使う。
+`mise run check-sql-clock` は、`sqlc` のクエリの構文木から、それ以外の位置でデータベースの時計を読む式を拒否する。
+Go のアダプターの `time.Now` は、`golangci-lint` の `forbidigo` が `db_memory` と `db_postgres` で拒否する。
+
 PostgreSQL の構造をどう変え、どう適用するかは[スキーマ管理](schema-management.md)が定める。
 
 ## 同時の更新と排他

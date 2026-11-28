@@ -16,8 +16,6 @@ import (
 type CSVArtifactStore struct {
 	mu      sync.RWMutex
 	byScope map[string]storedCSVArtifact
-	// Now は保存の時刻を返す。nil なら現在の時刻を使う。テストが作成の時刻を決めるために差し替える。
-	Now func() time.Time
 }
 
 type storedCSVArtifact struct {
@@ -25,13 +23,6 @@ type storedCSVArtifact struct {
 	content   []byte
 	pages     [][]byte
 	createdAt time.Time
-}
-
-func (s *CSVArtifactStore) clock() time.Time {
-	if s.Now != nil {
-		return s.Now()
-	}
-	return time.Now().UTC()
 }
 
 // DeleteCSVArtifactsCreatedBefore は cutoff より前に保存した成果物を、テナントをまたいで消す。
@@ -48,7 +39,7 @@ func (s *CSVArtifactStore) DeleteCSVArtifactsCreatedBefore(_ context.Context, cu
 	return deleted, nil
 }
 
-func (s *CSVArtifactStore) PutCSVArtifactPages(_ context.Context, tenantID string, write func(emit func([]byte) error) error) (idmports.CSVArtifact, error) {
+func (s *CSVArtifactStore) PutCSVArtifactPages(_ context.Context, tenantID string, createdAt time.Time, write func(emit func([]byte) error) error) (idmports.CSVArtifact, error) {
 	var pages [][]byte
 	digest := sha256.New()
 	var size int64
@@ -66,7 +57,7 @@ func (s *CSVArtifactStore) PutCSVArtifactPages(_ context.Context, tenantID strin
 	if err != nil {
 		return idmports.CSVArtifact{}, err
 	}
-	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size, CreatedAt: s.clock().UTC().Truncate(time.Microsecond)}
+	metadata := idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest.Sum(nil)), ByteSize: size, CreatedAt: createdAt.UTC().Truncate(time.Microsecond)}
 	s.mu.Lock()
 	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, pages: pages, createdAt: metadata.CreatedAt}
 	s.mu.Unlock()
@@ -99,7 +90,7 @@ func (s *CSVArtifactStore) CSVArtifactUsage(_ context.Context, tenantID string) 
 	return size, nil
 }
 
-func (s *CSVArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, write func(io.Writer) error) (idmports.CSVArtifact, error) {
+func (s *CSVArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, createdAt time.Time, write func(io.Writer) error) (idmports.CSVArtifact, error) {
 	var content bytes.Buffer
 	if err := write(&content); err != nil {
 		return idmports.CSVArtifact{}, err
@@ -110,7 +101,7 @@ func (s *CSVArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, wr
 	}
 	digest := sha256.Sum256(content.Bytes())
 	metadata := idmports.CSVArtifact{
-		Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(content.Len()), CreatedAt: s.clock().UTC().Truncate(time.Microsecond),
+		Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(content.Len()), CreatedAt: createdAt.UTC().Truncate(time.Microsecond),
 	}
 	s.mu.Lock()
 	s.byScope[tenantID+"\x00"+ref] = storedCSVArtifact{metadata: metadata, content: append([]byte(nil), content.Bytes()...), createdAt: metadata.CreatedAt}

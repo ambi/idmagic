@@ -44,6 +44,14 @@ type Consent struct {
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
+// StateAt は now の時点の状態を返す。保存した状態が Granted でも、期限を過ぎていれば Expired である。
+func (c Consent) StateAt(now time.Time) ConsentState {
+	if c.State == ConsentGranted && !now.Before(c.ExpiresAt) {
+		return ConsentExpired
+	}
+	return c.State
+}
+
 // PermitsDelegation は、この付与が now の時点で scopes の代行を許すかを判定する。
 func (c Consent) PermitsDelegation(scopes []string, now time.Time) bool {
 	if c.State != ConsentGranted || !now.Before(c.ExpiresAt) {

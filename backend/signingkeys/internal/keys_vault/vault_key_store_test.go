@@ -102,11 +102,11 @@ func TestVaultKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
 	engine := newFakeTransit()
 	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
 	ctx := tenantCtx()
-	jwtKey, err := ks.GetActiveKey(ctx)
+	jwtKey, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	xmlKey, err := ks.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning))
+	xmlKey, err := ks.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestVaultKeyStoreSignsViaEngineAndVerifies(t *testing.T) {
 	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
 	ctx := tenantCtx()
 
-	key, err := ks.GetActiveKey(ctx)
+	key, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestVaultKeyStoreRotateAdvancesVersion(t *testing.T) {
 	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
 	ctx := tenantCtx()
 
-	first, err := ks.GetActiveKey(ctx)
+	first, err := ks.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestVaultKeyStore_RotateFailsWhenVaultDeniesRotation(t *testing.T) {
 	defer server.Close()
 	store := adaptercrypto.NewVaultKeyStore(adaptercrypto.NewHTTPTransitEngine(server.URL, recordedToken, ""), "")
 	ctx := tenantCtx()
-	before, err := store.GetActiveKey(ctx)
+	before, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestVaultKeyStore_RotateFailsWhenVaultDeniesRotation(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Rotate() = %s, want an error when Vault denies the rotation", rotated.Kid)
 	}
-	active, err := store.GetActiveKey(ctx)
+	active, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || active.Kid != before.Kid {
 		t.Fatalf("active key after the denied rotation = %v, %v; want %s", active, err, before.Kid)
 	}

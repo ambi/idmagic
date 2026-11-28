@@ -97,6 +97,7 @@ func TestPublishThatLosesTheInsertRaceIsAVersionConflict(t *testing.T) {
 	go func() {
 		_, _, err := f.Models.Publish(ctx, &accessdomain.AuthorizationModel{
 			ID: secondID, TenantID: tenantA, ResourceTypes: []accessdomain.ResourceTypeDefinition{{Name: "user"}},
+			CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 		}, 0)
 		result <- err
 	}()

@@ -606,7 +606,7 @@ type failingKeyStore struct {
 	attempts int
 }
 
-func (s *failingKeyStore) GetActiveKey(context.Context) (*signingdomain.SigningKey, error) {
+func (s *failingKeyStore) GetActiveKey(context.Context, time.Time) (*signingdomain.SigningKey, error) {
 	s.attempts++
 	return nil, errors.New("key provider is unreachable")
 }

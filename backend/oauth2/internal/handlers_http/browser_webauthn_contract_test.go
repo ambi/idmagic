@@ -117,7 +117,7 @@ func TestBrowserWebAuthnHTTPContractsVerifyAssertionAndCompletePendingSession(t 
 	if completed["redirect_to"] != recoveryReturnTo {
 		t.Fatalf("completed=%v", completed)
 	}
-	stored, err := sessions.Find(ctx, sessionID)
+	stored, err := sessions.Find(ctx, sessionID, time.Now().UTC())
 	if err != nil || stored == nil || stored.AuthenticationPending || stored.ACR != "urn:idmagic:acr:mfa" || !slices.Contains(stored.AMR, "webauthn") {
 		t.Fatalf("completed session=%+v err=%v", stored, err)
 	}

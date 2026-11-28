@@ -32,12 +32,12 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 		t.Fatalf("new key store: %v", err)
 	}
 
-	active, err := store.GetActiveKey(ctx)
+	active, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || active == nil || !active.Active {
 		t.Fatalf("get active key: %v %+v", err, active)
 	}
 	xmlCtx := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
-	xmlActive, err := store.GetActiveKey(xmlCtx)
+	xmlActive, err := store.GetActiveKey(xmlCtx, time.Now().UTC())
 	if err != nil || xmlActive == nil || len(xmlActive.CertificateDER) == 0 {
 		t.Fatalf("get XML federation active key: %v %+v", err, xmlActive)
 	}
@@ -55,7 +55,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 		t.Fatalf("rotate: %v %+v (prev %s)", err, rotated, active.Kid)
 	}
 
-	newActive, err := store.GetActiveKey(ctx)
+	newActive, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || newActive == nil || newActive.Kid != rotated.Kid {
 		t.Fatalf("active after rotate: %v %+v", err, newActive)
 	}

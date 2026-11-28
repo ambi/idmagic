@@ -233,7 +233,7 @@ func storedUserStatus(t *testing.T, s *stack.Stack) idmdomain.UserStatus {
 
 func sessionCount(t *testing.T, s *stack.Stack) int {
 	t.Helper()
-	sessions, err := s.SessionStore.ListBySub(s.RealmContext(t, "default"), stack.UserID)
+	sessions, err := s.SessionStore.ListBySub(s.RealmContext(t, "default"), stack.UserID, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("list sessions: %v", err)
 	}

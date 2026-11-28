@@ -4,6 +4,7 @@ package db_memory
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -166,6 +167,9 @@ func cloneModel(m *accessdomain.AuthorizationModel) *accessdomain.AuthorizationM
 }
 
 func (r *AuthorizationModelRepository) Publish(_ context.Context, model *accessdomain.AuthorizationModel, expectedVersion int) (*accessdomain.AuthorizationModel, int64, error) {
+	if model.CreatedAt.IsZero() {
+		return nil, 0, errors.New("authorization model requires its creation time")
+	}
 	s := r.store
 	s.mu.Lock()
 	defer s.mu.Unlock()

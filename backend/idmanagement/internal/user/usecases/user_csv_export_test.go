@@ -21,7 +21,7 @@ type exportArtifactStore struct {
 	content []byte
 }
 
-func (s *exportArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, write func(io.Writer) error) (idmports.CSVArtifact, error) {
+func (s *exportArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, _ time.Time, write func(io.Writer) error) (idmports.CSVArtifact, error) {
 	var content bytes.Buffer
 	if err := write(&content); err != nil {
 		return idmports.CSVArtifact{}, err
@@ -36,7 +36,7 @@ func (s *exportArtifactStore) OpenCSVArtifact(_ context.Context, tenantID, ref s
 	return io.NopCloser(bytes.NewReader(s.content)), idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(len(s.content))}, nil
 }
 
-func (s *exportArtifactStore) PutCSVArtifactPages(context.Context, string, func(func([]byte) error) error) (idmports.CSVArtifact, error) {
+func (s *exportArtifactStore) PutCSVArtifactPages(context.Context, string, time.Time, func(func([]byte) error) error) (idmports.CSVArtifact, error) {
 	return idmports.CSVArtifact{}, errors.New("not implemented")
 }
 
@@ -74,7 +74,7 @@ func TestExportUserCSVTenThousandRowsRoundTripAsUnchanged(t *testing.T) {
 	artifacts := &exportArtifactStore{}
 	result, err := ExportUserCSV(ctx, UserCSVExportDeps{
 		UserRepo: repo, SchemaReader: importSchemaReader{defs: defs}, Artifacts: artifacts,
-	}, nil, "", idmdomain.DefaultCSVTransferPolicy())
+	}, nil, "", idmdomain.DefaultCSVTransferPolicy(), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 		UserRepo:     repo,
 		SchemaReader: importSchemaReader{defs: []userdomain.UserAttributeDef{{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate}}},
 		Artifacts:    artifacts,
-	}, []string{"id", "preferred_username", "required_actions", "attr:department"}, "active", policy)
+	}, []string{"id", "preferred_username", "required_actions", "attr:department"}, "active", policy, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 		UserRepo:     repo,
 		SchemaReader: importSchemaReader{defs: []userdomain.UserAttributeDef{{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate}}},
 		Artifacts:    overflow,
-	}, []string{"id", "preferred_username"}, "", policy)
+	}, []string{"id", "preferred_username"}, "", policy, time.Now().UTC())
 	var csvErr *idmdomain.CSVError
 	if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorTooManyRows {
 		t.Fatalf("err=%v", err)

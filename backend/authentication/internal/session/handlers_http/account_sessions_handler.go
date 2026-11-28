@@ -75,7 +75,7 @@ func HandleListAccountSessions(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	views, err := sessionusecases.ListSessions(c.Request().Context(), sessionStore(d), sub, sessionID)
+	views, err := sessionusecases.ListSessions(c.Request().Context(), sessionStore(d), sub, sessionID, time.Now().UTC())
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func HandleAdminListSessions(d httpdeps.Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := sessionusecases.AdminListSessions(c.Request().Context(), sessionStore(d), c.Param("sub"))
+	views, err := sessionusecases.AdminListSessions(c.Request().Context(), sessionStore(d), c.Param("sub"), time.Now().UTC())
 	if err != nil {
 		return err
 	}

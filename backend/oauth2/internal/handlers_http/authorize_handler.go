@@ -26,7 +26,7 @@ func (d Deps) handleAuthorize(c *echo.Context) error {
 	if requestURI := q.Get("request_uri"); requestURI != "" {
 		// RFC 9101 §6.3: request_uri と client_id 以外にクエリへ重ねた値は拒否せず使わない。
 		// 下で PAR に保存した値だけから q を作り直す。
-		consumed, err := d.PARStore.Consume(c.Request().Context(), requestURI)
+		consumed, err := d.PARStore.Consume(c.Request().Context(), requestURI, time.Now().UTC())
 		if err != nil {
 			return writeOAuthError(c, err)
 		}

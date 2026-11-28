@@ -569,7 +569,7 @@ func TestDeleteUserAnonymizesAndCascades(t *testing.T) {
 	if rec, _ := refreshStore.FindByHash(ctx, "hash-1"); rec != nil {
 		t.Fatalf("refresh cascade leaked: %+v", rec)
 	}
-	if sess, _ := sessionStore.Find(ctx, "sess-1"); sess != nil {
+	if sess, _ := sessionStore.Find(ctx, "sess-1", time.Now().UTC()); sess != nil {
 		t.Fatalf("session cascade leaked: %+v", sess)
 	}
 	if factors, _ := mfaRepo.ListBySub(ctx, user.ID); len(factors) != 0 {

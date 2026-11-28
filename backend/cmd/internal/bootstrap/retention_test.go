@@ -64,7 +64,7 @@ func TestRetentionSweepPurgesExpiredCSVArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := deps.IdManagement.CSVArtifacts
-	metadata, err := store.PutCSVArtifact(ctx, "tenant-a", func(output io.Writer) error {
+	metadata, err := store.PutCSVArtifact(ctx, "tenant-a", time.Now().UTC(), func(output io.Writer) error {
 		_, err := io.WriteString(output, "preferred_username\nalice\n")
 		return err
 	})

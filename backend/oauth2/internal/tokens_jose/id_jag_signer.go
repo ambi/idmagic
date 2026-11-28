@@ -21,7 +21,7 @@ func (s *JWTSigner) IDJAGTTLSeconds() int { return idJagTTLSeconds }
 
 // SignIDJAG は ID-JAG に専用の RS256 の鍵で署名する (REQ-SIGNINGKEYS-013)。
 func (s *JWTSigner) SignIDJAG(ctx context.Context, in oauthports.IDJAGInput) (string, string, error) {
-	key, err := s.KeyStore.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning))
+	key, err := s.KeyStore.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning), time.Now().UTC())
 	if err != nil {
 		return "", "", err
 	}

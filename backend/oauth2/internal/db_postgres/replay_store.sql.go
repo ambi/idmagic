@@ -34,10 +34,10 @@ func (q *Queries) DeleteExpiredOauth2ReplayJTIsBatch(ctx context.Context, arg De
 }
 
 const reserveOauth2ReplayJTI = `-- name: ReserveOauth2ReplayJTI :one
-INSERT INTO oauth2_replay_jtis (tenant_id, kind, jti, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO oauth2_replay_jtis (tenant_id, kind, jti, expires_at, created_at)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (tenant_id, kind, jti) DO UPDATE
-    SET expires_at = EXCLUDED.expires_at, created_at = now()
+    SET expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at
     WHERE oauth2_replay_jtis.expires_at <= $5
 RETURNING jti
 `

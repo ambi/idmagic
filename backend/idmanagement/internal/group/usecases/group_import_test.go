@@ -126,7 +126,7 @@ func (f *groupImportFixture) exportCSV(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := ExportGroupCSV(f.ctx, deps, schema.ColumnKeys(), idmdomain.DefaultCSVTransferPolicy())
+	result, err := ExportGroupCSV(f.ctx, deps, schema.ColumnKeys(), idmdomain.DefaultCSVTransferPolicy(), time.Now().UTC())
 	if err != nil {
 		t.Fatalf("export: %v", err)
 	}

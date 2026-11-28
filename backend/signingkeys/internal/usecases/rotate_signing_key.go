@@ -22,7 +22,7 @@ func RotateSigningKey(ctx context.Context, deps RotateSigningKeyDeps, now time.T
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
-	prev, _ := deps.KeyStore.GetActiveKey(ctx)
+	prev, _ := deps.KeyStore.GetActiveKey(ctx, now)
 	if deps.Grace == 0 {
 		deps.Grace = 7 * 24 * time.Hour
 	}
@@ -73,7 +73,7 @@ func RotateSigningKeyIfDue(
 		}
 		return next, nil
 	}
-	active, err := deps.KeyStore.GetActiveKey(ctx)
+	active, err := deps.KeyStore.GetActiveKey(ctx, now)
 	if err != nil {
 		return nil, err
 	}

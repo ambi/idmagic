@@ -31,11 +31,11 @@ func Run(t *testing.T, newFixture func(*testing.T) Fixture) {
 	f := newFixture(t)
 	ctx := signingports.WithKeyUsage(f.Context, signingdomain.KeyUsageXMLFederationSigning)
 	now := time.Date(2026, 10, 24, 0, 0, 0, 0, time.UTC)
-	old, err := f.Store.GetActiveKey(ctx)
+	old, err := f.Store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
-	jwt, err := f.Store.GetActiveKey(f.Context)
+	jwt, err := f.Store.GetActiveKey(f.Context, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func Run(t *testing.T, newFixture func(*testing.T) Fixture) {
 	if err != nil || len(public) != 2 {
 		t.Fatalf("active and prepared must both be published: %v %+v", err, public)
 	}
-	active, err := f.Store.GetActiveKey(ctx)
+	active, err := f.Store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || active.Kid != old.Kid || active.ExpiresAt != nil {
 		t.Fatalf("prepare changed active: %v %+v", err, active)
 	}
@@ -143,7 +143,7 @@ func Run(t *testing.T, newFixture func(*testing.T) Fixture) {
 	if _, err := f.Store.Activate(ctx, second.Next.Kid, before, time.Hour); !errors.Is(err, signingdomain.ErrKeyNotPrepared) {
 		t.Fatal("disabled candidate can be activated")
 	}
-	if key, err := f.Store.GetActiveKey(f.Context); err != nil || key.Kid != jwt.Kid {
+	if key, err := f.Store.GetActiveKey(f.Context, time.Now().UTC()); err != nil || key.Kid != jwt.Kid {
 		t.Fatal("XML rotation changed JWT key")
 	}
 	if _, err := f.Store.Rotate(otherScope, before, time.Hour); err != nil {

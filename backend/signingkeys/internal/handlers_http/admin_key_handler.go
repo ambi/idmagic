@@ -117,7 +117,7 @@ func (d Deps) handleRotateTenantKey(c *echo.Context) error {
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	ctx = signingports.WithKeyScope(signingports.WithKeyUsage(ctx, req.Usage), req.ScopeID)
-	prev, err := d.KeyStore.GetActiveKey(ctx)
+	prev, err := d.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		return err
 	}

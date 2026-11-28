@@ -144,7 +144,7 @@ func TestRecoveryCodeSecondFactorSatisfiesMfaPolicy_REQ_AUTHENTICATION_036(t *te
 	}
 
 	// 保存された LoginSession が rc を持ち、acr が mfa へ上がっている。
-	stored, err := store.Find(ctx, sessionID)
+	stored, err := store.Find(ctx, sessionID, time.Now().UTC())
 	if err != nil || stored == nil {
 		t.Fatalf("session=%v err=%v", stored, err)
 	}
@@ -193,7 +193,7 @@ func TestWrongRecoveryCodeLeavesTheSessionPending_REQ_AUTHENTICATION_036(t *test
 	}
 	oauthContractProblem(t, recorder, http.StatusUnauthorized, "invalid_recovery_code")
 
-	stored, err := store.Find(ctx, sessionID)
+	stored, err := store.Find(ctx, sessionID, time.Now().UTC())
 	if err != nil || stored == nil {
 		t.Fatalf("session=%v err=%v", stored, err)
 	}

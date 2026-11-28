@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 )
@@ -14,14 +15,14 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 	ctx := context.Background()
 	repo := NewSamlServiceProviderRepository()
 
-	defaultProfile, err := repo.EnsureDefaultIDPProfile(ctx, "tenant-a")
+	defaultProfile, err := repo.EnsureDefaultIDPProfile(ctx, "tenant-a", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if defaultProfile.ProfileID != samldomain.DefaultIDPProfileID || !defaultProfile.IsDefault {
 		t.Fatalf("default profile = %+v", defaultProfile)
 	}
-	profiles, err := repo.ListIDPProfilesByTenant(ctx, "tenant-a")
+	profiles, err := repo.ListIDPProfilesByTenant(ctx, "tenant-a", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +31,7 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 	}
 
 	dedicated := &samldomain.SamlIdentityProviderProfile{
-		TenantID: "tenant-a", ProfileID: "dedicated-a", Name: "Dedicated A", Mode: samldomain.IDPProfileModeDedicated,
+		TenantID: "tenant-a", ProfileID: "dedicated-a", Name: "Dedicated A", Mode: samldomain.IDPProfileModeDedicated, UpdatedAt: time.Now().UTC(),
 	}
 	if err := repo.SaveIDPProfile(ctx, dedicated); err != nil {
 		t.Fatal(err)
@@ -58,7 +59,7 @@ func TestSamlIdentityProviderProfilesAndBindings(t *testing.T) {
 	}
 
 	shared := &samldomain.SamlIdentityProviderProfile{
-		TenantID: "tenant-a", ProfileID: "shared", Name: "Shared", Mode: samldomain.IDPProfileModeShared,
+		TenantID: "tenant-a", ProfileID: "shared", Name: "Shared", Mode: samldomain.IDPProfileModeShared, UpdatedAt: time.Now().UTC(),
 	}
 	if err := repo.SaveIDPProfile(ctx, shared); err != nil {
 		t.Fatal(err)

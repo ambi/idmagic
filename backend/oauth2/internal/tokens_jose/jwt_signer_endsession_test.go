@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/tenancy/testing_tenant"
@@ -93,7 +94,7 @@ func TestVerifyIDTokenHintRejectsOtherIssuer(t *testing.T) {
 // かけるため、SignIDToken を経由せず claim 集合を直接指定する。
 func signHintClaims(t *testing.T, signer *JWTSigner, ks signingkeys.KeyStore, claims map[string]any) string {
 	t.Helper()
-	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()))
+	key, err := ks.GetActiveKey(testing_tenant.Default(context.Background()), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

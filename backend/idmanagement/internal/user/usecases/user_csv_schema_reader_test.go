@@ -3,6 +3,7 @@ package usecases
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/internal/user/db_memory"
@@ -66,7 +67,7 @@ func TestExportUserCSVSucceedsWithBuiltinAttributeValue(t *testing.T) {
 		UserRepo:     repo,
 		SchemaReader: TenantUserCSVSchemaReader{Repository: schemaRepo},
 		Artifacts:    artifacts,
-	}, []string{"id", "preferred_username"}, "", idmdomain.DefaultCSVTransferPolicy())
+	}, []string{"id", "preferred_username"}, "", idmdomain.DefaultCSVTransferPolicy(), time.Now().UTC())
 	if err != nil {
 		t.Fatalf("export failed: %v", err)
 	}

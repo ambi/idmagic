@@ -146,7 +146,7 @@ func BenchmarkSessionRepository_Find(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := repo.Find(ctx, sess.ID); err != nil {
+		if _, err := repo.Find(ctx, sess.ID, time.Now().UTC()); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -163,7 +163,7 @@ func BenchmarkSessionRepository_ListBySub(b *testing.B) {
 			repo := &SessionRepository{Pool: db}
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				if _, err := repo.ListBySub(ctx, user.ID); err != nil {
+				if _, err := repo.ListBySub(ctx, user.ID, time.Now().UTC()); err != nil {
 					b.Fatal(err)
 				}
 			}

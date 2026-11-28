@@ -45,7 +45,7 @@ func newXMLLifecycleWorld(t *testing.T) (*xmlLifecycleWorld, launch) {
 			for _, scope := range []string{signingports.DefaultKeyScope, xmlProfileScope} {
 				w.seedAgedKeys(tenantA, t, scope)
 			}
-			if _, err := deps.SigningKeys.KeyStore.GetActiveKey(w.xml(tenantA, freshScope)); err != nil {
+			if _, err := deps.SigningKeys.KeyStore.GetActiveKey(w.xml(tenantA, freshScope), time.Now().UTC()); err != nil {
 				t.Fatal(err)
 			}
 			return deps, nil
@@ -69,7 +69,7 @@ func (w *xmlLifecycleWorld) seedAgedKeys(tenantCtx context.Context, t *testing.T
 	t.Helper()
 	ctx := w.xml(tenantCtx, scope)
 	store := w.deps.SigningKeys.KeyStore
-	first, err := store.GetActiveKey(ctx)
+	first, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

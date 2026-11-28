@@ -74,7 +74,7 @@ func TestPushAuthorizationRequest(t *testing.T) {
 		}
 
 		// 保存されていることの検証
-		saved, err := parStore.Consume(ctx, res.RequestURI)
+		saved, err := parStore.Consume(ctx, res.RequestURI, now)
 		if err != nil {
 			t.Fatal(err)
 		}

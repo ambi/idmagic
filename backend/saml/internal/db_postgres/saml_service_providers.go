@@ -81,7 +81,7 @@ func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *samldomain
 	q := New(tx)
 	sp.IDPProfileID = sp.EffectiveIDPProfileID()
 	if sp.IDPProfileID == samldomain.DefaultIDPProfileID {
-		if _, err := q.EnsureDefaultSamlIDPProfile(ctx, sp.TenantID); err != nil {
+		if _, err := q.EnsureDefaultSamlIDPProfile(ctx, EnsureDefaultSamlIDPProfileParams{TenantID: sp.TenantID, Now: sp.UpdatedAt}); err != nil {
 			return err
 		}
 	}

@@ -106,7 +106,7 @@ func StartGroupMembershipImportPreview(
 	}
 	tenantID := tenantports.TenantID(ctx)
 	schema := groupdomain.NewGroupMembershipCSVSchema()
-	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, now, func(output io.Writer) error {
 		return idmdomain.CopyCSVWithinPolicy(output, input, policy, schema.Accepts, schema.RequiredColumnKeys()...)
 	})
 	if err != nil {
@@ -224,7 +224,7 @@ func GroupMembershipImportJobHandler(
 			SourceSHA256: source.SourceSHA256, PreviewJobID: params.PreviewJobID, GroupID: params.GroupID,
 		}
 		var summary GroupMembershipImportPlanSummary
-		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, func(emitPage func([]byte) error) error {
+		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, deps.now(), func(emitPage func([]byte) error) error {
 			pendingErrors := make([]GroupMembershipImportRowError, 0, GroupMembershipImportErrorArtifactPageSize)
 			flushErrors := func() error {
 				if len(pendingErrors) == 0 {

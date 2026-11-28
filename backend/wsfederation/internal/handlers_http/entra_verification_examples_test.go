@@ -188,7 +188,7 @@ func newEntraVerificationServerWith(t *testing.T, configure func(*httpadapter.De
 	}
 	ctx := tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", "")
 	xmlCtx := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
-	active, err := store.GetActiveKey(xmlCtx)
+	active, err := store.GetActiveKey(xmlCtx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

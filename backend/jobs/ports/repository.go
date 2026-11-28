@@ -28,6 +28,11 @@ var ErrJobLeaseLost = errors.New("jobs: lease lost")
 // terminal JobLifecycle state (JobTerminalStateIsImmutable).
 var ErrJobAlreadyTerminal = errors.New("jobs: job already in a terminal state")
 
+// ErrEnqueueTimeRequired is returned by Enqueue when EnqueueInput.Now is zero.
+// The repository records the enqueue time from its caller and never reads the
+// wall clock itself.
+var ErrEnqueueTimeRequired = errors.New("jobs: enqueue requires the current time")
+
 // EnqueueInput is the input to JobRepository.Enqueue.
 type EnqueueInput struct {
 	TenantID string
@@ -40,7 +45,8 @@ type EnqueueInput struct {
 	DedupKey    *string
 	MaxAttempts int
 	RunAt       time.Time
-	Now         time.Time
+	// Now is the enqueue time, required. A zero RunAt defaults to it.
+	Now time.Time
 }
 
 // FailOutcome is the caller's decision for how JobRepository.Fail resolves a

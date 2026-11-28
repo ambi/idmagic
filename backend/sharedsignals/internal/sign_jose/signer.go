@@ -9,6 +9,7 @@ package sign_jose
 
 import (
 	"context"
+	"time"
 
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
@@ -24,7 +25,7 @@ var _ ssports.SecurityEventTokenSigner = (*Signer)(nil)
 
 func (s *Signer) Sign(ctx context.Context, tenantID string, claims map[string]any) (string, error) {
 	ctx = tenantports.WithTenantID(ctx, tenantID)
-	key, err := s.KeyStore.GetActiveKey(ctx)
+	key, err := s.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		return "", err
 	}

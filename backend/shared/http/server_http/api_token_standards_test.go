@@ -297,7 +297,7 @@ func (s *apiTokenStack) resignManaged(t *testing.T, literal string, overrides ma
 		}
 		claims[name] = value
 	}
-	key, err := s.keyStore.GetActiveKey(s.realmContext(t, tenancydomain.DefaultRealm))
+	key, err := s.keyStore.GetActiveKey(s.realmContext(t, tenancydomain.DefaultRealm), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -530,7 +530,7 @@ func TestManagedApiTokenIsSignedWithTheTenantAccessTokenKey(t *testing.T) {
 		t.Fatalf("managed kid = %v, ordinary access token kid = %v; want the same key", header["kid"], ordinaryHeader["kid"])
 	}
 
-	active, err := stack.keyStore.GetActiveKey(ctx)
+	active, err := stack.keyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

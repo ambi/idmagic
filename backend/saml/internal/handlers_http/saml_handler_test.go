@@ -559,7 +559,7 @@ func TestSamlIDPProfilePublishesIsolatedMetadataAndRejectsCrossProfileRequest(t 
 	e, _, repo := newServerWithRepository(t, nil)
 	profile := &samldomain.SamlIdentityProviderProfile{
 		TenantID: tenancydomain.DefaultTenantID, ProfileID: "partner-a",
-		Name: "Partner A", Mode: samldomain.IDPProfileModeDedicated,
+		Name: "Partner A", Mode: samldomain.IDPProfileModeDedicated, UpdatedAt: time.Now().UTC(),
 	}
 	if err := repo.SaveIDPProfile(context.Background(), profile); err != nil {
 		t.Fatal(err)

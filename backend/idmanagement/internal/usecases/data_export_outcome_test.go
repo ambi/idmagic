@@ -22,7 +22,7 @@ type controlledCSVExporter struct {
 	generate func(context.Context) (idmports.CSVArtifact, int, error)
 }
 
-func (e controlledCSVExporter) ExportUserCSV(ctx context.Context, _ []string, _ string) (idmports.CSVArtifact, int, error) {
+func (e controlledCSVExporter) ExportUserCSV(ctx context.Context, _ []string, _ string, _ time.Time) (idmports.CSVArtifact, int, error) {
 	return e.generate(ctx)
 }
 

@@ -141,7 +141,7 @@ func newTransactionErrorFixture(t *testing.T, enrollment bool) *transactionError
 func (f *transactionErrorFixture) snapshot(t *testing.T) string {
 	t.Helper()
 	ctx := testing_tenant.Default(t.Context())
-	sessions, err := f.auth.SessionStore.ListBySub(ctx, f.user.ID)
+	sessions, err := f.auth.SessionStore.ListBySub(ctx, f.user.ID, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

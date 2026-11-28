@@ -124,7 +124,7 @@ func TestAssembleKeepsTheVaultXMLSelectionInPostgres(t *testing.T) {
 	}
 	defer first.Close()
 	ctx := signingports.WithKeyUsage(tenantports.WithTenant(context.Background(), &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID}, "", ""), signingdomain.KeyUsageXMLFederationSigning)
-	old, err := first.SigningKeys.KeyStore.GetActiveKey(ctx)
+	old, err := first.SigningKeys.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestAssembleKeepsTheVaultXMLSelectionInPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.Close()
-	current, err := second.SigningKeys.KeyStore.GetActiveKey(ctx)
+	current, err := second.SigningKeys.KeyStore.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil || current.Kid != old.Kid {
 		t.Fatalf("Assemble lost the active selection: %v %+v", err, current)
 	}

@@ -35,11 +35,11 @@ func TestPARStore(t *testing.T) {
 	if err != nil || got == nil || got.Used || got.ClientID != "client-1" || got.Parameters["scope"] != "openid" {
 		t.Fatalf("find: %v %+v", err, got)
 	}
-	consumed, err := store.Consume(ctx, "urn:par:1")
+	consumed, err := store.Consume(ctx, "urn:par:1", now)
 	if err != nil || consumed == nil || !consumed.Used {
 		t.Fatalf("consume: %v %+v (want used=true)", err, consumed)
 	}
-	if again, err := store.Consume(ctx, "urn:par:1"); err != nil || again != nil {
+	if again, err := store.Consume(ctx, "urn:par:1", now); err != nil || again != nil {
 		t.Fatalf("second consume=%+v err=%v (want nil)", again, err)
 	}
 	if got, err := store.Find(ctx, "urn:par:1"); err != nil || got == nil || !got.Used {
@@ -49,7 +49,7 @@ func TestPARStore(t *testing.T) {
 	if err := store.Save(ctx, expired); err != nil {
 		t.Fatalf("save expired: %v", err)
 	}
-	if c, err := store.Consume(ctx, "urn:par:exp"); err != nil || c != nil {
+	if c, err := store.Consume(ctx, "urn:par:exp", now); err != nil || c != nil {
 		t.Fatalf("expired consume=%+v err=%v (want nil)", c, err)
 	}
 	if got, err := store.Find(otherCtx, "urn:par:1"); err != nil || got != nil {

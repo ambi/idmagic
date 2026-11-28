@@ -401,7 +401,7 @@ type AttemptStore struct {
 }
 
 // Save は連携を保存し、テナントの期限切れの連携を片付ける。
-func (s *AttemptStore) Save(ctx context.Context, a *tokenvaultdomain.ConnectionAttempt) error {
+func (s *AttemptStore) Save(ctx context.Context, a *tokenvaultdomain.ConnectionAttempt, now time.Time) error {
 	version, ciphertext, err := s.Cipher.Encrypt(ctx, a.TenantID, recordContext, attemptsTable, a.ID, verifierField, a.CodeVerifier)
 	if err != nil {
 		return err
@@ -411,7 +411,7 @@ func (s *AttemptStore) Save(ctx context.Context, a *tokenvaultdomain.ConnectionA
 		return err
 	}
 	queries := New(s.Pool)
-	if err := queries.DeleteExpiredAttempts(ctx, DeleteExpiredAttemptsParams{TenantID: a.TenantID, ExpiresAt: time.Now().UTC()}); err != nil {
+	if err := queries.DeleteExpiredAttempts(ctx, DeleteExpiredAttemptsParams{TenantID: a.TenantID, ExpiresAt: now}); err != nil {
 		return err
 	}
 	return queries.SaveAttempt(ctx, SaveAttemptParams{

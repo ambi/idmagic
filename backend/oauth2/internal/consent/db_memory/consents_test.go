@@ -27,7 +27,7 @@ func TestListDelegationsForAgentIsTenantScoped(t *testing.T) {
 			t.Fatal(err)
 		}
 		if row.user == "revoked" {
-			if err := repo.RevokeAgentDelegation(t.Context(), row.tenant, row.user, row.agent); err != nil {
+			if err := repo.RevokeAgentDelegation(t.Context(), row.tenant, row.user, row.agent, time.Now().UTC()); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -128,13 +128,13 @@ func TestConsentRepository(t *testing.T) {
 
 	t.Run("Revoke", func(t *testing.T) {
 		// 存在しない consent の Revoke
-		err := repo.Revoke(ctx, "tenant-1", "user-none", "client-1")
+		err := repo.Revoke(ctx, "tenant-1", "user-none", "client-1", time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// 存在する consent の Revoke
-		err = repo.Revoke(ctx, "tenant-1", "user-1", "client-1")
+		err = repo.Revoke(ctx, "tenant-1", "user-1", "client-1", time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}

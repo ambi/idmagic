@@ -533,8 +533,7 @@ func TestGroupMembershipExportFailsRatherThanWriteAnUnimportableArtifact(t *test
 	artifacts := newMembershipArtifactStore()
 	_, err := groupusecases.ExportGroupMembershipCSV(f.ctx, groupusecases.GroupMembershipCSVExportDeps{
 		GroupRepo: f.groups, UserRepo: f.users, Artifacts: artifacts,
-	}, engineeringID, groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(),
-		idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: 32, MaxFieldBytes: 1 << 10})
+	}, engineeringID, groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), idmdomain.CSVTransferPolicy{MaxRows: 100, MaxBytes: 32, MaxFieldBytes: 1 << 10}, time.Now().UTC())
 	var csvErr *idmdomain.CSVError
 	if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorCSVTooLarge {
 		t.Fatalf("err = %v, want the export refused by the transfer policy", err)
@@ -543,7 +542,7 @@ func TestGroupMembershipExportFailsRatherThanWriteAnUnimportableArtifact(t *test
 	// 対照: 上限内なら同じエクスポートが成功し、その成果物はプレビューできる。
 	export, err := groupusecases.ExportGroupMembershipCSV(f.ctx, groupusecases.GroupMembershipCSVExportDeps{
 		GroupRepo: f.groups, UserRepo: f.users, Artifacts: artifacts,
-	}, engineeringID, groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), idmdomain.DefaultCSVTransferPolicy())
+	}, engineeringID, groupdomain.NewGroupMembershipCSVSchema().ColumnKeys(), idmdomain.DefaultCSVTransferPolicy(), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -637,7 +636,7 @@ func TestGroupMembershipImportTenThousandMembershipsRoundTripAsUnchanged(t *test
 	schema := groupdomain.NewGroupMembershipCSVSchema()
 	export, err := groupusecases.ExportGroupMembershipCSV(f.ctx, groupusecases.GroupMembershipCSVExportDeps{
 		GroupRepo: f.groups, UserRepo: f.users, Artifacts: artifacts,
-	}, engineeringID, schema.ColumnKeys(), idmdomain.DefaultCSVTransferPolicy())
+	}, engineeringID, schema.ColumnKeys(), idmdomain.DefaultCSVTransferPolicy(), time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

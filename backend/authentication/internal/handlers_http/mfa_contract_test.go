@@ -112,7 +112,7 @@ func TestStepUpHTTPContracts(t *testing.T) {
 		t.Fatalf("allowed credentials=%v", allowed)
 	}
 	authContractEmpty(t, send("/api/account/v1/step-up/complete", map[string]string{"method": "password", "password": authRefusalPassword}))
-	stored, err := f.sessions.Find(testing_tenant.Default(t.Context()), session)
+	stored, err := f.sessions.Find(testing_tenant.Default(t.Context()), session, time.Now().UTC())
 	if err != nil || stored == nil || stored.StepUpAt == 0 {
 		t.Fatalf("session=%v err=%v", stored, err)
 	}

@@ -19,7 +19,7 @@ func TestCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {
 	other := pgfixtures.SeedTenant(t, db)
 	store := &CSVArtifactStore{Pool: db}
 	want := bytes.Repeat([]byte("row,with,content\n"), 10_000)
-	metadata, err := store.PutCSVArtifact(context.Background(), tenant.ID, func(output io.Writer) error {
+	metadata, err := store.PutCSVArtifact(context.Background(), tenant.ID, time.Now().UTC(), func(output io.Writer) error {
 		_, err := io.Copy(output, bytes.NewReader(want))
 		return err
 	})
@@ -59,7 +59,7 @@ func TestCSVArtifactStoreReadsAcrossChunkBatches(t *testing.T) {
 			for i := range want {
 				want[i] = byte(i % 251)
 			}
-			metadata, err := store.PutCSVArtifact(context.Background(), tenant.ID, func(output io.Writer) error {
+			metadata, err := store.PutCSVArtifact(context.Background(), tenant.ID, time.Now().UTC(), func(output io.Writer) error {
 				_, err := output.Write(want)
 				return err
 			})
@@ -83,7 +83,7 @@ func TestCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)
 	store := &CSVArtifactStore{Pool: db}
-	metadata, err := store.PutCSVArtifactPages(context.Background(), tenant.ID, func(emit func([]byte) error) error {
+	metadata, err := store.PutCSVArtifactPages(context.Background(), tenant.ID, time.Now().UTC(), func(emit func([]byte) error) error {
 		for _, page := range [][]byte{[]byte(`[{"row":2,"code":"invalid_email"}]`), []byte(`[{"row":202,"code":"source_managed"}]`)} {
 			if err := emit(page); err != nil {
 				return err
@@ -118,7 +118,7 @@ func TestCSVArtifactStoreDeletesArtifactsCreatedBeforeTheCutoff(t *testing.T) {
 	cutoff := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 	put := func(createdAt time.Time) string {
 		t.Helper()
-		metadata, err := store.PutCSVArtifact(ctx, tenant.ID, func(output io.Writer) error {
+		metadata, err := store.PutCSVArtifact(ctx, tenant.ID, time.Now().UTC(), func(output io.Writer) error {
 			_, err := io.WriteString(output, "preferred_username\nalice\n")
 			return err
 		})

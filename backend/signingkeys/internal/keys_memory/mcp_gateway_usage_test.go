@@ -3,6 +3,7 @@ package keys_memory_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	keys "github.com/ambi/idmagic/backend/signingkeys/internal/keys_memory"
@@ -19,14 +20,14 @@ func TestManagedMcpKeysAreIsolatedByTenantAndRegistration(t *testing.T) {
 	seen := map[string]bool{}
 	for _, tenant := range []string{"one", "two"} {
 		base := tenantports.WithTenantID(context.Background(), tenant)
-		signing, err := store.GetActiveKey(base)
+		signing, err := store.GetActiveKey(base, time.Now().UTC())
 		if err != nil {
 			t.Fatal(err)
 		}
 		seen[signing.Kid] = true
 		for _, scope := range []string{"first", "second"} {
 			ctx := signingports.WithKeyScope(signingports.WithKeyUsage(base, signingdomain.KeyUsageMcpGatewayDPoP), scope)
-			key, err := store.GetActiveKey(ctx)
+			key, err := store.GetActiveKey(ctx, time.Now().UTC())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -34,7 +35,7 @@ func TestManagedMcpKeysAreIsolatedByTenantAndRegistration(t *testing.T) {
 				t.Fatalf("key isolation failed: %+v", key.PublicJWK)
 			}
 			seen[key.Kid] = true
-			again, err := store.GetActiveKey(ctx)
+			again, err := store.GetActiveKey(ctx, time.Now().UTC())
 			if err != nil || again.Kid != key.Kid {
 				t.Fatalf("registered key changed: %v", err)
 			}

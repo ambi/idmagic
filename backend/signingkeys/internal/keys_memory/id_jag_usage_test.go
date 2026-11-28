@@ -18,14 +18,14 @@ func TestIDJAGSigningKeyIsSeparate_REQ_SIGNINGKEYS_013(t *testing.T) {
 	}
 	ctx := testing_tenant.Default(context.Background())
 	idJag := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageIdJagSigning)
-	key, err := store.GetActiveKey(idJag)
+	key, err := store.GetActiveKey(idJag, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if key.Alg != "RS256" || key.PublicJWK["alg"] != "RS256" {
 		t.Fatalf("ID-JAG key alg = %s, JWK alg = %v, want RS256", key.Alg, key.PublicJWK["alg"])
 	}
-	signing, err := store.GetActiveKey(ctx)
+	signing, err := store.GetActiveKey(ctx, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

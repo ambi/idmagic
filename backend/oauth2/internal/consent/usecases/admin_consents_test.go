@@ -23,6 +23,7 @@ func TestRevokeConsent_decrementsQuotaUsage(t *testing.T) {
 	ctx := tenantContext(tenancydomain.DefaultTenantID)
 	consentRepo := oauth2memory.NewConsentRepository()
 	quotaRepo := tenancy.NewMemoryModule().QuotaRepo
+	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
 	limit := 1
 	if err := quotaRepo.SetQuota(ctx, tenancydomain.DefaultTenantID, &tenancydomain.TenantQuota{Consents: &limit}); err != nil {
 		t.Fatalf("SetQuota: %v", err)
@@ -32,11 +33,11 @@ func TestRevokeConsent_decrementsQuotaUsage(t *testing.T) {
 	}
 	if err := consentRepo.Save(ctx, tenancydomain.DefaultTenantID, &oauthdomain.Consent{
 		UserID: "user-1", ClientID: "client-1", Scopes: []string{"openid"}, State: oauthdomain.ConsentGranted,
+		GrantedAt: now, ExpiresAt: now.Add(365 * 24 * time.Hour),
 	}); err != nil {
 		t.Fatalf("seed consent: %v", err)
 	}
 	deps := ConsentDeps{ConsentRepo: consentRepo, QuotaRepo: quotaRepo}
-	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
 
 	if err := RevokeConsent(ctx, deps, "admin-1", "user-1", "client-1", now); err != nil {
 		t.Fatal(err)

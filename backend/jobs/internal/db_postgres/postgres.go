@@ -74,7 +74,7 @@ func (r *JobRepository) Enqueue(ctx context.Context, input jobsports.EnqueueInpu
 	}
 	now := input.Now
 	if now.IsZero() {
-		now = time.Now().UTC()
+		return nil, false, jobsports.ErrEnqueueTimeRequired
 	}
 	runAt := input.RunAt
 	if runAt.IsZero() {

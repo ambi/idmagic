@@ -323,7 +323,7 @@ func (f *fakeDenylist) Add(_ context.Context, jti string, _ time.Time) error {
 	return nil
 }
 
-func (f *fakeDenylist) IsRevoked(_ context.Context, jti string) (bool, error) {
+func (f *fakeDenylist) IsRevoked(_ context.Context, jti string, _ time.Time) (bool, error) {
 	return f.revoked[jti], nil
 }
 

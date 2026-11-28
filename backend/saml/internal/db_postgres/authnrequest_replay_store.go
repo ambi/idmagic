@@ -23,7 +23,7 @@ func (s *AuthnRequestReplayStore) RecordIfNew(
 	now time.Time,
 ) (bool, error) {
 	if now.IsZero() {
-		now = time.Now().UTC()
+		return false, errors.New("AuthnRequest replay reservation requires the current time")
 	}
 	_, err := New(s.Pool).ReserveSamlAuthnRequestReplay(ctx, ReserveSamlAuthnRequestReplayParams{
 		TenantID:     tenantID,

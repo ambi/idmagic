@@ -484,6 +484,13 @@ depends = ["compile-spec"]
 # 個別入口の前提は残し、この入口では上の依存が生成した OpenAPI を共有する。
 run = "mise run -c --skip-deps check-generated-contract ::: check-site"
 
+[tasks.check-sql-clock]
+# context: targets=backend
+description = "Reject sqlc queries that judge expiry or order by the database clock"
+depends = ["setup-tools"]
+dir = "tools"
+run = "bun run check/src/runner.ts sql-clock"
+
 [tasks.check-sql-concurrency]
 # context: targets=backend
 description = "Reject unguarded writes after reads of the same table"
