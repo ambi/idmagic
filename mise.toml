@@ -15,20 +15,35 @@ bun = "1.4.5"
 # 変異テストは局所的に走らせる道具で、ゲートには入っていない。それでもバージョンを固定するのは、
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/ambi/gamut/cmd/gamut" = "0.1.0"
+# AGENTS.md のツール表が指定する CLI と、タスクが呼ぶ検索と GitHub の CLI。
+# 実行環境ごとに別の経路で入れると版と実装がずれるので、取得元、版、対応 OS をここで固定する。
+"aqua:BurntSushi/ripgrep" = "16.0.0"
+"aqua:sharkdp/fd" = "10.5.2"
+"aqua:ast-grep/ast-grep" = "0.51.3"
+"aqua:mikefarah/yq" = "4.54.3"
+"aqua:cli/cli" = "2.106.0"
+"github:yusukebe/ax" = { version = "0.1.25", bin = "ax" }
+# srgn の配布物は macOS と Linux x86_64 だけにあり、タグは srgn-v を前置する。
+"github:alexpovel/srgn" = { version = "0.14.4", version_prefix = "srgn-v", os = ["macos", "linux/x64"] }
 
 # タスクは内容ごとの節に分け、節の中は名前の辞書順に並べる。
 # タスクを足すときは内容の合う節の辞書順の位置へ置き、合う節がなければ節を足す。
 
 # ---- 環境の準備と開発ツールの版 ----
 
-# 入力より新しい印があれば何もしないので、ほかのタスクの前提に置いても費用はほぼない。
-# bun は導入済みの印を作らないので、導入の後に印を置く。
+# 判定と印の扱いは setup-tools と同じである。
 [tasks.install-ui]
 description = "Install UI dependencies"
 dir = "frontend"
-sources = ["package.json", "bun.lock"]
-outputs = ["node_modules/.install-stamp"]
-run = "bun install --frozen-lockfile && touch node_modules/.install-stamp"
+run = '''
+#!/usr/bin/env sh
+set -eu
+stamp=node_modules/.install-stamp
+if [ ! -e "$stamp" ] || [ package.json -nt "$stamp" ] || [ bun.lock -nt "$stamp" ]; then
+  bun install --frozen-lockfile
+  touch "$stamp"
+fi
+'''
 
 [tasks.list-dependency-releases]
 description = "List stable upstream releases for dependency repositories"
@@ -50,26 +65,23 @@ run = "mise outdated --bump --local"
 description = "Install repository dependencies"
 depends = ["setup-tools", "install-ui"]
 
-[tasks.setup-cli-tools]
-description = "Install host CLI tools used by repository instructions"
+# tools の TypeScript を実行するタスクはこのタスクに、frontend で bun を実行するタスクは install-ui に依存させる。
+# 印が package.json と bun.lock より新しければ何もしないので、前提に置いても費用はほぼない。
+# bun は導入済みの印を作らないので、導入の後に印を置く。
+# 新旧の比較は mise の sources と outputs に任せない。mise は判定の記録を利用者の状態ディレクトリへ書くので、
+# そこへ書けない実行環境では、この前提を持つすべてのタスクが導入済みでも失敗する。
+[tasks.setup-tools]
+description = "Install embedded tooling dependencies"
 run = '''
 #!/usr/bin/env sh
 set -eu
-if ! command -v brew >/dev/null 2>&1; then
-  echo "Homebrew not found. Install manually: jq yq ripgrep fd gh ast-grep" >&2
-  exit 1
+stamp=tools/node_modules/.install-stamp
+if [ ! -e "$stamp" ] || [ tools/package.json -nt "$stamp" ] || [ tools/bun.lock -nt "$stamp" ]; then
+  (cd tools && bun install --frozen-lockfile)
+  touch "$stamp"
 fi
-brew install jq yq ripgrep fd gh ast-grep
+[ -L node_modules ] || ln -sfn tools/node_modules node_modules
 '''
-
-[tasks.setup-tools]
-description = "Install embedded tooling dependencies"
-sources = ["tools/package.json", "tools/bun.lock"]
-outputs = ["tools/node_modules/.install-stamp"]
-run = [
-  "cd tools && bun install --frozen-lockfile && touch node_modules/.install-stamp",
-  "ln -sfn tools/node_modules node_modules",
-]
 
 [tasks.show-package-metadata]
 description = "Show registry metadata for a package"
@@ -108,6 +120,7 @@ run = "bun install"
 
 [tasks.check-ci-results]
 description = "Require the CI plan and every selected verification group to succeed"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run verification/src/ci-main.ts results"
 
@@ -124,6 +137,7 @@ mise run -c --skip-deps check-spec-inputs ::: check-repository ${1:+"$1"} ::: ch
 
 [tasks.plan-ci]
 description = "Select CI verification groups from two Git revisions (all groups on unknown input)"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -134,10 +148,12 @@ bun run verification/src/ci-main.ts plan "$@"
 
 [tasks.report-verification]
 description = "Report test execution, analysis gaps, and uncollected change-resistance evidence"
+depends = ["setup-tools"]
 run = "bun run tools/verification/src/report.ts \"$@\""
 
 [tasks.time-verify]
 description = "Time every gate of a verification suite serially"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -171,6 +187,7 @@ mise run -c \
 # 選ばなかった層は理由とともに .verification/verify-selection.json へ書き、成功として数えない。
 [tasks.verify-changed]
 description = "Verify only the layers and Go packages the working tree's change can affect"
+depends = ["setup-tools"]
 run = '''
 #!/usr/bin/env sh
 set -eu
@@ -190,6 +207,7 @@ run = "mise run -c verify ::: test-go-openldap ::: test-ui-e2e"
 # パッケージの共通部分だけを再実行する。引数は rebase 前に検証したソースのコミット。
 [tasks.verify-integration]
 description = "Verify a rebased branch only where its own change and the incoming change overlap"
+depends = ["setup-tools"]
 run = '''
 #!/usr/bin/env sh
 set -eu
@@ -279,16 +297,19 @@ run = "go run ./backend/cmd/idmagic-route-reference --check --output docs/operat
 # 実装のすべての経路は、ページか描画しない経路の説明として宣言されている必要がある。
 [tasks.check-ui-pages]
 description = "Check UI page declarations against frontend routes and markers, and the generated documents for drift"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run build-site/src/write-ui-pages.ts --check"
 
 [tasks.compile-spec]
 description = "Compile TypeSpec and emit OpenAPI"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bunx tsp compile ../spec/main.tsp --config ../spec/tspconfig.yaml"
 
 [tasks.compile-ui-spec]
 description = "Compile the UI design declarations separately from the public HTTP contract"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bunx tsp compile ../spec/modules/frontend --no-emit"
 
@@ -308,12 +329,14 @@ run = "go run ./backend/cmd/idmagic-route-reference --output docs/operations/rou
 
 [tasks.generate-spec-from-testdata]
 description = "Regenerate documented examples and state machines from their testdata"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/generate-spec-from-testdata.ts"
 
 # 文書サイトは TypeSpec から生成した OpenAPI を読むので、先にコンパイルして古い生成物を描かない。
 [tasks.generate-ui-pages]
 description = "Generate the UI page inventory and interaction design from TypeSpec"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run build-site/src/write-ui-pages.ts \"$@\""
 
@@ -351,17 +374,20 @@ run = "bun run check/src/runner.ts admin-scopes"
 [tasks.check-agent-guidance]
 # context: targets=.agents,AGENTS.md,tools/check/src/agent-guidance.ts
 description = "Check repository-local agent guidance against the current workflow"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts agent-guidance"
 
 [tasks.check-boundaries]
 # context: concerns=boundary
 description = "Reject forbidden source dependencies"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts boundaries \"$@\""
 
 [tasks.check-boundary-debt-ratchet]
 description = "Reject boundary violations added beyond a Git revision"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -379,12 +405,14 @@ run = "bun run check/src/runner.ts contract-drift"
 
 [tasks.check-event-contract]
 description = "Check the published domain event payload vocabulary against the code that reads it"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts event-contract"
 
 [tasks.check-links]
 # context: targets=docs,.agents,AGENTS.md,work-items
 description = "Check repository-local Markdown links and anchors"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts links"
 
@@ -397,6 +425,7 @@ run = "bun run check/src/runner.ts operation-references"
 
 [tasks.check-repository]
 description = "Run every registered TypeScript repository check in one process"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -410,6 +439,7 @@ bun run check/src/runner.ts all ${1:+--base-revision "$1"}
 # `check` から明示して実行し、`test-tools` を文書や設定だけの変更から切り離す。
 [tasks.check-repository-tests]
 description = "Run tooling tests that read the repository's own documents and configuration"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -419,11 +449,13 @@ bun test $(fd -e ts -g '*.repository.ts' . --exclude node_modules | sed 's#^#./#
 
 [tasks.check-schema-tables]
 description = "Check the table descriptions in the database design against the schema"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts schema-tables"
 
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts security-controls"
 
@@ -437,6 +469,7 @@ run = "bun run check/src/runner.ts spec"
 
 [tasks.check-spec-impact]
 description = "Check declared specification impact against the specification diff since a Git revision"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -454,6 +487,7 @@ run = "mise run -c --skip-deps check-generated-contract ::: check-site"
 [tasks.check-sql-concurrency]
 # context: targets=backend
 description = "Reject unguarded writes after reads of the same table"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts sql-concurrency"
 
@@ -465,17 +499,20 @@ run = "bun run check/src/runner.ts status-drift"
 
 [tasks.check-terminology]
 description = "Check design documents against the adopted terminology"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts terminology"
 
 [tasks.check-unspecified-vocabulary]
 description = "Check that every declared error code and domain event appears in a requirement"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts unspecified-vocabulary"
 
 [tasks.check-work-items]
 # context: kinds=*
 description = "Validate work-item records"
+depends = ["setup-tools"]
 dir = "tools"
 # 成功した対象の列挙は既定では出さない。全件を見たいときは `-- --verbose` を渡す。
 run = "bun run check/src/runner.ts work-items \"$@\""
@@ -519,6 +556,7 @@ run = "bun run tools/verification/src/contract-evidence-inventory.ts \"$@\""
 
 [tasks.report-security-test-gaps]
 description = "List refused state changes no test proves were left untouched"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run security-test-gap-report/src/main.ts"
 
@@ -551,6 +589,7 @@ run = "betterleaks git . --config .betterleaks.toml --redact --no-banner"
 
 [tasks.check-vulnerability-suppressions]
 description = "Require a reason and an unexpired deadline on every vulnerability suppression"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run check/src/runner.ts vulnerability-suppressions"
 
@@ -558,6 +597,7 @@ run = "bun run check/src/runner.ts vulnerability-suppressions"
 
 [tasks.brief]
 description = "Show what one work item should be read from"
+depends = ["setup-tools"]
 # 規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する
 # work item まで一度にたどる。任意の語を探す spec-where とは入力も出力も別なので分けてある。
 dir = "tools"
@@ -570,11 +610,13 @@ bun run brief/src/main.ts "$@"
 
 [tasks.move-work-item]
 description = "Complete (or with --cancel, cancel) a work item: check it, collapse it to its summary, and move it to done"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run work-item/src/main.ts \"$@\""
 
 [tasks.report-agent-friction]
 description = "Count Agent-Friction commit trailers by target to find guidance agents keep tripping over"
+depends = ["setup-tools"]
 # 繰り返しの判断材料を示す報告であり、ゲートにしない。引数は git log のリビジョン範囲。
 dir = "tools"
 run = '''
@@ -585,6 +627,7 @@ bun run agent-friction/src/main.ts "$@"
 
 [tasks.spec-diff]
 description = "Show normative specification changes against a git ref"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -594,6 +637,7 @@ bun run spec-diff/src/main.ts "${1:-main}"
 
 [tasks.spec-review-candidates]
 description = "List production Go code that no specification-citing test executes, as candidates to review"
+depends = ["setup-tools"]
 # 仕様漏れの判定ではなく、既存コードを書き起こすときの着手点を報告する。ゲートにはしない。
 dir = "tools"
 run = '''
@@ -619,6 +663,7 @@ rg -l "$1" work-items || true
 
 [tasks.work-item-number]
 description = "Pick an unused work item identifier number"
+depends = ["setup-tools"]
 # 起票のたびに最大値を数える手順を置き換える。数える手順は、まだ push されていない
 # 起票を見られないため、並列のワークツリーと複数のメンバーの下で衝突を生む。
 dir = "tools"
@@ -642,6 +687,7 @@ run = "bun run build-site/src/main.ts --check"
 # API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。
 [tasks.serve-site]
 description = "Serve the built documentation site over HTTP"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run build-site/src/serve.ts"
 
@@ -649,6 +695,7 @@ run = "bun run build-site/src/serve.ts"
 
 [tasks.format-tools]
 description = "Format embedded repository tooling"
+depends = ["setup-tools"]
 dir = "tools"
 run = "bun run format"
 
@@ -673,6 +720,7 @@ run = "bun test"
 [tasks.test-tools-file]
 # context: targets=tools
 description = "Run one embedded repository tooling test file"
+depends = ["setup-tools"]
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
@@ -752,6 +800,7 @@ run = "bun run tools/verification/src/main.ts --full --report .verification/test
 
 [tasks.test-go-changed]
 description = "Run Go tests for the changed packages and their reverse dependencies; pass --race to add the race detector"
+depends = ["setup-tools"]
 # どこが関係するかを見極めるより回してしまった方が楽、という判断は正しい。だから見極めを
 # 人ではなく go list の依存グラフにやらせる。省いた分は最後のゲートが拾う。
 run = '''
@@ -776,6 +825,7 @@ echo "$packages" | tr '\n' ' ' | xargs bun run tools/verification/src/main.ts --
 
 [tasks.test-go-cover]
 description = "Run Go tests with coverage"
+depends = ["setup-tools"]
 run = '''
 #!/usr/bin/env sh
 set -eu
@@ -787,6 +837,7 @@ go tool cover -func=coverage.out
 [tasks.test-go-one]
 # context: targets=backend
 description = "Run one Go test by name in one package"
+depends = ["setup-tools"]
 run = '''
 #!/usr/bin/env sh
 set -eu
@@ -796,6 +847,7 @@ bun run tools/verification/src/main.ts --report .verification/test-go-one.json -
 
 [tasks.test-go-package]
 description = "Run Go tests for one package; pass --race to add the race detector"
+depends = ["setup-tools"]
 # 通常のビルドが既定で、並行処理そのものを作る作業だけが --race を付ける。
 run = '''
 #!/usr/bin/env sh
@@ -1046,6 +1098,7 @@ run = "bash scripts/setup-kerberos.sh"
 
 [tasks.test-envoy-mcp-gateway]
 description = "Verify the MCP gateway behind a real Envoy loaded with the distributed example configuration"
+depends = ["setup-tools"]
 env = { ENVOY_IMAGE = "envoyproxy/envoy:v1.40.2" }
 run = '''
 #!/usr/bin/env sh
@@ -1061,10 +1114,12 @@ run = "mise run -c lint-go-openldap ::: test-go-openldap-integration ::: test-go
 
 [tasks.test-go-openldap-e2e]
 description = "Run Directory Connector E2E against real OpenLDAP (requires Docker)"
+depends = ["setup-tools"]
 run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-e2e.json -- -count=1 -tags=openldap ./backend/directoryconnector -run '^TestDirectory(ConnectorSyncsOpenLDAPUsers|DelegationAuthenticatesThroughTheProductionRouter)$'"
 
 [tasks.test-go-openldap-integration]
 description = "Run LDAP adapter integration tests against real OpenLDAP (requires Docker)"
+depends = ["setup-tools"]
 run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-integration.json -- -count=1 -tags=openldap ./backend/directoryconnector/internal/ldap_goldap ./backend/directoryconnector/internal/testing_openldap"
 
 [tasks.test-kerberos-ad]
@@ -1093,6 +1148,7 @@ run = "bun update --latest"
 
 [tasks.add-ui-component]
 description = "Add shadcn components with the version pinned in devDependencies"
+depends = ["install-ui"]
 dir = "frontend"
 run = '''
 #!/usr/bin/env sh
@@ -1121,11 +1177,13 @@ run = "bun run format:check"
 
 [tasks.format-ui]
 description = "Format UI"
+depends = ["install-ui"]
 dir = "frontend"
 run = "bun run format"
 
 [tasks.generate-routes]
 description = "Regenerate the TanStack route tree"
+depends = ["install-ui"]
 dir = "frontend"
 run = "bun run generate:routes"
 
@@ -1142,17 +1200,20 @@ run = "bun outdated"
 
 [tasks.test-ui-cover]
 description = "Run UI unit tests with coverage"
+depends = ["install-ui"]
 dir = "frontend"
 run = "bun run test:unit:coverage"
 
 [tasks.test-ui-e2e]
 # context: targets=frontend concerns=contract
 description = "Run UI end-to-end tests"
+depends = ["install-ui"]
 dir = "frontend"
 run = "bun run test:e2e"
 
 [tasks.test-ui-e2e-file]
 description = "Run one UI end-to-end spec file"
+depends = ["install-ui"]
 dir = "frontend"
 # --config は test:e2e と同じものを渡す。既定の bunfig は単体テスト用の DOM 登録を
 # preload するだけで、スタックを起動する tests/e2e/setup.ts を読まない。渡し忘れると
@@ -1177,6 +1238,7 @@ run = "bun run test:unit"
 [tasks.test-ui-unit-file]
 # context: targets=frontend
 description = "Run one UI unit-test file"
+depends = ["install-ui"]
 dir = "frontend"
 run = '''
 #!/usr/bin/env sh
@@ -1267,6 +1329,7 @@ run = "./dev.sh memory"
 
 [tasks.dev-ui]
 description = "Start the React UI development server"
+depends = ["install-ui"]
 dir = "frontend"
 raw = true
 run = "bun run dev"

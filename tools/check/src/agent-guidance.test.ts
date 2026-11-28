@@ -154,4 +154,15 @@ describe('verifyAgentGuidance', () => {
       message: 'calls an undeclared mise task: missing-task',
     })
   })
+
+  it('インラインコードの閉じ記号をタスク名に含めず、未定義タスクを拒否する', () => {
+    expect(
+      verify(
+        change(implementation, (source) => `${source}\n\`mise run missing-task\` を実行する。`),
+      ),
+    ).toContainEqual({
+      file: implementation,
+      message: 'calls an undeclared mise task: missing-task',
+    })
+  })
 })

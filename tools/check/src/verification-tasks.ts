@@ -36,8 +36,9 @@ function invokedTasks(command: string): string[] {
   const normalized = command.replace(/\\\r?\n/g, ' ')
   const names: string[] = []
   for (const segment of normalized.split(/\bmise\s+run\s+/).slice(1)) {
-    // One invocation ends at the shell operator that starts the next command.
-    const invocation = (segment.split(/[\n;&|]/)[0] ?? '').trim()
+    // One invocation ends at the shell operator that starts the next command,
+    // or at the backtick that closes inline code in guidance Markdown.
+    const invocation = (segment.split(/[\n;&|`]/)[0] ?? '').trim()
     let expectTask = true
     for (const token of invocation.split(/\s+/)) {
       if (token === '') continue

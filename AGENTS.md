@@ -69,8 +69,10 @@ DB を起動できなければ、DB を使うテストはデフォルトで失�
 | YAML の照会、抽出、変更 | `yq` | インデントを前提とする `grep` |
 | 内容の検索 | `rg` | `grep -r`、`find … -exec grep` |
 | 名前によるファイル検索 | `fd` | `find` |
-| 同じ構造または同じ文字列の複数箇所の書き換え | `ast-grep run -p <pattern> -r <rewrite> -U`。一致が 0 件なら終了コード 1 で止まる | 複数行の正規表現、廃止された `sg` 別名 |
+| 同じ構造の複数箇所の書き換え | `ast-grep run -p <pattern> -r <rewrite> -U`。一致が 0 件なら終了コード 1 で止まる | 複数行の正規表現、廃止された `sg` 別名 |
+| 同じ文字列の複数箇所の書き換え | `srgn --stdin-detection force-unreadable --glob '<glob>' --literal-string --fail-none --fail-no-files [--dry-run] '<old>' -- '<new>'`。適用後に `git diff --stat` で変更を確かめる | `sed -i`、`perl -pi` |
 | HTML ページの読み取りと抽出 | `ax` | `curl` と解析スクリプト |
 | GitHub の Pull Request、Issue、API | `gh` | GitHub API への `curl` |
 
-必要な CLI がなければ `mise run setup-cli-tools` を実行する。
+置換する値にバックスラッシュを含めるときは、[srgn の引数の解釈](docs/development/agent-guidance.md#srgn-の引数の解釈)を読む。
+必要な CLI がなければ `mise install` を実行する。
