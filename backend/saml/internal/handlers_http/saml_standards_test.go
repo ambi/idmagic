@@ -667,13 +667,21 @@ func TestSamlServiceProviderTrustPolicyCanRequireSignedAuthnRequests(t *testing.
 // そのポリシーに由来すると言える。
 func newServerRequiringSignedAuthnRequests(t *testing.T) *echo.Echo {
 	t.Helper()
+	return newServerRequiringSignedRequests(t, certPEM(t), "")
+}
+
+// newServerRequiringSignedRequests は、与えた証明書で署名を検証する SP のスタックを組む。
+// sloURL を与えると、その SP は LogoutRequest も受ける。
+func newServerRequiringSignedRequests(t *testing.T, signingCertificatePEM, sloURL string) *echo.Echo {
+	t.Helper()
 	spRepo := samlmemory.NewSamlServiceProviderRepository()
 	spRepo.Seed(&samldomain.SamlServiceProvider{
 		EntityID:                          "https://sp.example.com",
 		ACSURLs:                           []string{"https://sp.example.com/acs"},
+		SLOURL:                            sloURL,
 		SignAssertion:                     true,
 		WantAuthnRequestsSigned:           true,
-		AuthnRequestSigningCertificatePEM: certPEM(t),
+		AuthnRequestSigningCertificatePEM: signingCertificatePEM,
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},

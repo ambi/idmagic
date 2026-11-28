@@ -1,0 +1,17 @@
+{
+  "retrieved_at": "2026-11-28",
+  "service_provider": "Sustainsys.Saml2 2.11.2",
+  "runtime": ".NET 8.0.34",
+  "method": "record/sustainsys.sh を mcr.microsoft.com/dotnet/sdk:8.0 のコンテナで実行した。Sustainsys.Saml2 の Saml2AuthenticationRequest と Saml2LogoutRequest を、SP が使う Saml2Binding.Get(Saml2BindingType.HttpRedirect).Bind に渡し、返ったリダイレクトの URL を保存した。RelayState は利用側が設定できず、ライブラリが作った値である。",
+  "certificate_pem": "-----BEGIN CERTIFICATE-----\nMIICxDCCAaygAwIBAgIIM8syUtPx0SgwDQYJKoZIhvcNAQELBQAwIjEgMB4GA1UEAxMXc3VzdGFp\nbnN5cyByZWNvcmRpbmcgc3AwHhcNMjYxMTI3MTAyOTEzWhcNMzYxMTI4MTAyOTEzWjAiMSAwHgYD\nVQQDExdzdXN0YWluc3lzIHJlY29yZGluZyBzcDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC\nggEBALZO5ml5clQeyr5boxOifpLWJszTFrfQVngtCanxte0mOud7yZ5iEUqvZlkWMgTTArMOgw+d\n1d4S3ye78/dt7PeP08lByJbsUboP2qrmO3xh3bE+UQGnjqAMpC8FEuN+0Mo7YpN36BgynV9MC1Qx\n9D1IrfHPPPD5VqJVmD1tVpDkr/5l6KDze5pqyFsnA3iMfvFrtRV8YKWHYm7F3L9v5rn8Fr4YU2YR\nQi26xCQZFh4xafaLt+vnRCeiatV8mx6JA5MJXihFXc1TeUBKBmwjj6Q5UnL5kcCADG3MC68GZkIt\na+qSK4H2H8OjWGCMeTU6ZF6qRW0wTiIs/b6vbZuuoSUCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEA\nq9xh3A6ZVjda9Lir2IPRICknguDe1aHHEUP57P26G1W/qJkMStkGzn5KcdhDKuHlgrxUmdKhPrEb\nPHEGeD+S21vNOCm/ZAtj/qXbK2AVpZTX5qViRG35HI9mm2YzR0HXmNR+SDhq11KoYpJkeFa1nH5O\nzePNFpRHXVGxLhpB3qr/3rrbvkIT73kPlhJf7AcaB8Wk8k3xHKuV60j6qikspvByVWh4VA9k8p/B\n+4VF8ucWnlw/g+4ZqUhsRhZsbF9cFCh2xe6gLl3AchYliLWIhobP4kVubksnS/X1TWMUGUnybfvx\nWorJQR/u8X4V72zUPVXiQ1W0K6cTFnl4o63TsQ==\n-----END CERTIFICATE-----\n",
+  "requests": [
+    {
+      "message": "AuthnRequest",
+      "location": "https://idp.example/realms/default/saml/sso?SAMLRequest=fJFLa8MwEITv%2BRVC91i2%2FGgibINpLoH0krQ99KbKayLQw9XKJT%2B%2FrvsMlB53d75hhq1RWsNH0U3x7I7wMgFGcrHGofi4NHQKTniJGoWTFlBEJU7d3UHwJBVj8NErb%2Bhv5n9EIkKI2jtK9ruG6r6EPB02lSqHjBc3w%2FY578uiqoqc90rJbUXJIwScgYbO%2FEwhTrB3GKWL8yrl1TrL1nxzn6WCb0WWP1Gym2toJ%2BNCnWMcUTCm%2BzGBi7SjARZAGoush0FOJrL33AzRU9J9xbv1DicL4QThVSt4OB5%2BnPDbKFHeMqmQtitC6qW%2BWAKG9m9xza5Eq8%2F5%2BgPtGwAAAP%2F%2FAwA%3D&RelayState=MPdPSm893pO8-3uY_tHYVEPf&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256&Signature=ANtSxkIpTl7GISgM0ft%2FoJ67wKYwXYQSF4mUFEKOWQX2soGnH2kSYcFxVEILBEk6SMyM%2BE9l0qMu8sHA8YlYBNzU1XwuOvmnyjYVLzlQDIDjC4c5eRA0no%2Bz%2BREX24kUomY0fkc3XrRi0%2FavJtxfdwyBZmSH%2BGfNq1O%2BaU0K%2BghFfTFA%2F%2FnrkUlpBByxvdrREeHOilBScwJEQMgQ3c1a8Fe8dOReDeUkatBPbXKT71KlKQZUwl8%2FncgKoU6UVQbHSYpRDyuzWftlH8ndVcoTIuOOsX6lHyDzUN7pclTRWIzCREIKZnQRjRiUlviJ%2Fy7KdH0rdyE1YEsi8ccqYQmUTg%3D%3D"
+    },
+    {
+      "message": "LogoutRequest",
+      "location": "https://idp.example/realms/default/saml/slo?SAMLRequest=fJGxboMwEIb3PAXyDgY3SeEESJVYkNIOTdWhm4OPFsnYlDMSj1%2BHNLTp0NH%2F%2FZ%2FOny4n2WsxwMG%2B28k94%2BeE5IK514bgMirYNBqwkjoCI3skcA0cHx4PIKIYhtE621jNfjP%2FI5IIR9dZw4K6Klin5O5eyHSfZonCbYqZjFOBYtecxPbUqlax4BVH8kDBPO8poglrQ04a56NY7MMkCUX6ksQgMkju3lhQeY3OSLdQH84NBJx3aohwlv2gkY8odU9cYSsn7fj535y0ZeUmCPLFApY9Y3mlaYWjxvY5vyn9UE9euK7KyUuGybX1Ha6tAY5IZ6XaKJxLujzW%2Fp%2FxZo1vzlR%2BAQAA%2F%2F8DAA%3D%3D&RelayState=mTIKFz5Lrmlbk0J0yInJ4gTk&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256&Signature=oMMvgbeNjHTv8zuV2ZdiEevAVP2CiWd2Sh%2Bji%2FSbLs%2BqV9d1fCMsIEiYiT%2BJfQlcjiy%2FTO0StsFnWl%2Bu4C1fcVMTypad4K92TfhfkAXRXD5fcIjN6kaE8d%2BXbQJAcThxnJGz6%2F49QBC5TOSN3uBpwgqsje4p2va3%2FP3H5ybL0bf1nW1DZGjOQQTQrgyU1uWrWT45VH%2BWyMZi1Hi1BRg%2FMdR2JBgoNO7wKYDpLJvD%2BfLi4ZMIz4SRFDPxDNDHtXXL9pufyp1ytvp9mRF2jY4MPJi51EEKqfQnAtJg8OUd8a40iCCmFt%2FAJQ397%2Fq07nFAls1uD32FwM4plwXh9RCdoQ%3D%3D"
+    }
+  ]
+}

@@ -155,6 +155,9 @@ func FuzzValidateRequestSignature(f *testing.F) {
 	f.Add(false, []byte(`<AuthnRequest ID="_1"/>`), "SAMLRequest=abc")
 	f.Add(true, []byte(`<AuthnRequest ID="_1"><Signature/></AuthnRequest>`), "")
 	f.Add(true, []byte(``), "%zz")
+	// 受け取ったままの値を取り出す経路：名前の符号化、重複、空の RelayState。
+	f.Add(true, []byte(``), "SAMLRequest=a&SAML%52equest=b&SigAlg=x&Signature=y")
+	f.Add(true, []byte(``), "SAMLRequest=a%2fb&RelayState=&SigAlg=http%3A%2F%2Fwww.w3.org%2F2001%2F04%2Fxmldsig-more%23rsa-sha256&Signature=AAAA")
 
 	certPEM := fuzzSigningCertificatePEM(f)
 

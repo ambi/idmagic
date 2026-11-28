@@ -17,6 +17,7 @@
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
 | SAML2Bindings-RedirectPost | required | MUST | AuthnRequest は HTTP-Redirect または HTTP-POST バインディングで受理する。リクエストで指定された ProtocolBinding が HTTP-POST 以外なら拒否する。SAMLResponse と返信可能なプロトコルエラーは HTTP-POST で返す |
+| SAML2BINDINGS-REDIRECT-SIGNATURE | required | MUST | 署名を要求する SP から HTTP-Redirect で受けた AuthnRequest と LogoutRequest は、受け取ったクエリの `SAMLRequest`、`RelayState`（クエリに現れたときだけ）、`SigAlg` の値を URL エンコードのまま、この順に `SAMLRequest=値&RelayState=値&SigAlg=値` と連結した文字列で検証する。16 進の大文字と小文字、空白の `+` と `%20`、予約されていない文字を符号化するかどうかが SP ごとに違っても、正しい署名を受け入れる。名前をデコードして `SAMLRequest`、`RelayState`、`SigAlg`、`Signature` のいずれかが二度以上現れる要求は拒否する |
 
 ## Profiles for the OASIS Security Assertion Markup Language (SAML) V2.0
 

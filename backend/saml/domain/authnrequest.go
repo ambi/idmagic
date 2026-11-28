@@ -341,21 +341,76 @@ func ValidateRequestSignature(binding Binding, xml []byte, rawQuery string, sp S
 	}
 }
 
+// redirectSignatureParameters は、HTTP-Redirect の署名に関わる引数の、受け取ったままの値である。
+type redirectSignatureParameters struct {
+	samlRequest, relayState, sigAlg, signature string
+	hasRelayState                              bool
+}
+
+// parseRedirectSignatureParameters は、名前だけをデコードして署名に関わる引数を探し、値は
+// URL エンコードのまま返す。Bindings 3.4.4.1 は受け取った元の符号化で検証することを求め、
+// URL エンコードは一意でないので、デコードして符号化し直した文字列は SP が署名した文字列と
+// 一致するとは限らない。HTTP の入口は重複した引数の一つ目を処理に使うので、署名に関わる
+// 引数の重複は、検証と処理が別の値を見ないよう拒否する。
+func parseRedirectSignatureParameters(rawQuery string) (redirectSignatureParameters, error) {
+	// HTTP の入口が捨てる組（`;` 区切り、不正な %XX）を検証だけが見る食い違いを作らない。
+	if _, err := url.ParseQuery(rawQuery); err != nil {
+		return redirectSignatureParameters{}, fmt.Errorf("saml: parse redirect query: %w", err)
+	}
+	var (
+		params redirectSignatureParameters
+		seen   = map[string]bool{}
+	)
+	for pair := range strings.SplitSeq(rawQuery, "&") {
+		rawName, value, _ := strings.Cut(pair, "=")
+		name, err := url.QueryUnescape(rawName)
+		if err != nil {
+			return redirectSignatureParameters{}, fmt.Errorf("saml: parse redirect query: %w", err)
+		}
+		var target *string
+		switch name {
+		case "SAMLRequest":
+			target = &params.samlRequest
+		case "RelayState":
+			target = &params.relayState
+			params.hasRelayState = true
+		case "SigAlg":
+			target = &params.sigAlg
+		case "Signature":
+			target = &params.signature
+		default:
+			continue
+		}
+		if seen[name] {
+			return redirectSignatureParameters{}, fmt.Errorf("saml: signed Redirect binding repeats %s", name)
+		}
+		seen[name] = true
+		*target = value
+	}
+	if params.samlRequest == "" || params.sigAlg == "" || params.signature == "" {
+		return redirectSignatureParameters{}, fmt.Errorf("saml: signed Redirect binding requires SAMLRequest, SigAlg, and Signature")
+	}
+	return params, nil
+}
+
+// signedContent は Bindings 3.4.4.1 の順に、受け取ったままの値を連結する。
+func (p redirectSignatureParameters) signedContent() string {
+	signed := "SAMLRequest=" + p.samlRequest
+	if p.hasRelayState {
+		signed += "&RelayState=" + p.relayState
+	}
+	return signed + "&SigAlg=" + p.sigAlg
+}
+
 func validateRedirectSignature(rawQuery string, cert *x509.Certificate) error {
-	values, err := url.ParseQuery(rawQuery)
+	params, err := parseRedirectSignatureParameters(rawQuery)
 	if err != nil {
-		return fmt.Errorf("saml: parse redirect query: %w", err)
+		return err
 	}
-	sigAlg := values.Get("SigAlg")
-	signature := values.Get("Signature")
-	if values.Get("SAMLRequest") == "" || sigAlg == "" || signature == "" {
-		return fmt.Errorf("saml: signed Redirect binding requires SAMLRequest, SigAlg, and Signature")
-	}
-	signed := "SAMLRequest=" + url.QueryEscape(values.Get("SAMLRequest"))
-	if relay := values.Get("RelayState"); relay != "" {
-		signed += "&RelayState=" + url.QueryEscape(relay)
-	}
-	signed += "&SigAlg=" + url.QueryEscape(sigAlg)
+	signed := params.signedContent()
+	// クエリ全体が ParseQuery を通っているので、値のデコードは失敗しない。
+	sigAlg, _ := url.QueryUnescape(params.sigAlg)
+	signature, _ := url.QueryUnescape(params.signature)
 	sig, err := base64.StdEncoding.DecodeString(signature)
 	if err != nil {
 		return fmt.Errorf("saml: decode redirect Signature: %w", err)
