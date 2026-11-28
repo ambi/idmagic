@@ -19,7 +19,6 @@ import (
 // 担当の項目が往復を受け付けるようにしたら、ここから消して再生の列へ入れる。
 var entraNotReplayed = map[string]string{
 	"update-user-multi-valued": "path の emails[type eq \"work\"].value は wi-248 が対応する",
-	"create-user-with-nulls":   "null の phoneNumbers と addresses を未割り当てとして受け付けるのは wi-56158 が扱う",
 	"add-manager": "manager は RFC 7643 §4.3 で単一の値の属性であり、配列の value は規範にない形である。" +
 		"文書のこの例は参照実装の節にあり、Entra ID は manager を文字列で送る（mutation.go の parseManagerScimID）。実テナントで配列を観測したら見直す（wi-79）",
 }
@@ -146,7 +145,8 @@ func memberValues(body map[string]any) []string {
 //spec:covers RFC7644-PATCH: 大文字で始まる op（Replace、Add、Remove）と、value を持つ members の Remove を、読み直した資源に反映すること,
 //spec:covers RFC7644-FILTERING: userName と displayName の eq の照会が、一致を ListResponse で返し、一致がなければ totalResults 0 を返すこと,
 //spec:covers RFC7644-ERROR-RESPONSE: 存在しない User の参照に、status が "404" の SCIM エラーを返すこと,
-//spec:covers REQ-SOURCING-029: Discover schema の /Schemas が、対応する三つのスキーマを ListResponse で返すこと
+//spec:covers REQ-SOURCING-029: Discover schema の /Schemas が、対応する三つのスキーマを ListResponse で返すこと,
+//spec:covers REQ-SOURCING-006: null の phoneNumbers と addresses を含む作成を、属性を省いた作成と同じに受け付けること
 func TestEntraProvisioning_AcceptsTheDocumentedRequests(t *testing.T) {
 	r := newClientReplay(t, "testdata/entra-provisioning.json", "/scim/v2")
 
@@ -174,6 +174,16 @@ func TestEntraProvisioning_AcceptsTheDocumentedRequests(t *testing.T) {
 	emails, _ := user["emails"].([]any)
 	if len(emails) != 1 || emails[0].(map[string]any)["value"] != "Test_User_11bb11bb-cc22-dd33-ee44-55ff55ff55ff@testuser.com" {
 		t.Fatalf("create-user: emails = %v, want the sent work email", user["emails"])
+	}
+
+	// Entra ID は対応づけた属性に値がなければ null で送る。RFC 7643 §2.5 により未割り当てと同じである。
+	w, nulls := r.send("create-user-with-nulls", nil)
+	expectStatus(t, "create-user-with-nulls", w, http.StatusCreated)
+	if nulls["userName"] != "jyoung@testuser.com" || nulls["displayName"] != "Joy Young" {
+		t.Fatalf("create-user-with-nulls: created resource %v does not carry the sent userName and displayName", nulls)
+	}
+	if emails, _ := nulls["emails"].([]any); len(emails) != 1 || emails[0].(map[string]any)["value"] != "jyoung@Contoso.com" {
+		t.Fatalf("create-user-with-nulls: emails = %v, want the sent work email", nulls["emails"])
 	}
 
 	w, got := r.send("get-user", map[string]string{"5d48a0a8e9f04aa38008": uid})

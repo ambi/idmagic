@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -154,10 +155,47 @@ func TestScimUserEmails_StoresThePrimaryValueAndReturnsOneCanonicalElement(t *te
 	}
 }
 
-// 受け付けない側を続けて読む。phoneNumbers と addresses は黙って捨てず拒否し、
+// RFC 7643 §2.5 は未割り当て、null、空の配列を同じ状態とみなすので、値のない
+// phoneNumbers と addresses は捨てるデータを持たず、作成と置換を拒否しない。
+//
+//spec:covers REQ-SOURCING-006: POST・PUT で null か空の配列の phoneNumbers、addresses を、属性を省いた要求と同じに受け付ける。
+func TestScimUserWrite_TreatsUnassignedUnsupportedAttributesAsOmitted(t *testing.T) {
+	h := newScimHarness()
+	tokenStr := issueAllScimToken(t, h.apiTokens)
+
+	for _, write := range scimUserWrites() {
+		if write.name == "PATCH" {
+			continue
+		}
+		for name, value := range map[string]any{"null": nil, "empty array": []any{}} {
+			t.Run(write.name+" "+name, func(t *testing.T) {
+				userName := write.name + "-unassigned-" + strings.ReplaceAll(name, " ", "-") + "@example.com"
+				status, body, scimID := writeScimUser(t, h, tokenStr, write, userName, map[string]any{
+					"phoneNumbers": value,
+					"addresses":    value,
+					"emails":       []any{map[string]any{"value": userName}},
+				})
+				if status != http.StatusCreated && status != http.StatusOK {
+					t.Fatalf("status %d body=%v, want the write accepted", status, body)
+				}
+				if got := storedScimUser(t, h, scimID); got.Email == nil || *got.Email != userName {
+					t.Errorf("stored email = %v, want %q", got.Email, userName)
+				}
+				for _, attr := range []string{"phoneNumbers", "addresses"} {
+					if _, exists := body[attr]; exists {
+						t.Errorf("response carries %s = %v, want it omitted", attr, body[attr])
+					}
+				}
+			})
+		}
+	}
+}
+
+// 受け付けない側を続けて読む。値のある phoneNumbers と addresses は黙って捨てず拒否し、
 // /Schemas はそれらも Group メンバーも広告しない。
 //
-//spec:covers EX-SOURCING-006-01: phoneNumbers と addresses を POST・PUT では invalidValue、PATCH のパスでは invalidPath で拒否し、/Schemas が emails と User を指すメンバーだけを広告して phoneNumbers・addresses・Group メンバーを広告しない。
+//spec:covers EX-SOURCING-006-01: 値のある phoneNumbers と addresses を POST・PUT では invalidValue、PATCH のパスでは invalidPath で拒否し、/Schemas が emails と User を指すメンバーだけを広告して phoneNumbers・addresses・Group メンバーを広告しない。
+//spec:covers REQ-SOURCING-006: 作成と置換で null でも空の配列でもない phoneNumbers と addresses を invalidValue で拒否する。
 func TestScimUserEmails_AdvertisesOnlyTheSupportedProjection(t *testing.T) {
 	h := newScimHarness()
 	tokenStr := issueAllScimToken(t, h.apiTokens)
@@ -165,7 +203,8 @@ func TestScimUserEmails_AdvertisesOnlyTheSupportedProjection(t *testing.T) {
 	for _, attr := range []string{"phoneNumbers", "addresses"} {
 		for _, write := range scimUserWrites() {
 			t.Run(write.name+" "+attr, func(t *testing.T) {
-				status, body, _ := writeScimUser(t, h, tokenStr, write, write.name+"-"+attr+"@example.com", map[string]any{attr: []any{}})
+				value := []any{map[string]any{"value": "+1 555 0100", "type": "work"}}
+				status, body, _ := writeScimUser(t, h, tokenStr, write, write.name+"-"+attr+"@example.com", map[string]any{attr: value})
 				want := "invalidValue"
 				if write.name == "PATCH" {
 					want = "invalidPath"

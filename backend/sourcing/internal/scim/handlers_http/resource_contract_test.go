@@ -170,7 +170,7 @@ func TestScimCreateUserResourceContract(t *testing.T) {
 		t.Run("unsupported "+attr+" is invalidValue", func(t *testing.T) {
 			rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
 				"userName": "unsupported-" + attr + "@example.com",
-				attr:       []any{},
+				attr:       []any{map[string]any{"value": "+1 555 0100"}},
 			})
 			if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
 				t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)

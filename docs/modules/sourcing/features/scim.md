@@ -111,8 +111,10 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 - User がメールアドレスを持たない間、SCIM の User を返すとき、Sourcing は、`emails` を返さない。
 - SCIM クライアントがスキーマを取得したとき、Sourcing は、一件のメールアドレスへの投影と User のメンバーだけを広告し、`phoneNumbers`、`addresses`、Group のメンバーを広告しない。
 - `primary=true` の要素が複数ある、要素がオブジェクトでない、`value` が空か文字列でない、`type` が文字列でない、または `primary` が真偽値でない `emails` を受けた場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、User を変えない。
-- 作成または置換で `phoneNumbers` か `addresses` を受けた場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、User を変えない。
+- 作成または置換で null か空の配列の `phoneNumbers` か `addresses` を受けたとき、Sourcing は、その属性を省いた要求と同じに扱う。
+- 作成または置換で null でも空の配列でもない `phoneNumbers` か `addresses` を受けた場合、Sourcing は、400 と scimType `invalidValue` の SCIM のエラーで拒否し、User を変えない。
 - PATCH の `path` に `phoneNumbers` か `addresses` を指定された場合、Sourcing は、400 と scimType `invalidPath` の SCIM のエラーで拒否し、User を変えない。
+- **判断**：RFC 7643 の 2.5 節は、未割当、null、空の配列を同じ状態とみなす。値のない `phoneNumbers` と `addresses` は捨てるデータを持たないため、拒否せず省略と同じに扱う。
 - **例**：EX-SOURCING-006-01、EX-SOURCING-006-02、EX-SOURCING-006-03、EX-SOURCING-006-04
 
 #### REQ-SOURCING-007 SCIM Enterprise 拡張の User 組織属性に対応する

@@ -193,13 +193,44 @@ func TestProjectCanonicalEmailRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-//spec:covers REQ-SOURCING-006: POST/PUT body の未対応 complex core 属性は silent に捨てない。
+//spec:covers REQ-SOURCING-006: POST/PUT body の未対応 complex core 属性は、値があれば silent に捨てず拒否する。
 func TestParseUserWriteRejectsUnsupportedComplexAttributes(t *testing.T) {
+	values := map[string]any{
+		"element":      []any{map[string]any{"value": "+1 555 0100"}},
+		"null element": []any{nil},
+		"empty object": map[string]any{},
+		"string":       "",
+	}
 	for _, attr := range []string{"phoneNumbers", "addresses"} {
-		t.Run(attr, func(t *testing.T) {
-			_, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen", attr: []any{}})
-			assertMutationError(t, err, "invalidValue")
-		})
+		for name, value := range values {
+			t.Run(attr+" "+name, func(t *testing.T) {
+				_, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen", attr: value})
+				assertMutationError(t, err, "invalidValue")
+			})
+		}
+	}
+}
+
+// RFC 7643 §2.5 は未割り当て、null、空の配列を同じ状態とみなす。
+//
+//spec:covers REQ-SOURCING-006: POST/PUT body の null と空の配列の phoneNumbers、addresses を、属性を省いた body と同じに解析する。
+func TestParseUserWriteTreatsUnassignedUnsupportedAttributesAsOmitted(t *testing.T) {
+	omitted, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, attr := range []string{"phoneNumbers", "addresses"} {
+		for name, value := range map[string]any{"null": nil, "empty array": []any{}} {
+			t.Run(attr+" "+name, func(t *testing.T) {
+				got, err := scimdomain.ParseUserWrite(map[string]any{"userName": "bjensen", attr: value})
+				if err != nil {
+					t.Fatalf("ParseUserWrite: %v", err)
+				}
+				if !reflect.DeepEqual(got, omitted) {
+					t.Errorf("ParseUserWrite = %+v, want %+v as if %s were omitted", got, omitted, attr)
+				}
+			})
+		}
 	}
 }
 

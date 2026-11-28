@@ -159,7 +159,7 @@
 - When SCIM クライアントが CreateScimUser、UpdateScimUser、または PatchScimUser で複数の `emails` を送る
 - Then `primary=true` の要素が 1 件あれば、その `value` だけを `User.email` に保存する
 - Then User レスポンスは、保存済みメールアドレスがある場合だけ、`type=work`、`primary=true` の要素を 1 つ返す
-- When SCIM クライアントが CreateScimUser または UpdateScimUser で `phoneNumbers` または `addresses` を送る
+- When SCIM クライアントが CreateScimUser または UpdateScimUser で、null でも空の配列でもない `phoneNumbers` または `addresses` を送る
 - When SCIM クライアントが PatchScimUser の `path` に `phoneNumbers` または `addresses` を指定する
 - When SCIM クライアントが GetScimSchemas を呼び出す
 - Then サーバーは、対応する 1 件のメールアドレスへの投影と User メンバーだけを広告し、`phoneNumbers`、`addresses`、Group メンバーは広告しない

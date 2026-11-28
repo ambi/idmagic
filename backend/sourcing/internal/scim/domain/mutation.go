@@ -114,7 +114,7 @@ func ProjectCanonicalEmail(emails []any) (string, error) {
 // userName is required; its absence is a *MutationError (invalidValue).
 func ParseUserWrite(body map[string]any) (UserWrite, error) {
 	for _, unsupported := range []string{"phoneNumbers", "addresses"} {
-		if _, exists := body[unsupported]; exists {
+		if !isUnassigned(body[unsupported]) {
 			return UserWrite{}, newMutationError("invalidValue", "%s is not a supported User attribute", unsupported)
 		}
 	}
@@ -181,6 +181,16 @@ func ParseUserWrite(body map[string]any) (UserWrite, error) {
 	}
 
 	return w, nil
+}
+
+// isUnassigned は、省略、null、空の配列を同じ未割り当ての状態とみなす（RFC 7643 §2.5）。
+// 値のない未対応の属性は捨てるデータを持たないので、拒否しない。
+func isUnassigned(value any) bool {
+	if value == nil {
+		return true
+	}
+	values, isArray := value.([]any)
+	return isArray && len(values) == 0
 }
 
 // 既存の formatted の明示値を保ち、null と省略だけを displayName へ委ねる。
