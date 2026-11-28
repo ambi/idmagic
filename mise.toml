@@ -506,6 +506,16 @@ esac
 mise exec "$server" -- go run ./backend/shared/testing_transitrecord -product "$product" "$@"
 '''
 
+[tasks.record-saml]
+description = "Record upstream SAML responses from a local Keycloak dev server into the replay testdata"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。イメージのバージョンをここで固定し、
+# 上げたら記録を取り直して差分を読む。docker と localhost の待受けを使うので、サンドボックスの外で実行する。
+run = '''
+#!/usr/bin/env sh
+set -eu
+go run ./backend/authentication/internal/federation/testing_samlrecord -image quay.io/keycloak/keycloak:26.8.2 "$@"
+'''
+
 [tasks.batch]
 description = "Run one externally scheduled operational batch"
 run = '''

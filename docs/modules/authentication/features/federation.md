@@ -61,6 +61,8 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 - 上流の RS256 の ID Token が `kid` を省略し、JWK Set の署名に使える RSA 鍵（`use` が省略または `sig`）がちょうど一つのとき、Authentication は、その鍵で検証する。
 - 上流の ID Token が `kid` を省略し、署名用の鍵の候補がないか複数のとき、Authentication は、コールバックを拒否する。
 - 上流の ID Token に `kid` があるとき、Authentication は、一致する署名用の鍵を要求する。
+- 上流の SAML の応答が、Response と Assertion のどちらか、または両方に、保存済みの署名証明書で検証できる署名を持つとき、Authentication は、署名で保護された唯一の Assertion から subject と属性を取り出す。
+- 上流の SAML の応答が、Response にも Assertion にも署名を持たないか、検証できない署名を持つか、Assertion をちょうど一つ持たない場合、Authentication は、署名の一致しない応答として拒否する。
 - 検証済みの外部 subject に既存の関連付けがあるとき、Authentication は、同じテナント、プロバイダー、外部 subject の関連付けから同じローカルの User を解決する。
 - 未連携の外部 subject で、接続の JIT が有効でメールのドメインが許可リストに合うとき、Authentication は、クレームの対応付けに従ってローカルの User と `FederatedIdentity` を作り、`FederatedIdentityLinked` を発行する。
 - ローカルの User を解決したとき、Authentication は、`amr` に `federated` を持つログインセッションを作ってセッションの Cookie を発行し、`FederatedAuthenticated` を発行し、元の認可のトランザクションへ 303 で戻す。

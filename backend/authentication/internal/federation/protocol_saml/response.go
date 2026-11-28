@@ -17,6 +17,7 @@ import (
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
+	"github.com/russellhaering/goxmldsig/etreeutils"
 
 	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/internal/federation/ports"
@@ -106,27 +107,20 @@ func ValidateResponse(
 	if err := spec.CheckKeyString("ID", responseID, spec.LengthProtocolMessageID, spec.BytesProtocolMessageID); err != nil {
 		return empty, fmt.Errorf("SAML Response %s", err.Error())
 	}
-	validated, err := validateSignature(root, connection.SAMLSigningCertificates)
+	response, assertion, err := verifySignatures(root, connection.SAMLSigningCertificates)
 	if err != nil {
 		return empty, err
 	}
-	if validated.Tag != "Response" || validated.SelectAttrValue("ID", "") != responseID {
-		return empty, errors.New("SAML signature did not validate the response root")
-	}
-	if validated.SelectAttrValue("Destination", "") != acsURL ||
-		validated.SelectAttrValue("InResponseTo", "") != attempt.RequestID {
+	if response.SelectAttrValue("Destination", "") != acsURL ||
+		response.SelectAttrValue("InResponseTo", "") != attempt.RequestID {
 		return empty, errors.New("SAML response correlation mismatch")
 	}
-	if textOf(validated, "Issuer") != connection.SAMLEntityID {
+	if textOf(response, "Issuer") != connection.SAMLEntityID {
 		return empty, errors.New("SAML issuer mismatch")
 	}
-	status := childByLocal(childByLocal(validated, "Status"), "StatusCode")
+	status := childByLocal(childByLocal(response, "Status"), "StatusCode")
 	if status == nil || status.SelectAttrValue("Value", "") != "urn:oasis:names:tc:SAML:2.0:status:Success" {
 		return empty, errors.New("SAML response status is not success")
-	}
-	assertion := childByLocal(validated, "Assertion")
-	if assertion == nil {
-		return empty, errors.New("SAML assertion is required")
 	}
 	if textOf(assertion, "Issuer") != connection.SAMLEntityID {
 		return empty, errors.New("SAML assertion issuer mismatch")
@@ -180,10 +174,70 @@ func ValidateSigningCertificates(certificates []string, now time.Time) []string 
 	return failures
 }
 
-func validateSignature(root *etree.Element, certificates []string) (*etree.Element, error) {
-	if childByLocal(root, "Signature") == nil {
-		return nil, errors.New("SAML response signature is required")
+// verifySignatures は、SAML 2.0 Profiles 4.1.3.5 に従い、Response と Assertion のどちらか、または両方の署名を検証する。
+// 返す二つの要素は、署名の検証が返した写しか、Response に署名がないときの元の木の Response である。
+// 返す Assertion は必ず署名で保護されている。Response の署名の写しの中にあるか、それ自身の署名の写しである。
+// 元の木から Assertion を探し直すと、署名を包み替えた入力で署名のない Assertion を読むため、写しだけを返す。
+func verifySignatures(root *etree.Element, certificates []string) (response, assertion *etree.Element, err error) {
+	response = root
+	responseSigned := childByLocal(root, "Signature") != nil
+	if responseSigned {
+		response, err = validateSignature(root, certificates)
+		if err != nil {
+			return nil, nil, err
+		}
+		if response.Tag != "Response" || response.SelectAttrValue("ID", "") != root.SelectAttrValue("ID", "") {
+			return nil, nil, errors.New("SAML signature did not validate the response root")
+		}
 	}
+	assertion, err = onlyAssertion(response)
+	if err != nil {
+		return nil, nil, err
+	}
+	if childByLocal(assertion, "Signature") == nil {
+		if !responseSigned {
+			return nil, nil, errors.New("SAML response or assertion signature is required")
+		}
+		return response, assertion, nil
+	}
+	// 署名の検証は要素を親から切り離して写すので、Response が宣言した接頭辞（Keycloak の saml:）を先に Assertion へ移す。
+	namespaces, err := etreeutils.NSBuildParentContext(assertion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("SAML assertion namespaces: %w", err)
+	}
+	detached, err := etreeutils.NSDetatch(namespaces, assertion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("SAML assertion namespaces: %w", err)
+	}
+	validated, err := validateSignature(detached, certificates)
+	if err != nil {
+		return nil, nil, err
+	}
+	if validated.Tag != "Assertion" || validated.SelectAttrValue("ID", "") != assertion.SelectAttrValue("ID", "") {
+		return nil, nil, errors.New("SAML signature did not validate the assertion")
+	}
+	return response, validated, nil
+}
+
+// onlyAssertion は Response の直下の唯一の Assertion を返す。
+func onlyAssertion(response *etree.Element) (*etree.Element, error) {
+	var found *etree.Element
+	for _, child := range response.ChildElements() {
+		if child.Tag != "Assertion" {
+			continue
+		}
+		if found != nil {
+			return nil, errors.New("SAML response must contain exactly one assertion")
+		}
+		found = child
+	}
+	if found == nil {
+		return nil, errors.New("SAML assertion is required")
+	}
+	return found, nil
+}
+
+func validateSignature(signed *etree.Element, certificates []string) (*etree.Element, error) {
 	var lastErr error
 	for _, certificatePEM := range certificates {
 		block, _ := pem.Decode([]byte(certificatePEM))
@@ -199,13 +253,13 @@ func validateSignature(root *etree.Element, certificates []string) (*etree.Eleme
 		store := &dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{certificate}}
 		validation := dsig.NewDefaultValidationContext(store)
 		validation.IdAttribute = "ID"
-		validated, err := validation.Validate(root)
+		validated, err := validation.Validate(signed)
 		if err == nil {
 			return validated, nil
 		}
 		lastErr = err
 	}
-	return nil, fmt.Errorf("invalid SAML response signature: %w", lastErr)
+	return nil, fmt.Errorf("invalid SAML %s signature: %w", signed.Tag, lastErr)
 }
 
 func validateConditions(assertion *etree.Element, audience string, now time.Time) error {
