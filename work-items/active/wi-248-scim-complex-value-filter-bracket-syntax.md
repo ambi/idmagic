@@ -3,7 +3,7 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-18
-priority: p3
+priority: p2
 group: scim-provisioning
 depends_on: [wi-246-scim-multivalued-core-attributes-and-nested-group-members]
 change_kind: feature
@@ -28,6 +28,13 @@ RFC 7644 §3.4.2.2 の `attrPath "[" valFilter "]"` 記法(例
 [[wi-246-scim-multivalued-core-attributes-and-nested-group-members]] が
 multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 構文で絞り込む
 対象自体が存在しないため、本 WI はそれに依存する。
+
+2026-11-28 に優先度を p3 から p2 へ上げた。
+Microsoft Learn「Tutorial: Develop and plan provisioning for a SCIM endpoint」（2026-11-28 に本文を読んだ、ms.date 2026-09-15）の「Update User [Multi-valued properties]」では、Entra ID が利用者のメールの更新を `"op": "Replace"`、`"path": "emails[type eq \"work\"].value"` で送る。
+今の Sourcing はこの path を `invalidPath` で拒否するので、Entra ID から受け取ったプロビジョニングでは、作成後のメールの変更が失敗する。
+グループの基準の p3（標準の任意の機能）とは違い、主要な SCIM のクライアントの既定の要求が通らない。
+同じ文書のメンバーの削除は `"path": "members"` と値の配列で送るので、`members[value eq "..."]` の対応はこの理由に含まれない。
+実装では、上の要求の例を [[wi-21740-decide-recordings-for-requests-idmagic-receives]] の記録として再生し、受け入れの検査の入力にする。
 
 ## Scope
 

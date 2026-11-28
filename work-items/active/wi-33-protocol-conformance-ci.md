@@ -37,7 +37,8 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 ## Out of Scope
 - OIDC/FAPI 正式認証の申請作業。
 - 全ブラウザ E2E。ブラウザー E2E は既存の `mise run test-ui-e2e` が扱う。
-- SAML conformance。SAML WI の後続で扱う。
+- SAML conformance。IdMagic が発行する SAML の出力を独立した実物の消費者で確かめる作業は [[wi-13863-verify-idmagic-outputs-with-independent-real-consumers]] が扱う。
+- 実在の RP のライブラリが送る要求の記録による受け入れの検査。[[wi-21740-decide-recordings-for-requests-idmagic-receives]] が OP への要求の記録を置くかを決めるとき、この項目の適合試験と同じ分岐を重ねて検査しないように分担を決める。
 
 ## Plan
 - 対象を OIDC Core authorization-code、OAuth 2.0 基本 endpoint、FAPI 2.0 Security Profile smoke に分ける。外部 conformance suite の全 certification を PR ごとに回すのではなく、ローカル deterministic test、PR smoke、夜間 full suite の三段階にする。

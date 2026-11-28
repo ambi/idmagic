@@ -40,6 +40,7 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 - WS-Fed passive / WS-Trust active / metadata / Entra preset / 無音 SSO の実装 (wi-61〜65)。本 WI は実テナント検証のみ。
 - WS-Trust の windowstransport による Hybrid Join の即時の登録。社外へ公開できないので提供しない (`docs/modules/ws-federation/decisions.md`)。
 - Entra Connect (オンプレ同期) の同梱。sourceAnchor の供給はオンプレ側責務とする。
+- 実テナントを使わずに確かめられる部分。Microsoft の文書の要求の例による受け入れの検査は [[wi-21740-decide-recordings-for-requests-idmagic-receives]]、上流の SAML IdP としての Entra ID の既定の署名（Assertion だけ）への対応は [[wi-53342-accept-upstream-saml-assertions-signed-without-a-response-signature]] が扱う。実テナントでは、それらの記録が表す形と実物の応答が一致するかを確かめる。
 
 ## Plan
 - depends_on の wi-61〜65 が完了してから開始する純粋な外部検証 WI とし、製品コード変更を Tasks に含めない。未完の wi-65 が完了するまでは passive/active/metadata/domain profile だけを先行 rehearsal できるが、本 WI は完了にしない。
