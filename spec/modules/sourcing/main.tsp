@@ -35,7 +35,13 @@ op GetScimServiceProviderConfig(
 model GetScimResourceTypesSuccess_200 {
   @statusCode statusCode: 200;
   @header contentType: "application/scim+json";
-  @body body: IdMagic.Contract.ScimResourceType[];
+  @body body: IdMagic.Contract.ScimResourceTypeListResponse;
+}
+
+model ScimDiscoveryFilterRefused {
+  @statusCode statusCode: 403;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimProtocolError;
 }
 
 union GetScimResourceTypesError400Body {
@@ -48,18 +54,19 @@ model GetScimResourceTypesError400 {
   @body body: GetScimResourceTypesError400Body;
 }
 
-@doc("SCIM 2.0 の /ResourceTypes を読む。実装済みの二つのリソースタイプ、User と Group だけを、スキーマの URN とエンドポイントとともに返す。User は、対応する enterprise 拡張（urn:ietf:params:scim:schemas:extension:enterprise:2.0:User）を `schemaExtensions` で示す。")
+@doc("SCIM 2.0 の /ResourceTypes を読む。実装済みの二つのリソースタイプ、User と Group だけを、スキーマの URN とエンドポイントとともに、RFC 7644 の 4 節の ListResponse で返す。User は、対応する enterprise 拡張（urn:ietf:params:scim:schemas:extension:enterprise:2.0:User）を `schemaExtensions` で示す。ソートとページングの引数は無視し、`filter` の引数には値が空でも 403 の ScimProtocolError を返す。")
 @TypeSpec.OpenAPI.operationId("GetScimResourceTypes")
 @route("/scim/v2/ResourceTypes")
 @get
 op GetScimResourceTypes(
-  @query tenant_id: string
-): GetScimResourceTypesSuccess_200 | GetScimResourceTypesError400;
+  @query tenant_id: string,
+  @query filter?: string
+): GetScimResourceTypesSuccess_200 | GetScimResourceTypesError400 | ScimDiscoveryFilterRefused;
 
 model GetScimSchemasSuccess_200 {
   @statusCode statusCode: 200;
   @header contentType: "application/scim+json";
-  @body body: IdMagic.Contract.ScimSchema[];
+  @body body: IdMagic.Contract.ScimSchemaListResponse;
 }
 
 union GetScimSchemasError400Body {
@@ -72,13 +79,14 @@ model GetScimSchemasError400 {
   @body body: GetScimSchemasError400Body;
 }
 
-@doc("SCIM 2.0 の /Schemas を読む。RFC7643-CORE-RESOURCES が扱う User と Group の属性と、RFC7643-ENTERPRISE-EXTENSION が扱う enterprise 拡張（urn:ietf:params:scim:schemas:extension:enterprise:2.0:User）の `employeeNumber`、`department`、`manager` を、それぞれの `type`、`multiValued`、`required`、`mutability`（readOnly または readWrite）、`returned`、`uniqueness` とともに示す。User の emails が単一の正規のメールアドレスへ射影されることと、Group の members の `referenceTypes` が User だけであることを示し、対応していないもの（phoneNumbers、addresses、メンバーとしての Group、costCenter、division、organization）は示さない。空の属性の配列は返さない。")
+@doc("SCIM 2.0 の /Schemas を読む。RFC7643-CORE-RESOURCES が扱う User と Group の属性と、RFC7643-ENTERPRISE-EXTENSION が扱う enterprise 拡張（urn:ietf:params:scim:schemas:extension:enterprise:2.0:User）の `employeeNumber`、`department`、`manager` を、それぞれの `type`、`multiValued`、`required`、`mutability`（readOnly または readWrite）、`returned`、`uniqueness` とともに示す。User の emails が単一の正規のメールアドレスへ射影されることと、Group の members の `referenceTypes` が User だけであることを示し、対応していないもの（phoneNumbers、addresses、メンバーとしての Group、costCenter、division、organization）は示さない。空の属性の配列は返さない。三つのスキーマは RFC 7644 の 4 節の ListResponse で返す。ソートとページングの引数は無視し、`filter` の引数には値が空でも 403 の ScimProtocolError を返す。")
 @TypeSpec.OpenAPI.operationId("GetScimSchemas")
 @route("/scim/v2/Schemas")
 @get
 op GetScimSchemas(
-  @query tenant_id: string
-): GetScimSchemasSuccess_200 | GetScimSchemasError400;
+  @query tenant_id: string,
+  @query filter?: string
+): GetScimSchemasSuccess_200 | GetScimSchemasError400 | ScimDiscoveryFilterRefused;
 
 union CreateScimUserError400Body {
   IdMagic.Contract.ScimProtocolError,

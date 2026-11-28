@@ -468,13 +468,7 @@ func TestScimEnterpriseExtension_AdoptsOnlyTheDeclaredSubset(t *testing.T) {
 
 	t.Run("Discovery advertises exactly the adopted attributes", func(t *testing.T) {
 		rec := doScimRequest(t, e, http.MethodGet, "Bearer "+tokenStr, "/scim/v2/Schemas", nil)
-		if rec.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
-		}
-		var schemas []map[string]any
-		if err := json.Unmarshal(rec.Body.Bytes(), &schemas); err != nil {
-			t.Fatalf("failed to decode schemas: %v", err)
-		}
+		schemas := discoveryResources(t, "/scim/v2/Schemas", rec)
 
 		var advertised []string
 		found := false

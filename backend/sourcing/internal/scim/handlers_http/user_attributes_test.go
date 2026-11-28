@@ -181,10 +181,13 @@ func TestScimUserEmails_AdvertisesOnlyTheSupportedProjection(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	var schemas []scimSchemaDocument
-	if err := json.Unmarshal(rec.Body.Bytes(), &schemas); err != nil {
+	var list struct {
+		Resources []scimSchemaDocument `json:"Resources"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
 		t.Fatalf("failed to decode schemas: %v", err)
 	}
+	schemas := list.Resources
 	user := findScimSchema(t, schemas, "urn:ietf:params:scim:schemas:core:2.0:User")
 	if _, ok := user.attribute("emails"); !ok {
 		t.Errorf("User schema attributes = %v, want emails", user.names())

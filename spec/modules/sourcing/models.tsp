@@ -158,6 +158,30 @@ model ScimSchema {
 }
 
 
+@doc("/ResourceTypes が返す ListResponse（RFC 7644 の 4 節）。ページングを行わないので、`totalResults` と `itemsPerPage` は常に `Resources` の件数で、`startIndex` は常に 1 である。")
+model ScimResourceTypeListResponse {
+  @doc("常に `urn:ietf:params:scim:api:messages:2.0:ListResponse` の一要素だけである。")
+  schemas: string[];
+  totalResults: int32;
+  startIndex: int32;
+  itemsPerPage: int32;
+  @doc("対応するすべてのリソースタイプ。RFC 7644 の 3.4.2 節の綴りに合わせて大文字で始める。")
+  Resources: ScimResourceType[];
+}
+
+
+@doc("/Schemas が返す ListResponse（RFC 7644 の 4 節）。ページングを行わないので、`totalResults` と `itemsPerPage` は常に `Resources` の件数で、`startIndex` は常に 1 である。")
+model ScimSchemaListResponse {
+  @doc("常に `urn:ietf:params:scim:api:messages:2.0:ListResponse` の一要素だけである。")
+  schemas: string[];
+  totalResults: int32;
+  startIndex: int32;
+  itemsPerPage: int32;
+  @doc("対応するすべてのスキーマ。RFC 7644 の 3.4.2 節の綴りに合わせて大文字で始める。")
+  Resources: ScimSchema[];
+}
+
+
 @doc("Directory Connector の状態。`awaiting_enrollment` は公開鍵の登録を待ち、`active` は登録した鍵で呼び出せ、`disabled` は管理者が無効化した終端である。")
 enum DirectoryConnectorStatus {
   awaiting_enrollment,

@@ -61,6 +61,15 @@ PATCH の `path` は、`employeeNumber` などの単純な名前と、Enterprise
 - 操作に必要な `scim:users:*` または `scim:groups:*` のスコープを持たないトークンを受けた場合、Sourcing は、403 の SCIM のエラーで拒否し、`WWW-Authenticate` に必要なスコープを示す。
 - **例**：EX-SOURCING-001-01、EX-SOURCING-001-02、EX-SOURCING-001-03、EX-SOURCING-001-04
 
+### SCIM クライアントによる Discovery
+
+#### REQ-SOURCING-029 SCIM クライアントはスキーマとリソースの型の一覧を ListResponse で取得できる
+
+- SCIM クライアントが `/Schemas` または `/ResourceTypes` を取得したとき、Sourcing は、対応するすべてのスキーマまたはリソースの型を `Resources` に、その件数を `totalResults` と `itemsPerPage` に、1 を `startIndex` に載せた SCIM の ListResponse を返す。
+- `/Schemas` または `/ResourceTypes` の取得に `startIndex`、`count`、`sortBy`、`sortOrder` の引数を受けたとき、Sourcing は、それらを無視してすべてを返す。
+- `/Schemas` または `/ResourceTypes` の取得に `filter` の引数を受けた場合、Sourcing は、値が空でも 403 の SCIM のエラーで拒否する。
+- **判断**：RFC 7644 の 4 節は、照会の引数を無視することに加え、`filter` に 403 を返すことを勧める。絞り込んでいない全件を返すと、クライアントが条件を満たしたと誤解するためである。
+
 ### SCIM クライアントによる User の同期
 
 #### REQ-SOURCING-002 外部 IdP から SCIM でユーザーのライフサイクルを同期できる

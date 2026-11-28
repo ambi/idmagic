@@ -101,12 +101,14 @@ func TestSCIMUserDisplayNameReachesAdminProfile(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+bearer)
 	rec := httptest.NewRecorder()
 	f.s.Echo.ServeHTTP(rec, req)
-	var resources []map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &resources); err != nil || rec.Code != http.StatusOK {
+	var list struct {
+		Resources []map[string]any `json:"Resources"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || rec.Code != http.StatusOK {
 		t.Fatalf("schemas status=%d body=%s error=%v", rec.Code, rec.Body.String(), err)
 	}
 	found := false
-	for _, schema := range resources {
+	for _, schema := range list.Resources {
 		if schema["id"] != "urn:ietf:params:scim:schemas:core:2.0:User" {
 			continue
 		}

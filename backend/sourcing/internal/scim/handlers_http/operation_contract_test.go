@@ -58,10 +58,7 @@ func TestScimDiscoveryHTTPContracts(t *testing.T) {
 	}
 	for _, endpoint := range []string{"ResourceTypes", "Schemas"} {
 		rec := doScimRequest(t, h.echo, http.MethodGet, "Bearer "+token, "/scim/v2/"+endpoint, nil)
-		var items []map[string]any
-		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/scim+json" || json.Unmarshal(rec.Body.Bytes(), &items) != nil {
-			t.Fatalf("%s status=%d body=%s", endpoint, rec.Code, rec.Body.String())
-		}
+		items := discoveryResources(t, endpoint, rec)
 		wantIDs := []string{"urn:ietf:params:scim:schemas:core:2.0:User", enterpriseSchemaURN, "urn:ietf:params:scim:schemas:core:2.0:Group"}
 		if endpoint == "ResourceTypes" {
 			wantIDs = []string{"User", "Group"}

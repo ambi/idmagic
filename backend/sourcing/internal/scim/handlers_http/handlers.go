@@ -141,9 +141,37 @@ func (h *Handler) handleGetServiceProviderConfig(c *echo.Context) error {
 	return c.JSON(http.StatusOK, config)
 }
 
+// discoveryListResponse is the ListResponse that GET /Schemas and
+// /ResourceTypes answer with (RFC 7644 §4). Discovery does not paginate, so
+// the one page holds every resource: totalResults and itemsPerPage are the
+// resource count and startIndex is 1. It is a literal type of its own, not
+// scimdomain.ListResponse, so that each handler writes the body it returns
+// where check-contract-drift can compare it with the contract.
+type discoveryListResponse struct {
+	Schemas      []string `json:"schemas"`
+	TotalResults int      `json:"totalResults"`
+	StartIndex   int      `json:"startIndex"`
+	ItemsPerPage int      `json:"itemsPerPage"`
+	Resources    any      `json:"Resources"`
+}
+
+// refuseDiscoveryFilter answers a discovery request that carries a filter,
+// even an empty one, with 403 as RFC 7644 §4 recommends, so that a client
+// never mistakes the full list for a filtered one (REQ-SOURCING-029). The
+// other query parameters (sorting, pagination) are ignored as §4 requires.
+func (h *Handler) refuseDiscoveryFilter(c *echo.Context) (bool, error) {
+	if !c.Request().URL.Query().Has("filter") {
+		return false, nil
+	}
+	return true, h.writeScimError(c, http.StatusForbidden, "filtering is not supported on discovery endpoints", "")
+}
+
 func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
 		return h.writeScimAuthError(c, err)
+	}
+	if refused, err := h.refuseDiscoveryFilter(c); refused {
+		return err
 	}
 
 	types := []scimdomain.ResourceType{
@@ -169,18 +197,33 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 	}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(http.StatusOK, types)
+	return c.JSON(http.StatusOK, discoveryListResponse{
+		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
+		TotalResults: len(types),
+		StartIndex:   1,
+		ItemsPerPage: len(types),
+		Resources:    types,
+	})
 }
 
 func (h *Handler) handleGetSchemas(c *echo.Context) error {
 	if _, err := h.authenticate(c, apitokendomain.ScopeScimUsersRead, apitokendomain.ScopeScimUsersWrite, apitokendomain.ScopeScimGroupsRead, apitokendomain.ScopeScimGroupsWrite); err != nil {
 		return h.writeScimAuthError(c, err)
 	}
+	if refused, err := h.refuseDiscoveryFilter(c); refused {
+		return err
+	}
 
 	schemas := []scimdomain.Schema{scimdomain.UserCoreSchema(), scimdomain.EnterpriseUserSchema(), scimdomain.GroupCoreSchema()}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
-	return c.JSON(http.StatusOK, schemas)
+	return c.JSON(http.StatusOK, discoveryListResponse{
+		Schemas:      []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"},
+		TotalResults: len(schemas),
+		StartIndex:   1,
+		ItemsPerPage: len(schemas),
+		Resources:    schemas,
+	})
 }
 
 // Users

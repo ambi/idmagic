@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -744,6 +745,79 @@ func TestScimGroupResourceContract(t *testing.T) {
 	})
 }
 
+// discoveryResources は Discovery の一覧の応答を ListResponse として読み、Resources を返す。
+// ページングしないので、totalResults と itemsPerPage は Resources の件数、startIndex は 1 である。
+func discoveryResources(t *testing.T, endpoint string, rec *httptest.ResponseRecorder) []map[string]any {
+	t.Helper()
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/scim+json" {
+		t.Fatalf("%s status=%d headers=%v body=%s", endpoint, rec.Code, rec.Header(), rec.Body.String())
+	}
+	var list struct {
+		Schemas      []string         `json:"schemas"`
+		TotalResults *int             `json:"totalResults"`
+		StartIndex   *int             `json:"startIndex"`
+		ItemsPerPage *int             `json:"itemsPerPage"`
+		Resources    []map[string]any `json:"Resources"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatalf("%s is not a ListResponse object: %v body=%s", endpoint, err, rec.Body.String())
+	}
+	if !slices.Equal(list.Schemas, []string{"urn:ietf:params:scim:api:messages:2.0:ListResponse"}) ||
+		list.TotalResults == nil || *list.TotalResults != len(list.Resources) ||
+		list.ItemsPerPage == nil || *list.ItemsPerPage != len(list.Resources) ||
+		list.StartIndex == nil || *list.StartIndex != 1 {
+		t.Fatalf("%s ListResponse envelope = %s", endpoint, rec.Body.String())
+	}
+	return list.Resources
+}
+
+func resourceIDs(resources []map[string]any) []string {
+	ids := make([]string, 0, len(resources))
+	for _, resource := range resources {
+		id, _ := resource["id"].(string)
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+//spec:covers REQ-SOURCING-029: /Schemas と /ResourceTypes は全件を ListResponse で返し、ソートとページングの引数を無視し、filter の引数を 403 で拒否する。
+//verify:operation GetScimSchemas: startIndex、count、sortBy、sortOrder を無視して全件を返し、filter には空の値でも 403 の SCIM エラーを返す。
+//verify:operation GetScimResourceTypes: startIndex、count、sortBy、sortOrder を無視して全件を返し、filter には空の値でも 403 の SCIM エラーを返す。
+func TestScimDiscoveryListResponses(t *testing.T) {
+	h := newScimHarness()
+	token := issueAllScimToken(t, h.apiTokens)
+	for _, tc := range []struct {
+		endpoint string
+		wantIDs  []string
+	}{
+		{"/scim/v2/Schemas", []string{"urn:ietf:params:scim:schemas:core:2.0:User", enterpriseSchemaURN, "urn:ietf:params:scim:schemas:core:2.0:Group"}},
+		{"/scim/v2/ResourceTypes", []string{"User", "Group"}},
+	} {
+		t.Run(tc.endpoint, func(t *testing.T) {
+			for _, query := range []string{"", "?startIndex=2&count=1", "?count=0", "?sortBy=id&sortOrder=descending"} {
+				rec := doScimRequest(t, h.echo, http.MethodGet, "Bearer "+token, tc.endpoint+query, nil)
+				if got := resourceIDs(discoveryResources(t, tc.endpoint+query, rec)); !slices.Equal(got, tc.wantIDs) {
+					t.Errorf("%s%s ids = %v, want %v", tc.endpoint, query, got, tc.wantIDs)
+				}
+			}
+			for _, query := range []string{"?filter=" + url.QueryEscape(`id eq "User"`), "?filter="} {
+				rec := doScimRequest(t, h.echo, http.MethodGet, "Bearer "+token, tc.endpoint+query, nil)
+				var body map[string]any
+				_ = json.Unmarshal(rec.Body.Bytes(), &body)
+				if rec.Code != http.StatusForbidden || rec.Header().Get("Content-Type") != "application/scim+json" ||
+					!reflect.DeepEqual(body["schemas"], []any{scimErrorSchemaURN}) || body["status"] != "403" {
+					t.Errorf("%s%s: status=%d body=%s, want a 403 SCIM error", tc.endpoint, query, rec.Code, rec.Body.String())
+				}
+			}
+			// 認証の失敗は filter の拒否より先に判定する。
+			rec := doScimRequest(t, h.echo, http.MethodGet, "Bearer invalid", tc.endpoint+"?filter=", nil)
+			if rec.Code != http.StatusUnauthorized {
+				t.Errorf("%s with filter and an invalid token: status=%d, want 401", tc.endpoint, rec.Code)
+			}
+		})
+	}
+}
+
 // interfaces.GetScimSchemas: 空配列ではなく User/Group の実属性を返す。
 func TestScimGetSchemasReturnsRealAttributes(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
@@ -753,14 +827,7 @@ func TestScimGetSchemasReturnsRealAttributes(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+tokenStr)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rec.Code)
-	}
-
-	var schemas []map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &schemas); err != nil {
-		t.Fatalf("failed to decode schemas: %v", err)
-	}
+	schemas := discoveryResources(t, "/scim/v2/Schemas", rec)
 	if len(schemas) < 2 {
 		t.Fatalf("expected at least 2 schemas (User, Group), got %d", len(schemas))
 	}
@@ -786,10 +853,7 @@ func TestScimEnterpriseExtensionDiscovery(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenStr)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
-		var schemas []map[string]any
-		if err := json.Unmarshal(rec.Body.Bytes(), &schemas); err != nil {
-			t.Fatalf("failed to decode schemas: %v", err)
-		}
+		schemas := discoveryResources(t, "/scim/v2/Schemas", rec)
 		found := false
 		for _, schema := range schemas {
 			if schema["id"] == enterpriseURN {
@@ -810,10 +874,7 @@ func TestScimEnterpriseExtensionDiscovery(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenStr)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
-		var types []map[string]any
-		if err := json.Unmarshal(rec.Body.Bytes(), &types); err != nil {
-			t.Fatalf("failed to decode resource types: %v", err)
-		}
+		types := discoveryResources(t, "/scim/v2/ResourceTypes", rec)
 		for _, rt := range types {
 			if rt["id"] != "User" {
 				continue

@@ -22,7 +22,6 @@ var entraNotReplayed = map[string]string{
 	"create-user-with-nulls":   "null の phoneNumbers と addresses を未割り当てとして受け付けるのは wi-56158 が扱う",
 	"add-manager": "manager は RFC 7643 §4.3 で単一の値の属性であり、配列の value は規範にない形である。" +
 		"文書のこの例は参照実装の節にあり、Entra ID は manager を文字列で送る（mutation.go の parseManagerScimID）。実テナントで配列を観測したら見直す（wi-79）",
-	"discover-schema": "/Schemas の一覧を ListResponse で返すのは wi-90508 が扱う",
 }
 
 // clientReplay は、SCIM のクライアント（Entra ID、Okta）の文書から転記した要求の記録を、SCIM の受け口へ送る。
@@ -146,9 +145,22 @@ func memberValues(body map[string]any) []string {
 //spec:covers RFC7644-RESOURCE-OPERATIONS: Entra ID が送る形の User と Group の作成、参照、削除が、作成した資源を返し、削除の後に 404 になること,
 //spec:covers RFC7644-PATCH: 大文字で始まる op（Replace、Add、Remove）と、value を持つ members の Remove を、読み直した資源に反映すること,
 //spec:covers RFC7644-FILTERING: userName と displayName の eq の照会が、一致を ListResponse で返し、一致がなければ totalResults 0 を返すこと,
-//spec:covers RFC7644-ERROR-RESPONSE: 存在しない User の参照に、status が "404" の SCIM エラーを返すこと
+//spec:covers RFC7644-ERROR-RESPONSE: 存在しない User の参照に、status が "404" の SCIM エラーを返すこと,
+//spec:covers REQ-SOURCING-029: Discover schema の /Schemas が、対応する三つのスキーマを ListResponse で返すこと
 func TestEntraProvisioning_AcceptsTheDocumentedRequests(t *testing.T) {
 	r := newClientReplay(t, "testdata/entra-provisioning.json", "/scim/v2")
+
+	// Entra ID は設定の保存時に /Schemas を読む。
+	w, schemas := r.send("discover-schema", nil)
+	expectStatus(t, "discover-schema", w, http.StatusOK)
+	var schemaIDs []string
+	for _, resource := range listResources(t, "discover-schema", schemas) {
+		id, _ := resource.(map[string]any)["id"].(string)
+		schemaIDs = append(schemaIDs, id)
+	}
+	if want := []string{"urn:ietf:params:scim:schemas:core:2.0:User", enterpriseSchemaURN, "urn:ietf:params:scim:schemas:core:2.0:Group"}; !slices.Equal(schemaIDs, want) || schemas["totalResults"] != float64(len(want)) {
+		t.Fatalf("discover-schema: schema ids %v with totalResults %v, want %v", schemaIDs, schemas["totalResults"], want)
+	}
 
 	w, user := r.send("create-user", nil)
 	expectStatus(t, "create-user", w, http.StatusCreated)
