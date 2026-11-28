@@ -41,7 +41,7 @@ RFC 9493 の形式は自身のテナントを名乗らないので、テナン�
 
 #### REQ-SHAREDSIGNALS-010 RFC 9493 の Subject Identifier で送られた SET も主体を解決する
 
-- 受信側のストリームが SET を受理したとき、SharedSignals は、主体の Agent か User の失効エポックを進め、受理の記録を残し、202 を返し、`SecurityEventReceived` を発行する。
+- 受信側のストリームが購読する `session-revoked` の SET を受理したとき、SharedSignals は、主体の Agent か User の失効エポックを進め、受理の記録を残し、202 を返し、`SecurityEventReceived` を発行する。
 - 最上位の `sub_id` を持つ SET を受けたとき、SharedSignals は、イベント内の `subject` がなくても `sub_id` の Subject Identifier から主体を解決する。
 - 最上位の `sub_id` が欠ける SET を受けたとき、SharedSignals は、イベント内の `subject` から、RFC 9493 の形式または IdMagic 独自の形式で主体を解決する。
 - 最上位の `sub_id` とイベント内の `subject` の両方を受けたとき、SharedSignals は、それぞれの形式と発行者を検査し、解決後の種類、テナント、プリンシパルが一致することを確かめて受理する。
@@ -49,11 +49,27 @@ RFC 9493 の形式は自身のテナントを名乗らないので、テナン�
 - `iss` が受信側のストリームの `trusted_issuer` と一致する間、`format=iss_sub` の主体を受けたとき、SharedSignals は、`sub` をストリームのテナントの識別子として解決する。
 - `format=opaque` の主体を受けたとき、SharedSignals は、`id` をストリームのテナントの識別子として解決する。
 - 主体の識別子を解決するとき、SharedSignals は、まず Agent の識別子として、次に Agent に束縛した `OAuth2Client` の識別子として探し、失効を Agent の識別子で記録する。
-- どの Agent にも束縛先のクライアントにも一致しない識別子がテナントの User を指すとき、SharedSignals は、その User の失効エポックを進め、ログインセッションを終わらせる。
+- `session-revoked` の SET の主体が、どの Agent にも束縛先のクライアントにも一致せずテナントの User を指すとき、SharedSignals は、その User の失効エポックを進め、ログインセッションを終わらせる。
 - `iss_sub` と `opaque` 以外の `format`、`trusted_issuer` と一致しない `iss`、どの Agent にも束縛先のクライアントにもテナントの User にも一致しない識別子、ほかのテナントを名乗る主体を受けた場合、SharedSignals は、400 と `security_event_rejected` で拒否し、`verification_result=rejected_subject_unresolved` の `SecurityEventRejected` を発行し、失効を反映しない。
 - 64 KiB を超える SET を受けた場合、SharedSignals は、413 と `security_event_token_too_large` で拒否する。
 - SET の受信を拒否するとき、SharedSignals は、RFC 8935 の `err` と `description` を持つ本文を返す。
 - **例**：EX-SHAREDSIGNALS-010-01、EX-SHAREDSIGNALS-010-02、EX-SHAREDSIGNALS-010-03、EX-SHAREDSIGNALS-010-04、EX-SHAREDSIGNALS-010-05、EX-SHAREDSIGNALS-010-06、EX-SHAREDSIGNALS-010-07、EX-SHAREDSIGNALS-010-08
+
+#### REQ-SHAREDSIGNALS-019 受信した SET の反映は、イベントの種類とストリームの購読で決まる
+
+- 署名と発行者を検証した SET を受けたとき、SharedSignals は、`events` のイベントの種類と受信側のストリームの `event_types` から、次の表で反映を決める。
+
+| イベントの種類 | ストリームの購読 | 反映 |
+| --- | --- | --- |
+| `session-revoked` | する | 主体を解決し、受理を記録し、失効させる（REQ-SHAREDSIGNALS-010） |
+| `token-claims-change`、`credential-change`、`assurance-level-change` | する | 主体を解決し、失効させずに受理を記録する |
+| `CaepEventType` の種類 | しない | 無視する |
+| `CaepEventType` にない種類 | any | 無視する |
+
+- 購読する `session-revoked` 以外の種類の SET を受理したとき、SharedSignals は、`reflected_at` のない受理の記録を残し、202 を返し、失効エポックを進めず、ログインセッションを終わらせず、`SecurityEventReceived` を発行しない。
+- 購読しない種類か `CaepEventType` にない種類の SET を受けたとき、SharedSignals は、`jti` の再利用を照合せず、主体を解決せず、受信の記録を残さず、202 を返し、失効エポックを進めず、`SecurityEventRejected` を発行しない。
+- **判断**：RFC 8935 §3 は関心のない SET を無視することを受信側に認める。拒否すると、送信側は配送を失敗として数え、ストリームを止めることがある。SSF の送信側では、購読外の種類を送るのは送信側の設定の誤りである。credential-change は資格情報の作成、変更、取り消し、削除の通知であり、送信側は要素の無効化のような日常の操作でも送るので、`change_type` によらず失効させない。失効させたい送信側は `session-revoked` を送る。
+- **例**：EX-SHAREDSIGNALS-019-01、EX-SHAREDSIGNALS-019-02、EX-SHAREDSIGNALS-019-03、EX-SHAREDSIGNALS-019-04
 
 #### REQ-SHAREDSIGNALS-003 署名が不正な SET は反映せずに拒否する
 

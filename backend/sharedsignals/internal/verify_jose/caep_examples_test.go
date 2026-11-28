@@ -81,12 +81,24 @@ type caepReceiver struct {
 	epochs  *ssmemory.UserRevocationEpochRepository
 	ended   *[]string
 	events  *[]spec.DomainEvent
+	saved   *[]ssdomain.ReceivedSecurityEvent
 	ctx     context.Context
 	example testing_httprecord.Exchange
 }
 
-// newCAEPReceiver は、例の iss を信頼する受信側のストリームと、例の主体の識別子を持つ User を置く。
-func newCAEPReceiver(t *testing.T, transmitter caepTransmitter, example testing_httprecord.Exchange, userIDs ...string) caepReceiver {
+// savingReceivedEvents は保存した受信の記録を観測できるようにする。
+type savingReceivedEvents struct {
+	*ssmemory.ReceivedSecurityEventRepository
+	saved *[]ssdomain.ReceivedSecurityEvent
+}
+
+func (s savingReceivedEvents) Save(ctx context.Context, event *ssdomain.ReceivedSecurityEvent) error {
+	*s.saved = append(*s.saved, *event)
+	return s.ReceivedSecurityEventRepository.Save(ctx, event)
+}
+
+// newCAEPReceiver は、例の iss を信頼し eventTypes を購読する受信側のストリームと、例の主体の識別子を持つ User を置く。
+func newCAEPReceiver(t *testing.T, transmitter caepTransmitter, example testing_httprecord.Exchange, eventTypes []ssdomain.CaepEventType, userIDs ...string) caepReceiver {
 	t.Helper()
 	var claims struct {
 		Iss string `json:"iss"`
@@ -100,7 +112,7 @@ func newCAEPReceiver(t *testing.T, transmitter caepTransmitter, example testing_
 	streams, configs := ssmemory.NewSsfStreamRepository(), ssmemory.NewSsfReceiverConfigRepository()
 	if err := streams.Save(ctx, &ssdomain.SsfStream{
 		ID: caepStream, TenantID: caepTenant, Direction: ssdomain.SsfStreamDirectionReceive,
-		EventTypes: []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked}, Status: ssdomain.SsfStreamStatusEnabled, CreatedAt: time.Now().UTC(),
+		EventTypes: eventTypes, Status: ssdomain.SsfStreamStatusEnabled, CreatedAt: time.Now().UTC(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -116,10 +128,11 @@ func newCAEPReceiver(t *testing.T, transmitter caepTransmitter, example testing_
 			t.Fatal(err)
 		}
 	}
-	r := caepReceiver{epochs: ssmemory.NewUserRevocationEpochRepository(), ended: &[]string{}, events: &[]spec.DomainEvent{}, example: example}
+	r := caepReceiver{epochs: ssmemory.NewUserRevocationEpochRepository(), ended: &[]string{}, events: &[]spec.DomainEvent{}, saved: &[]ssdomain.ReceivedSecurityEvent{}, example: example}
 	r.deps = ssusecases.ReceiveDeps{
-		StreamRepo: streams, ReceiverConfigRepo: configs, ReceivedEventRepo: ssmemory.NewReceivedSecurityEventRepository(),
-		EpochRepo: ssmemory.NewAgentRevocationEpochRepository(), AgentRepo: idmanagement.NewMemoryModule().AgentRepo,
+		StreamRepo: streams, ReceiverConfigRepo: configs,
+		ReceivedEventRepo: savingReceivedEvents{ReceivedSecurityEventRepository: ssmemory.NewReceivedSecurityEventRepository(), saved: r.saved},
+		EpochRepo:         ssmemory.NewAgentRevocationEpochRepository(), AgentRepo: idmanagement.NewMemoryModule().AgentRepo,
 		Users: users, UserEpochRepo: r.epochs,
 		EndUserSessions: func(_ context.Context, userID string) error { *r.ended = append(*r.ended, userID); return nil },
 		Verifier:        &verify_jose.Verifier{JWKResolver: tokens_jose.NewJWKResolver()},
@@ -158,32 +171,57 @@ func (r caepReceiver) assertNotReflected(t *testing.T, err error, userIDs ...str
 	}
 }
 
-// caepNotReplayed は、CAEP の例のうち再生しない往復と、その理由である。
-var caepNotReplayed = map[string]string{
-	"credential-change-fido2-create":  "受け付けた SET はイベントの種類を問わず主体を失効させる。credential-change の作成の通知で失効させないよう、種類ごとの反映を wi-32902 が決める",
-	"assurance-level-change-increase": "同上（保証レベルが上がった通知）",
-	"assurance-level-change-custom":   "同上（独自の保証レベルの通知）",
+// assertLeftUntouched は、受理した SET が User の失効エポック、セッション、受信を知らせるイベントを変えなかったことを確かめる。
+func (r caepReceiver) assertLeftUntouched(t *testing.T, err error, userIDs ...string) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("%s: ReceiveSecurityEvent: %v, want accepted", r.example.Name, err)
+	}
+	if len(*r.ended) != 0 {
+		t.Fatalf("%s: ended the sessions of %v", r.example.Name, *r.ended)
+	}
+	for _, id := range userIDs {
+		if epoch, _ := r.epochs.FindByUser(context.Background(), caepTenant, id); epoch != nil {
+			t.Fatalf("%s: advanced the revocation epoch of %s", r.example.Name, id)
+		}
+	}
+	if len(*r.events) != 0 {
+		t.Fatalf("%s: events %v, want none", r.example.Name, *r.events)
+	}
 }
+
+var (
+	sessionRevokedOnly = []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked}
+	everyKnownType     = []ssdomain.CaepEventType{
+		ssdomain.CaepEventTypeSessionRevoked, ssdomain.CaepEventTypeTokenClaimsChange,
+		ssdomain.CaepEventTypeCredentialChange, ssdomain.CaepEventTypeAssuranceLevelChange,
+	}
+)
 
 // 期待値は CAEP 1.0 の例の意味と、IdMagic が宣言した採用の範囲から書く。
 // session-revoked の opaque の主体はセッションの失効を意味し（CAEP 1.0 §3.1）、IdMagic は User を失効させてセッションを終わらせる。
-// complex、email、jwt_id、saml_assertion_id の主体は IdMagic が解釈しない形式であり（SSF10-RECEIVE-SUB-ID、RFC9493-SUBID-FORMAT）、
-// sub_id の iss が SET の iss と食い違う iss_sub は信頼する発行者と一致しない（RFC9493-SUBID-ISS-SUB）。
+// credential-change と assurance-level-change は失効を意味しないので、購読しなければ無視し、購読すれば受理だけを記録する（REQ-SHAREDSIGNALS-019）。
+// IdMagic の CaepEventType にない種類は、主体の形式によらず無視する。
+// complex、jwt_id、saml_assertion_id の主体は IdMagic が解釈しない形式である（SSF10-RECEIVE-SUB-ID、RFC9493-SUBID-FORMAT）。
 // 署名は仕様の例が示さないのでテストの鍵で付け、検証は本物の verifier が行う。
 //
 //spec:covers SSF10-RECEIVE-SUB-ID: CAEP 1.0 の例の最上位の opaque の sub_id で、イベントに subject がなくても User を解決して失効させ、complex の sub_id を拒否すること,
-//spec:covers RFC9493-SUBID-FORMAT: CAEP 1.0 の例の email、jwt_id、saml_assertion_id、complex の主体を、主体を解決できないものとして拒否し、失効を反映しないこと,
-//spec:covers RFC9493-SUBID-ISS-SUB: CAEP 1.0 の risk-level-change の例のように sub_id の iss が信頼する発行者と食い違う iss_sub を拒否すること,
-//spec:covers RFC8417-SET-VERIFY: 例の claims を署名した SET を本物の verifier で検証してから反映すること
+//spec:covers RFC9493-SUBID-FORMAT: 購読する種類の CAEP 1.0 の例の jwt_id、saml_assertion_id、complex の主体を、主体を解決できないものとして拒否し、失効を反映しないこと,
+//spec:covers RFC8417-SET-VERIFY: 例の claims を署名した SET を本物の verifier で検証してから反映すること,
+//spec:covers REQ-SHAREDSIGNALS-019: CAEP 1.0 の例を種類と購読ごとに、無視、記録だけ、失効のどれかで反映すること,
+//spec:covers EX-SHAREDSIGNALS-019-01: session-revoked だけを購読するストリームで credential-change と assurance-level-change の例を受けても、記録も失効も残さないこと,
+//spec:covers EX-SHAREDSIGNALS-019-03: 購読する assurance-level-change と credential-change の例は、reflected_at のない受理の記録だけを残し、User を失効させないこと
 func TestReceiveSecurityEvent_CAEPExamples(t *testing.T) {
 	rec := loadCAEPExamples(t)
 	transmitter := newCAEPTransmitter(t)
 	const sessionSubject = "dMTlD|1600802906337.16|16008.16"
 	// 例の主体が指しうる識別子を、どれも受信側のテナントの User として置く。拒否が解決できる主体の不在によるものでないことを確かめるためである。
 	everyone := []string{sessionSubject, "99beb27c-c1c2-4955-882a-e0dc4996fcbc", "jane.smith@example.com", "jane.doe@example.com", "e9297990-14d2-42ec-a4a9-4036db86509a"}
+	replayed := map[string]bool{}
 
 	t.Run("session-revoked-opaque", func(t *testing.T) {
-		r := newCAEPReceiver(t, transmitter, rec.Exchange(t, "session-revoked-opaque"), everyone...)
+		replayed["session-revoked-opaque"] = true
+		r := newCAEPReceiver(t, transmitter, rec.Exchange(t, "session-revoked-opaque"), sessionRevokedOnly, everyone...)
 		if err := r.receive(t, transmitter); err != nil {
 			t.Fatalf("ReceiveSecurityEvent: %v", err)
 		}
@@ -196,27 +234,54 @@ func TestReceiveSecurityEvent_CAEPExamples(t *testing.T) {
 	})
 
 	for _, name := range []string{
-		"session-revoked-complex-user-iss-sub", "session-revoked-complex-user-device-tenant", "device-compliance-change",
+		"session-revoked-complex-user-iss-sub", "session-revoked-complex-user-device-tenant",
 		"token-claims-change-oidc", "token-claims-change-oidc-optional", "token-claims-change-saml",
-		"session-established", "session-presented", "risk-level-change",
 	} {
-		t.Run(name, func(t *testing.T) {
-			r := newCAEPReceiver(t, transmitter, rec.Exchange(t, name), everyone...)
+		replayed[name] = true
+		t.Run("subscribed/"+name, func(t *testing.T) {
+			r := newCAEPReceiver(t, transmitter, rec.Exchange(t, name), everyKnownType, everyone...)
 			r.assertNotReflected(t, r.receive(t, transmitter), everyone...)
 		})
 	}
 
-	replayed := map[string]bool{"session-revoked-opaque": true}
-	for _, name := range []string{
-		"session-revoked-complex-user-iss-sub", "session-revoked-complex-user-device-tenant", "device-compliance-change",
-		"token-claims-change-oidc", "token-claims-change-oidc-optional", "token-claims-change-saml",
-		"session-established", "session-presented", "risk-level-change",
-	} {
+	for _, name := range []string{"credential-change-fido2-create", "assurance-level-change-increase", "assurance-level-change-custom"} {
 		replayed[name] = true
+		t.Run("unsubscribed/"+name, func(t *testing.T) {
+			r := newCAEPReceiver(t, transmitter, rec.Exchange(t, name), sessionRevokedOnly, everyone...)
+			r.assertLeftUntouched(t, r.receive(t, transmitter), everyone...)
+			if len(*r.saved) != 0 {
+				t.Fatalf("records = %+v, want none for an unsubscribed type", *r.saved)
+			}
+		})
+		t.Run("subscribed/"+name, func(t *testing.T) {
+			r := newCAEPReceiver(t, transmitter, rec.Exchange(t, name), everyKnownType, everyone...)
+			r.assertLeftUntouched(t, r.receive(t, transmitter), everyone...)
+			if len(*r.saved) != 1 {
+				t.Fatalf("records = %+v, want one accepted record", *r.saved)
+			}
+			record := (*r.saved)[0]
+			if record.VerificationResult != ssdomain.SecurityEventVerificationAccepted || record.ReflectedAt != nil ||
+				record.Subject.SubjectType != ssdomain.SsfSubjectTypeUser || record.Subject.PrincipalID != "jane.smith@example.com" {
+				t.Fatalf("record = %+v, want an accepted record for jane.smith@example.com without reflected_at", record)
+			}
+		})
 	}
+
+	// 主体の形式（complex、email、sub_id の iss の食い違い）は、種類を無視するので問わない。
+	for _, name := range []string{"device-compliance-change", "session-established", "session-presented", "risk-level-change"} {
+		replayed[name] = true
+		t.Run("unknown/"+name, func(t *testing.T) {
+			r := newCAEPReceiver(t, transmitter, rec.Exchange(t, name), everyKnownType, everyone...)
+			r.assertLeftUntouched(t, r.receive(t, transmitter), everyone...)
+			if len(*r.saved) != 0 {
+				t.Fatalf("records = %+v, want none for an unknown type", *r.saved)
+			}
+		})
+	}
+
 	for _, ex := range rec.Exchanges {
-		if _, skipped := caepNotReplayed[ex.Name]; replayed[ex.Name] == skipped {
-			t.Errorf("example %q must be either replayed or listed with a reason, not both or neither", ex.Name)
+		if !replayed[ex.Name] {
+			t.Errorf("example %q is not replayed", ex.Name)
 		}
 	}
 }

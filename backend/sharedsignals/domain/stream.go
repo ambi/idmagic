@@ -58,6 +58,43 @@ func (s SsfStream) Subscribes(t CaepEventType) bool {
 	return slices.Contains(s.EventTypes, t)
 }
 
+// InboundReflection は受信した SET を受信側のストリームへどう反映するかである（REQ-SHAREDSIGNALS-019）。
+type InboundReflection int
+
+const (
+	// InboundReflectionIgnore は jti、主体、記録を扱わずに受理する。
+	InboundReflectionIgnore InboundReflection = iota
+	// InboundReflectionRecord は主体を解決して受理を記録し、失効させない。
+	InboundReflectionRecord
+	// InboundReflectionRevoke は主体を解決して受理を記録し、失効させる。
+	InboundReflectionRevoke
+)
+
+func (r InboundReflection) String() string {
+	switch r {
+	case InboundReflectionRecord:
+		return "record"
+	case InboundReflectionRevoke:
+		return "revoke"
+	default:
+		return "ignore"
+	}
+}
+
+// InboundReflectionFor は受信側のストリームが t の SET をどう反映するかを返す。
+// 失効を意味するのは session-revoked だけである。credential-change は資格情報の作成も取り消しも
+// 送信側の日常の操作として届くので、change_type によらず記録にとどめる。
+func (s SsfStream) InboundReflectionFor(t CaepEventType) InboundReflection {
+	switch {
+	case !t.Valid() || !s.Subscribes(t):
+		return InboundReflectionIgnore
+	case t == CaepEventTypeSessionRevoked:
+		return InboundReflectionRevoke
+	default:
+		return InboundReflectionRecord
+	}
+}
+
 // NewSsfStreamID は不変の SsfStream 識別子 (UUID v4) を生成する。
 func NewSsfStreamID() (string, error) {
 	return spec.NewUUIDv4()

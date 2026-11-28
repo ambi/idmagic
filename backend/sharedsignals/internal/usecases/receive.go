@@ -44,6 +44,9 @@ type ReceiveDeps struct {
 // signals converge onto the same fail-closed revocation path as idmagic's
 // own kill-switch (decision 5). Every requires clause is
 // fail-closed: any failure rejects without reflecting the event.
+// Only a subscribed session-revoked revokes; other subscribed types are recorded
+// without revoking, and unsubscribed or unknown types are ignored
+// (SsfStream.InboundReflectionFor, REQ-SHAREDSIGNALS-019).
 func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token string, now time.Time) error {
 	tenantID := tenantports.TenantID(ctx)
 
@@ -69,6 +72,17 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 		return rejectEvent(ctx, deps, tenantID, streamID, "", now, verificationResultFor(err))
 	}
 
+	uri, eventClaims, ok := firstEvent(verified)
+	if !ok {
+		return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
+	}
+	eventType := caepEventTypeFromURI(uri)
+	// 購読しない種類と知らない種類は RFC 8935 §3 に従って無視する。拒否すると送信側が配送の失敗に数える。
+	reflection := stream.InboundReflectionFor(eventType)
+	if reflection == ssdomain.InboundReflectionIgnore {
+		return nil
+	}
+
 	// requires: !security_event_replayed(...)
 	replayed, err := deps.ReceivedEventRepo.ExistsByJTI(ctx, tenantID, streamID, verified.JTI)
 	if err != nil {
@@ -79,7 +93,7 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 	}
 
 	// requires: security_event_subject_resolves_to_tenant_local_principal(...)
-	eventType, candidates, ok := extractCaepEventAndSubjects(verified, config, tenantID)
+	candidates, ok := extractSubjects(verified, eventClaims, config, tenantID)
 	if !ok {
 		return rejectEvent(ctx, deps, tenantID, streamID, verified.JTI, now, ssdomain.SecurityEventVerificationRejectedSubjectUnresolved)
 	}
@@ -98,9 +112,10 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 		}
 		subject = resolvedSubject
 	}
+	revokes := reflection == ssdomain.InboundReflectionRevoke
 	// セッションの終了は記録の前に行う。失敗した SET を再送で反映し直せるようにするためで、
 	// 終了は繰り返しても同じ結果になる。
-	if subject.SubjectType == ssdomain.SsfSubjectTypeUser && deps.EndUserSessions != nil {
+	if revokes && subject.SubjectType == ssdomain.SsfSubjectTypeUser && deps.EndUserSessions != nil {
 		if err := deps.EndUserSessions(ctx, subject.PrincipalID); err != nil {
 			return err
 		}
@@ -113,13 +128,19 @@ func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token
 	}
 	record := ssdomain.ReceivedSecurityEvent{
 		ID: recordID, TenantID: tenantID, StreamID: streamID, SetJTI: verified.JTI, EventType: eventType,
-		Subject: subject, VerificationResult: ssdomain.SecurityEventVerificationAccepted, ReceivedAt: now, ReflectedAt: &now,
+		Subject: subject, VerificationResult: ssdomain.SecurityEventVerificationAccepted, ReceivedAt: now,
+	}
+	if revokes {
+		record.ReflectedAt = &now
 	}
 	if err := record.Validate(); err != nil {
 		return err
 	}
 	if err := deps.ReceivedEventRepo.Save(ctx, &record); err != nil {
 		return err
+	}
+	if !revokes {
+		return nil
 	}
 	if subject.SubjectType == ssdomain.SsfSubjectTypeUser {
 		err = AdvanceUserRevocationEpoch(ctx, deps.UserEpochRepo, deps.Emit, ssdomain.UserRevocation{
@@ -165,35 +186,39 @@ func rejectEvent(ctx context.Context, deps ReceiveDeps, tenantID, streamID, setJ
 	return ErrSecurityEventRejected
 }
 
-// extractCaepEventAndSubjects は SSF 1.0 §3.1 の sub_id と、互換性のための subject を読む。
+// firstEvent は `events` のメンバーを一つ返す。SSF 1.0 §4.2.1 は一つの SET に一つのイベントを求める。
+func firstEvent(verified *ssports.VerifiedSecurityEvent) (string, any, bool) {
+	for uri, raw := range verified.Events {
+		return uri, raw, true
+	}
+	return "", nil, false
+}
+
+// extractSubjects は SSF 1.0 §3.1 の sub_id と、互換性のためのイベント内の subject を読む。
 // 両方があれば各候補を返し、呼び出し側が解決後に一致を確かめる。
-func extractCaepEventAndSubjects(verified *ssports.VerifiedSecurityEvent, config *ssdomain.SsfReceiverConfig, tenantID string) (ssdomain.CaepEventType, []ssdomain.SsfSubject, bool) {
+func extractSubjects(verified *ssports.VerifiedSecurityEvent, rawEvent any, config *ssdomain.SsfReceiverConfig, tenantID string) ([]ssdomain.SsfSubject, bool) {
 	var subjects []ssdomain.SsfSubject
 	if verified.HasSubID {
 		claims, _ := verified.SubID.(map[string]any)
 		format, _ := claims["format"].(string)
 		subject, ok := subjectFromIdentifier(format, claims, config, tenantID)
 		if !ok {
-			return "", nil, false
+			return nil, false
 		}
 		subjects = append(subjects, subject)
 	}
-	for uri, raw := range verified.Events {
-		eventType := caepEventTypeFromURI(uri)
-		claims, ok := raw.(map[string]any)
-		if !ok {
-			return "", nil, false
-		}
-		if rawSubject, exists := claims["subject"]; exists {
-			subject, ok := subjectFromClaims(rawSubject, config, tenantID)
-			if !ok {
-				return "", nil, false
-			}
-			subjects = append(subjects, subject)
-		}
-		return eventType, subjects, len(subjects) > 0
+	claims, ok := rawEvent.(map[string]any)
+	if !ok {
+		return nil, false
 	}
-	return "", nil, false
+	if rawSubject, exists := claims["subject"]; exists {
+		subject, ok := subjectFromClaims(rawSubject, config, tenantID)
+		if !ok {
+			return nil, false
+		}
+		subjects = append(subjects, subject)
+	}
+	return subjects, len(subjects) > 0
 }
 
 func subjectFromClaims(raw any, config *ssdomain.SsfReceiverConfig, tenantID string) (ssdomain.SsfSubject, bool) {

@@ -77,3 +77,35 @@ func TestNewSsfStreamID(t *testing.T) {
 		t.Fatalf("NewSsfStreamID = %q, want UUID", id)
 	}
 }
+
+//spec:covers REQ-SHAREDSIGNALS-019: 種類と購読の組ごとに、無視、記録だけ、失効のどれになるかを固定する。
+func TestSsfStreamInboundReflectionFor(t *testing.T) {
+	s := validStream()
+	s.EventTypes = []ssdomain.CaepEventType{ssdomain.CaepEventTypeSessionRevoked, ssdomain.CaepEventTypeCredentialChange}
+	cases := []struct {
+		eventType ssdomain.CaepEventType
+		want      ssdomain.InboundReflection
+	}{
+		{ssdomain.CaepEventTypeSessionRevoked, ssdomain.InboundReflectionRevoke},
+		{ssdomain.CaepEventTypeCredentialChange, ssdomain.InboundReflectionRecord},
+		{ssdomain.CaepEventTypeAssuranceLevelChange, ssdomain.InboundReflectionIgnore},
+		{ssdomain.CaepEventTypeTokenClaimsChange, ssdomain.InboundReflectionIgnore},
+		{"https://schemas.openid.net/secevent/caep/event-type/risk-level-change", ssdomain.InboundReflectionIgnore},
+	}
+	for _, tc := range cases {
+		if got := s.InboundReflectionFor(tc.eventType); got != tc.want {
+			t.Errorf("InboundReflectionFor(%q) = %v, want %v", tc.eventType, got, tc.want)
+		}
+	}
+
+	// 購読していない session-revoked は失効させない。
+	s.EventTypes = []ssdomain.CaepEventType{ssdomain.CaepEventTypeTokenClaimsChange}
+	if got := s.InboundReflectionFor(ssdomain.CaepEventTypeSessionRevoked); got != ssdomain.InboundReflectionIgnore {
+		t.Errorf("InboundReflectionFor(unsubscribed session-revoked) = %v, want ignore", got)
+	}
+	// 不正な値が購読の一覧に紛れても、enum の外の種類は反映しない。
+	s.EventTypes = []ssdomain.CaepEventType{"risk-level-change"}
+	if got := s.InboundReflectionFor("risk-level-change"); got != ssdomain.InboundReflectionIgnore {
+		t.Errorf("InboundReflectionFor(unknown but listed) = %v, want ignore", got)
+	}
+}
