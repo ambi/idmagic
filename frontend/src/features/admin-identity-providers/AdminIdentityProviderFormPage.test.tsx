@@ -34,8 +34,8 @@ const candidates = {
 const response = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
 afterEach(restoreGlobals)
 
-//spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む issuer と、PEM でない証明書を欄のエラー文で示し、保存しないこと
-it('https でない issuer と PEM でない証明書を欄で示し、保存しない', async () => {
+//spec:covers WCAG22-LABELS-ERRORS: サーバーが拒む issuer と、証明書でない値を欄のエラー文で示し、保存しないこと
+it('https でない issuer と証明書でない値を欄で示し、保存しない', async () => {
   const fetchMock = mock(() => Promise.resolve(response({})))
   stubGlobal('fetch', fetchMock)
   await renderWithRouter(
@@ -59,9 +59,17 @@ it('https でない issuer と PEM でない証明書を欄で示し、保存し
   fireEvent.change(issuer, { target: { value: 'https://preview.example' } })
 
   const certificates = screen.getByLabelText(t.samlCertificates)
+  // メタデータの X509Certificate をそのまま写した値は、欄のエラーにしない。
+  fireEvent.change(certificates, {
+    target: {
+      value:
+        'MIIBszCCAVmgAwIBAgIUQ0FCQ0FCQ0FCQ0FCQ0FCQ0FCQ0Ew\nCgYIKoZIzj0EAwIwDzENMAsGA1UEAwwEdGVzdDAe',
+    },
+  })
+  expect(certificates.getAttribute('aria-invalid')).not.toBe('true')
   fireEvent.change(certificates, { target: { value: 'not a certificate' } })
   expect(certificates).toHaveAccessibleDescription(
-    'Paste a PEM certificate that starts with -----BEGIN CERTIFICATE-----.',
+    'Paste a PEM certificate, or the X509Certificate value from the IdP metadata as it is.',
   )
   const update = screen.getByRole('button', { name: t.update })
   expect(update).toBeDisabled()

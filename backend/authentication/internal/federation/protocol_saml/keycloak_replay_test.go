@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"net/url"
 	"os"
 	"strings"
@@ -133,6 +134,34 @@ func TestValidateResponse_AcceptsKeycloakSignaturePlacements(t *testing.T) {
 			t.Fatal("a response with neither a Response nor an Assertion signature must be rejected")
 		}
 	})
+}
+
+// 管理者が realm のメタデータの X509Certificate を PEM へ書き換えずに保存した接続でも、応答の署名を検証できることを確かめる。
+// 記録の setup は PEM なので、見出しを外し、メタデータのように 64 文字で折り返した base64 に戻す。
+//
+//spec:covers REQ-AUTHENTICATION-001: 見出しのない DER の base64 で保存した署名の証明書で、上流の SAML の応答の署名を検証すること
+func TestValidateResponse_AcceptsSigningCertificateCopiedFromMetadata(t *testing.T) {
+	response := loadKeycloakResponse(t, "response-and-assertion-signed")
+	block, _ := pem.Decode([]byte(response.setup.SigningCertificate))
+	if block == nil {
+		t.Fatal("the recorded signing certificate is not PEM")
+	}
+	encoded := base64.StdEncoding.EncodeToString(block.Bytes)
+	var copied strings.Builder
+	for len(encoded) > 64 {
+		copied.WriteString(encoded[:64] + "\n")
+		encoded = encoded[64:]
+	}
+	copied.WriteString(encoded)
+	response.connection.SAMLSigningCertificates = []string{copied.String()}
+
+	claims, err := response.validate(response.xml, response.setup.ReceivedAt)
+	if err != nil {
+		t.Fatalf("ValidateResponse: %v", err)
+	}
+	if claims.Subject != "alice" {
+		t.Fatalf("claims = %+v, want the subject alice", claims)
+	}
 }
 
 // forgedAssertion は、署名した Assertion から署名を外し、ID と NameID を変えた写しである。

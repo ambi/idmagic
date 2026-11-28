@@ -22,6 +22,8 @@ export type FieldProblem =
   | { kind: 'resourceUrl'; entry?: string }
   | { kind: 'invalidScope'; entry: string }
   | { kind: 'invalidPem' }
+  /** PEM か、メタデータの `X509Certificate` と同じ base64 を受け付ける証明書の欄の不備。 */
+  | { kind: 'invalidCertificate' }
   | { kind: 'invalidJson' }
   | { kind: 'invalid' }
   /** 画面の辞書で作った文言。共通の種類で表せない画面固有の規則に使う。 */
@@ -351,6 +353,17 @@ export function containsPemBlock(value: string): boolean {
   while (i < lines.length && /^[^:\s]+:/.test(lines[i] ?? '')) i++
   const body = lines.slice(i).join('')
   return body !== '' && /^[A-Za-z0-9+/]*={0,2}$/.test(body)
+}
+
+/**
+ * 証明書を一つ表す文字列かを判定する。PEM のブロック（`containsPemBlock`）か、
+ * SAML のメタデータの `X509Certificate` と同じ見出しのない DER の base64（空白と改行を含んでよい）を受け付ける。
+ * DER の中身はサーバーが x509 として検査する。
+ */
+export function containsCertificate(value: string): boolean {
+  if (value.includes('-----BEGIN')) return containsPemBlock(value)
+  const body = value.replace(/\s+/g, '')
+  return body.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(body)
 }
 
 /** JSON として読める文字列を、その値にする。空なら required。 */

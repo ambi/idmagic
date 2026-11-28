@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   cidrList,
   codePointLength,
+  containsCertificate,
   containsPemBlock,
   type FieldSchema,
   formSchema,
@@ -292,6 +293,30 @@ describe('URL rules', () => {
       expect(parse(requiredUrl(), url).problem).toBeUndefined()
       expect(parse(requiredUrl(), url.replace('://', ':/')).problem).toEqual({ kind: 'invalidUrl' })
     }
+  })
+})
+
+describe('containsCertificate', () => {
+  const body =
+    'MIIBszCCAVmgAwIBAgIUQ0FCQ0FCQ0FCQ0FCQ0FCQ0FCQ0Ew\nCgYIKoZIzj0EAwIwDzENMAsGA1UEAwwEdGVzdDAe'
+
+  it.each([
+    [`-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----`, 'PEM'],
+    [body, 'メタデータの X509Certificate のように折り返した base64'],
+    [`\n  ${body.replace('\n', '\r\n   ')}  \n`, '前後と途中に空白のある base64'],
+    [`${body.replace('\n', '')}AA==`, '埋め草のある base64'],
+  ])('accepts %#: %s', (value) => {
+    expect(containsCertificate(value)).toBe(true)
+  })
+
+  it.each([
+    ['', '空'],
+    ['not a certificate', 'base64 でない'],
+    [`${body.replace('\n', '')}A`, '長さが 4 の倍数でない'],
+    [`${body.replace('\n', '')}-_`, 'URL 安全な英字表'],
+    ['-----BEGIN CERTIFICATE-----\nnot base64!\n-----END CERTIFICATE-----', '壊れた PEM'],
+  ])('rejects %#: %s', (value) => {
+    expect(containsCertificate(value)).toBe(false)
   })
 })
 

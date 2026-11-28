@@ -1250,6 +1250,7 @@ model IdentityProviderConnectionRequest {
   jwks_uri?: url;
   saml_sso_url?: url;
   saml_entity_id?: string;
+  @doc("上流の IdP の署名の証明書。一つの要素は一つの証明書で、PEM の `CERTIFICATE` のブロックか、IdP のメタデータの `X509Certificate` と同じ見出しのない DER の base64（空白と改行を含んでよい）である。サーバーは同じ DER を正規の PEM で包んで保存し、解析できない値を 400 と `invalid_request` で拒否する。")
   saml_signing_certificates?: string[];
   claim_mapping: ClaimMapping;
   linking_policy: AccountLinkingPolicy;

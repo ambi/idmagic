@@ -101,6 +101,7 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 - 管理者が接続を一覧したとき、Authentication は、200 と、クライアントシークレットの代わりに設定の有無を示す接続の一覧を返す。
 - 管理者が信頼の根拠を変えずに接続を更新したとき、Authentication は、200 と接続を返し、状態を変えない。
 - 管理者が `Active` の接続の信頼の根拠を更新したとき、Authentication は、200 と接続を返し、接続を `Disabled` にする。
+- 管理者が SAML の署名の証明書を、PEM か、メタデータの `X509Certificate` と同じ見出しのない DER の base64 で送って接続を作成か更新したとき、Authentication は、同じ DER を正規の PEM で包んだ値を保存して返す。
 - 管理者が接続を有効化か無効化したとき、Authentication は、204 を返し、状態遷移表のとおりに状態を変える。
 - 設定が検証を通らない接続か `Active` の接続の有効化を受けた場合、Authentication は、400 と `invalid_state` で拒否する。
 - 管理者が接続の検査を要求したとき、Authentication は、200 と、設定と上流の検査の失敗の一覧を返す。
@@ -109,6 +110,7 @@ JIT は接続ごとに個別に有効にし、メールのドメインの許可�
 - 管理者が API アクセストークンでセッションと認証の情報の管理 API を要求したとき、Authentication は、`sessions:read` でセッションとサインイン履歴の参照を、`sessions:write` でセッションの失効を、`users:write` で MFA の登録の許可と認証器のリセットを許可する。
 - 存在しない接続の更新、有効化、無効化、検査、試行を受けた場合、Authentication は、404 と `not_found` で拒否する。
 - JSON として読めない本文か保存できない設定を受けた場合、Authentication は、400 と `invalid_request` で拒否する。
+- SAML の接続の作成か更新で、一つの証明書として解析できない署名の証明書を受けた場合、Authentication は、400 と `invalid_request` で拒否し、接続を保存しない。
 - クレームの対応付けを適用できない場合、Authentication は、400 と `invalid_mapping` で拒否する。
 - **例**：EX-AUTHENTICATION-025-01、EX-AUTHENTICATION-025-02
 

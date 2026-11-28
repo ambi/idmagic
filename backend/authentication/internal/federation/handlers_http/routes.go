@@ -73,7 +73,9 @@ type connectionInput struct {
 	AllowedEmailDomains     []string                       `json:"allowed_email_domains"`
 }
 
-func (input connectionInput) apply(connection *federationdomain.IdentityProviderConnection) {
+// apply は入力を接続へ写し、SAML の署名の証明書を保存する正規の PEM に揃える。
+// 返すエラーは、解析できない証明書を示し、呼び出し元は 400 と invalid_request にする。
+func (input connectionInput) apply(connection *federationdomain.IdentityProviderConnection) error {
 	connection.DisplayName = input.DisplayName
 	connection.Protocol = input.Protocol
 	connection.Issuer = input.Issuer
@@ -89,6 +91,15 @@ func (input connectionInput) apply(connection *federationdomain.IdentityProvider
 	connection.LinkingPolicy = input.LinkingPolicy
 	connection.JITProvisioning = input.JITProvisioning
 	connection.AllowedEmailDomains = input.AllowedEmailDomains
+	if connection.Protocol != federationdomain.ProtocolSAML {
+		return nil
+	}
+	certificates, err := federationdomain.NormalizeSAMLSigningCertificates(input.SAMLSigningCertificates)
+	if err != nil {
+		return err
+	}
+	connection.SAMLSigningCertificates = certificates
+	return nil
 }
 
 func (d Deps) listPublicProviders(c *echo.Context) error {
@@ -266,7 +277,9 @@ func (d Deps) createAdmin(c *echo.Context) error {
 			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 		}
 		var connection federationdomain.IdentityProviderConnection
-		input.apply(&connection)
+		if err := input.apply(&connection); err != nil {
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
 		now := time.Now().UTC()
 		if connection.ID == "" {
 			connection.ID = uuid.NewV4().String()
@@ -296,7 +309,9 @@ func (d Deps) updateAdmin(c *echo.Context) error {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	var connection federationdomain.IdentityProviderConnection
-	input.apply(&connection)
+	if err := input.apply(&connection); err != nil {
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
 	connection.ID, connection.TenantID, connection.CreatedAt = existing.ID, existing.TenantID, existing.CreatedAt
 	if connection.SecretReference == "" {
 		connection.SecretReference = existing.SecretReference

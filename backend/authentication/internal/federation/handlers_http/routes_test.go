@@ -3,8 +3,16 @@ package handlers_http_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -182,6 +190,132 @@ func TestCreateAdminInitialStatusIsDisabled(t *testing.T) {
 	}
 	if created.Status != federationdomain.ConnectionDisabled {
 		t.Fatalf("status=%q, want disabled", created.Status)
+	}
+}
+
+// samlCertificateDER は、保存の検査が解析する自己署名の証明書の DER である。
+func samlCertificateDER(t *testing.T) []byte {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "SAML IdP"},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return der
+}
+
+// copiedFromMetadata は、メタデータの X509Certificate のように 64 文字で折り返した、見出しのない DER の base64 である。
+func copiedFromMetadata(der []byte) string {
+	encoded := base64.StdEncoding.EncodeToString(der)
+	var out strings.Builder
+	for len(encoded) > 64 {
+		out.WriteString(encoded[:64] + "\n")
+		encoded = encoded[64:]
+	}
+	out.WriteString(encoded)
+	return out.String()
+}
+
+func samlConnectionBody(certificates ...string) map[string]any {
+	return map[string]any{
+		"display_name": "Entra ID", "protocol": "saml", "issuer": "https://sts.windows.net/tenant/",
+		"saml_entity_id": "https://sts.windows.net/tenant/", "saml_sso_url": "https://login.microsoftonline.com/tenant/saml2",
+		"saml_signing_certificates": certificates,
+		"claim_mapping":             map[string]string{"subject": "NameID", "username": "email"},
+		"linking_policy":            "none",
+	}
+}
+
+// 期待する PEM は、送った DER を標準の pem パッケージで包んだ値であり、製品の正規化の関数から計算しない。
+//
+//spec:covers REQ-AUTHENTICATION-025: 見出しのない DER の base64 で送った SAML の署名の証明書を同じ DER の正規の PEM で保存して返し、解析できない値を 400 と invalid_request で拒否して保存しないこと
+func TestCreateAdminNormalizesSAMLSigningCertificatesCopiedFromMetadata(t *testing.T) {
+	e, repos := newAdminServer(t, nil)
+	der := samlCertificateDER(t)
+	want := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+
+	refused := httptest.NewRecorder()
+	e.ServeHTTP(refused, adminRequest(t, http.MethodPost, "/api/admin/v1/identity-providers",
+		samlConnectionBody(copiedFromMetadata(der), "MIIC not a certificate")))
+	if refused.Code != http.StatusBadRequest || !strings.Contains(refused.Body.String(), "invalid_request") {
+		t.Fatalf("status=%d body=%s, want 400 invalid_request", refused.Code, refused.Body.String())
+	}
+	if stored, err := repos.Connections.List(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID); err != nil || len(stored) != 0 {
+		t.Fatalf("stored=%+v err=%v after a refused create, want nothing saved", stored, err)
+	}
+
+	created := httptest.NewRecorder()
+	e.ServeHTTP(created, adminRequest(t, http.MethodPost, "/api/admin/v1/identity-providers",
+		samlConnectionBody(copiedFromMetadata(der))))
+	if created.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", created.Code, created.Body.String())
+	}
+	var returned federationdomain.IdentityProviderConnection
+	if err := json.Unmarshal(created.Body.Bytes(), &returned); err != nil {
+		t.Fatal(err)
+	}
+	if len(returned.SAMLSigningCertificates) != 1 || returned.SAMLSigningCertificates[0] != want {
+		t.Fatalf("returned certificates=%q, want %q", returned.SAMLSigningCertificates, want)
+	}
+	stored, err := repos.Connections.Find(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, returned.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("stored=%+v err=%v", stored, err)
+	}
+	if len(stored.SAMLSigningCertificates) != 1 || stored.SAMLSigningCertificates[0] != want {
+		t.Fatalf("stored certificates=%q, want %q", stored.SAMLSigningCertificates, want)
+	}
+}
+
+// 更新も作成と同じ規則で揃える。同じ証明書を形を変えて送り直しても信頼の根拠の変更ではないので Active を保ち、
+// 解析できない値は拒否して保存済みの接続を変えない。
+//
+//spec:covers REQ-AUTHENTICATION-025: 更新でも SAML の署名の証明書を正規の PEM に揃え、解析できない値を 400 と invalid_request で拒否して保存しないこと
+func TestUpdateAdminNormalizesSAMLSigningCertificatesBeforeComparingTrust(t *testing.T) {
+	e, repos := newAdminServer(t, nil)
+	der := samlCertificateDER(t)
+	canonical := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+	now := time.Now().UTC()
+	connection := &federationdomain.IdentityProviderConnection{
+		ID: "entra", TenantID: tenancydomain.DefaultTenantID, DisplayName: "Entra ID",
+		Protocol: federationdomain.ProtocolSAML, Status: federationdomain.ConnectionActive,
+		Issuer: "https://sts.windows.net/tenant/", SAMLEntityID: "https://sts.windows.net/tenant/",
+		SAMLSSOURL: "https://login.microsoftonline.com/tenant/saml2", SAMLSigningCertificates: []string{canonical},
+		ClaimMapping:  federationdomain.ClaimMapping{Subject: "NameID", Username: "email"},
+		LinkingPolicy: federationdomain.LinkingNone, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := repos.Connections.Save(testing_tenant.Default(context.Background()), connection); err != nil {
+		t.Fatal(err)
+	}
+
+	refused := httptest.NewRecorder()
+	e.ServeHTTP(refused, adminRequest(t, http.MethodPut, "/api/admin/v1/identity-providers/entra", samlConnectionBody("not a certificate")))
+	if refused.Code != http.StatusBadRequest || !strings.Contains(refused.Body.String(), "invalid_request") {
+		t.Fatalf("status=%d body=%s, want 400 invalid_request", refused.Code, refused.Body.String())
+	}
+	stored, err := repos.Connections.Find(testing_tenant.Default(context.Background()), tenancydomain.DefaultTenantID, "entra")
+	if err != nil || stored == nil || len(stored.SAMLSigningCertificates) != 1 || stored.SAMLSigningCertificates[0] != canonical {
+		t.Fatalf("stored=%+v err=%v after a refused update, want the saved certificate kept", stored, err)
+	}
+
+	updated := httptest.NewRecorder()
+	e.ServeHTTP(updated, adminRequest(t, http.MethodPut, "/api/admin/v1/identity-providers/entra", samlConnectionBody(copiedFromMetadata(der))))
+	var returned federationdomain.IdentityProviderConnection
+	if err := json.Unmarshal(updated.Body.Bytes(), &returned); err != nil || updated.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s err=%v", updated.Code, updated.Body.String(), err)
+	}
+	if returned.Status != federationdomain.ConnectionActive {
+		t.Fatalf("status=%q after re-sending the same certificate as base64, want active preserved", returned.Status)
+	}
+	if len(returned.SAMLSigningCertificates) != 1 || returned.SAMLSigningCertificates[0] != canonical {
+		t.Fatalf("returned certificates=%q, want %q", returned.SAMLSigningCertificates, canonical)
 	}
 }
 

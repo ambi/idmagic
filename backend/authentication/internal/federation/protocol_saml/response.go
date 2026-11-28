@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/url"
@@ -149,6 +148,7 @@ func ValidateResponse(
 
 // ValidateSigningCertificates reports, without a browser round-trip, whether the connection's
 // saved SAML signing certificates parse as valid X.509 and are within their validity period.
+// Certificates are read by the same rule as the save path (federationdomain.ParseSAMLSigningCertificate).
 // An empty slice means every configured certificate is currently usable.
 func ValidateSigningCertificates(certificates []string, now time.Time) []string {
 	if len(certificates) == 0 {
@@ -156,13 +156,8 @@ func ValidateSigningCertificates(certificates []string, now time.Time) []string 
 	}
 	now = normalizedNow(now)
 	var failures []string
-	for _, certificatePEM := range certificates {
-		block, _ := pem.Decode([]byte(certificatePEM))
-		if block == nil || block.Type != "CERTIFICATE" {
-			failures = append(failures, "a SAML signing certificate could not be parsed")
-			continue
-		}
-		certificate, err := x509.ParseCertificate(block.Bytes)
+	for _, saved := range certificates {
+		certificate, err := federationdomain.ParseSAMLSigningCertificate(saved)
 		if err != nil {
 			failures = append(failures, "a SAML signing certificate could not be parsed")
 			continue
@@ -239,15 +234,10 @@ func onlyAssertion(response *etree.Element) (*etree.Element, error) {
 
 func validateSignature(signed *etree.Element, certificates []string) (*etree.Element, error) {
 	var lastErr error
-	for _, certificatePEM := range certificates {
-		block, _ := pem.Decode([]byte(certificatePEM))
-		if block == nil || block.Type != "CERTIFICATE" {
-			lastErr = errors.New("invalid SAML signing certificate")
-			continue
-		}
-		certificate, err := x509.ParseCertificate(block.Bytes)
+	for _, saved := range certificates {
+		certificate, err := federationdomain.ParseSAMLSigningCertificate(saved)
 		if err != nil {
-			lastErr = err
+			lastErr = fmt.Errorf("invalid SAML signing certificate: %w", err)
 			continue
 		}
 		store := &dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{certificate}}

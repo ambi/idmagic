@@ -4,7 +4,7 @@ import { FieldError } from '../../components/FieldError'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import {
-  containsPemBlock,
+  containsCertificate,
   type FormValidation,
   formSchema,
   requiredList,
@@ -115,7 +115,7 @@ export function formFrom(connection: IdentityProviderConnection): FormState {
   }
 }
 
-/** 証明書の欄は、空行で区切った PEM の証明書の並びである。 */
+/** 証明書の欄は、空行で区切った証明書（PEM か、メタデータの X509Certificate の base64）の並びである。 */
 export function splitCertificates(value: string): string[] {
   return value
     .split(/\n\s*\n/)
@@ -125,7 +125,7 @@ export function splitCertificates(value: string): string[] {
 
 // 規則は federation/domain の IdentityProviderConnection.Validate に従う。issuer とエンドポイントは
 // userinfo とフラグメントのない https の URL、subject と username の claim は必須である。
-// 証明書は保存時には解析されないが、PEM でなければ応答の署名を検証できないので、ここで確かめる。
+// 証明書はサーバーが保存時に解析して PEM に揃えるので、ここでは形だけを確かめる。
 export function identityProviderSchema(protocol: FormState['protocol']) {
   const oidc = protocol === 'oidc'
   return formSchema({
@@ -140,7 +140,7 @@ export function identityProviderSchema(protocol: FormState['protocol']) {
     samlCertificates: when(
       !oidc,
       rule(requiredList(splitCertificates), (entries) =>
-        entries.every(containsPemBlock) ? undefined : { kind: 'invalidPem' },
+        entries.every(containsCertificate) ? undefined : { kind: 'invalidCertificate' },
       ),
     ),
     subjectClaim: requiredText(),

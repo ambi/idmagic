@@ -29,7 +29,7 @@ export const identityProvidersDictionary = defineDictionary(
     jwksUri: 'JWKS URI',
     samlEntityId: 'SAML Entity ID',
     samlSsoUrl: 'SAML SSO URL',
-    samlCertificates: '署名証明書 (PEM、複数は空行区切り)',
+    samlCertificates: '署名証明書 (PEM かメタデータの X509Certificate の値、複数は空行区切り)',
     subjectClaim: 'Subject claim',
     usernameClaim: 'Username claim',
     emailClaim: 'Email claim',
@@ -105,7 +105,8 @@ export const identityProvidersDictionary = defineDictionary(
     jwksUri: 'JWKS URI',
     samlEntityId: 'SAML Entity ID',
     samlSsoUrl: 'SAML SSO URL',
-    samlCertificates: 'Signing certificates (PEM, separated by blank lines)',
+    samlCertificates:
+      'Signing certificates (PEM or the X509Certificate value from metadata, separated by blank lines)',
     subjectClaim: 'Subject claim',
     usernameClaim: 'Username claim',
     emailClaim: 'Email claim',

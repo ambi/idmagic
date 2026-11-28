@@ -21,6 +21,8 @@ export const fieldErrorDictionary = defineDictionary(
     invalidScope:
       '「{entry}」はスコープに使えません。空白で区切り、ASCII の記号と英数字だけを使ってください（" と \\ は使えません）。',
     invalidPem: '-----BEGIN CERTIFICATE----- で始まる PEM 形式の証明書を貼り付けてください。',
+    invalidCertificate:
+      'PEM 形式の証明書か、IdP のメタデータの X509Certificate の値をそのまま貼り付けてください。',
     invalidJson: 'JSON として読める値を入力してください。',
     invalid: '入力内容を確認してください。',
     characterCount: '{count} / {max}',
@@ -47,6 +49,8 @@ export const fieldErrorDictionary = defineDictionary(
     invalidScope:
       '"{entry}" cannot be used as a scope. Separate scopes with spaces and use only ASCII letters, digits, and symbols other than " and \\.',
     invalidPem: 'Paste a PEM certificate that starts with -----BEGIN CERTIFICATE-----.',
+    invalidCertificate:
+      'Paste a PEM certificate, or the X509Certificate value from the IdP metadata as it is.',
     invalidJson: 'Enter a value that parses as JSON.',
     invalid: 'Check this value.',
     characterCount: '{count} / {max}',

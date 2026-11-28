@@ -1,6 +1,9 @@
 package protocol_saml
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/pem"
 	"os"
 	"strings"
 	"testing"
@@ -8,6 +11,7 @@ import (
 
 	"github.com/beevik/etree"
 
+	federationdomain "github.com/ambi/idmagic/backend/authentication/internal/federation/domain"
 	"github.com/ambi/idmagic/backend/shared/testing_httprecord"
 )
 
@@ -64,9 +68,6 @@ func copyFromEntraMetadata(t *testing.T) (copiedFromMetadata, time.Time) {
 // 記録の証明書が、取得の時点で使える証明書であることを確かめる。
 // X509Certificate は XML Signature §4.5.4（X509Data）の定めどおり DER の base64 なので、PEM の見出しで包めば同じ証明書になる。
 //
-// 管理者が写したままの値（PEM の見出しのない base64）は、まだ確かめない。
-// 今は保存が通り、ログインの署名の検証で失敗する。保存と検証の規則を揃える wi-73879 が、写したままの値の検査をここへ足す。
-//
 //spec:covers REQ-AUTHENTICATION-001: Entra ID の公開の連携メタデータの署名の証明書が、PEM で保存すれば上流の SAML の応答の検証に使える証明書として受け付けられること
 func TestSigningCertificates_FromEntraMetadataAreUsableAsPEM(t *testing.T) {
 	copied, at := copyFromEntraMetadata(t)
@@ -79,5 +80,38 @@ func TestSigningCertificates_FromEntraMetadataAreUsableAsPEM(t *testing.T) {
 	}
 	if failures := ValidateSigningCertificates(pems, at); len(failures) != 0 {
 		t.Fatalf("the recorded signing certificates are not usable at retrieval: %v", failures)
+	}
+}
+
+// 管理者が写したままの値（PEM の見出しのない base64）を、保存の正規化が同じ DER の PEM に揃え、
+// 接続の検査が、保存前の値でも保存後の値でも使える証明書と報告することを確かめる。
+// 応答の署名の検証が同じ規則で読むことは、署名済みの応答の記録を持つ TestValidateResponse_AcceptsSigningCertificateCopiedFromMetadata が確かめる。
+//
+//spec:covers REQ-AUTHENTICATION-025: Entra ID の公開の連携メタデータから写したままの署名の証明書を、同じ DER の正規の PEM に揃えて保存すること
+func TestSigningCertificates_FromEntraMetadataAreUsableAsCopied(t *testing.T) {
+	copied, at := copyFromEntraMetadata(t)
+	if failures := ValidateSigningCertificates(copied.certificates, at); len(failures) != 0 {
+		t.Fatalf("the copied signing certificates are not usable: %v", failures)
+	}
+	saved, err := federationdomain.NormalizeSAMLSigningCertificates(copied.certificates)
+	if err != nil {
+		t.Fatalf("NormalizeSAMLSigningCertificates: %v", err)
+	}
+	for i, value := range saved {
+		block, rest := pem.Decode([]byte(value))
+		if block == nil || block.Type != "CERTIFICATE" || len(rest) != 0 {
+			t.Fatalf("saved certificate %d is not one PEM certificate: %q", i+1, value)
+		}
+		// 期待する DER は、製品の関数を通さず、写した値から空白を除いて復号する。
+		want, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(copied.certificates[i]), ""))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(block.Bytes, want) {
+			t.Fatalf("saved certificate %d does not carry the DER copied from the metadata", i+1)
+		}
+	}
+	if failures := ValidateSigningCertificates(saved, at); len(failures) != 0 {
+		t.Fatalf("the saved signing certificates are not usable: %v", failures)
 	}
 }

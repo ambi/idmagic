@@ -39,6 +39,8 @@ function fieldErrorMessage(problem: FieldProblem, t: Dictionary): string {
       return t.invalidScope.replace('{entry}', problem.entry)
     case 'invalidPem':
       return t.invalidPem
+    case 'invalidCertificate':
+      return t.invalidCertificate
     case 'invalidJson':
       return t.invalidJson
     case 'invalid':
