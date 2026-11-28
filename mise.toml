@@ -16,9 +16,51 @@ bun = "1.4.5"
 # 生成される変異の集合がバージョンで変わり、work item に残した一覧が再現できなくなるためである。
 "go:github.com/ambi/gamut/cmd/gamut" = "0.1.0"
 
+# タスクは内容ごとの節に分け、節の中は名前の辞書順に並べる。
+# タスクを足すときは内容の合う節の辞書順の位置へ置き、合う節がなければ節を足す。
+
+# ---- 環境の準備と開発ツールの版 ----
+
+# 入力より新しい印があれば何もしないので、ほかのタスクの前提に置いても費用はほぼない。
+# bun は導入済みの印を作らないので、導入の後に印を置く。
+[tasks.install-ui]
+description = "Install UI dependencies"
+dir = "frontend"
+sources = ["package.json", "bun.lock"]
+outputs = ["node_modules/.install-stamp"]
+run = "bun install --frozen-lockfile && touch node_modules/.install-stamp"
+
+[tasks.list-dependency-releases]
+description = "List stable upstream releases for dependency repositories"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run list-dependency-releases -- <owner/repository...>" >&2; exit 2; }
+for dependency_repository in "$@"; do
+  echo "$dependency_repository"
+  gh api "repos/$dependency_repository/releases?per_page=20" --jq '[.[] | select(.prerelease == false and .draft == false)] | .[:5] | .[] | {tag_name, html_url}'
+done
+'''
+
+[tasks.list-outdated-development-tools]
+description = "List development runtimes and standalone CLI tools that have a newer release"
+run = "mise outdated --bump --local"
+
 [tasks.setup]
 description = "Install repository dependencies"
 depends = ["setup-tools", "install-ui"]
+
+[tasks.setup-cli-tools]
+description = "Install host CLI tools used by repository instructions"
+run = '''
+#!/usr/bin/env sh
+set -eu
+if ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew not found. Install manually: jq yq ripgrep fd gh ast-grep" >&2
+  exit 1
+fi
+brew install jq yq ripgrep fd gh ast-grep
+'''
 
 [tasks.setup-tools]
 description = "Install embedded tooling dependencies"
@@ -29,10 +71,14 @@ run = [
   "ln -sfn tools/node_modules node_modules",
 ]
 
-[tasks.update-tools-lockfile]
-description = "Resolve declared embedded tooling dependencies and update the lockfile"
+[tasks.show-package-metadata]
+description = "Show registry metadata for a package"
 dir = "tools"
-run = "bun install"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+bun info "$@" --json | jq '{name, version, "dist-tags": .["dist-tags"], deprecated, engines, peerDependencies}'
+'''
 
 [tasks.show-tool-versions]
 description = "Show the development tool versions selected by mise"
@@ -49,63 +95,55 @@ run = [
   "gamut -version",
 ]
 
-[tasks.list-outdated-development-tools]
-description = "List development runtimes and standalone CLI tools that have a newer release"
-run = "mise outdated --bump --local"
-
 [tasks.update-development-tools]
 description = "Update development runtimes and standalone CLI tools to the latest releases"
 run = "mise upgrade --bump --local"
 
-[tasks.list-dependency-releases]
-description = "List stable upstream releases for dependency repositories"
+[tasks.update-tools-lockfile]
+description = "Resolve declared embedded tooling dependencies and update the lockfile"
+dir = "tools"
+run = "bun install"
+
+# ---- 集約ゲートと CI ----
+
+[tasks.check-ci-results]
+description = "Require the CI plan and every selected verification group to succeed"
+dir = "tools"
+run = "bun run verification/src/ci-main.ts results"
+
+[tasks.check-ci-spec]
+description = "Verify specifications and repository rules without rebuilding Go references"
+depends = ["compile-spec"]
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run list-dependency-releases -- <owner/repository...>" >&2; exit 2; }
-for dependency_repository in "$@"; do
-  echo "$dependency_repository"
-  gh api "repos/$dependency_repository/releases?per_page=20" --jq '[.[] | select(.prerelease == false and .draft == false)] | .[:5] | .[] | {tag_name, html_url}'
-done
+test "$#" -le 1 || { echo "usage: mise run check-ci-spec -- [base-revision]" >&2; exit 2; }
+# Go の参照検査は CI の Go テスト直後へ置き、そのジョブのビルド結果を利用する。
+mise run -c --skip-deps check-spec-inputs ::: check-repository ${1:+"$1"} ::: check-ui-pages
 '''
 
-[tasks.setup-cli-tools]
-description = "Install host CLI tools used by repository instructions"
+[tasks.plan-ci]
+description = "Select CI verification groups from two Git revisions (all groups on unknown input)"
+dir = "tools"
 run = '''
 #!/usr/bin/env sh
 set -eu
-if ! command -v brew >/dev/null 2>&1; then
-  echo "Homebrew not found. Install manually: jq yq ripgrep fd gh ast-grep" >&2
-  exit 1
-fi
-brew install jq yq ripgrep fd gh ast-grep
+test "$#" -le 2 || { echo "usage: mise run plan-ci -- [base head]" >&2; exit 2; }
+bun run verification/src/ci-main.ts plan "$@"
 '''
 
-[tasks.compile-spec]
-description = "Compile TypeSpec and emit OpenAPI"
-dir = "tools"
-run = "bunx tsp compile ../spec/main.tsp --config ../spec/tspconfig.yaml"
+[tasks.report-verification]
+description = "Report test execution, analysis gaps, and uncollected change-resistance evidence"
+run = "bun run tools/verification/src/report.ts \"$@\""
 
-[tasks.generate-contract]
-description = "Compile TypeSpec, then generate runtime route metadata from the OpenAPI"
-depends = ["compile-spec"]
+[tasks.time-verify]
+description = "Time every gate of a verification suite serially"
 dir = "tools"
-run = "bun run generate-contract/src/main.ts"
-
-[tasks.check-generated-contract]
-description = "Compile TypeSpec, then check runtime route metadata against it"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run generate-contract/src/main.ts --check"
-
-# 入力より新しい印があれば何もしないので、ほかのタスクの前提に置いても費用はほぼない。
-# bun は導入済みの印を作らないので、導入の後に印を置く。
-[tasks.install-ui]
-description = "Install UI dependencies"
-dir = "frontend"
-sources = ["package.json", "bun.lock"]
-outputs = ["node_modules/.install-stamp"]
-run = "bun install --frozen-lockfile && touch node_modules/.install-stamp"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run task-timing/src/main.ts "${1:-verify}"
+'''
 
 [tasks.verify]
 description = "Run the standard verification suite in parallel, reporting every gate that failed"
@@ -128,14 +166,6 @@ mise run -c \
   build-ui
 '''
 
-[tasks.verify-full]
-description = "Run standard verification, OpenLDAP tests, and browser end-to-end tests"
-# ブラウザー統合だけが要求するスタック起動 (Go のビルド、API、Vite 開発サーバー、初期データ)
-# を、静的検査と単体テストのたびに毎回組み合わせる理由はない。通常のゲートからは外し、
-# ここと CI の独立した job が後退検出を持つ。
-# OpenLDAP の実物を使う結合試験と E2E も、Docker を必要とする専用タスクで実行する。
-run = "mise run -c verify ::: test-go-openldap ::: test-ui-e2e"
-
 # 変更が届き得る層だけを検証する。Go は変更したパッケージとそのテストの逆依存に絞り、
 # どの層も持たないパスや、Go のテストが読み得るパッケージ外のパスでは全体へ戻す。
 # 選ばなかった層は理由とともに .verification/verify-selection.json へ書き、成功として数えない。
@@ -147,6 +177,14 @@ set -eu
 test "$#" -le 1 || { echo "usage: mise run verify-changed -- [base-revision]" >&2; exit 2; }
 bun run tools/changed-packages/src/verify.ts changed "$@"
 '''
+
+[tasks.verify-full]
+description = "Run standard verification, OpenLDAP tests, and browser end-to-end tests"
+# ブラウザー統合だけが要求するスタック起動 (Go のビルド、API、Vite 開発サーバー、初期データ)
+# を、静的検査と単体テストのたびに毎回組み合わせる理由はない。通常のゲートからは外し、
+# ここと CI の独立した job が後退検出を持つ。
+# OpenLDAP の実物を使う結合試験と E2E も、Docker を必要とする専用タスクで実行する。
+run = "mise run -c verify ::: test-go-openldap ::: test-ui-e2e"
 
 # rebase 後の統合の検証。両側は各自のツリーで検証済みなので、両側の変更が届く層と
 # パッケージの共通部分だけを再実行する。引数は rebase 前に検証したソースのコミット。
@@ -194,15 +232,6 @@ if [ -n "$failed" ]; then
 fi
 '''
 
-[tasks.time-verify]
-description = "Time every gate of a verification suite serially"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-bun run task-timing/src/main.ts "${1:-verify}"
-'''
-
 [tasks.verify-spec]
 description = "Validate specifications and embedded tooling, reporting every gate that failed"
 run = '''
@@ -211,6 +240,169 @@ mise run -c \
   test-tools ::: \
   typecheck-tools ::: \
   lint-tools
+'''
+
+# ---- 仕様と契約の生成 ----
+
+[tasks.check-api-compat]
+description = "Compare OpenAPI against the saved baseline, even before publication"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/runner.ts api-compat"
+
+[tasks.check-config-reference]
+description = "Check the operator configuration reference"
+run = "go run ./backend/cmd/idmagic-config-reference --check --output docs/operations/configuration.md"
+
+[tasks.check-gateway-routes]
+description = "Check the frontend gateway route allowlists against the assembled router"
+run = "go run ./backend/cmd/idmagic-gateway-routes"
+
+[tasks.check-generated-contract]
+description = "Compile TypeSpec, then check runtime route metadata against it"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run generate-contract/src/main.ts --check"
+
+[tasks.check-published-api-compat]
+# context: concerns=contract
+description = "Enforce OpenAPI compatibility when a published contract exists"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/runner.ts published-api-compat"
+
+[tasks.check-route-reference]
+description = "Check the route priority reference"
+run = "go run ./backend/cmd/idmagic-route-reference --check --output docs/operations/route-priority.md"
+
+# UI ページ宣言の参照、実装の経路とページマーカー、生成文書の古さを検査する。
+# 実装のすべての経路は、ページか描画しない経路の説明として宣言されている必要がある。
+[tasks.check-ui-pages]
+description = "Check UI page declarations against frontend routes and markers, and the generated documents for drift"
+dir = "tools"
+run = "bun run build-site/src/write-ui-pages.ts --check"
+
+[tasks.compile-spec]
+description = "Compile TypeSpec and emit OpenAPI"
+dir = "tools"
+run = "bunx tsp compile ../spec/main.tsp --config ../spec/tspconfig.yaml"
+
+[tasks.compile-ui-spec]
+description = "Compile the UI design declarations separately from the public HTTP contract"
+dir = "tools"
+run = "bunx tsp compile ../spec/modules/frontend --no-emit"
+
+[tasks.generate-config-reference]
+description = "Generate the operator configuration reference"
+run = "go run ./backend/cmd/idmagic-config-reference --output docs/operations/configuration.md"
+
+[tasks.generate-contract]
+description = "Compile TypeSpec, then generate runtime route metadata from the OpenAPI"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run generate-contract/src/main.ts"
+
+[tasks.generate-route-reference]
+description = "Generate the route priority reference"
+run = "go run ./backend/cmd/idmagic-route-reference --output docs/operations/route-priority.md"
+
+[tasks.generate-spec-from-testdata]
+description = "Regenerate documented examples and state machines from their testdata"
+dir = "tools"
+run = "bun run check/src/generate-spec-from-testdata.ts"
+
+# 文書サイトは TypeSpec から生成した OpenAPI を読むので、先にコンパイルして古い生成物を描かない。
+[tasks.generate-ui-pages]
+description = "Generate the UI page inventory and interaction design from TypeSpec"
+dir = "tools"
+run = "bun run build-site/src/write-ui-pages.ts \"$@\""
+
+[tasks.update-api-baseline]
+description = "Compile TypeSpec, then freeze the generated OpenAPI as the release baseline"
+depends = ["compile-spec"]
+run = "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json"
+
+# ---- リポジトリ検査 ----
+
+[tasks.check]
+description = "Validate specifications, records, dependencies, commands, and agent guidance"
+depends = ["compile-spec"]
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check -- [base-revision]" >&2; exit 2; }
+# このタスクの依存で仕様を生成済みなので、子の依存から同じ生成を繰り返さない。
+mise run -c --skip-deps \
+  check-spec-inputs ::: \
+  check-repository ${1:+"$1"} ::: \
+  check-config-reference ::: \
+  check-route-reference ::: \
+  check-gateway-routes ::: \
+  check-ui-pages ::: \
+  check-repository-tests
+'''
+
+[tasks.check-admin-scopes]
+description = "Check admin API scope declarations"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/runner.ts admin-scopes"
+
+[tasks.check-agent-guidance]
+# context: targets=.agents,AGENTS.md,tools/check/src/agent-guidance.ts
+description = "Check repository-local agent guidance against the current workflow"
+dir = "tools"
+run = "bun run check/src/runner.ts agent-guidance"
+
+[tasks.check-boundaries]
+# context: concerns=boundary
+description = "Reject forbidden source dependencies"
+dir = "tools"
+run = "bun run check/src/runner.ts boundaries \"$@\""
+
+[tasks.check-boundary-debt-ratchet]
+description = "Reject boundary violations added beyond a Git revision"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check-boundary-debt-ratchet -- [base-revision]" >&2; exit 2; }
+bun run check/src/runner.ts boundary-debt-ratchet ${1:+--base-revision "$1"}
+'''
+
+[tasks.check-contract-drift]
+# context: concerns=contract
+description = "Check TypeSpec request and response bodies against what the Go handlers decode and write"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/runner.ts contract-drift"
+
+[tasks.check-event-contract]
+description = "Check the published domain event payload vocabulary against the code that reads it"
+dir = "tools"
+run = "bun run check/src/runner.ts event-contract"
+
+[tasks.check-links]
+# context: targets=docs,.agents,AGENTS.md,work-items
+description = "Check repository-local Markdown links and anchors"
+dir = "tools"
+run = "bun run check/src/runner.ts links"
+
+[tasks.check-operation-references]
+# context: concerns=contract
+description = "Diagnose malformed operation references and declarations not attached to Go tests"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run check/src/runner.ts operation-references"
+
+[tasks.check-repository]
+description = "Run every registered TypeScript repository check in one process"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 1 || { echo "usage: mise run check-repository -- [base-revision]" >&2; exit 2; }
+bun run check/src/runner.ts all ${1:+--base-revision "$1"}
 '''
 
 # tools のテストのうち、実リポジトリの文書や設定を入力にするものは `*.repository.ts` として
@@ -225,74 +417,68 @@ set -eu
 bun test $(fd -e ts -g '*.repository.ts' . --exclude node_modules | sed 's#^#./#')
 '''
 
-[tasks.test-tools]
-description = "Run embedded repository tooling tests"
+[tasks.check-schema-tables]
+description = "Check the table descriptions in the database design against the schema"
 dir = "tools"
-depends = ["setup-tools"]
-run = "bun test"
+run = "bun run check/src/runner.ts schema-tables"
 
-[tasks.test-tools-file]
-# context: targets=tools
-description = "Run one embedded repository tooling test file"
+[tasks.check-security-controls]
+description = "Reject guards that cannot refuse and declared refusals no test names"
+dir = "tools"
+run = "bun run check/src/runner.ts security-controls"
+
+# 生成検査と registry の spec group が、check にも含まれる共通の仕様ゲートである。
+[tasks.check-spec]
+# context: targets=spec,docs/modules,docs/requirements
+description = "Compile TypeSpec and validate canonical specification documents"
+depends = ["compile-spec", "check-spec-inputs"]
+dir = "tools"
+run = "bun run check/src/runner.ts spec"
+
+[tasks.check-spec-impact]
+description = "Check declared specification impact against the specification diff since a Git revision"
 dir = "tools"
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run test-tools-file -- <path relative to tools/>" >&2; exit 2; }
-bun test "$@"
+test "$#" -le 1 || { echo "usage: mise run check-spec-impact -- [base-revision]" >&2; exit 2; }
+bun run check/src/runner.ts spec-impact ${1:+--base-revision "$1"}
 '''
 
-[tasks.typecheck-tools]
-# context: targets=tools
-description = "Type-check embedded repository tooling"
+[tasks.check-spec-inputs]
+description = "Check generated specification inputs shared by both check suites"
+depends = ["compile-spec"]
+# 個別入口の前提は残し、この入口では上の依存が生成した OpenAPI を共有する。
+run = "mise run -c --skip-deps check-generated-contract ::: check-site"
+
+[tasks.check-sql-concurrency]
+# context: targets=backend
+description = "Reject unguarded writes after reads of the same table"
 dir = "tools"
-depends = ["setup-tools"]
-run = "bun run typecheck"
+run = "bun run check/src/runner.ts sql-concurrency"
 
-[tasks.format-tools]
-description = "Format embedded repository tooling"
+[tasks.check-status-drift]
+description = "Check the status codes TypeSpec declares against the ones the Go handlers write"
+depends = ["compile-spec"]
 dir = "tools"
-run = "bun run format"
+run = "bun run check/src/runner.ts status-drift"
 
-[tasks.lint-tools]
-# context: targets=tools
-description = "Lint embedded repository tooling"
+[tasks.check-terminology]
+description = "Check design documents against the adopted terminology"
 dir = "tools"
-depends = ["setup-tools"]
-run = "bun run lint"
+run = "bun run check/src/runner.ts terminology"
 
-[tasks.list-outdated-tools-dependencies]
-description = "List embedded tooling dependencies that have a newer release"
+[tasks.check-unspecified-vocabulary]
+description = "Check that every declared error code and domain event appears in a requirement"
 dir = "tools"
-run = "bun outdated"
+run = "bun run check/src/runner.ts unspecified-vocabulary"
 
-[tasks.update-tools-dependencies]
-description = "Update embedded tooling dependency declarations to the latest releases"
+[tasks.check-work-items]
+# context: kinds=*
+description = "Validate work-item records"
 dir = "tools"
-run = "bun update --latest"
-
-[tasks.show-package-metadata]
-description = "Show registry metadata for a package"
-dir = "tools"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-bun info "$@" --json | jq '{name, version, "dist-tags": .["dist-tags"], deprecated, engines, peerDependencies}'
-'''
-
-[tasks.list-outdated-example-dependencies]
-description = "List MCP walkthrough dependencies that have a newer release"
-dir = "examples/mcp-client-walkthrough"
-run = "bun outdated"
-
-[tasks.update-example-dependencies]
-description = "Update MCP walkthrough dependencies to the latest releases"
-dir = "examples/mcp-client-walkthrough"
-run = "bun update --latest"
-
-[tasks.inspect-container-image]
-description = "Inspect the registry manifest and digest of a container image"
-run = 'docker buildx imagetools inspect "$@"'
+# 成功した対象の列挙は既定では出さない。全件を見たいときは `-- --verbose` を渡す。
+run = "bun run check/src/runner.ts work-items \"$@\""
 
 [tasks.lint-repo]
 description = "Lint shell scripts, audit workflows, and scan for secrets"
@@ -326,6 +512,18 @@ if [ -n "$failed" ]; then
 fi
 '''
 
+[tasks.report-contract-evidence]
+description = "List unresolved HTTP operations and candidate contract test files"
+depends = ["compile-spec"]
+run = "bun run tools/verification/src/contract-evidence-inventory.ts \"$@\""
+
+[tasks.report-security-test-gaps]
+description = "List refused state changes no test proves were left untouched"
+dir = "tools"
+run = "bun run security-test-gap-report/src/main.ts"
+
+# ---- 依存と秘密情報の監査 ----
+
 [tasks.audit-dependencies]
 description = "Scan Go and Bun dependencies for known vulnerabilities"
 # 対象は列挙する。--recursive にすると、後から増えた依存定義ファイルが所有者と抑止方針の
@@ -346,28 +544,167 @@ exec osv-scanner scan source \
   "$@"
 '''
 
-[tasks.check-vulnerability-suppressions]
-description = "Require a reason and an unexpired deadline on every vulnerability suppression"
-dir = "tools"
-run = "bun run check/src/runner.ts vulnerability-suppressions"
-
 [tasks.audit-secrets-history]
 description = "Scan the whole Git history for secrets"
 # 履歴の走査だけは lint-repo に混ぜない。毎回のゲートに入れるには重く、監査として明示的に呼ぶものである。
 run = "betterleaks git . --config .betterleaks.toml --redact --no-banner"
 
-[tasks.verify-go]
-description = "Verify Go with lint and tests"
-depends = ["lint-go", "test-go"]
+[tasks.check-vulnerability-suppressions]
+description = "Require a reason and an unexpired deadline on every vulnerability suppression"
+dir = "tools"
+run = "bun run check/src/runner.ts vulnerability-suppressions"
 
-[tasks.lint-go]
-# context: targets=backend
-description = "Run Go lint"
-run = "golangci-lint run --allow-serial-runners ./..."
+# ---- 作業項目と仕様の調査 ----
 
-[tasks.lint-go-fix]
-description = "Run Go lint and apply the fixes it can make"
-run = "golangci-lint run --fix ./..."
+[tasks.brief]
+description = "Show what one work item should be read from"
+# 規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する
+# work item まで一度にたどる。任意の語を探す spec-where とは入力も出力も別なので分けてある。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run brief -- <work-item>" >&2; exit 2; }
+bun run brief/src/main.ts "$@"
+'''
+
+[tasks.move-work-item]
+description = "Complete (or with --cancel, cancel) a work item: check it, collapse it to its summary, and move it to done"
+dir = "tools"
+run = "bun run work-item/src/main.ts \"$@\""
+
+[tasks.report-agent-friction]
+description = "Count Agent-Friction commit trailers by target to find guidance agents keep tripping over"
+# 繰り返しの判断材料を示す報告であり、ゲートにしない。引数は git log のリビジョン範囲。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run agent-friction/src/main.ts "$@"
+'''
+
+[tasks.spec-diff]
+description = "Show normative specification changes against a git ref"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bun run spec-diff/src/main.ts "${1:-main}"
+'''
+
+[tasks.spec-review-candidates]
+description = "List production Go code that no specification-citing test executes, as candidates to review"
+# 仕様漏れの判定ではなく、既存コードを書き起こすときの着手点を報告する。ゲートにはしない。
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run spec-review-candidates -- <package-directory>" >&2; exit 2; }
+bun run spec-review-candidates/src/main.ts "$1"
+'''
+
+[tasks.spec-where]
+description = "Locate a term across specification, code, and work items"
+run = '''
+#!/usr/bin/env sh
+set -u
+test "$#" -ge 1 || { echo "usage: mise run spec-where -- <term>" >&2; exit 2; }
+echo "── specification ──"
+rg -n --no-heading --glob '!generated' "$1" docs spec || true
+echo "── code and tests ──"
+rg -n --no-heading --glob '!docs/**' --glob '!spec/**' --glob '!work-items/**' --glob '!**/generated/**' "$1" . || true
+echo "── work items ──"
+rg -l "$1" work-items || true
+'''
+
+[tasks.work-item-number]
+description = "Pick an unused work item identifier number"
+# 起票のたびに最大値を数える手順を置き換える。数える手順は、まだ push されていない
+# 起票を見られないため、並列のワークツリーと複数のメンバーの下で衝突を生む。
+dir = "tools"
+run = "bun run work-item-number/src/main.ts"
+
+# ---- 文書サイト ----
+
+[tasks.build-site]
+description = "Compile TypeSpec, then build the browsable documentation and API reference site into site/"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run build-site/src/main.ts"
+
+[tasks.check-site]
+description = "Compile TypeSpec, then build the documentation site in memory and check it without writing"
+depends = ["compile-spec"]
+dir = "tools"
+run = "bun run build-site/src/main.ts --check"
+
+# Swagger UI は OpenAPI を fetch で読む。file:// で開くとブラウザーがその取得を拒むので、
+# API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。
+[tasks.serve-site]
+description = "Serve the built documentation site over HTTP"
+dir = "tools"
+run = "bun run build-site/src/serve.ts"
+
+# ---- リポジトリツール（tools） ----
+
+[tasks.format-tools]
+description = "Format embedded repository tooling"
+dir = "tools"
+run = "bun run format"
+
+[tasks.lint-tools]
+# context: targets=tools
+description = "Lint embedded repository tooling"
+dir = "tools"
+depends = ["setup-tools"]
+run = "bun run lint"
+
+[tasks.list-outdated-tools-dependencies]
+description = "List embedded tooling dependencies that have a newer release"
+dir = "tools"
+run = "bun outdated"
+
+[tasks.test-tools]
+description = "Run embedded repository tooling tests"
+dir = "tools"
+depends = ["setup-tools"]
+run = "bun test"
+
+[tasks.test-tools-file]
+# context: targets=tools
+description = "Run one embedded repository tooling test file"
+dir = "tools"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run test-tools-file -- <path relative to tools/>" >&2; exit 2; }
+bun test "$@"
+'''
+
+[tasks.typecheck-tools]
+# context: targets=tools
+description = "Type-check embedded repository tooling"
+dir = "tools"
+depends = ["setup-tools"]
+run = "bun run typecheck"
+
+[tasks.update-tools-dependencies]
+description = "Update embedded tooling dependency declarations to the latest releases"
+dir = "tools"
+run = "bun update --latest"
+
+# ---- Go のビルド、静的検査、テスト ----
+
+[tasks.build-go]
+description = "Build all Go packages with version metadata"
+run = '''
+#!/usr/bin/env sh
+set -eu
+git_commit=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo unknown)
+version=${VERSION:-0.0.0-dev}
+go build -ldflags "-X github.com/ambi/idmagic/backend/shared/version.Version=$version -X github.com/ambi/idmagic/backend/shared/version.GitCommit=$git_commit -X github.com/ambi/idmagic/backend/shared/version.BuildDate=$build_date" ./...
+'''
 
 [tasks.clean-go-test-cache]
 description = "Clear the Go test result cache"
@@ -383,40 +720,35 @@ run = "golangci-lint cache clean"
 description = "Format Go code"
 run = "golangci-lint fmt"
 
+[tasks.generate-sqlc]
+description = "Regenerate sqlc PostgreSQL query code"
+run = "sqlc generate"
+
+[tasks.lint-go]
+# context: targets=backend
+description = "Run Go lint"
+run = "golangci-lint run --allow-serial-runners ./..."
+
+[tasks.lint-go-fix]
+description = "Run Go lint and apply the fixes it can make"
+run = "golangci-lint run --fix ./..."
+
+[tasks.list-go-package-dependencies]
+description = "List modules supplying repository packages and their tests"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+go list -deps -test -json ./... | jq -r 'select(.Module != null) | [.Module.Path, .Module.Version] | @tsv' | sort -u
+'''
+
+[tasks.list-outdated-go-dependencies]
+description = "List Go module dependencies that have a newer release in their current module path"
+run = "go list -m -u -mod=readonly all"
+
 [tasks.test-go]
 description = "Run Go tests without Docker-dependent OpenLDAP integration or E2E tests"
 depends = ["compile-spec"]
 run = "bun run tools/verification/src/main.ts --full --report .verification/test-go.json -- ./..."
-
-[tasks.test-go-openldap]
-description = "Lint and run OpenLDAP adapter integration and connector E2E tests (requires Docker)"
-run = "mise run -c lint-go-openldap ::: test-go-openldap-integration ::: test-go-openldap-e2e"
-
-[tasks.lint-go-openldap]
-description = "Lint Directory Connector including OpenLDAP-tagged tests"
-run = "golangci-lint run --allow-serial-runners --build-tags=openldap ./backend/directoryconnector/..."
-
-[tasks.test-go-openldap-integration]
-description = "Run LDAP adapter integration tests against real OpenLDAP (requires Docker)"
-run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-integration.json -- -count=1 -tags=openldap ./backend/directoryconnector/internal/ldap_goldap ./backend/directoryconnector/internal/testing_openldap"
-
-[tasks.test-go-openldap-e2e]
-description = "Run Directory Connector E2E against real OpenLDAP (requires Docker)"
-run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-e2e.json -- -count=1 -tags=openldap ./backend/directoryconnector -run '^TestDirectory(ConnectorSyncsOpenLDAPUsers|DelegationAuthenticatesThroughTheProductionRouter)$'"
-
-[tasks.test-go-package]
-description = "Run Go tests for one package; pass --race to add the race detector"
-# 通常のビルドが既定で、並行処理そのものを作る作業だけが --race を付ける。
-run = '''
-#!/usr/bin/env sh
-set -eu
-case "$#:${2:-}" in
-  1:) race="" ;;
-  2:--race) race="-race" ;;
-  *) echo "usage: mise run test-go-package -- <package> [--race]" >&2; exit 2 ;;
-esac
-bun run tools/verification/src/main.ts --report .verification/test-go-package.json -- $race "$1"
-'''
 
 [tasks.test-go-changed]
 description = "Run Go tests for the changed packages and their reverse dependencies; pass --race to add the race detector"
@@ -442,6 +774,16 @@ fi
 echo "$packages" | tr '\n' ' ' | xargs bun run tools/verification/src/main.ts --report .verification/test-go-changed.json -- $race
 '''
 
+[tasks.test-go-cover]
+description = "Run Go tests with coverage"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -le 2 || { echo "usage: mise run test-go-cover -- [package] [skip-pattern]" >&2; exit 2; }
+bun run tools/verification/src/main.ts --report .verification/test-go-cover.json -- -coverprofile=coverage.out -covermode=atomic -skip "${2:-^$}" "${1:-./...}"
+go tool cover -func=coverage.out
+'''
+
 [tasks.test-go-one]
 # context: targets=backend
 description = "Run one Go test by name in one package"
@@ -452,144 +794,28 @@ test "$#" -ge 2 || { echo "usage: mise run test-go-one -- <package> <test>" >&2;
 bun run tools/verification/src/main.ts --report .verification/test-go-one.json -- "$1" -run "^$2\$"
 '''
 
-[tasks.benchmark-go-package]
-description = "Benchmark one Go package"
+[tasks.test-go-package]
+description = "Run Go tests for one package; pass --race to add the race detector"
+# 通常のビルドが既定で、並行処理そのものを作る作業だけが --race を付ける。
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 2 || { echo "usage: mise run benchmark-go-package -- <package> <benchmark> [count]" >&2; exit 2; }
-go test "$1" -run '^$' -bench "$2" -benchmem -count "${3:-5}"
-'''
-
-[tasks.measure-resource-access]
-description = "Measure resource access evaluation with memory and PostgreSQL adapters"
-run = '''
-#!/usr/bin/env sh
-set -eu
-mkdir -p .verification
-go test ./backend/cmd/internal/bootstrap -run '^TestResourceAccessConfiguredBudgetReachesHTTP$' -bench '^BenchmarkResourceAccessLoad$' -benchtime=1x -count=1 -json "$@" > .verification/resource-access-load.jsonl
-jq -r 'select(.Action == "output") | .Output // empty' .verification/resource-access-load.jsonl
-'''
-
-[tasks.seed]
-description = "Plan or apply an explicit environment seed"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 2 || { echo "usage: mise run seed -- <environment> <profile> [mode] [manifest] [count]" >&2; exit 2; }
-go run ./backend/cmd/idmagic-seed --environment "$1" --profile "$2" --mode "${3:-dry_run}" --manifest "${4:-}" --count "${5:-0}"
-'''
-
-[tasks.seed-throughput]
-description = "Measure seeding throughput; writes real data"
-run = '''
-#!/usr/bin/env sh
-set -eu
-go run ./backend/cmd/idmagic-seed --environment "${1:-development}" --profile performance --mode apply --count "${2:-10000}" --batch-size "${3:-250}"
-'''
-
-[tasks.record-transit]
-description = "Record Vault or OpenBao Transit round trips from a local dev server into the replay testdata"
-# 記録は手元の意図的な作業であり、CI のゲートには入れない。開発用サーバーのバージョンをここで固定し、
-# 上げたら記録を取り直して差分を読む。サーバーは localhost で待ち受けるので、サンドボックスの外で実行する。
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 1 || { echo "usage: mise run record-transit -- <vault|openbao> [-out <path>]" >&2; exit 2; }
-product="$1"
-shift
-case "$product" in
-  vault) server="vault@2.2.2" ;;
-  openbao) server="openbao@2.7.3" ;;
-  *) echo "unknown product: $product; want vault or openbao" >&2; exit 2 ;;
+case "$#:${2:-}" in
+  1:) race="" ;;
+  2:--race) race="-race" ;;
+  *) echo "usage: mise run test-go-package -- <package> [--race]" >&2; exit 2 ;;
 esac
-mise exec "$server" -- go run ./backend/shared/testing_transitrecord -product "$product" "$@"
+bun run tools/verification/src/main.ts --report .verification/test-go-package.json -- $race "$1"
 '''
 
-[tasks.record-saml]
-description = "Record upstream SAML responses from a local Keycloak dev server into the replay testdata"
-# 記録は手元の意図的な作業であり、CI のゲートには入れない。イメージのバージョンをここで固定し、
-# 上げたら記録を取り直して差分を読む。docker と localhost の待受けを使うので、サンドボックスの外で実行する。
-run = '''
-#!/usr/bin/env sh
-set -eu
-go run ./backend/authentication/internal/federation/testing_samlrecord -image quay.io/keycloak/keycloak:26.8.2 "$@"
-'''
-
-[tasks.batch]
-description = "Run one externally scheduled operational batch"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 1 || { echo "usage: mise run batch -- <task> [args...]" >&2; exit 2; }
-go run ./backend/cmd/idmagic-batch "$@"
-'''
+[tasks.test-go-race]
+description = "Run race-enabled Go tests"
+depends = ["compile-spec"]
+run = "bun run tools/verification/src/main.ts --full --report .verification/test-go-race.json -- -race ./..."
 
 [tasks.tidy-go-modules]
 description = "Synchronize Go module requirements and checksums"
 run = "go mod tidy"
-
-[tasks.test-kerberos-ad]
-description = "Verify Kerberos tickets against an isolated Samba AD domain controller"
-run = 'bash scripts/test-kerberos-ad.sh "$@"'
-
-[tasks.test-envoy-mcp-gateway]
-description = "Verify the MCP gateway behind a real Envoy loaded with the distributed example configuration"
-env = { ENVOY_IMAGE = "envoyproxy/envoy:v1.40.2" }
-run = '''
-#!/usr/bin/env sh
-set -eu
-VERIFICATION_RUN_ID=$(date +%s)
-export VERIFICATION_RUN_ID
-bun run tools/verification/src/main.ts --report .verification/test-envoy-mcp-gateway.json -- ./backend/mcpgateway -run '^TestEnvoy'
-'''
-
-[tasks.test-mcp-client-walkthrough]
-description = "Reproduce the MCP enforcement walkthrough with the official MCP TypeScript SDK client, idmagic-mcp-gateway, and IdMagic"
-run = '''
-#!/usr/bin/env sh
-set -eu
-bin=$(mktemp -d "${TMPDIR:-/tmp}/idmagic-walkthrough-bin.XXXXXX")
-trap 'rm -rf "$bin"' EXIT
-go build -o "$bin/" ./backend/cmd/idmagic ./backend/cmd/idmagic-mcp-gateway
-cd examples/mcp-client-walkthrough
-bun install --frozen-lockfile
-IDMAGIC_BIN="$bin/idmagic" MCP_GATEWAY_BIN="$bin/idmagic-mcp-gateway" bun run walkthrough.ts
-'''
-
-[tasks.setup-kerberos]
-description = "Guide an operator through Kerberos trust and browser setup"
-run = "bash scripts/setup-kerberos.sh"
-
-[tasks.check-kerberos-setup]
-description = "Check the Kerberos setup wizard and isolated AD fixture scripts"
-run = [
-  "bash -n scripts/setup-kerberos.sh",
-  "bash -n scripts/test-kerberos-ad.sh",
-  "bash -n infra/test/kerberos/start.sh",
-  "shellcheck -e SC2030,SC2031 scripts/setup-kerberos.sh scripts/test-kerberos-ad.sh infra/test/kerberos/start.sh",
-]
-
-[tasks.check-kerberos-config]
-description = "Validate Kerberos trust files without contacting Active Directory"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -eq 1 || { echo "usage: mise run check-kerberos-config -- <configuration.json>" >&2; exit 2; }
-go run ./backend/cmd/idmagic-kerberos --check-file "$1"
-'''
-
-[tasks.list-outdated-go-dependencies]
-description = "List Go module dependencies that have a newer release in their current module path"
-run = "go list -m -u -mod=readonly all"
-
-[tasks.list-go-package-dependencies]
-description = "List modules supplying repository packages and their tests"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-go list -deps -test -json ./... | jq -r 'select(.Module != null) | [.Module.Path, .Module.Version] | @tsv' | sort -u
-'''
 
 [tasks.update-go-dependencies]
 description = "Update Go module requirements to the latest minor and patch releases"
@@ -605,28 +831,50 @@ go get "$@"
 go mod tidy
 '''
 
-[tasks.test-go-race]
-description = "Run race-enabled Go tests"
-depends = ["compile-spec"]
-run = "bun run tools/verification/src/main.ts --full --report .verification/test-go-race.json -- -race ./..."
+[tasks.verify-go]
+description = "Verify Go with lint and tests"
+depends = ["lint-go", "test-go"]
 
-[tasks.report-verification]
-description = "Report test execution, analysis gaps, and uncollected change-resistance evidence"
-run = "bun run tools/verification/src/report.ts \"$@\""
+# ---- Go の追加検査と計測 ----
 
-[tasks.report-contract-evidence]
-description = "List unresolved HTTP operations and candidate contract test files"
-depends = ["compile-spec"]
-run = "bun run tools/verification/src/contract-evidence-inventory.ts \"$@\""
-
-[tasks.test-go-cover]
-description = "Run Go tests with coverage"
+[tasks.benchmark-go-package]
+description = "Benchmark one Go package"
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -le 2 || { echo "usage: mise run test-go-cover -- [package] [skip-pattern]" >&2; exit 2; }
-bun run tools/verification/src/main.ts --report .verification/test-go-cover.json -- -coverprofile=coverage.out -covermode=atomic -skip "${2:-^$}" "${1:-./...}"
-go tool cover -func=coverage.out
+test "$#" -ge 2 || { echo "usage: mise run benchmark-go-package -- <package> <benchmark> [count]" >&2; exit 2; }
+go test "$1" -run '^$' -bench "$2" -benchmem -count "${3:-5}"
+'''
+
+[tasks.check-go-mutation-tool]
+description = "Check mutation survivor and compile-failure verdicts against a fixed canary"
+run = '''
+#!/usr/bin/env sh
+set -eu
+canary_tmp=$(mktemp -d)
+trap 'rm -rf "$canary_tmp"' EXIT
+cache="$canary_tmp/cache.json"
+report="$canary_tmp/report.json"
+for attempt in first cached; do
+  echo "mutation canary: $attempt run"
+  gamut \
+    -workers 1 \
+    -cache "$cache" \
+    -only ARITHMETIC_BASE,CONDITIONALS_BOUNDARY \
+    -o "$report" \
+    ./tools/check/testdata/mutation-canary
+  (cd tools && bun run check/src/mutation-canary.ts "$report")
+done
+'''
+
+[tasks.measure-resource-access]
+description = "Measure resource access evaluation with memory and PostgreSQL adapters"
+run = '''
+#!/usr/bin/env sh
+set -eu
+mkdir -p .verification
+go test ./backend/cmd/internal/bootstrap -run '^TestResourceAccessConfiguredBudgetReachesHTTP$' -bench '^BenchmarkResourceAccessLoad$' -benchtime=1x -count=1 -json "$@" > .verification/resource-access-load.jsonl
+jq -r 'select(.Action == "output") | .Output // empty' .verification/resource-access-load.jsonl
 '''
 
 [tasks.test-go-fuzz]
@@ -735,68 +983,113 @@ gamut \
   "$target"
 '''
 
-[tasks.check-go-mutation-tool]
-description = "Check mutation survivor and compile-failure verdicts against a fixed canary"
+# ---- 外部実装との結合と通信の記録 ----
+
+[tasks.check-kerberos-config]
+description = "Validate Kerberos trust files without contacting Active Directory"
 run = '''
 #!/usr/bin/env sh
 set -eu
-canary_tmp=$(mktemp -d)
-trap 'rm -rf "$canary_tmp"' EXIT
-cache="$canary_tmp/cache.json"
-report="$canary_tmp/report.json"
-for attempt in first cached; do
-  echo "mutation canary: $attempt run"
-  gamut \
-    -workers 1 \
-    -cache "$cache" \
-    -only ARITHMETIC_BASE,CONDITIONALS_BOUNDARY \
-    -o "$report" \
-    ./tools/check/testdata/mutation-canary
-  (cd tools && bun run check/src/mutation-canary.ts "$report")
-done
+test "$#" -eq 1 || { echo "usage: mise run check-kerberos-config -- <configuration.json>" >&2; exit 2; }
+go run ./backend/cmd/idmagic-kerberos --check-file "$1"
 '''
 
-[tasks.build-go]
-description = "Build all Go packages with version metadata"
-run = '''
-#!/usr/bin/env sh
-set -eu
-git_commit=$(git rev-parse HEAD 2>/dev/null || echo unknown)
-build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo unknown)
-version=${VERSION:-0.0.0-dev}
-go build -ldflags "-X github.com/ambi/idmagic/backend/shared/version.Version=$version -X github.com/ambi/idmagic/backend/shared/version.GitCommit=$git_commit -X github.com/ambi/idmagic/backend/shared/version.BuildDate=$build_date" ./...
-'''
-
-[tasks.generate-sqlc]
-description = "Regenerate sqlc PostgreSQL query code"
-run = "sqlc generate"
-
-[tasks.verify-ui]
-description = "Verify UI dependencies, format, lint, types, tests, and build"
-depends = [
-  "check-ui-dependencies",
-  "format-check-ui",
-  "lint-ui",
-  "typecheck-ui",
-  "test-ui-unit",
-  "build-ui",
+[tasks.check-kerberos-setup]
+description = "Check the Kerberos setup wizard and isolated AD fixture scripts"
+run = [
+  "bash -n scripts/setup-kerberos.sh",
+  "bash -n scripts/test-kerberos-ad.sh",
+  "bash -n infra/test/kerberos/start.sh",
+  "shellcheck -e SC2030,SC2031 scripts/setup-kerberos.sh scripts/test-kerberos-ad.sh infra/test/kerberos/start.sh",
 ]
 
-[tasks.check-ui-dependencies]
-description = "Check UI dependency declarations against actual usage"
-dir = "frontend"
-depends = ["install-ui"]
-run = "bun run check:deps"
+[tasks.lint-go-openldap]
+description = "Lint Directory Connector including OpenLDAP-tagged tests"
+run = "golangci-lint run --allow-serial-runners --build-tags=openldap ./backend/directoryconnector/..."
 
-[tasks.list-outdated-ui-dependencies]
-description = "List UI dependencies that have a newer release"
-dir = "frontend"
+[tasks.list-outdated-example-dependencies]
+description = "List MCP walkthrough dependencies that have a newer release"
+dir = "examples/mcp-client-walkthrough"
 run = "bun outdated"
 
-[tasks.update-ui-dependencies]
-description = "Update UI dependency declarations to the latest releases"
-dir = "frontend"
+[tasks.record-saml]
+description = "Record upstream SAML responses from a local Keycloak dev server into the replay testdata"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。イメージのバージョンをここで固定し、
+# 上げたら記録を取り直して差分を読む。docker と localhost の待受けを使うので、サンドボックスの外で実行する。
+run = '''
+#!/usr/bin/env sh
+set -eu
+go run ./backend/authentication/internal/federation/testing_samlrecord -image quay.io/keycloak/keycloak:26.8.2 "$@"
+'''
+
+[tasks.record-transit]
+description = "Record Vault or OpenBao Transit round trips from a local dev server into the replay testdata"
+# 記録は手元の意図的な作業であり、CI のゲートには入れない。開発用サーバーのバージョンをここで固定し、
+# 上げたら記録を取り直して差分を読む。サーバーは localhost で待ち受けるので、サンドボックスの外で実行する。
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run record-transit -- <vault|openbao> [-out <path>]" >&2; exit 2; }
+product="$1"
+shift
+case "$product" in
+  vault) server="vault@2.2.2" ;;
+  openbao) server="openbao@2.7.3" ;;
+  *) echo "unknown product: $product; want vault or openbao" >&2; exit 2 ;;
+esac
+mise exec "$server" -- go run ./backend/shared/testing_transitrecord -product "$product" "$@"
+'''
+
+[tasks.setup-kerberos]
+description = "Guide an operator through Kerberos trust and browser setup"
+run = "bash scripts/setup-kerberos.sh"
+
+[tasks.test-envoy-mcp-gateway]
+description = "Verify the MCP gateway behind a real Envoy loaded with the distributed example configuration"
+env = { ENVOY_IMAGE = "envoyproxy/envoy:v1.40.2" }
+run = '''
+#!/usr/bin/env sh
+set -eu
+VERIFICATION_RUN_ID=$(date +%s)
+export VERIFICATION_RUN_ID
+bun run tools/verification/src/main.ts --report .verification/test-envoy-mcp-gateway.json -- ./backend/mcpgateway -run '^TestEnvoy'
+'''
+
+[tasks.test-go-openldap]
+description = "Lint and run OpenLDAP adapter integration and connector E2E tests (requires Docker)"
+run = "mise run -c lint-go-openldap ::: test-go-openldap-integration ::: test-go-openldap-e2e"
+
+[tasks.test-go-openldap-e2e]
+description = "Run Directory Connector E2E against real OpenLDAP (requires Docker)"
+run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-e2e.json -- -count=1 -tags=openldap ./backend/directoryconnector -run '^TestDirectory(ConnectorSyncsOpenLDAPUsers|DelegationAuthenticatesThroughTheProductionRouter)$'"
+
+[tasks.test-go-openldap-integration]
+description = "Run LDAP adapter integration tests against real OpenLDAP (requires Docker)"
+run = "bun run tools/verification/src/main.ts --report .verification/test-go-openldap-integration.json -- -count=1 -tags=openldap ./backend/directoryconnector/internal/ldap_goldap ./backend/directoryconnector/internal/testing_openldap"
+
+[tasks.test-kerberos-ad]
+description = "Verify Kerberos tickets against an isolated Samba AD domain controller"
+run = 'bash scripts/test-kerberos-ad.sh "$@"'
+
+[tasks.test-mcp-client-walkthrough]
+description = "Reproduce the MCP enforcement walkthrough with the official MCP TypeScript SDK client, idmagic-mcp-gateway, and IdMagic"
+run = '''
+#!/usr/bin/env sh
+set -eu
+bin=$(mktemp -d "${TMPDIR:-/tmp}/idmagic-walkthrough-bin.XXXXXX")
+trap 'rm -rf "$bin"' EXIT
+go build -o "$bin/" ./backend/cmd/idmagic ./backend/cmd/idmagic-mcp-gateway
+cd examples/mcp-client-walkthrough
+bun install --frozen-lockfile
+IDMAGIC_BIN="$bin/idmagic" MCP_GATEWAY_BIN="$bin/idmagic-mcp-gateway" bun run walkthrough.ts
+'''
+
+[tasks.update-example-dependencies]
+description = "Update MCP walkthrough dependencies to the latest releases"
+dir = "examples/mcp-client-walkthrough"
 run = "bun update --latest"
+
+# ---- UI ----
 
 [tasks.add-ui-component]
 description = "Add shadcn components with the version pinned in devDependencies"
@@ -807,6 +1100,18 @@ set -eu
 test "$#" -ge 1 || { echo "usage: mise run add-ui-component -- <component...>" >&2; exit 2; }
 bun run add:component "$@"
 '''
+
+[tasks.build-ui]
+description = "Build UI"
+dir = "frontend"
+depends = ["install-ui"]
+run = "bun run build"
+
+[tasks.check-ui-dependencies]
+description = "Check UI dependency declarations against actual usage"
+dir = "frontend"
+depends = ["install-ui"]
+run = "bun run check:deps"
 
 [tasks.format-check-ui]
 description = "Check UI formatting"
@@ -819,51 +1124,26 @@ description = "Format UI"
 dir = "frontend"
 run = "bun run format"
 
+[tasks.generate-routes]
+description = "Regenerate the TanStack route tree"
+dir = "frontend"
+run = "bun run generate:routes"
+
 [tasks.lint-ui]
 description = "Lint UI"
 dir = "frontend"
 depends = ["install-ui"]
 run = "bun run lint"
 
-[tasks.typecheck-ui]
-# context: targets=frontend
-description = "Type-check UI"
+[tasks.list-outdated-ui-dependencies]
+description = "List UI dependencies that have a newer release"
 dir = "frontend"
-depends = ["install-ui"]
-run = "bun run typecheck"
-
-[tasks.generate-routes]
-description = "Regenerate the TanStack route tree"
-dir = "frontend"
-run = "bun run generate:routes"
-
-[tasks.test-ui-unit]
-description = "Run UI unit tests"
-dir = "frontend"
-depends = ["install-ui"]
-run = "bun run test:unit"
-
-[tasks.test-ui-unit-file]
-# context: targets=frontend
-description = "Run one UI unit-test file"
-dir = "frontend"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 1 || { echo "usage: mise run test-ui-unit-file -- <file>" >&2; exit 2; }
-bun test "$1"
-'''
+run = "bun outdated"
 
 [tasks.test-ui-cover]
 description = "Run UI unit tests with coverage"
 dir = "frontend"
 run = "bun run test:unit:coverage"
-
-[tasks.build-ui]
-description = "Build UI"
-dir = "frontend"
-depends = ["install-ui"]
-run = "bun run build"
 
 [tasks.test-ui-e2e]
 # context: targets=frontend concerns=contract
@@ -888,472 +1168,56 @@ else
 fi
 '''
 
-[tasks.check]
-description = "Validate specifications, records, dependencies, commands, and agent guidance"
-depends = ["compile-spec"]
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 1 || { echo "usage: mise run check -- [base-revision]" >&2; exit 2; }
-# このタスクの依存で仕様を生成済みなので、子の依存から同じ生成を繰り返さない。
-mise run -c --skip-deps \
-  check-spec-inputs ::: \
-  check-repository ${1:+"$1"} ::: \
-  check-config-reference ::: \
-  check-route-reference ::: \
-  check-gateway-routes ::: \
-  check-ui-pages ::: \
-  check-repository-tests
-'''
-
-[tasks.check-repository]
-description = "Run every registered TypeScript repository check in one process"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 1 || { echo "usage: mise run check-repository -- [base-revision]" >&2; exit 2; }
-bun run check/src/runner.ts all ${1:+--base-revision "$1"}
-'''
-
-[tasks.check-ci-spec]
-description = "Verify specifications and repository rules without rebuilding Go references"
-depends = ["compile-spec"]
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 1 || { echo "usage: mise run check-ci-spec -- [base-revision]" >&2; exit 2; }
-# Go の参照検査は CI の Go テスト直後へ置き、そのジョブのビルド結果を利用する。
-mise run -c --skip-deps check-spec-inputs ::: check-repository ${1:+"$1"} ::: check-ui-pages
-'''
-
-[tasks.check-site]
-description = "Compile TypeSpec, then build the documentation site in memory and check it without writing"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run build-site/src/main.ts --check"
-
-[tasks.check-links]
-# context: targets=docs,.agents,AGENTS.md,work-items
-description = "Check repository-local Markdown links and anchors"
-dir = "tools"
-run = "bun run check/src/runner.ts links"
-
-[tasks.check-terminology]
-description = "Check design documents against the adopted terminology"
-dir = "tools"
-run = "bun run check/src/runner.ts terminology"
-
-[tasks.check-security-controls]
-description = "Reject guards that cannot refuse and declared refusals no test names"
-dir = "tools"
-run = "bun run check/src/runner.ts security-controls"
-
-[tasks.report-security-test-gaps]
-description = "List refused state changes no test proves were left untouched"
-dir = "tools"
-run = "bun run security-test-gap-report/src/main.ts"
-
-[tasks.check-admin-scopes]
-description = "Check admin API scope declarations"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run check/src/runner.ts admin-scopes"
-
-[tasks.check-contract-drift]
-# context: concerns=contract
-description = "Check TypeSpec request and response bodies against what the Go handlers decode and write"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run check/src/runner.ts contract-drift"
-
-[tasks.check-status-drift]
-description = "Check the status codes TypeSpec declares against the ones the Go handlers write"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run check/src/runner.ts status-drift"
-
-[tasks.check-operation-references]
-# context: concerns=contract
-description = "Diagnose malformed operation references and declarations not attached to Go tests"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run check/src/runner.ts operation-references"
-
-[tasks.check-event-contract]
-description = "Check the published domain event payload vocabulary against the code that reads it"
-dir = "tools"
-run = "bun run check/src/runner.ts event-contract"
-
-[tasks.check-unspecified-vocabulary]
-description = "Check that every declared error code and domain event appears in a requirement"
-dir = "tools"
-run = "bun run check/src/runner.ts unspecified-vocabulary"
-
-[tasks.check-schema-tables]
-description = "Check the table descriptions in the database design against the schema"
-dir = "tools"
-run = "bun run check/src/runner.ts schema-tables"
-
-[tasks.check-agent-guidance]
-# context: targets=.agents,AGENTS.md,tools/check/src/agent-guidance.ts
-description = "Check repository-local agent guidance against the current workflow"
-dir = "tools"
-run = "bun run check/src/runner.ts agent-guidance"
-
-[tasks.check-spec-inputs]
-description = "Check generated specification inputs shared by both check suites"
-depends = ["compile-spec"]
-# 個別入口の前提は残し、この入口では上の依存が生成した OpenAPI を共有する。
-run = "mise run -c --skip-deps check-generated-contract ::: check-site"
-
-[tasks.check-ci-results]
-description = "Require the CI plan and every selected verification group to succeed"
-dir = "tools"
-run = "bun run verification/src/ci-main.ts results"
-
-[tasks.plan-ci]
-description = "Select CI verification groups from two Git revisions (all groups on unknown input)"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 2 || { echo "usage: mise run plan-ci -- [base head]" >&2; exit 2; }
-bun run verification/src/ci-main.ts plan "$@"
-'''
-
-# 生成検査と registry の spec group が、check にも含まれる共通の仕様ゲートである。
-[tasks.check-spec]
-# context: targets=spec,docs/modules,docs/requirements
-description = "Compile TypeSpec and validate canonical specification documents"
-depends = ["compile-spec", "check-spec-inputs"]
-dir = "tools"
-run = "bun run check/src/runner.ts spec"
-
-[tasks.check-work-items]
-# context: kinds=*
-description = "Validate work-item records"
-dir = "tools"
-# 成功した対象の列挙は既定では出さない。全件を見たいときは `-- --verbose` を渡す。
-run = "bun run check/src/runner.ts work-items \"$@\""
-
-[tasks.check-boundaries]
-# context: concerns=boundary
-description = "Reject forbidden source dependencies"
-dir = "tools"
-run = "bun run check/src/runner.ts boundaries \"$@\""
-
-[tasks.check-sql-concurrency]
-# context: targets=backend
-description = "Reject unguarded writes after reads of the same table"
-dir = "tools"
-run = "bun run check/src/runner.ts sql-concurrency"
-
-[tasks.check-boundary-debt-ratchet]
-description = "Reject boundary violations added beyond a Git revision"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 1 || { echo "usage: mise run check-boundary-debt-ratchet -- [base-revision]" >&2; exit 2; }
-bun run check/src/runner.ts boundary-debt-ratchet ${1:+--base-revision "$1"}
-'''
-
-[tasks.check-spec-impact]
-description = "Check declared specification impact against the specification diff since a Git revision"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -le 1 || { echo "usage: mise run check-spec-impact -- [base-revision]" >&2; exit 2; }
-bun run check/src/runner.ts spec-impact ${1:+--base-revision "$1"}
-'''
-
-[tasks.generate-config-reference]
-description = "Generate the operator configuration reference"
-run = "go run ./backend/cmd/idmagic-config-reference --output docs/operations/configuration.md"
-
-[tasks.check-config-reference]
-description = "Check the operator configuration reference"
-run = "go run ./backend/cmd/idmagic-config-reference --check --output docs/operations/configuration.md"
-
-[tasks.generate-route-reference]
-description = "Generate the route priority reference"
-run = "go run ./backend/cmd/idmagic-route-reference --output docs/operations/route-priority.md"
-
-[tasks.check-route-reference]
-description = "Check the route priority reference"
-run = "go run ./backend/cmd/idmagic-route-reference --check --output docs/operations/route-priority.md"
-
-[tasks.check-gateway-routes]
-description = "Check the frontend gateway route allowlists against the assembled router"
-run = "go run ./backend/cmd/idmagic-gateway-routes"
-
-[tasks.check-api-compat]
-description = "Compare OpenAPI against the saved baseline, even before publication"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run check/src/runner.ts api-compat"
-
-[tasks.check-published-api-compat]
-# context: concerns=contract
-description = "Enforce OpenAPI compatibility when a published contract exists"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run check/src/runner.ts published-api-compat"
-
-[tasks.update-api-baseline]
-description = "Compile TypeSpec, then freeze the generated OpenAPI as the release baseline"
-depends = ["compile-spec"]
-run = "cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json"
-
-[tasks.work-item-number]
-description = "Pick an unused work item identifier number"
-# 起票のたびに最大値を数える手順を置き換える。数える手順は、まだ push されていない
-# 起票を見られないため、並列のワークツリーと複数のメンバーの下で衝突を生む。
-dir = "tools"
-run = "bun run work-item-number/src/main.ts"
-
-[tasks.move-work-item]
-description = "Complete (or with --cancel, cancel) a work item: check it, collapse it to its summary, and move it to done"
-dir = "tools"
-run = "bun run work-item/src/main.ts \"$@\""
-
-[tasks.brief]
-description = "Show what one work item should be read from"
-# 規範 ID から仕様本文、TypeSpec の宣言位置、その ID を名指す既存のテストと実装、先行する
-# work item まで一度にたどる。任意の語を探す spec-where とは入力も出力も別なので分けてある。
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 1 || { echo "usage: mise run brief -- <work-item>" >&2; exit 2; }
-bun run brief/src/main.ts "$@"
-'''
-
-[tasks.spec-where]
-description = "Locate a term across specification, code, and work items"
-run = '''
-#!/usr/bin/env sh
-set -u
-test "$#" -ge 1 || { echo "usage: mise run spec-where -- <term>" >&2; exit 2; }
-echo "── specification ──"
-rg -n --no-heading --glob '!generated' "$1" docs spec || true
-echo "── code and tests ──"
-rg -n --no-heading --glob '!docs/**' --glob '!spec/**' --glob '!work-items/**' --glob '!**/generated/**' "$1" . || true
-echo "── work items ──"
-rg -l "$1" work-items || true
-'''
-
-[tasks.spec-diff]
-description = "Show normative specification changes against a git ref"
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-bun run spec-diff/src/main.ts "${1:-main}"
-'''
-
-[tasks.report-agent-friction]
-description = "Count Agent-Friction commit trailers by target to find guidance agents keep tripping over"
-# 繰り返しの判断材料を示す報告であり、ゲートにしない。引数は git log のリビジョン範囲。
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-bun run agent-friction/src/main.ts "$@"
-'''
-
-[tasks.spec-review-candidates]
-description = "List production Go code that no specification-citing test executes, as candidates to review"
-# 仕様漏れの判定ではなく、既存コードを書き起こすときの着手点を報告する。ゲートにはしない。
-dir = "tools"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 1 || { echo "usage: mise run spec-review-candidates -- <package-directory>" >&2; exit 2; }
-bun run spec-review-candidates/src/main.ts "$1"
-'''
-
-# 文書サイトは TypeSpec から生成した OpenAPI を読むので、先にコンパイルして古い生成物を描かない。
-[tasks.generate-ui-pages]
-description = "Generate the UI page inventory and interaction design from TypeSpec"
-dir = "tools"
-run = "bun run build-site/src/write-ui-pages.ts \"$@\""
-
-# UI ページ宣言の参照、実装の経路とページマーカー、生成文書の古さを検査する。
-# 実装のすべての経路は、ページか描画しない経路の説明として宣言されている必要がある。
-[tasks.check-ui-pages]
-description = "Check UI page declarations against frontend routes and markers, and the generated documents for drift"
-dir = "tools"
-run = "bun run build-site/src/write-ui-pages.ts --check"
-
-[tasks.compile-ui-spec]
-description = "Compile the UI design declarations separately from the public HTTP contract"
-dir = "tools"
-run = "bunx tsp compile ../spec/modules/frontend --no-emit"
-
-[tasks.build-site]
-description = "Compile TypeSpec, then build the browsable documentation and API reference site into site/"
-depends = ["compile-spec"]
-dir = "tools"
-run = "bun run build-site/src/main.ts"
-
-[tasks.generate-spec-from-testdata]
-description = "Regenerate documented examples and state machines from their testdata"
-dir = "tools"
-run = "bun run check/src/generate-spec-from-testdata.ts"
-
-# Swagger UI は OpenAPI を fetch で読む。file:// で開くとブラウザーがその取得を拒むので、
-# API リファレンスだけが空になる。生成サイトは HTTP で配ってから読む。
-[tasks.serve-site]
-description = "Serve the built documentation site over HTTP"
-dir = "tools"
-run = "bun run build-site/src/serve.ts"
-
-[tasks.dev]
-description = "Start the local API and UI stack"
-raw = true
-run = "./dev.sh"
-
-[tasks.dev-memory]
-description = "Start the lightweight API and UI stack"
-raw = true
-run = "./dev.sh memory"
-
-[tasks.dev-api]
-description = "Start the Go API for local UI development"
-raw = true
-run = '''
-ADDR=:8081 ISSUER=http://localhost:5173 WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-localhost}" WEBAUTHN_RP_ORIGINS="${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}" WEBAUTHN_RP_DISPLAY_NAME="${WEBAUTHN_RP_DISPLAY_NAME:-IdMagic Local}" go run ./backend/cmd/idmagic
-'''
-
-[tasks.dev-ui]
-description = "Start the React UI development server"
+[tasks.test-ui-unit]
+description = "Run UI unit tests"
 dir = "frontend"
-raw = true
-run = "bun run dev"
+depends = ["install-ui"]
+run = "bun run test:unit"
 
-[tasks.dev-compose]
-description = "Start the Docker Compose development stack"
-run = "docker compose -f infra/docker/docker-compose.dev.yaml up --build -d"
-
-[tasks.logs-compose]
-description = "Follow Docker Compose development logs"
-raw = true
-run = "docker compose -f infra/docker/docker-compose.dev.yaml logs -f"
-
-[tasks.down-compose]
-description = "Stop the Docker Compose development stack"
-run = "docker compose -f infra/docker/docker-compose.dev.yaml down"
-
-[tasks.schema-compose]
-description = "Reapply the PostgreSQL schema in Docker Compose"
-run = "docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema"
-
-[tasks.check-compose]
-description = "Validate Docker Compose configuration"
-run = "docker compose -f infra/docker/docker-compose.dev.yaml config --quiet"
-
-[tasks.check-container-images]
-description = "Verify that pinned third-party container images can be resolved"
+[tasks.test-ui-unit-file]
+# context: targets=frontend
+description = "Run one UI unit-test file"
+dir = "frontend"
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run check-container-images -- <image...>" >&2; exit 2; }
-for dependency_image in "$@"; do
-  docker manifest inspect "$dependency_image" >/dev/null
-  echo "ok  $dependency_image"
-done
+test "$#" -ge 1 || { echo "usage: mise run test-ui-unit-file -- <file>" >&2; exit 2; }
+bun test "$1"
 '''
 
-[tasks.check-schema]
-description = "Verify PostgreSQL schema convergence"
-run = "./infra/schema/check-convergence.sh"
+[tasks.typecheck-ui]
+# context: targets=frontend
+description = "Type-check UI"
+dir = "frontend"
+depends = ["install-ui"]
+run = "bun run typecheck"
 
-[tasks.backup-postgres]
-description = "Create a pg_dump backup and checksum"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 1 || { echo "usage: mise run backup-postgres -- <output-dir>" >&2; exit 2; }
-./infra/backup/backup-postgres.sh "$1"
-'''
+[tasks.update-ui-dependencies]
+description = "Update UI dependency declarations to the latest releases"
+dir = "frontend"
+run = "bun update --latest"
 
-[tasks.restore-postgres]
-description = "Restore a pg_dump backup into an empty database"
-run = '''
-#!/usr/bin/env sh
-set -eu
-test "$#" -ge 2 || { echo "usage: mise run restore-postgres -- <backup-file> <database>" >&2; exit 2; }
-./infra/backup/restore-postgres.sh "$1" --yes-restore-into-this-database "$2"
-'''
-
-[tasks.restore-drill]
-description = "Run the local backup and restore drill"
-run = "./infra/backup/restore-drill.sh"
-
-[tasks.check-k8s]
-description = "Render and schema-validate a Kubernetes overlay"
-run = '''
-#!/usr/bin/env sh
-set -eu
-overlay=${1:-dev}
-rendered=$(mktemp)
-trap 'rm -f "$rendered"' EXIT HUP INT TERM
-kustomize build "infra/k8s/overlays/$overlay" > "$rendered"
-docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary < "$rendered"
-'''
-
-[tasks.deploy-k8s]
-description = "Apply a Kubernetes overlay"
-run = '''
-#!/usr/bin/env sh
-set -eu
-kubectl apply -k "infra/k8s/overlays/${1:-dev}"
-'''
-
-[tasks.rollback-k8s]
-description = "Roll back a Kubernetes deployment"
-run = '''
-#!/usr/bin/env sh
-set -eu
-kubectl rollout undo "deployment/${1:-idmagic-api}"
-'''
-
-[tasks.check-monitoring]
-description = "Validate Prometheus, Alloy, Grafana, and Kubernetes monitoring assets"
-run = [
-  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.16.0 check rules /workspace/infra/docker/prometheus-rules.yml",
-  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.22.0 validate /workspace/infra/docker/alloy-config.alloy",
-  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.22.0 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
-  "jq empty infra/docker/grafana-dashboard.json",
-  "kustomize build infra/k8s/monitoring > /dev/null",
-  "kustomize build infra/k8s/monitoring/operator > /dev/null",
-  "kustomize build infra/k8s/monitoring/loki > /dev/null",
+[tasks.verify-ui]
+description = "Verify UI dependencies, format, lint, types, tests, and build"
+depends = [
+  "check-ui-dependencies",
+  "format-check-ui",
+  "lint-ui",
+  "typecheck-ui",
+  "test-ui-unit",
+  "build-ui",
 ]
 
-[tasks.deploy-monitoring]
-description = "Apply monitoring assets"
-run = "kubectl apply -k infra/k8s/monitoring"
+# ---- ローカル実行、初期データ、デモ ----
 
-[tasks.deploy-monitoring-operator]
-description = "Apply Prometheus Operator monitoring assets"
-run = "kubectl apply -k infra/k8s/monitoring/operator"
-
-[tasks.test-k6-smoke]
-description = "Execute the tenant-local OAuth smoke test"
+[tasks.batch]
+description = "Run one externally scheduled operational batch"
 run = '''
 #!/usr/bin/env sh
 set -eu
-base_url=${1:-http://host.docker.internal:8080/realms/default}
-browser_origin=${2:-http://localhost:8080}
-docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.4.0 run /scripts/oauth-smoke.js
+test "$#" -ge 1 || { echo "usage: mise run batch -- <task> [args...]" >&2; exit 2; }
+go run ./backend/cmd/idmagic-batch "$@"
 '''
-
-[tasks.check-k6]
-description = "Parse and inspect the k6 module"
-run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.4.0 inspect /scripts/oauth-smoke.js"
 
 [tasks.demo]
 description = "Run the OAuth2/OIDC demo"
@@ -1382,4 +1246,171 @@ description = "Run the interactive CIBA approval demo"
 raw = true
 run = '''
 BASE="${1:-http://localhost:5173/realms/default}" ./ciba-demo.sh
+'''
+
+[tasks.dev]
+description = "Start the local API and UI stack"
+raw = true
+run = "./dev.sh"
+
+[tasks.dev-api]
+description = "Start the Go API for local UI development"
+raw = true
+run = '''
+ADDR=:8081 ISSUER=http://localhost:5173 WEBAUTHN_RP_ID="${WEBAUTHN_RP_ID:-localhost}" WEBAUTHN_RP_ORIGINS="${WEBAUTHN_RP_ORIGINS:-http://localhost:5173}" WEBAUTHN_RP_DISPLAY_NAME="${WEBAUTHN_RP_DISPLAY_NAME:-IdMagic Local}" go run ./backend/cmd/idmagic
+'''
+
+[tasks.dev-memory]
+description = "Start the lightweight API and UI stack"
+raw = true
+run = "./dev.sh memory"
+
+[tasks.dev-ui]
+description = "Start the React UI development server"
+dir = "frontend"
+raw = true
+run = "bun run dev"
+
+[tasks.seed]
+description = "Plan or apply an explicit environment seed"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 2 || { echo "usage: mise run seed -- <environment> <profile> [mode] [manifest] [count]" >&2; exit 2; }
+go run ./backend/cmd/idmagic-seed --environment "$1" --profile "$2" --mode "${3:-dry_run}" --manifest "${4:-}" --count "${5:-0}"
+'''
+
+[tasks.seed-throughput]
+description = "Measure seeding throughput; writes real data"
+run = '''
+#!/usr/bin/env sh
+set -eu
+go run ./backend/cmd/idmagic-seed --environment "${1:-development}" --profile performance --mode apply --count "${2:-10000}" --batch-size "${3:-250}"
+'''
+
+# ---- コンテナ、データベース、配備、監視、負荷試験 ----
+
+[tasks.backup-postgres]
+description = "Create a pg_dump backup and checksum"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run backup-postgres -- <output-dir>" >&2; exit 2; }
+./infra/backup/backup-postgres.sh "$1"
+'''
+
+[tasks.check-compose]
+description = "Validate Docker Compose configuration"
+run = "docker compose -f infra/docker/docker-compose.dev.yaml config --quiet"
+
+[tasks.check-container-images]
+description = "Verify that pinned third-party container images can be resolved"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run check-container-images -- <image...>" >&2; exit 2; }
+for dependency_image in "$@"; do
+  docker manifest inspect "$dependency_image" >/dev/null
+  echo "ok  $dependency_image"
+done
+'''
+
+[tasks.check-k6]
+description = "Parse and inspect the k6 module"
+run = "docker run --rm -v \"$PWD/load/k6:/scripts:ro\" grafana/k6:2.4.0 inspect /scripts/oauth-smoke.js"
+
+[tasks.check-k8s]
+description = "Render and schema-validate a Kubernetes overlay"
+run = '''
+#!/usr/bin/env sh
+set -eu
+overlay=${1:-dev}
+rendered=$(mktemp)
+trap 'rm -f "$rendered"' EXIT HUP INT TERM
+kustomize build "infra/k8s/overlays/$overlay" > "$rendered"
+docker run --rm -i ghcr.io/yannh/kubeconform:v0.8.0 -strict -summary < "$rendered"
+'''
+
+[tasks.check-monitoring]
+description = "Validate Prometheus, Alloy, Grafana, and Kubernetes monitoring assets"
+run = [
+  "docker run --rm --entrypoint promtool -v \"$PWD:/workspace:ro\" prom/prometheus:v3.16.0 check rules /workspace/infra/docker/prometheus-rules.yml",
+  "docker run --rm -v \"$PWD:/workspace:ro\" grafana/alloy:v1.22.0 validate /workspace/infra/docker/alloy-config.alloy",
+  "docker run --rm -e HOSTNAME=validation-node -v \"$PWD:/workspace:ro\" grafana/alloy:v1.22.0 validate /workspace/infra/k8s/monitoring/loki/alloy-config.alloy",
+  "jq empty infra/docker/grafana-dashboard.json",
+  "kustomize build infra/k8s/monitoring > /dev/null",
+  "kustomize build infra/k8s/monitoring/operator > /dev/null",
+  "kustomize build infra/k8s/monitoring/loki > /dev/null",
+]
+
+[tasks.check-schema]
+description = "Verify PostgreSQL schema convergence"
+run = "./infra/schema/check-convergence.sh"
+
+[tasks.deploy-k8s]
+description = "Apply a Kubernetes overlay"
+run = '''
+#!/usr/bin/env sh
+set -eu
+kubectl apply -k "infra/k8s/overlays/${1:-dev}"
+'''
+
+[tasks.deploy-monitoring]
+description = "Apply monitoring assets"
+run = "kubectl apply -k infra/k8s/monitoring"
+
+[tasks.deploy-monitoring-operator]
+description = "Apply Prometheus Operator monitoring assets"
+run = "kubectl apply -k infra/k8s/monitoring/operator"
+
+[tasks.dev-compose]
+description = "Start the Docker Compose development stack"
+run = "docker compose -f infra/docker/docker-compose.dev.yaml up --build -d"
+
+[tasks.down-compose]
+description = "Stop the Docker Compose development stack"
+run = "docker compose -f infra/docker/docker-compose.dev.yaml down"
+
+[tasks.inspect-container-image]
+description = "Inspect the registry manifest and digest of a container image"
+run = 'docker buildx imagetools inspect "$@"'
+
+[tasks.logs-compose]
+description = "Follow Docker Compose development logs"
+raw = true
+run = "docker compose -f infra/docker/docker-compose.dev.yaml logs -f"
+
+[tasks.restore-drill]
+description = "Run the local backup and restore drill"
+run = "./infra/backup/restore-drill.sh"
+
+[tasks.restore-postgres]
+description = "Restore a pg_dump backup into an empty database"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 2 || { echo "usage: mise run restore-postgres -- <backup-file> <database>" >&2; exit 2; }
+./infra/backup/restore-postgres.sh "$1" --yes-restore-into-this-database "$2"
+'''
+
+[tasks.rollback-k8s]
+description = "Roll back a Kubernetes deployment"
+run = '''
+#!/usr/bin/env sh
+set -eu
+kubectl rollout undo "deployment/${1:-idmagic-api}"
+'''
+
+[tasks.schema-compose]
+description = "Reapply the PostgreSQL schema in Docker Compose"
+run = "docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema"
+
+[tasks.test-k6-smoke]
+description = "Execute the tenant-local OAuth smoke test"
+run = '''
+#!/usr/bin/env sh
+set -eu
+base_url=${1:-http://host.docker.internal:8080/realms/default}
+browser_origin=${2:-http://localhost:8080}
+docker run --rm -e IDMAGIC_BASE_URL="$base_url" -e IDMAGIC_BROWSER_ORIGIN="$browser_origin" -v "$PWD/load/k6:/scripts:ro" grafana/k6:2.4.0 run /scripts/oauth-smoke.js
 '''
