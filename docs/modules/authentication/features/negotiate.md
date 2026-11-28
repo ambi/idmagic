@@ -30,11 +30,13 @@ realm と principal の名前は、大文字と小文字を変換せずに完全
 #### REQ-AUTHENTICATION-042 検証した Kerberos principal に対応する利用者だけがログインできる
 
 - 指定した信頼ファイルが不正か、鍵と証明書に不整合がある場合、Authentication は、API の起動を失敗させる。
+- keytab が設定した SPN と realm の AES（RFC 3962、RFC 8009）の鍵を持たない場合、Authentication は、API の起動を失敗させる。
 - 設定した realm と SPN の有効な Kerberos チケットを受け、principal が同じテナントの Active User に明示的に対応付けられているとき、Authentication は、RFC 8176 の `wia` の AMR のセッションを作り、`NegotiateAuthSucceeded` を発行する。
 - Kerberos のセッションを作るとき、Authentication は、既存のサインインのポリシーと必須操作を適用する。
 - Kerberos による本人確認後に追加の要素が必要な状態の間、Authentication は、認証を保留して該当する画面へ進ませる。
 - Kerberos による認証がポリシーを満たして完了したとき、Authentication は、`UserAuthenticated` を発行する。
 - 復号、SPN、realm、TLS の channel binding、有効期間、5 分の許容時刻差の検証に失敗したか、NTLM のトークンを受けた場合、Authentication は、401 で拒否し、`NegotiateAuthRejected` を発行し、セッションを作らない。
+- チケットまたはセッションの鍵の暗号方式が AES でない（RC4-HMAC や DES を含む）場合、Authentication は、復号の前に 401 で拒否し、`reason` を `encryption` とした `NegotiateAuthRejected` を発行し、セッションを作らない。
 - principal に対応がないか、対応する User が存在しないか、別テナントに属するか、Active でない場合、Authentication は、401 で拒否し、`NegotiateAuthRejected` を発行し、User と対応付けを作成も変更もしない。
 - 同じサービスへの同じ principal と時刻とマイクロ秒の authenticator を再度受けた場合、Authentication は、プロセスと再起動をまたいでも拒否し、セッションを増やさない。
 - 再送拒否の共有ストアへ到達できない場合、Authentication は、ログインを失敗させ、セッションを作らない。
@@ -58,6 +60,8 @@ realm と principal の名前は、大文字と小文字を変換せずに完全
 ## セキュリティ上の考慮
 
 TLS の終端証明書を設定し、`tls-server-end-point` の channel binding を必須とする。
+チケットの暗号方式は AES に限る。
+RC4-HMAC は RFC 8429 が非推奨とし、AD の KDC もデフォルトで AES に限るため、再び許す設定は設けない。
 出口の公開 IP は自動試行の条件だけに使い、本人確認やドメイン参加の証拠として扱わない。
 ブラウザーが許可するサービス名を GPO などで設定する必要があり、非対応の端末にチャレンジを送ると OS の資格情報ダイアログが出る場合がある。
 keytab のサービス鍵を持つ者はチケットを偽造できるため、読み取り権限を API プロセスだけに限り、ログと管理 API に内容を出さない。

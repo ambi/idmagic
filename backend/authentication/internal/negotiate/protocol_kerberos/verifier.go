@@ -12,11 +12,13 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 	"time"
 
 	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
 	negotiateports "github.com/ambi/idmagic/backend/authentication/internal/negotiate/ports"
 	"github.com/otuschhoff/gokrb5/v8/gssapi"
+	"github.com/otuschhoff/gokrb5/v8/iana/etypeID"
 	"github.com/otuschhoff/gokrb5/v8/keytab"
 	"github.com/otuschhoff/gokrb5/v8/service"
 	"github.com/otuschhoff/gokrb5/v8/spnego"
@@ -24,6 +26,15 @@ import (
 )
 
 type Verifier struct{}
+
+// acceptedEncryption は AES の暗号方式（RFC 3962、RFC 8009）だけを受け付ける。RC4-HMAC は RFC 8429 が非推奨とする。
+func acceptedEncryption(etype int32) bool {
+	switch etype {
+	case etypeID.AES128_CTS_HMAC_SHA1_96, etypeID.AES256_CTS_HMAC_SHA1_96, etypeID.AES128_CTS_HMAC_SHA256_128, etypeID.AES256_CTS_HMAC_SHA384_192:
+		return true
+	}
+	return false
+}
 
 func LoadCertificate(path string) (*x509.Certificate, error) {
 	data, err := os.ReadFile(path)
@@ -43,14 +54,18 @@ func CheckFiles(config negotiatedomain.Config) error {
 	if err != nil {
 		return fmt.Errorf("negotiate: keytab is unavailable or invalid")
 	}
-	found := false
+	found, aes := false, false
 	for _, p := range kt.Principals() {
 		if p.Realm == config.Realm && (types.PrincipalName{NameString: p.Components}).PrincipalNameString() == config.ServicePrincipal {
 			found = true
+			aes = aes || slices.ContainsFunc(kt.ETypesForPrincipal(p), acceptedEncryption)
 		}
 	}
 	if !found {
 		return fmt.Errorf("negotiate: configured SPN and realm are missing from keytab")
+	}
+	if !aes {
+		return fmt.Errorf("negotiate: keytab has no AES key for the configured SPN; RC4 and DES are not accepted")
 	}
 	cert, err := LoadCertificate(config.CertificateFile)
 	if err != nil {
@@ -89,6 +104,10 @@ func (Verifier) Verify(ctx context.Context, config negotiatedomain.Config, token
 	request := &mechanism.APReq
 	if request.Ticket.Realm != config.Realm || request.Ticket.SName.PrincipalNameString() != config.ServicePrincipal {
 		return negotiateports.Verified{}, fmt.Errorf("negotiate: service principal mismatch")
+	}
+	// 復号の前に判定する。gokrb5 は RC4 の PAC の署名（HMAC-MD5、-138）を解析できず、理由の分からない失敗になるためである。
+	if !acceptedEncryption(request.Ticket.EncPart.EType) || !acceptedEncryption(request.EncryptedAuthenticator.EType) {
+		return negotiateports.Verified{}, fmt.Errorf("etype %d/%d: %w", request.Ticket.EncPart.EType, request.EncryptedAuthenticator.EType, negotiateports.ErrUnsupportedEncryption)
 	}
 	var address types.HostAddress
 	if clientIP != "" {

@@ -13,6 +13,21 @@ AD の管理者、API の運用管理者と、ブラウザーの管理者が協�
 - 既存 User と KDC の principal が同一人物であることを管理者が確認する。メールアドレスの一致では代用しない。
 - 未参加端末でも使える idmagic のパスワードか別 IdP を用意する。AD のパスワードでのフォーム認証と、AD の無効化の自動同期は、この機能には含まれない。
 - AD アカウントの削除、名前の再利用、手動の対応付けの失効を担当する運用管理者を決める。
+- サービスアカウントの暗号方式を AES に限る。IdMagic は RC4-HMAC と DES のチケットを拒否し、再び許す設定はない。
+
+### 既存のサービスアカウントを AES に限る
+
+ウィザードの `configure-ad.ps1` は AES256 のアカウントを作るので、この節は既存のアカウントを使う場合だけ行う。
+`msDS-SupportedEncryptionTypes` が未設定のアカウントには、KDC が RC4 でサービスチケットを出すことがある。
+AD 管理用 Windows で暗号方式を設定し、AES の鍵を作るためにパスワードを設定し直してから keytab を出し直す。
+
+```powershell
+Set-ADUser -Identity <service-account> -KerberosEncryptionType AES128,AES256
+ktpass.exe /out .\http.keytab /princ HTTP/<host>@<REALM> /mapuser <NETBIOS>\<service-account> /mapop set /pass * /crypto AES256-SHA1 /ptype KRB5_NT_PRINCIPAL
+```
+
+デフォルトの暗号方式の変更は [Microsoft の KB5073381](https://support.microsoft.com/en-us/kb/5073381) で確認できる。
+試験用 PC で `klist purge` を実行し、RC4 の古いチケットを捨ててから試験する。
 
 ## 実施
 
@@ -47,7 +62,7 @@ TLS をゲートウェイで終端する場合は、その公開側のリーフ�
 mise run check-kerberos-config -- /path/to/negotiate.json
 ```
 
-このコマンドは構文、対応付けの重複、SPN、keytab と TLS 証明書の整合を検査する。
+このコマンドは構文、対応付けの重複、SPN、keytab の AES の鍵と TLS 証明書の整合を検査する。
 AD との通信、実際のチケットの取得、ブラウザーの成功を検査するものではない。
 `NEGOTIATE_CONFIG_FILE` にデプロイ先を設定し、API を再起動する。
 起動ログの `configuration_sha256` で各レプリカが同じ設定を使っていることを確認する。
@@ -95,5 +110,6 @@ Windows のブラウザーの設定と実際の顧客 AD での成功を、こ�
 自動試行を無効にし、通常ログインを維持する。
 Kerberos 全体を停止する場合は `NEGOTIATE_CONFIG_FILE` を外して API を再起動する。
 AD 側で鍵を変更した場合は、古いファイルへ戻すだけでは復旧しないことがあるため、AD 管理者と合わせて対処する。
+`NegotiateAuthRejected` の `reason` が `encryption` なら、サービスアカウントが AES に限られていないので、[既存のサービスアカウントを AES に限る](#既存のサービスアカウントを-aes-に限る)を行う。
 時計のずれ、SPN の重複、KVNO、TLS 終端証明書、ブラウザーの許可先、共有ストアの順に切り分ける。
 keytab、チケット、パスワードと生成設定の内容はログや障害チケットに貼らず、設定の SHA-256 と拒否の分類を共有する。

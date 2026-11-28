@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -103,6 +104,36 @@ func TestRefusedPrincipalNeverResolvesAUser(t *testing.T) {
 			user, _, err := s.Authenticate(context.Background(), "tenant", []byte("ticket"), "192.0.2.1", time.Now(), func(event spec.DomainEvent) { events = append(events, event.EventType()) })
 			if user != nil || !errors.Is(err, negotiateusecases.ErrRejected) || len(events) != 1 || events[0] != "NegotiateAuthRejected" {
 				t.Fatalf("user=%+v err=%v events=%v", user, err, events)
+			}
+		})
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-042: AES でないチケットの拒否を、一般のチケットの失敗と区別した reason の encryption で監査に残す。
+func TestAuthenticateReportsUnsupportedEncryption(t *testing.T) {
+	config := negotiatedomain.Config{TenantID: "tenant", Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: "keytab", CertificateFile: "tls", Bindings: []negotiatedomain.Binding{{Principal: "alice", UserID: "id"}}}
+	u := users{&userdomain.User{ID: "id", TenantID: "tenant", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}}}
+	for _, tc := range []struct {
+		name   string
+		err    error
+		reason string
+	}{
+		{"rc4", fmt.Errorf("etype 23: %w", negotiateports.ErrUnsupportedEncryption), "encryption"},
+		{"other", errors.New("negotiate: AP_REQ validation failed"), "ticket"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := negotiateusecases.New([]negotiatedomain.Config{config}, verifier{err: tc.err}, memory.NewRepositories().Replay, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var events []spec.DomainEvent
+			user, _, err := s.Authenticate(context.Background(), "tenant", []byte("ticket"), "", time.Now(), func(event spec.DomainEvent) { events = append(events, event) })
+			if user != nil || !errors.Is(err, negotiateusecases.ErrRejected) || len(events) != 1 {
+				t.Fatalf("user=%+v err=%v events=%v", user, err, events)
+			}
+			rejected, ok := events[0].(*negotiateusecases.Rejected)
+			if !ok || rejected.Reason != tc.reason {
+				t.Fatalf("event=%+v, want reason %s", events[0], tc.reason)
 			}
 		})
 	}

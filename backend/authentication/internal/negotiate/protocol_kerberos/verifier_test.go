@@ -2,12 +2,15 @@ package protocol_kerberos_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
+	negotiateports "github.com/ambi/idmagic/backend/authentication/internal/negotiate/ports"
 	"github.com/ambi/idmagic/backend/authentication/internal/negotiate/protocol_kerberos"
 	fixture "github.com/ambi/idmagic/backend/authentication/testing_kerberos"
+	"github.com/otuschhoff/gokrb5/v8/iana/etypeID"
 	"github.com/otuschhoff/gokrb5/v8/keytab"
 )
 
@@ -134,5 +137,36 @@ func TestVerifierReloadsOverlappingKeyVersions(t *testing.T) {
 		if _, err := verifier.Verify(context.Background(), old.Config, token, ""); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// RC4-HMAC と DES は RFC 8429 が非推奨とし、AD の KDC も既定で AES に限る。keytab に RC4 の鍵があっても受理しない。
+//
+//spec:covers REQ-AUTHENTICATION-042: AES と RC4 の鍵を持つ keytab に対し、AES のチケットを受理し、RC4 のチケットを暗号方式の拒否として区別する。
+func TestVerifierRefusesNonAESTickets(t *testing.T) {
+	f := fixture.New(t)
+	f.UseKeys(t, etypeID.AES256_CTS_HMAC_SHA1_96, etypeID.RC4_HMAC)
+	verifier := protocol_kerberos.Verifier{}
+	accepted := f.Token(t, "alice", f.Config.Realm, time.Now().Add(time.Hour), f.Certificate)
+	if _, err := verifier.Verify(context.Background(), f.Config, accepted, "203.0.113.10"); err != nil {
+		t.Fatalf("AES ticket: %v", err)
+	}
+	f.EType = etypeID.RC4_HMAC
+	refused := f.Token(t, "alice", f.Config.Realm, time.Now().Add(time.Hour), f.Certificate)
+	if _, err := verifier.Verify(context.Background(), f.Config, refused, "203.0.113.10"); !errors.Is(err, negotiateports.ErrUnsupportedEncryption) {
+		t.Fatalf("RC4 ticket: err=%v, want ErrUnsupportedEncryption", err)
+	}
+}
+
+//spec:covers REQ-AUTHENTICATION-042: keytab が設定した SPN の AES の鍵を持たなければ、起動前の診断で拒否する。
+func TestTrustFileDiagnosticsRequireAESKey(t *testing.T) {
+	f := fixture.New(t)
+	f.UseKeys(t, etypeID.AES128_CTS_HMAC_SHA256_128, etypeID.RC4_HMAC)
+	if err := protocol_kerberos.CheckFiles(f.Config); err != nil {
+		t.Fatalf("keytab with an AES key: %v", err)
+	}
+	f.UseKeys(t, etypeID.RC4_HMAC)
+	if err := protocol_kerberos.CheckFiles(f.Config); err == nil {
+		t.Fatal("RC4-only keytab accepted")
 	}
 }

@@ -20,6 +20,7 @@ import (
 	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
 	"github.com/otuschhoff/gokrb5/v8/client"
 	"github.com/otuschhoff/gokrb5/v8/config"
+	"github.com/otuschhoff/gokrb5/v8/crypto"
 	"github.com/otuschhoff/gokrb5/v8/gssapi"
 	"github.com/otuschhoff/gokrb5/v8/iana/etypeID"
 	"github.com/otuschhoff/gokrb5/v8/iana/nametype"
@@ -36,6 +37,8 @@ type Fixture struct {
 	Directory   string
 	KVNO        int
 	GSSAPIFlags []int
+	// EType はチケットを暗号化するサービスの鍵とセッションの鍵の暗号方式である。デフォルトは AES256 である。
+	EType int32
 }
 
 func New(tb testing.TB) *Fixture {
@@ -76,7 +79,7 @@ func New(tb testing.TB) *Fixture {
 	if err := os.WriteFile(keytabFile, encoded, 0o600); err != nil {
 		tb.Fatal(err)
 	}
-	return &Fixture{Certificate: cert, Keytab: kt, Directory: directory, KVNO: 1, GSSAPIFlags: []int{gssapi.ContextFlagMutual, gssapi.ContextFlagInteg, gssapi.ContextFlagConf}, Config: negotiatedomain.Config{
+	return &Fixture{Certificate: cert, Keytab: kt, Directory: directory, KVNO: 1, EType: etypeID.AES256_CTS_HMAC_SHA1_96, GSSAPIFlags: []int{gssapi.ContextFlagMutual, gssapi.ContextFlagInteg, gssapi.ContextFlagConf}, Config: negotiatedomain.Config{
 		Realm: "EXAMPLE.COM", ServicePrincipal: "HTTP/sso.example.com", KeytabFile: keytabFile, CertificateFile: certificateFile,
 		IntranetCIDRs: []string{"203.0.113.0/24"}, Bindings: []negotiatedomain.Binding{{Principal: "alice", UserID: "alice-id"}},
 	}}
@@ -117,7 +120,7 @@ func (f *Fixture) TokenAt(tb testing.TB, principal, realm string, endTime time.T
 	now := time.Now().UTC()
 	ticket, sessionKey, err := messages.NewTicket(types.NewPrincipalName(nametype.KRB_NT_PRINCIPAL, principal), realm,
 		types.NewPrincipalName(nametype.KRB_NT_SRV_INST, f.Config.ServicePrincipal), f.Config.Realm, types.NewKrbFlags(), f.Keytab,
-		etypeID.AES256_CTS_HMAC_SHA1_96, f.KVNO, now.Add(-time.Minute), now.Add(-time.Minute), endTime, endTime)
+		f.EType, f.KVNO, now.Add(-time.Minute), now.Add(-time.Minute), endTime, endTime)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -159,4 +162,32 @@ func (f *Fixture) TokenAt(tb testing.TB, principal, realm string, endTime time.T
 		tb.Fatal(err)
 	}
 	return token
+}
+
+// UseKeys は keytab を、指定した暗号方式ごとの新しいサービスの鍵で置き換え、ファイルへ書き直す。
+func (f *Fixture) UseKeys(tb testing.TB, etypes ...int32) {
+	tb.Helper()
+	kt := keytab.New()
+	for _, id := range etypes {
+		etype, err := crypto.GetEtype(id)
+		if err != nil {
+			tb.Fatal(err)
+		}
+		key := make([]byte, etype.GetKeyByteSize())
+		if _, err := rand.Read(key); err != nil {
+			tb.Fatal(err)
+		}
+		if err := kt.AddKey(keytab.Principal{Realm: f.Config.Realm, Components: []string{"HTTP", "sso.example.com"}, NameType: nametype.KRB_NT_SRV_INST}, uint32(f.KVNO), //nolint:gosec // KVNO はテストが与える小さな正の値である。
+			types.EncryptionKey{KeyType: id, KeyValue: key}, time.Now().UTC()); err != nil {
+			tb.Fatal(err)
+		}
+	}
+	encoded, err := kt.Marshal()
+	if err != nil {
+		tb.Fatal(err)
+	}
+	if err := os.WriteFile(f.Config.KeytabFile, encoded, 0o600); err != nil {
+		tb.Fatal(err)
+	}
+	f.Keytab = kt
 }

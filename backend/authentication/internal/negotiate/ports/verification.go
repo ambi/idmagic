@@ -2,10 +2,15 @@ package ports
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	negotiatedomain "github.com/ambi/idmagic/backend/authentication/internal/negotiate/domain"
 )
+
+// ErrUnsupportedEncryption は、チケットかセッションの鍵の暗号方式が AES でないことを表す。
+// 呼び出し側は一般のチケットの失敗と区別して監査に残す。
+var ErrUnsupportedEncryption = errors.New("negotiate: ticket encryption type is not accepted")
 
 type Verified struct {
 	Principal negotiatedomain.Principal

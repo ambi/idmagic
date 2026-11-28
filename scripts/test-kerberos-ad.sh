@@ -29,7 +29,9 @@ if ! docker exec "$container_id" test -s /shared/http.keytab; then
   exit 1
 fi
 docker cp "$container_id:/shared/http.keytab" "$fixture_dir/http.keytab"
+docker cp "$container_id:/shared/legacy.keytab" "$fixture_dir/legacy.keytab"
 KERBEROS_KDC_ADDR=$(docker port "$container_id" 88/tcp)
 export KERBEROS_KDC_ADDR
 export KERBEROS_KEYTAB_FILE="$fixture_dir/http.keytab"
+export KERBEROS_LEGACY_KEYTAB_FILE="$fixture_dir/legacy.keytab"
 mise run test-go-one -- ./backend/authentication/internal/negotiate/protocol_kerberos TestVerifierAgainstSambaAD

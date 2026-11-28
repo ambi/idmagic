@@ -120,6 +120,8 @@ jobs:
         run: mise run test-go-openldap-e2e
       - name: Active Directory dialect against Samba AD
         run: mise run test-go-sambaad
+      - name: Kerberos tickets against Samba AD
+        run: mise run test-kerberos-ad
       - name: Verify generated Go references
         run: |
           mise run check-config-reference

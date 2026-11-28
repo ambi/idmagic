@@ -77,6 +77,9 @@ func (s *Service) Authenticate(ctx context.Context, tenantID string, token []byt
 	}
 	config := s.configs[tenantID]
 	verified, err := s.verifier.Verify(ctx, config, token, clientIP)
+	if errors.Is(err, negotiateports.ErrUnsupportedEncryption) {
+		return reject("encryption")
+	}
 	if err != nil || verified.ReplayID == "" {
 		return reject("ticket")
 	}
