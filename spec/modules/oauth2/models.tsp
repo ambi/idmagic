@@ -232,7 +232,7 @@ model ClientSecretCredential {
   client_id: string;
   secret_hash: string;
   created_at: utcDateTime;
-  @doc("資格情報が期限切れになる時刻。新たに加える資格情報では必須である。null は、移行前の有効期限のない従来の資格情報、または互換のローテーションの現在の資格情報を表す。")
+  @doc("資格情報が期限切れになる時刻。追加発行する資格情報では必須である。null は、移行前の有効期限のない従来の資格情報、互換のローテーションの現在の資格情報、またはクライアントの登録時に発行した最初の資格情報を表す。動的登録のクライアントには自らシークレットを更新する経路がないので、登録時の資格情報に期限を付けない。")
   expires_at?: utcDateTime;
   @doc("完全に失効させた時刻。`revoked_at` のある資格情報は、`expires_at` にかかわらず認証に使わない。")
   revoked_at?: utcDateTime;
@@ -800,7 +800,8 @@ model ClientRegistrationRequest {
   redirect_uris: url[];
   client_name?: string;
   client_type?: ClientType;
-  grant_types: GrantType[];
+  @doc("省くと `authorization_code` だけと読む（RFC 7591 の 2 節）。")
+  grant_types?: GrantType[];
   response_types?: ResponseType[];
   token_endpoint_auth_method?: TokenEndpointAuthMethod;
   scope?: string;
@@ -2415,14 +2416,22 @@ model AdminRoleInterface {
 @doc("Dynamic Client Registration のクライアント情報のレスポンス（RFC 7591 の 3.2.1 節）。登録したメタデータをサーバーが保存したとおりに繰り返し、confidential のクライアントでは登録時にちょうど一度だけ `client_secret` を含む。")
 model ClientRegistrationResponse {
   client_id: string;
+  @doc("`client_id` を発行した時刻。UNIX 時刻の秒である。")
+  client_id_issued_at: int64;
   @doc("confidential のクライアントで、このレスポンスでだけ返す。後から読み直すことはできない。")
   client_secret?: string;
+  @doc("`client_secret` を返すときだけ含む。動的登録の資格情報は期限を持たないので、常に 0 である（RFC 7591 の 3.2.1 節）。")
+  client_secret_expires_at?: int64;
+  @doc("登録が名前を与えたときだけ繰り返す。")
+  client_name?: string;
   client_type: ClientType;
   redirect_uris: url[];
   grant_types: GrantType[];
   response_types: ResponseType[];
   token_endpoint_auth_method: TokenEndpointAuthMethod;
   scope: string;
+  @doc("保存した PKCE の追加の必須化。public と FAPI 2.0 の必須条件はこの値によらない。")
+  require_pkce: boolean;
   @doc("クライアントがプッシュ型の認可リクエスト（RFC 9126）を使わなければならないかどうか。")
   require_pushed_authorization_requests: boolean;
   @doc("このクライアントに発行するアクセストークンを DPoP に結び付けるかどうか（RFC 9449）。")

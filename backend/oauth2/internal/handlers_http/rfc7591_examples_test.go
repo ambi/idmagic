@@ -16,11 +16,10 @@ import (
 
 // RFC 7591 §3.1 の登録の要求の例を /register へ流す。期待値は RFC 7591 の文面から書く。
 // §2 は理解しないメタデータを無視すること、grant_types と response_types の省略を authorization_code と code とみなすことを、
-// §3.2.1 は成功に 201 と client_id と登録したメタデータを返すことを求める。
-//
-// 応答の client_name と client_secret_expires_at（§3.2.1）は、今の実装が返さないので wi-97659 が検査を足す。
+// §3.2.1 は成功に 201 と client_id と登録したメタデータを返し、client_secret を発行したら client_secret_expires_at を返すことを求める。
 //
 //spec:covers RFC7591-REGISTER, EX-OAUTH2-016-01: RFC 7591 の例の要求を、理解しないメタデータと言語の付いた名前を無視して受け付け、省略した grant_types と response_types を既定で補って登録すること,
+//spec:covers REQ-OAUTH2-016: 応答が保存した client_name と client_id_issued_at を返し、期限のない client_secret に client_secret_expires_at=0 を返すこと,
 //spec:covers RFC7591-REDIRECT-URI: RFC 7591 の例の二つの redirect_uris をそのまま登録すること
 func TestRegisterClient_AcceptsTheRFC7591Examples(t *testing.T) {
 	data, err := os.ReadFile("testdata/rfc7591-examples.json")
@@ -59,6 +58,7 @@ func TestRegisterClient_AcceptsTheRFC7591Examples(t *testing.T) {
 			for key, want := range map[string]any{
 				"redirect_uris": sent["redirect_uris"], "token_endpoint_auth_method": "client_secret_basic",
 				"grant_types": []any{"authorization_code"}, "response_types": []any{"code"},
+				"client_name": sent["client_name"], "client_secret_expires_at": float64(0),
 			} {
 				if fmt.Sprint(got[key]) != fmt.Sprint(want) {
 					t.Errorf("%s = %v, want %v", key, got[key], want)
@@ -77,6 +77,13 @@ func TestRegisterClient_AcceptsTheRFC7591Examples(t *testing.T) {
 			stored, err := fix.clientRepo.FindByID(context.Background(), tenancydomain.DefaultTenantID, clientID)
 			if err != nil || stored == nil || stored.ClientName == nil || *stored.ClientName != sent["client_name"] {
 				t.Fatalf("stored client = %+v (%v), want client_name %v", stored, err, sent["client_name"])
+			}
+			if issuedAt, _ := got["client_id_issued_at"].(float64); int64(issuedAt) != stored.CreatedAt.Unix() {
+				t.Errorf("client_id_issued_at = %v, want the stored created_at %d", got["client_id_issued_at"], stored.CreatedAt.Unix())
+			}
+			credentials, err := fix.clientRepo.ListClientSecretCredentials(context.Background(), clientID)
+			if err != nil || len(credentials) != 1 || credentials[0].ExpiresAt != nil {
+				t.Errorf("credentials = %+v (%v), want one credential without expires_at to match client_secret_expires_at=0", credentials, err)
 			}
 		})
 	}

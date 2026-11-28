@@ -69,6 +69,7 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 	}
 	resp := map[string]any{
 		"client_id":                             result.Client.ClientID,
+		"client_id_issued_at":                   result.Client.CreatedAt.Unix(),
 		"client_type":                           result.Client.ClientType,
 		"redirect_uris":                         result.Client.RedirectURIs,
 		"grant_types":                           result.Client.GrantTypes,
@@ -81,6 +82,9 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 		"fapi_profile":                          result.Client.FapiProfile,
 		"backchannel_logout_session_required":   result.Client.BackChannelLogoutSessionRequired,
 		"frontchannel_logout_session_required":  result.Client.FrontChannelLogoutSessionRequired,
+	}
+	if result.Client.ClientName != nil {
+		resp["client_name"] = *result.Client.ClientName
 	}
 	if result.Client.BackChannelLogoutURI != nil {
 		resp["backchannel_logout_uri"] = *result.Client.BackChannelLogoutURI
@@ -99,6 +103,8 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 	}
 	if result.ClientSecret != "" {
 		resp["client_secret"] = result.ClientSecret
+		// 登録時の資格情報は期限を持たない。RFC 7592 の更新の経路がないので、期限を付けると再登録しかなくなる。
+		resp["client_secret_expires_at"] = 0
 	}
 	return c.JSON(http.StatusCreated, resp)
 }

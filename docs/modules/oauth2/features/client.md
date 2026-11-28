@@ -54,6 +54,8 @@
 #### REQ-OAUTH2-016 動的クライアント登録は `client_id` を採番して返す
 
 - クライアントが正しいメタデータで動的クライアント登録を要求したとき、OAuth2 は、`client_id` を採番し、201 と `client_id`、confidential のクライアントには `client_secret` を返し、`ClientRegistered` を発行する。
+- 動的クライアント登録が成功したとき、OAuth2 は、`client_name` と `require_pkce` を含む保存したメタデータと、登録した時刻を UNIX 時刻の秒で表す `client_id_issued_at` を返す。
+- 動的クライアント登録が `client_secret` を発行したとき、OAuth2 は、その資格情報に期限を付けず、`client_secret_expires_at` を 0 で返す。
 - クライアントが登録時に `require_pkce` を指定したとき、OAuth2 は、その値を保存して返す。
 - クライアントが登録時に `require_pkce` を省いたとき、OAuth2 は、false を保存して返す。
 - public または FAPI 2.0 のクライアントを登録したとき、OAuth2 は、保存した `require_pkce` の値によらず、認可に PKCE を必須とする（REQ-OAUTH2-005）。
